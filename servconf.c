@@ -14,7 +14,7 @@ Created: Mon Aug 21 15:48:58 1995 ylo
 /*
  * $Id: servconf.c,v 1.14 1998/05/23 20:34:11 kivinen Exp $
  * $Log: servconf.c,v $
- * Revision 1.14  1998/05/23  20:34:11  kivinen
+ * Revision 1.14  1998/05/23 20:34:11  kivinen
  * 	Added forced_empty_passwd_change, num_deny_shosts,
  * 	num_allow_shosts, password_expire_warning_days,
  * 	account_expire_warning_days. Fixed typo in

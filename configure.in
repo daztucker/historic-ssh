@@ -162,28 +162,21 @@ case "$host" in
     AC_CHECK_LIB(aud, audgen)
     AC_CHECK_LIB(db, dbopen)
     AC_CHECK_LIB(m, sin)
-    AC_CHECK_FUNCS(setluid getespwnam locked_out_es time_lock)
+    AC_CHECK_FUNCS(setluid)
     no_utmpx=yes
-    AC_MSG_CHECKING(for OSF/1 C2 security package)
-    osfc2sec=`/usr/sbin/setld -i | grep '^OSFC2SEC' | grep 'installed'`
-    if test -n "$osfc2sec"; then
-      AC_MSG_RESULT(yes)
-      AC_DEFINE(HAVE_OSF1_C2_SECURITY)
-      SSHDCONFOBJS="$SSHDCONFOBJS osfc2.o"
-      OLD_CFLAGS="$CFLAGS"
-      CFLAGS="$CFLAGS -I."
-      AC_TRY_COMPILE([#include <sys/types.h>
+    AC_DEFINE(HAVE_SIA)
+    SSHDCONFOBJS="$SSHDCONFOBJS sshsia.o"
+    OLD_CFLAGS="$CFLAGS"
+    CFLAGS="$CFLAGS -I."
+    AC_TRY_COMPILE([#include <sys/types.h>
 #include <sys/security.h>
 #include <prot.h>], , , [
-        AC_MSG_WARN([Could not include <prot.h> file.
+      AC_MSG_WARN([Could not include <prot.h> file.
 The digital unix 4.0 prot.h tries to include <acl.h> instead of <sys/acl.h>.
 Making a local copy of prot.h and patching it.])
-        sed 's@<acl.h>@<sys/acl.h>@g' </usr/include/prot.h >prot.h
-      ])
-      CFLAGS="$OLD_CFLAGS"
-    else
-      AC_MSG_RESULT(no)
-    fi
+      sed 's@<acl.h>@<sys/acl.h>@g' </usr/include/prot.h >prot.h
+    ])
+    CFLAGS="$OLD_CFLAGS"
     ;;
   *-*-nextstep*)
     # Nextstep support from a person who wants to remain anonymous
@@ -192,7 +185,8 @@ Making a local copy of prot.h and patching it.])
       AC_DEFINE(SPEED_T_IN_STDTYPES_H)
     fi
     ;;
-  *-*-linux*)
+  *-*-linux*|*-*-mklinux*)
+    CFLAGS="-D_GNU_SOURCE $CFLAGS"
     AC_CHECK_FUNC(getspnam)
     if test $ac_cv_func_getspnam = no; then
        AC_CHECK_LIB(shadow, getspnam)
@@ -379,7 +373,7 @@ AC_CHECK_HEADERS(unistd.h rusage.h sys/time.h lastlog.h utmp.h shadow.h)
 AC_CHECK_HEADERS(sgtty.h sys/select.h sys/ioctl.h machine/endian.h)
 AC_CHECK_HEADERS(paths.h usersec.h utime.h netinet/in_systm.h)
 AC_CHECK_HEADERS(netinet/in_system.h netinet/ip.h netinet/tcp.h ulimit.h)
-AC_CHECK_HEADERS(sys/resource.h login_cap.h)
+AC_CHECK_HEADERS(sys/resource.h login_cap.h sys/stream.h sys/conf.h)
 AC_HEADER_TIME
 AC_HEADER_DIRENT
 AC_HEADER_STAT
@@ -438,9 +432,9 @@ fi
 AC_CHECK_FUNCS(gettimeofday times getrusage ftruncate revoke makeutx)
 AC_CHECK_FUNCS(strchr memcpy setlogin openpty _getpty clock fchmod ulimit)
 AC_CHECK_FUNCS(gethostname getdtablesize umask innetgr initgroups setpgrp)
-AC_CHECK_FUNCS(setpgid daemon waitpid ttyslot authenticate)
+AC_CHECK_FUNCS(setpgid daemon waitpid ttyslot authenticate getpt isastream)
 
-AC_REPLACE_FUNCS(strerror memmove remove random putenv crypt socketpair)
+AC_REPLACE_FUNCS(strerror memmove remove random putenv crypt socketpair snprintf)
 
 AC_PROG_LN_S
 AC_PROG_INSTALL
@@ -1108,30 +1102,27 @@ fi
 if test "x$socks" = "x5"; then
     AC_DEFINE(SOCKS)
     AC_DEFINE(SOCKS5)
-    AC_CHECK_HEADERS(socks.h)
-    if test "x$ac_cv_header_socks_h" != "xyes"; then
-      AC_DEFINE(Rconnect,SOCKSconnect)
-      AC_DEFINE(Rgetsockname,SOCKSgetsockname)
-      AC_DEFINE(Rgetpeername,SOCKSgetpeername)
-      AC_DEFINE(Rbind,SOCKSbind)
-      AC_DEFINE(Raccept,SOCKSaccept)
-      AC_DEFINE(Rlisten,SOCKSlisten)
-      AC_DEFINE(Rselect,SOCKSselect)
-      AC_DEFINE(Rrecvfrom,SOCKSrecvfrom)
-      AC_DEFINE(Rsendto,SOCKSsendto)
-      AC_DEFINE(Rrecv,SOCKSrecv)
-      AC_DEFINE(Rsend,SOCKSsend)
-      AC_DEFINE(Rread,SOCKSread)
-      AC_DEFINE(Rwrite,SOCKSwrite)
-      AC_DEFINE(Rrresvport,SOCKSrresvport)
-      AC_DEFINE(Rshutdown,SOCKSshutdown)
-      AC_DEFINE(Rlisten,SOCKSlisten)
-      AC_DEFINE(Rclose,SOCKSclose)
-      AC_DEFINE(Rdup,SOCKSdup)
-      AC_DEFINE(Rdup2,SOCKSdup2)
-      AC_DEFINE(Rfclose,SOCKSfclose)
-      AC_DEFINE(Rgethostbyname,SOCKSgethostbyname)
-    fi
+    AC_DEFINE(Rconnect,SOCKSconnect)
+    AC_DEFINE(Rgetsockname,SOCKSgetsockname)
+    AC_DEFINE(Rgetpeername,SOCKSgetpeername)
+    AC_DEFINE(Rbind,SOCKSbind)
+    AC_DEFINE(Raccept,SOCKSaccept)
+    AC_DEFINE(Rlisten,SOCKSlisten)
+    AC_DEFINE(Rselect,SOCKSselect)
+    AC_DEFINE(Rrecvfrom,SOCKSrecvfrom)
+    AC_DEFINE(Rsendto,SOCKSsendto)
+    AC_DEFINE(Rrecv,SOCKSrecv)
+    AC_DEFINE(Rsend,SOCKSsend)
+    AC_DEFINE(Rread,SOCKSread)
+    AC_DEFINE(Rwrite,SOCKSwrite)
+    AC_DEFINE(Rrresvport,SOCKSrresvport)
+    AC_DEFINE(Rshutdown,SOCKSshutdown)
+    AC_DEFINE(Rlisten,SOCKSlisten)
+    AC_DEFINE(Rclose,SOCKSclose)
+    AC_DEFINE(Rdup,SOCKSdup)
+    AC_DEFINE(Rdup2,SOCKSdup2)
+    AC_DEFINE(Rfclose,SOCKSfclose)
+    AC_DEFINE(Rgethostbyname,SOCKSgethostbyname)
 fi
 
 AC_MSG_CHECKING(whether to use rsaref)
@@ -1278,7 +1269,7 @@ AC_ARG_ENABLE(so-linger,
 AC_MSG_CHECKING(whether to include scp statistics at all)
 AC_ARG_WITH(scp-stats,
 [  --without-scp-stats     Without scp statistics code],
-[ case "withvalval" in
+[ case "$withval" in
   no)
        AC_MSG_RESULT(no)
        ;;

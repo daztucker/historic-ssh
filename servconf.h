@@ -16,7 +16,7 @@ Definitions for server configuration data and for the functions reading it.
 /*
  * $Id: servconf.h,v 1.11 1998/05/23 20:37:02 kivinen Exp $
  * $Log: servconf.h,v $
- * Revision 1.11  1998/05/23  20:37:02  kivinen
+ * Revision 1.11  1998/05/23 20:37:02  kivinen
  * 	Added forced_empty_passwd_change, num_deny_shosts,
  * 	num_allow_shosts, password_expire_warning_days,
  * 	account_expire_warning_days. Fixed typo in

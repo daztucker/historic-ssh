@@ -17,7 +17,7 @@ authentication.
 /*
  * $Id: auth-rh-rsa.c,v 1.3 1998/03/27 16:53:36 kivinen Exp $
  * $Log: auth-rh-rsa.c,v $
- * Revision 1.3  1998/03/27  16:53:36  kivinen
+ * Revision 1.3  1998/03/27 16:53:36  kivinen
  * 	Added ignore_root_rhosts support.
  *
  * Revision 1.2  1996/10/29 22:34:10  kivinen

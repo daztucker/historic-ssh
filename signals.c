@@ -16,7 +16,7 @@ maximum core dump size.
 
 /*
  * $Log: signals.c,v $
- * Revision 1.9  1998/05/23  20:24:15  kivinen
+ * Revision 1.9  1998/05/23 20:24:15  kivinen
  * 	Changed () -> (void).
  *
  * Revision 1.8  1998/05/04  13:37:05  kivinen

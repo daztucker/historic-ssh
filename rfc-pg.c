@@ -14,7 +14,7 @@ Created: Fri Jul  7 02:14:16 1995 ylo
 /*
  * $Id: rfc-pg.c,v 1.1.1.1 1996/02/18 21:38:10 ylo Exp $
  * $Log: rfc-pg.c,v $
- * Revision 1.1.1.1  1996/02/18  21:38:10  ylo
+ * Revision 1.1.1.1  1996/02/18 21:38:10  ylo
  * 	Imported ssh-1.2.13.
  *
  * Revision 1.2  1995/07/13  01:31:15  ylo

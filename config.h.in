@@ -83,8 +83,9 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 #undef HAVE_ETC_SECURITY_PASSWD_ADJUNCT
 
   
-/* Define if you have OSF1 C2 security installed on the system */
-#undef HAVE_OSF1_C2_SECURITY
+/* Define if you have SIA, Security Integration Architecture (as in
+   Tru64 UNIX). */
+#undef HAVE_SIA
 
 /* Define if you have shadow passwords in /etc/shadow (Solaris style). */
 #undef HAVE_ETC_SHADOW
@@ -377,14 +378,14 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define if you have the getdtablesize function.  */
 #undef HAVE_GETDTABLESIZE
 
-/* Define if you have the getespwnam function.  */
-#undef HAVE_GETESPWNAM
-
 /* Define if you have the gethostname function.  */
 #undef HAVE_GETHOSTNAME
 
 /* Define if you have the getpseudotty function.  */
 #undef HAVE_GETPSEUDOTTY
+
+/* Define if you have the getpt function.  */
+#undef HAVE_GETPT
 
 /* Define if you have the getrusage function.  */
 #undef HAVE_GETRUSAGE
@@ -398,8 +399,8 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define if you have the innetgr function.  */
 #undef HAVE_INNETGR
 
-/* Define if you have the locked_out_es function.  */
-#undef HAVE_LOCKED_OUT_ES
+/* Define if you have the isastream function.  */
+#undef HAVE_ISASTREAM
 
 /* Define if you have the makeutx function.  */
 #undef HAVE_MAKEUTX
@@ -443,6 +444,9 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define if you have the setsid function.  */
 #undef HAVE_SETSID
 
+/* Define if you have the snprintf function.  */
+#undef HAVE_SNPRINTF
+
 /* Define if you have the socketpair function.  */
 #undef HAVE_SOCKETPAIR
 
@@ -451,9 +455,6 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 /* Define if you have the strerror function.  */
 #undef HAVE_STRERROR
-
-/* Define if you have the time_lock function.  */
-#undef HAVE_TIME_LOCK
 
 /* Define if you have the times function.  */
 #undef HAVE_TIMES
@@ -512,8 +513,8 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define if you have the <shadow.h> header file.  */
 #undef HAVE_SHADOW_H
 
-/* Define if you have the <socks.h> header file.  */
-#undef HAVE_SOCKS_H
+/* Define if you have the <sys/conf.h> header file.  */
+#undef HAVE_SYS_CONF_H
 
 /* Define if you have the <sys/dir.h> header file.  */
 #undef HAVE_SYS_DIR_H
@@ -529,6 +530,9 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 /* Define if you have the <sys/select.h> header file.  */
 #undef HAVE_SYS_SELECT_H
+
+/* Define if you have the <sys/stream.h> header file.  */
+#undef HAVE_SYS_STREAM_H
 
 /* Define if you have the <sys/time.h> header file.  */
 #undef HAVE_SYS_TIME_H

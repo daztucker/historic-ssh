@@ -20,7 +20,7 @@ using the --with-rsaref configure option.
 /*
  * $Id: rsaglue.c,v 1.5 1997/03/19 21:29:59 kivinen Exp $
  * $Log: rsaglue.c,v $
- * Revision 1.5  1997/03/19  21:29:59  kivinen
+ * Revision 1.5  1997/03/19 21:29:59  kivinen
  * 	Added missing &.
  *
  * Revision 1.4  1997/03/19 21:14:08  kivinen

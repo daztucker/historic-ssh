@@ -27,8 +27,9 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
    (SunOS style). */
 #undef HAVE_ETC_SECURITY_PASSWD_ADJUNCT
   
-/* Define if you have OSF1 C2 security installed on the system */
-#undef HAVE_OSF1_C2_SECURITY
+/* Define if you have SIA, Security Integration Architecture (as in
+   Tru64 UNIX). */
+#undef HAVE_SIA
 
 /* Define if you have shadow passwords in /etc/shadow (Solaris style). */
 #undef HAVE_ETC_SHADOW

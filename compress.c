@@ -16,7 +16,7 @@ Interface to packet compression for ssh.
 /*
  * $Id: compress.c,v 1.3 1998/05/23 20:21:29 kivinen Exp $
  * $Log: compress.c,v $
- * Revision 1.3  1998/05/23  20:21:29  kivinen
+ * Revision 1.3  1998/05/23 20:21:29  kivinen
  * 	Changed () -> (void).
  *
  * Revision 1.2  1996/10/13  14:32:45  ttsalo

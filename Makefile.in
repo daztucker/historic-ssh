@@ -8,8 +8,15 @@
 #
 # Created: Wed Mar 22 17:37:49 1995 ylo
 #
-# $Id: Makefile.in,v 1.49 1998/07/08 01:20:28 kivinen Exp $
+# $Id: Makefile.in,v 1.51 1999/04/29 07:51:59 tri Exp $
 # $Log: Makefile.in,v $
+# Revision 1.51  1999/04/29 07:51:59  tri
+# 	Replaced OSF1/C2 security support with more complete SIA
+#         (Security Integration Architecture) support by Tom Woodburn.
+#
+# Revision 1.50  1999/02/22 12:04:09  tri
+# 	Added snprintf.
+#
 # Revision 1.49  1998/07/08 01:20:28  kivinen
 # 	Changed SSH_PROGRAM to be ssh1.
 #
@@ -346,8 +353,8 @@ SRCS = $(SSHD_OBJS:.o=.c) $(SSH_OBJS:.o=.c) $(KEYGEN_OBJS:.o=.c) \
 	$(AGENT_OBJS:.o=.c) $(ADD_OBJS:.o=.c) \
 	$(SCP_OBJS:.o=.c) \
 	$(SSH_ASKPASS_OBJS:.o=.c)
-EXTRA_SRCS = memmove.c strerror.c remove.c random.c putenv.c crypt.c osfc2.c \
-	socketpair.c auth-kerberos.c
+EXTRA_SRCS = memmove.c snprintf.c strerror.c remove.c random.c \
+	putenv.c crypt.c sshsia.c socketpair.c auth-kerberos.c
 MAN1PAGES = ssh-keygen ssh-agent ssh-add scp $(EDD_MANPAGES)
 MAN1GENERATED = ssh make-ssh-known-hosts
 MAN1SOURCES = ssh.1.in ssh-keygen.1 ssh-agent.1 ssh-add.1 scp.1 \
@@ -359,7 +366,7 @@ HEADERS = cipher.h getput.h pty.h arcfour.h compress.h idea.h \
 	randoms.h ttymodes.h authfd.h crc32.h includes.h \
 	readconf.h userfile.h blowfish.h des.h md5.h rsa.h version.h bufaux.h \
 	mpaux.h servconf.h xmalloc.h buffer.h emulate.h packet.h ssh.h \
-	deattack.h
+	deattack.h snprintf.h sshsia.h
 
 DISTFILES = $(srcdir)/COPYING $(srcdir)/README $(srcdir)/README.SECURID \
 	$(srcdir)/README.TIS $(srcdir)/README.SECURERPC \

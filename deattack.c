@@ -18,7 +18,6 @@
 #define HASH_MINSIZE (8 * 1024)
 #define HASH_ENTRYSIZE (2)
 #define HASH_FACTOR(x) ((x)*3/2)
-#define HASH_UNUSEDCHAR (0xff)
 #define HASH_UNUSED (0xffff)
 #define HASH_IV     (0xfffe)
 
@@ -96,13 +95,13 @@ detect_attack(unsigned char *buf, word32 len, unsigned char *IV)
   {
     debug("Installing crc compensation attack detector.");
     n = l;
-    h = (word16 *) xmalloc(n * HASH_ENTRYSIZE);
+    h = (word16 *) xmalloc(n * sizeof(word16));
   } else
   {
     if (l > n)
     {
       n = l;
-      h = (word16 *) xrealloc(h, n * HASH_ENTRYSIZE);
+      h = (word16 *) xrealloc(h, n * sizeof(word16));
     }
   }
 
@@ -113,25 +112,27 @@ detect_attack(unsigned char *buf, word32 len, unsigned char *IV)
     {
       if (IV && (!CMP(c, IV)))
       {
-	if ((check_crc(c, buf, len, IV)))
-	  return (DEATTACK_DETECTED);
-	else
-	  break;
+        if ((check_crc(c, buf, len, IV)))
+          return (DEATTACK_DETECTED);
+        else
+          break;
       }
       for (d = buf; d < c; d += SSH_BLOCKSIZE)
       {
-	if (!CMP(c, d))
-	{
-	  if ((check_crc(c, buf, len, IV)))
-	    return (DEATTACK_DETECTED);
-	  else
-	    break;
-	}
+        if (!CMP(c, d))
+        {
+          if ((check_crc(c, buf, len, IV)))
+            return (DEATTACK_DETECTED);
+          else
+            break;
+        }
       }
     }
     return (DEATTACK_OK);
   }
-  memset(h, HASH_UNUSEDCHAR, n * HASH_ENTRYSIZE);
+
+  for (i = 0; i < n; i++)
+    h[i] = HASH_UNUSED;
 
   if (IV)
     h[HASH(IV) & (n - 1)] = HASH_IV;
@@ -140,23 +141,23 @@ detect_attack(unsigned char *buf, word32 len, unsigned char *IV)
   for (c = buf, j = 0; c < (buf + len); c += SSH_BLOCKSIZE, j++)
   {
     for (i = HASH(c) & (n - 1); h[i] != HASH_UNUSED;
-	 i = (i + 1) & (n - 1))
+         i = (i + 1) & (n - 1))
     {
       if (h[i] == HASH_IV)
       {
-	if (!CMP(c, IV))
-	{
-	  if (check_crc(c, buf, len, IV))
-	    return (DEATTACK_DETECTED);
-	  else
-	    break;
-	}
+        if (!CMP(c, IV))
+        {
+          if (check_crc(c, buf, len, IV))
+            return (DEATTACK_DETECTED);
+          else
+            break;
+        }
       } else if (!CMP(c, buf + h[i] * SSH_BLOCKSIZE))
       {
-	if (check_crc(c, buf, len, IV))
-	  return (DEATTACK_DETECTED);
-	else
-	  break;
+        if (check_crc(c, buf, len, IV))
+          return (DEATTACK_DETECTED);
+        else
+          break;
       }
     }
     h[i] = j;

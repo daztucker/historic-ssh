@@ -9,8 +9,14 @@
 .\"
 .\" Created: Sat Apr 23 20:10:43 1995 ylo
 .\"
-.\" $Id: ssh-agent.1,v 1.8 1998/07/08 00:40:26 kivinen Exp $
+.\" $Id: ssh-agent.1,v 1.9 1998/08/07 12:29:35 tri Exp $
 .\" $Log: ssh-agent.1,v $
+.\" Revision 1.9  1998/08/07 12:29:35  tri
+.\" 	Changed agent socket name /tmp/ssh-$USER/agent-socket-<pid>
+.\" 	to /tmp/ssh-$USER/ssh-<pid>-agent in order to avoid
+.\" 	ambiguities on systems with 14 character filename and
+.\" 	to provide concistency with ssh2.
+.\"
 .\" Revision 1.8  1998/07/08 00:40:26  kivinen
 .\" 	Changed to do similar commercial #ifdef processing than other
 .\" 	files.
@@ -154,7 +160,7 @@ identities anywhere in the network in a secure way.
 .LP
 A connection to the agent is inherited by child programs.  A
 unix-domain socket is created
-(\fI/tmp/ssh-$USER/agent-socket-<pid>\fR), where the %d is the process
+(\fI/tmp/ssh-$USER/ssh-<pid>-agent\fR), where the %d is the process
 id of the listener (agent or sshd proxying the agent). The name of
 this socket is stored in the
 .B \s-1SSH_AUTH_SOCK\s0
@@ -182,7 +188,7 @@ but is normally added to the agent using
 .B ssh-add
 at login time.
 .TP
-.I \&/tmp/ssh-$USER/agent-socket-<pid>
+.I \&/tmp/ssh-$USER/ssh-<pid>-agent
 Unix-domain sockets used to contain the connection to the
 authentication agent.  These sockets should only be readable by the
 owner.  The sockets should get automatically removed when the agent

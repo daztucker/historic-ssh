@@ -14,7 +14,7 @@ Created: Wed Apr 19 17:41:39 1995 ylo
 /*
  * $Id: cipher.c,v 1.12 1998/05/23 20:21:09 kivinen Exp $
  * $Log: cipher.c,v $
- * Revision 1.12  1998/05/23  20:21:09  kivinen
+ * Revision 1.12  1998/05/23 20:21:09  kivinen
  * 	Changed () -> (void).
  *
  * Revision 1.11  1998/04/30  01:51:32  kivinen

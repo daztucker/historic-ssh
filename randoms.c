@@ -16,7 +16,7 @@ Cryptographically strong random number generation.
 /*
  * $Id: randoms.c,v 1.4 1998/05/23 20:23:13 kivinen Exp $
  * $Log: randoms.c,v $
- * Revision 1.4  1998/05/23  20:23:13  kivinen
+ * Revision 1.4  1998/05/23 20:23:13  kivinen
  * 	Changed uint32 to word32.
  *
  * Revision 1.3  1998/04/17  00:39:38  kivinen

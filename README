@@ -393,6 +393,8 @@ Note that any information and cryptographic algorithms used in this
 software are publicly available on the Internet and at any major
 bookstore, scientific library, or patent office worldwide.
 
+SSH, SSH2 and Secure shell are a registered trademarks or trademarks 
+of SSH Communications Security.
 
 MAILING LISTS AND OTHER INFORMATION
 
@@ -434,12 +436,12 @@ Florian Fuchs, Mark Fullmer, Jean-Loup Gailly, Bert Gijsbers, Eivind
 Gjelseth, Bob Goellner, Ian Goldberg, Chuck Goodhart, Aaron Gowatch,
 Torbjorn Granlund, Teddy Grenman, Klaus Guntermann, Andreas
 Gustafsson, Kojima Hajime, Charles M. Hannum, Michael Henits, Ville
-Herva, Nick Hibma, Mark Horn, Ton Hospel, Antti Huima, Cedomir Igaly,
-Bradford W. Johnson, Steve Johnson, LaMont Jones, Arne Juul, Petri
-Kaukasoina, Charles Karney, Richard Kaszeta, Brendan Kehoe, Tero
-Kivinen, Philip Kizer, Mika Kojo, Georg-W. Koltermann, David Kågedal,
-Thomas König, Joseph Lappa, Felix Leitner, Ofer Licht, Gunnar
-Lindberg, Markus Linnala, Harald Lundberg, Glenn Machin, Andrew
+Herva, Nick Hibma, Mark Horn, Ton Hospel, Antti Huima, Bradford Hull,
+Cedomir Igaly, Bradford W. Johnson, Steve Johnson, LaMont Jones, Arne
+Juul, Petri Kaukasoina, Charles Karney, Richard Kaszeta, Brendan
+Kehoe, Tero Kivinen, Philip Kizer, Mika Kojo, Georg-W. Koltermann,
+David Kågedal, Thomas König, Joseph Lappa, Felix Leitner, Ofer Licht,
+Gunnar Lindberg, Markus Linnala, Harald Lundberg, Glenn Machin, Andrew
 Macpherson, Marc Martinec, Paul Mauvais, David Mazieres, Harry
 McGavran Jr., Donald McKillican, Pedro Melo, Luke Mewburn, Leon
 Mlakar, Robert Muchsel, Kaj Mustikkamäki, Hannu Napari, Pekka
@@ -452,7 +454,7 @@ Kevin Steves, Mikael Suokas, Heikki Suonsivu, Tomasz Surmacz, Holger
 Trapp, Mark Treacy, Andrew Tridgell, Rick Troxel, Dragan Vecerina,
 Wietse Venema, Witse Venema, Alvar Vinacua, Russell Vincent, Petri
 Virkkula, Michael Warfield, Brian Weaver, Peter Wemm, Raymund Will,
-Mike Williams, Christophe Wolfhugel and Craig Yap.
+Mike Williams, Christophe Wolfhugel, Tom Woodburn and Craig Yap.
 
 My apologies to people whom I have forgotten to list.
 

@@ -16,7 +16,7 @@ Macros for storing and retrieving data in msb first and lsb first order.
 /*
  * $Id: getput.h,v 1.1.1.1 1996/02/18 21:38:11 ylo Exp $
  * $Log: getput.h,v $
- * Revision 1.1.1.1  1996/02/18  21:38:11  ylo
+ * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
  * 	Imported ssh-1.2.13.
  *
  * Revision 1.2  1995/07/13  01:24:09  ylo

@@ -9,8 +9,13 @@
 .\"
 .\" Created: Sun May  7 00:14:37 1995 ylo
 .\"
-.\" $Id: scp.1,v 1.6 1998/07/08 00:42:13 kivinen Exp $
+.\" $Id: scp.1,v 1.7 1998/08/07 12:26:35 tri Exp $
 .\" $Log: scp.1,v $
+.\" Revision 1.7  1998/08/07 12:26:35  tri
+.\" 	Added flag -1 to force command "scp1" on the remote
+.\" 	system instead of "scp".  This is necessary sometimes,
+.\" 	if remote side has scp symlinked to scp2.
+.\"
 .\" Revision 1.6  1998/07/08 00:42:13  kivinen
 .\" 	Changed to do similar commercial #ifdef processing than other
 .\" 	files. Added -a, -A, -Q, and -L. Added comment about
@@ -57,7 +62,7 @@ scp \- secure copy (remote file copy program)
 .LP
 .B scp
 [\c
-.B \-aAqQprvBCL\c
+.B \-aAqQprvBCL1\c
 ]
 [\c
 .BI \-S "\ path-to-ssh\c
@@ -132,6 +137,11 @@ rhosts  or rsarhosts authentications, but it can be
 used to bypass some firewalls that dont allow privileged
 source ports to pass. Same as saying "-o UsePriviledgePort=no"
 or -P to ssh; -L is used due to exhaustion of suitable letters.
+.TP
+.B \-1
+Force scp to use command "scp1" on the remote side instead of "scp".
+This may be necessary in some situations, if the remote system has
+"scp2" symlinked to "scp".
 .TP
 .BI \-o "\ ssh-options
 Ssh options passed to ssh.

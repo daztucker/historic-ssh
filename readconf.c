@@ -107,6 +107,7 @@ Functions for reading the configuration files.
 #include "cipher.h"
 #include "readconf.h"
 #include "xmalloc.h"
+#include "userfile.h"
 
 /* Keyword tokens. */
 
@@ -465,17 +466,19 @@ void process_config_line(Options *options, const char *host,
 
 /* Reads the config file and modifies the options accordingly.  Options should
    already be initialized before this call.  This never returns if there
-   is an error.  If the file does not exist, this returns immediately. */
+   is an error.  If the file does not exist, this returns immediately. 
+   All I/O will be done with the given uid using userfile. */
 
-void read_config_file(const char *filename, const char *host, Options *options)
+void read_config_file(uid_t uid, const char *filename, const char *host, 
+		      Options *options)
 {
-  FILE *f;
+  UserFile uf;
   char line[1024];
   int active, linenum;
 
   /* Open the file. */
-  f = fopen(filename, "r");
-  if (!f)
+  uf = userfile_open(uid, filename, O_RDONLY, 0);
+  if (uf == NULL)
     return;
 
   debug("Reading configuration data %.200s", filename);
@@ -484,14 +487,14 @@ void read_config_file(const char *filename, const char *host, Options *options)
      by Host specifications. */
   active = 1;
   linenum = 0;
-  while (fgets(line, sizeof(line), f))
+  while (userfile_gets(line, sizeof(line), uf))
     {
       /* Update line number counter. */
       linenum++;
 
       process_config_line(options, host, line, filename, linenum, &active);
     }
-  fclose(f);
+  userfile_close(uf);
 }
 
 /* Initializes options to special values that indicate that they have not

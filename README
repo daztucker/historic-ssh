@@ -543,15 +543,17 @@ ACKNOWLEDGEMENTS
 I thank Tero Kivinen, Timo Rinne, Janne Snabb, and Heikki Suonsivu for
 their help and comments in the design, implementation and porting of
 this software.  I also thank numerous contributors, including but not
-limited to Walker Aumann, Jurgen Botz, Hans-Werner Braun, Stephane
-Bortzmeyer, Adrian Colley, Michael Cooper, David Dombek, Jerome
-Etienne, Bill Fithen, Mark Fullmer, Bert Gijsbers, Andreas Gustafsson,
-Michael Henits, Steve Johnson, Thomas Koenig, Felix Leitner, Gunnar
-Lindberg, Andrew Macpherson, Marc Martinec, Paul Mauvais, Donald
-McKillican, Leon Mlakar, Robert Muchsel, Mark Treacy, Bryan
+limited to Tim Adam, Walker Aumann, Jurgen Botz, Hans-Werner Braun,
+Stephane Bortzmeyer, Bill Broadley, Adrian Colley, Michael Cooper,
+David Dombek, Ian Donaldson, Jerome Etienne, Bill Fithen, Mark
+Fullmer, Bert Gijsbers, Klaus Guntermann, Andreas Gustafsson, Michael
+Henits, Cedomir Igaly, Steve Johnson, Thomas Koenig, Felix Leitner,
+Gunnar Lindberg, Andrew Macpherson, Marc Martinec, Paul Mauvais,
+Donald McKillican, Leon Mlakar, Robert Muchsel, Mark Treacy, Bryan
 O'Sullivan, Mikael Suokas, Ollivier Robert, Jakob Schlyter, Tomasz
-Surmacz, Alvar Vinacua, Petri Virkkula, Michael Warfield, and
-Cristophe Wolfhugel.
+Surmacz, Alvar Vinacua, Petri Virkkula, Michael Warfield, Peter Wemm,
+Mike Williams, and Cristophe Wolfhugel.  My apologies to people whom I
+have forgotten to list.
 
 Thanks also go to Philip Zimmermann, whose PGP software and the
 associated legal battle provided inspiration, motivation, and many

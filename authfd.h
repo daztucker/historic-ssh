@@ -58,7 +58,7 @@ typedef struct
   int fd;
   Buffer packet;
   Buffer identities;
-  int howmany;
+  int num_identities;
 } AuthenticationConnection;
 
 /* Returns the number of the authentication fd, or -1 if there is none. */

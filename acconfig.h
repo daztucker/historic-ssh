@@ -65,6 +65,10 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 @TOP@
 
+/* Define this to the canonical name of your host type (e.g., 
+   "sparc-sun-sunos4.0.3"). */
+#undef HOSTTYPE
+
 /* Define if you have SYSV-style /dev/ptmx and /dev/pts/. */
 #undef HAVE_DEV_PTMX
 
@@ -136,8 +140,8 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Location of system mail spool directory. */
 #undef MAIL_SPOOL_DIRECTORY
 
-/* Defined if mail goes to $HOME/newmail instead of a global mail spool. */
-#undef HAVE_TILDE_NEWMAIL
+/* Name of user's mail spool file if stored in user's home directory. */
+#undef MAIL_SPOOL_FILE
 
 /* Define this to be the default user path if you don't like the default. 
    See the --with-path=<path> configure option. */
@@ -210,3 +214,7 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define these if on SCO Unix. */
 #undef HAVE_SCO_ETC_SHADOW
 #undef SCO
+
+/* Define this if _POSIX_SAVED_IDS does not imply that saved uids
+   work for seteuid. */
+#undef POSIX_SAVED_IDS_BROKEN_FOR_SETEUID

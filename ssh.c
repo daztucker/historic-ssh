@@ -84,7 +84,7 @@ of X11, TCP/IP, and authentication connections.
 #include "buffer.h"
 #include "authfd.h"
 #include "readconf.h"
-#include "uidswap.h"
+#include "userfile.h"
 
 /* Random number generator state.  This is initialized in ssh_login, and
    left initialized.  This is used both by the packet module and by various
@@ -175,12 +175,33 @@ void rsh_connect(char *host, char *user, Buffer *command)
 {
 #ifdef RSH_PATH
   char *args[10];
+  char rsh_program_name[256];
   int i;
   
   log("Using rsh.  WARNING: Connection will not be encrypted.");
+
+  /* Switch to the original uid permanently. */
+  if (setuid(getuid()) < 0)
+    fatal("setuid: %s", strerror(errno));
+
+  /* Compute the full path of the suitable rsh/rlogin program. */
+  if (strcmp(av0, "rlogin") == 0 || strcmp(av0, "slogin") == 0)
+    {
+      strncpy(rsh_program_name, RSH_PATH, sizeof(rsh_program_name));
+      rsh_program_name[sizeof(rsh_program_name) - 20] = '\0';
+      if (strchr(rsh_program_name, '/'))
+	*strrchr(rsh_program_name, '/') = '\0';
+      sprintf(rsh_program_name + strlen(rsh_program_name), "/rlogin");
+    }
+  else
+    {
+      strncpy(rsh_program_name, RSH_PATH, sizeof(rsh_program_name));
+      rsh_program_name[sizeof(rsh_program_name) - 1] = '\0';
+    }
+
   /* Build argument list for rsh. */
   i = 0;
-  args[i++] = RSH_PATH;
+  args[i++] = rsh_program_name;
   args[i++] = host;    /* may have to come after user on some systems */
   if (user)
     {
@@ -203,8 +224,8 @@ void rsh_connect(char *host, char *user, Buffer *command)
 	}
       fprintf(stderr, "\n");
     }
-  execv(RSH_PATH, args);
-  perror(RSH_PATH);
+  execv(rsh_program_name, args);
+  perror(rsh_program_name);
   exit(1);
 #else /* RSH_PATH */
   fatal("Rsh not available.");
@@ -230,12 +251,14 @@ int main(int ac, char **av)
   original_real_uid = getuid();
   original_effective_uid = geteuid();
 
-  /* Use uid-swapping to give up root privileges for the duration of option
-     processing.  We will re-instantiate the rights when we are ready to
-     create the privileged port, and will permanently drop them when the
-     port has been created (actually, when the connection has been made, as
-     we may need to create the port several times). */
-  temporarily_use_uid(original_real_uid);
+  /* Set signals and core limits so that we cannot dump core.  */
+  signals_prevent_core();
+
+  /* Start reading files as the specified user.  However, if we are not running
+     suid root, all access can be done locally, and there is no need to
+     initialize explicitly. */
+  if (original_real_uid != original_effective_uid)
+    userfile_init(original_real_uid, NULL, NULL);
 
 #ifdef HAVE_UMASK
   /* Set our umask to something reasonable, as some files are created with 
@@ -319,7 +342,7 @@ int main(int ac, char **av)
 	  break;
 
 	case 'i':
-	  if (stat(optarg, &st) < 0)
+	  if (userfile_stat(original_real_uid, optarg, &st) < 0)
 	    {
 	      fprintf(stderr, "Warning: Identity file %s does not exist.\n",
 		      optarg);
@@ -338,8 +361,8 @@ int main(int ac, char **av)
 
 	case 'v':
 	  debug_flag = 1;
-	  fprintf(stderr, "SSH Version %s, protocol version %d.%d.\n",
-		  SSH_VERSION, PROTOCOL_MAJOR, PROTOCOL_MINOR);
+	  fprintf(stderr, "SSH Version %s [%s], protocol version %d.%d.\n",
+		  SSH_VERSION, HOSTTYPE, PROTOCOL_MAJOR, PROTOCOL_MINOR);
 #ifdef RSAREF
 	  fprintf(stderr, "Compiled with RSAREF.\n");
 #else /* RSAREF */
@@ -498,11 +521,11 @@ int main(int ac, char **av)
   log_init(av[0], 1, debug_flag, quiet_flag, SYSLOG_FACILITY_USER);
 
   /* Read per-user configuration file. */
-  sprintf(buf, "%s/%s", pw->pw_dir, SSH_USER_CONFFILE);
-  read_config_file(buf, host, &options);
+  sprintf(buf, "%.100s/%s", pw->pw_dir, SSH_USER_CONFFILE);
+  read_config_file(original_real_uid, buf, host, &options);
 
   /* Read systemwide configuration file. */
-  read_config_file(HOST_CONFIG_FILE, host, &options);
+  read_config_file(original_real_uid, HOST_CONFIG_FILE, host, &options);
 
   /* Fill configuration defaults. */
   fill_default_options(&options);
@@ -523,20 +546,10 @@ int main(int ac, char **av)
      else).  Note that we must release privileges first. */
   if (options.use_rsh)
     {
-      /* Restore our superuser privileges.  This must be done before
-         permanently setting the uid. */
-      restore_uid();
-
-      /* Switch to the original uid permanently. */
-      permanently_set_uid(original_real_uid);
-
       /* Execute rsh. */
       rsh_connect(host, options.user, &command);
       fatal("rsh_connect returned");
     }
-
-  /* Restore our superuser privileges. */
-  restore_uid();
 
   /* Open a connection to the remote host.  This needs root privileges if
      rhosts_authentication is true.  Note that the random_state is not
@@ -546,29 +559,6 @@ int main(int ac, char **av)
 		   !options.rhosts_authentication &&
 		   !options.rhosts_rsa_authentication,
 		   original_real_uid, options.proxy_command, &random_state);
-
-  /* If we successfully made the connection, load the host private key in
-     case we will need it later for combined rsa-rhosts authentication. 
-     This must be done before releasing extra privileges, because the file
-     is only readable by root. */
-  if (ok)
-    {
-      if (load_private_key(HOST_KEY_FILE, "", &host_private_key, NULL))
-	host_private_key_loaded = 1;
-    }
-
-  /* Get rid of any extra privileges that we may have.  We will no longer need
-     them.  Also, extra privileges could make it very hard to read identity
-     files and other non-world-readable files from the user's home directory
-     if it happens to be on a NFS volume where root is mapped to nobody. */
-  permanently_set_uid(original_real_uid);
-
-  /* Now that we are back to our own permissions, create ~/.ssh directory
-     if it doesn\'t already exist. */
-  sprintf(buf, "%s/%s", pw->pw_dir, SSH_USER_DIR);
-  if (stat(buf, &st) < 0)
-    if (mkdir(buf, 0755) < 0)
-      error("Could not create directory '%.200s'.", buf);
 
   /* Check if the connection failed, and try "rsh" if appropriate. */
   if (!ok)
@@ -587,7 +577,27 @@ int main(int ac, char **av)
 	  fatal("rsh_connect returned");
 	}
       exit(1);
+      /*NOTREACHED*/
     }
+
+  /* Successful connection. */
+  /* Load the host private key in case we will need it later for
+     combined rsa-rhosts authentication.  This must be done before
+     releasing extra privileges, because the file is only readable by
+     root.  */
+  if (ok)
+    {
+      if (load_private_key(geteuid(), HOST_KEY_FILE, "", &host_private_key, 
+			   NULL))
+	host_private_key_loaded = 1;
+    }
+
+  /* Now that we are back to our own permissions, create ~/.ssh directory
+     if it doesn\'t already exist. */
+  sprintf(buf, "%.100s/%s", pw->pw_dir, SSH_USER_DIR);
+  if (userfile_stat(original_real_uid, buf, &st) < 0)
+    if (userfile_mkdir(original_real_uid, buf, 0755) < 0)
+      error("Could not create directory '%.200s'.", buf);
 
   /* Expand ~ in options.identity_files. */
   for (i = 0; i < options.num_identity_files; i++)
@@ -684,19 +694,20 @@ int main(int ac, char **av)
   if (options.forward_x11 && getenv("DISPLAY") != NULL)
     {
       char line[512], proto[512], data[512];
-      FILE *f;
       int forwarded = 0, got_data = 0, i;
+      UserFile uf;
 
 #ifdef XAUTH_PATH
       /* Try to get Xauthority information for the display. */
       sprintf(line, "%.100s list %.200s 2>/dev/null", 
 	      XAUTH_PATH, getenv("DISPLAY"));
-      f = popen(line, "r");
-      if (f && fgets(line, sizeof(line), f) && 
+      /* Note that we are already running on the user's uid. */
+      uf = userfile_popen(original_real_uid, line, "r");
+      if (uf && userfile_gets(line, sizeof(line), uf) && 
 	  sscanf(line, "%*s %s %s", proto, data) == 2)
 	got_data = 1;
-      if (f)
-	pclose(f);
+      if (uf)
+	userfile_pclose(uf);
 #endif /* XAUTH_PATH */
       /* If we didn't get authentication data, just make up some data.  The
 	 forwarding code will check the validity of the response anyway, and
@@ -769,6 +780,10 @@ int main(int ac, char **av)
 					options.remote_forwards[i].host,
 					options.remote_forwards[i].host_port);
     }
+
+  /* We will no longer need the forked process that reads files on the
+     user's uid. */
+  userfile_uninit();
 
   /* If a command was specified on the command line, execute the command now.
      Otherwise request the server to start a shell. */

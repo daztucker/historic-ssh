@@ -704,7 +704,7 @@ ssh will never automatically add host keys to the
 file, and refuses to connect hosts whose host key has changed.  This
 provides maximum protection against trojan horse attacks.  However, it
 can be somewhat annoying if you don't have good
-.I /etc/ssh_known_hosts
+.I @ETCDIR@/ssh_known_hosts
 files installed and frequently
 connect new hosts.  Basically this option forces the user to manually
 add any new hosts.  Normally this option is disabled, and new hosts
@@ -712,7 +712,7 @@ will automatically be added to the known host files.  The host keys of
 known hosts will be verified automatically in either case.  The
 argument must be
 .YN
-.ne3
+.ne 3
 .TP
 .B User
 Specifies the user to log in as.  This can be useful if you have a
@@ -996,7 +996,7 @@ drops any extra privileges immediately after the connection to the
 remote host has been made.
 .LP
 Considerable work has been put into making
-.B sshd
+.B ssh
 secure.  However, if you find a security problem, please report it
 immediately to <ssh-bugs@cs.hut.fi>.
 

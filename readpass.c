@@ -26,6 +26,7 @@ Functions for reading passphrases and passwords.
 #include "includes.h"
 #include "xmalloc.h"
 #include "ssh.h"
+#include "userfile.h"
 
 /* Saved old terminal mode for read_passphrase. */
 #ifdef USING_TERMIOS
@@ -60,7 +61,7 @@ RETSIGTYPE intr_handler(int sig)
    The passphrase if read from stdin if from_stdin is true (as is the
    case with ssh-keygen).  */
 
-char *read_passphrase(const char *prompt, int from_stdin)
+char *read_passphrase(uid_t uid, const char *prompt, int from_stdin)
 {
   char buf[1024], *cp;
 #ifdef USING_TERMIOS
@@ -70,6 +71,7 @@ char *read_passphrase(const char *prompt, int from_stdin)
   struct sgttyb tio;
 #endif
   FILE *f;
+  UserFile uf;
   
   if (from_stdin)
     f = stdin;
@@ -88,14 +90,20 @@ char *read_passphrase(const char *prompt, int from_stdin)
 	      fflush(stdout);
 	      fflush(stderr);
 	      sprintf(command, "ssh-askpass '%.400s'", prompt);
-	      f = popen(command, "r");
-	      if (!fgets(buf, sizeof(buf), f))
+	      uf = userfile_popen(uid, command, "r");
+	      if (uf == NULL)
 		{
-		  pclose(f);
+		  fprintf(stderr, "Could not query passphrase: '%.200s' failed.\n",
+			  command);
+		  exit(1);
+		}
+	      if (!userfile_gets(buf, sizeof(buf), uf))
+		{
+		  userfile_pclose(uf);
 		  fprintf(stderr, "No passphrase supplied.  Exiting.\n");
 		  exit(1);
 		}
-	      pclose(f);
+	      userfile_pclose(uf);
 	      if (strchr(buf, '\n'))
 		*strchr(buf, '\n') = 0;
 	      return xstrdup(buf);

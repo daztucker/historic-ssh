@@ -205,7 +205,7 @@ AuthenticationConnection *ssh_get_authentication_connection()
   auth->fd = sock;
   buffer_init(&auth->packet);
   buffer_init(&auth->identities);
-  auth->howmany = 0;
+  auth->num_identities = 0;
 
   return auth;
 }
@@ -283,9 +283,10 @@ int ssh_get_first_identity(AuthenticationConnection *auth,
     fatal("Bad authentication reply message type: %d", msg[0]);
   
   /* Get the number of entries in the response and check it for sanity. */
-  auth->howmany = buffer_get_int(&auth->identities);
-  if (auth->howmany > 1024)
-    fatal("Too many identities in authentication reply: %d\n", auth->howmany);
+  auth->num_identities = buffer_get_int(&auth->identities);
+  if (auth->num_identities > 1024)
+    fatal("Too many identities in authentication reply: %d\n", 
+	  auth->num_identities);
 
   /* Return the first entry (if any). */
   return ssh_get_next_identity(auth, bitsp, e, n, comment);
@@ -300,7 +301,7 @@ int ssh_get_next_identity(AuthenticationConnection *auth,
 			  int *bitsp, MP_INT *e, MP_INT *n, char **comment)
 {
   /* Return failure if no more entries. */
-  if (auth->howmany <= 0)
+  if (auth->num_identities <= 0)
     return 0;
 
   /* Get the next entry from the packet.  These will abort with a fatal
@@ -311,7 +312,7 @@ int ssh_get_next_identity(AuthenticationConnection *auth,
   *comment = buffer_get_string(&auth->identities, NULL);
 
   /* Decrement the number of remaining entries. */
-  auth->howmany--;
+  auth->num_identities--;
 
   return 1;
 }

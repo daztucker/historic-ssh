@@ -57,9 +57,14 @@ the password is valid for the user.
 #include <sys/audit.h>
 #include <pwdadj.h>
 #endif /* HAVE_ETC_SECURITY_PASSWD_ADJUNCT */
+#ifdef ultrix
+#include <auth.h>
+#include <sys/svcinfo.h>
+#endif /* ultrix */
 #include "packet.h"
 #include "ssh.h"
 #include "servconf.h"
+#include "xmalloc.h"
 
 #ifdef HAVE_SECURID
 /* Support for Security Dynamics SecurID card.
@@ -84,6 +89,7 @@ int auth_password(const char *server_user, const char *password)
   struct passwd *pw;
   char *encrypted_password;
   char correct_passwd[200];
+  char *saved_pw_name, *saved_pw_passwd;
 
   if (*password == '\0' && options.permit_empty_passwd == 0)
   {
@@ -95,6 +101,8 @@ int auth_password(const char *server_user, const char *password)
   pw = getpwnam(server_user);
   if (!pw)
     return 0;
+  saved_pw_name = xstrdup(pw->pw_name);
+  saved_pw_passwd = xstrdup(pw->pw_passwd);
 #ifdef HAVE_SECURID
   /* Support for Security Dynamics SecurId card.
      Contributed by Donald McKillican <dmckilli@qc.bell.ca>. */
@@ -156,18 +164,18 @@ int auth_password(const char *server_user, const char *password)
 #endif /* HAVE_SECURID */
 
   /* Save the encrypted password. */
-  strncpy(correct_passwd, pw->pw_passwd, sizeof(correct_passwd));
+  strncpy(correct_passwd, saved_pw_passwd, sizeof(correct_passwd));
 
 #ifdef HAVE_OSF1_C2_SECURITY
-    osf1c2_getprpwent(correct_passwd, pw->pw_name, sizeof(correct_passwd));
+    osf1c2_getprpwent(correct_passwd, saved_pw_name, sizeof(correct_passwd));
 #else /* HAVE_OSF1_C2_SECURITY */
   /* If we have shadow passwords, lookup the real encrypted password from
      the shadow file, and replace the saved encrypted password with the
      real encrypted password. */
 #ifdef HAVE_SCO_ETC_SHADOW
   {
-    struct pr_passwd *pr = getprpwnam(pw->pw_name);
-    pr = getprpwnam(pw->pw_name);
+    struct pr_passwd *pr = getprpwnam(saved_pw_name);
+    pr = getprpwnam(saved_pw_name);
     if (pr)
       strncpy(correct_passwd, pr->ufld.fd_encrypt, sizeof(correct_passwd));
     endprpwent();
@@ -175,7 +183,7 @@ int auth_password(const char *server_user, const char *password)
 #else /* HAVE_SCO_ETC_SHADOW */
 #ifdef HAVE_ETC_SHADOW
   {
-    struct spwd *sp = getspnam(pw->pw_name);
+    struct spwd *sp = getspnam(saved_pw_name);
     if (sp)
       strncpy(correct_passwd, sp->sp_pwdp, sizeof(correct_passwd));
     endspent();
@@ -183,7 +191,7 @@ int auth_password(const char *server_user, const char *password)
 #else /* HAVE_ETC_SHADOW */
 #ifdef HAVE_ETC_SECURITY_PASSWD_ADJUNCT
   {
-    struct passwd_adjunct *sp = getpwanam(pw->pw_name);
+    struct passwd_adjunct *sp = getpwanam(saved_pw_name);
     if (sp)
       strncpy(correct_passwd, sp->pwa_passwd, sizeof(correct_passwd));
     endpwaent();
@@ -236,6 +244,26 @@ int auth_password(const char *server_user, const char *password)
       packet_send_debug("Login permitted without a password because the account has no password.");
       return 1; /* The user has no password and an empty password was tried. */
     }
+
+  xfree(saved_pw_name);
+  xfree(saved_pw_passwd);
+
+#ifdef ultrix
+  {
+    /* Note: we are assuming that pw from above is still valid. */
+    struct svcinfo *svp;
+    svp = getsvc();
+    if (svp == NULL)
+      {
+	error("getsvc() failed in ultrix code in auth_passwd");
+	return 0;
+      }
+    if ((svp->svcauth.seclevel == SEC_UPGRADE &&
+	 strcmp(pw->pw_passwd, "*") == 0) ||
+	svp->svcauth.seclevel == SEC_ENHANCED)
+      return authenticate_user(pw, password, "/dev/ttypXX") >= 0;
+  }
+#endif /* ultrix */
 
   /* Encrypt the candidate password using the proper salt. */
 #ifdef HAVE_OSF1_C2_SECURITY

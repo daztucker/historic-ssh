@@ -43,6 +43,7 @@ for reading the passphrase from the user.
 #include "bufaux.h"
 #include "cipher.h"
 #include "ssh.h"
+#include "userfile.h"
 
 /* Version identification string for identity files. */
 #define AUTHFILE_ID_STRING "SSH PRIVATE KEY FILE FORMAT 1.1\n"
@@ -50,15 +51,17 @@ for reading the passphrase from the user.
 /* Saves the authentication (private) key in a file, encrypting it with
    passphrase.  The identification of the file (lowest 64 bits of n)
    will precede the key to provide identification of the key without
-   needing a passphrase. */
+   needing a passphrase.  File I/O will be done with the given uid using
+   userfile. */
 
-int save_private_key(const char *filename, const char *passphrase,
+int save_private_key(uid_t uid, const char *filename, const char *passphrase,
 		     RSAPrivateKey *key, const char *comment, 
 		     RandomState *state)
 {
   Buffer buffer, encrypted;
   char buf[100], *cp;
-  int f, i;
+  int i;
+  UserFile uf;
   CipherContext cipher;
   int cipher_type;
 
@@ -124,57 +127,66 @@ int save_private_key(const char *filename, const char *passphrase,
   buffer_free(&buffer);
 
   /* Write to a file. */
-  f = open(filename, O_WRONLY|O_CREAT|O_TRUNC, 0600);
-  if (f < 0)
+  uf = userfile_open(uid, filename, O_WRONLY|O_CREAT|O_TRUNC, 0600);
+  if (uf == NULL)
     return 0;
 
-  if (write(f, buffer_ptr(&encrypted), buffer_len(&encrypted)) != 
+  if (userfile_write(uf, buffer_ptr(&encrypted), buffer_len(&encrypted)) != 
       buffer_len(&encrypted))
     {
       debug("Write to key file %.200s failed: %.100s", filename,
 	    strerror(errno));
       buffer_free(&encrypted);
-      close(f);
-      remove(filename);
+      userfile_close(uf);
+      userfile_remove(uid, filename);
       return 0;
     }
-  close(f);
+  userfile_close(uf);
   buffer_free(&encrypted);
   return 1;
 }
 
 /* Loads the public part of the key file.  Returns 0 if an error
    was encountered (the file does not exist or is not readable), and
-   non-zero otherwise. */
+   non-zero otherwise.  File I/O will be done using the given uid with
+   userfile. */
 
-int load_public_key(const char *filename, RSAPublicKey *pub, 
+int load_public_key(uid_t uid, const char *filename, RSAPublicKey *pub, 
 		    char **comment_return)
 {
-  int f, i;
+  int i;
+  UserFile uf;
   unsigned long len;
   Buffer buffer;
   char *cp;
 
   /* Read data from the file into the buffer. */
-  f = open(filename, O_RDONLY);
-  if (f < 0)
+  uf = userfile_open(uid, filename, O_RDONLY, 0);
+  if (uf == NULL)
     return 0;
 
-  len = lseek(f, (off_t)0L, 2);
-  lseek(f, (off_t)0L, 0);
+  len = userfile_lseek(uf, (off_t)0L, 2);
+  userfile_lseek(uf, (off_t)0L, 0);
   
+  if (len > 32000)
+    {
+      userfile_close(uf);
+      debug("Authentication file too big: %.200s", filename);
+      return 0;
+    }
+
   buffer_init(&buffer);
   buffer_append_space(&buffer, &cp, len);
 
-  if (read(f, cp, len) != len)
+  if (userfile_read(uf, cp, len) != len)
     {
       debug("Read from key file %.200s failed: %.100s", filename, 
 	    strerror(errno));
       buffer_free(&buffer);
-      close(f);
+      userfile_close(uf);
       return 0;
     }
-  close(f);
+  userfile_close(uf);
 
   /* Check that it is at least big enought to contain the ID string. */
   if (len < strlen(AUTHFILE_ID_STRING) + 1)
@@ -215,37 +227,46 @@ int load_public_key(const char *filename, RSAPublicKey *pub,
 
 /* Loads the private key from the file.  Returns 0 if an error is encountered
    (file does not exist or is not readable, or passphrase is bad).
-   This initializes the private key. */
+   This initializes the private key.  The I/O will be done using the given
+   uid with userfile. */
 
-int load_private_key(const char *filename, const char *passphrase,
+int load_private_key(uid_t uid, const char *filename, const char *passphrase,
 		     RSAPrivateKey *prv, char **comment_return)
 {
-  int f, i, check1, check2, cipher_type;
+  int i, check1, check2, cipher_type;
+  UserFile uf;
   unsigned long len;
   Buffer buffer, decrypted;
   char *cp;
   CipherContext cipher;
 
   /* Read the file into the buffer. */
-  f = open(filename, O_RDONLY);
-  if (f < 0)
+  uf = userfile_open(uid, filename, O_RDONLY, 0);
+  if (uf == NULL)
     return 0;
 
-  len = lseek(f, (off_t)0L, 2);
-  lseek(f, (off_t)0L, 0);
+  len = userfile_lseek(uf, (off_t)0L, 2);
+  userfile_lseek(uf, (off_t)0L, 0);
+  
+  if (len > 32000)
+    {
+      userfile_close(uf);
+      debug("Authentication file too big: %.200s", filename);
+      return 0;
+    }
   
   buffer_init(&buffer);
   buffer_append_space(&buffer, &cp, len);
 
-  if (read(f, cp, len) != len)
+  if (userfile_read(uf, cp, len) != len)
     {
       debug("Read from key file %.200s failed: %.100s", filename,
 	    strerror(errno));
       buffer_free(&buffer);
-      close(f);
+      userfile_close(uf);
       return 0;
     }
-  close(f);
+  userfile_close(uf);
 
   /* Check that it is at least big enought to contain the ID string. */
   if (len < strlen(AUTHFILE_ID_STRING) + 1)

@@ -39,15 +39,25 @@ Adds an identity to the authentication server, or removes an identity.
 #include "xmalloc.h"
 #include "authfd.h"
 
+#define EXIT_STATUS_OK		0
+#define EXIT_STATUS_NOAGENT	1
+#define EXIT_STATUS_BADPASS	2
+#define EXIT_STATUS_NOFILE	3
+#define EXIT_STATUS_NOIDENTITY	4
+#define EXIT_STATUS_ERROR	5
+
+int exit_status = 0;
+
 void delete_file(const char *filename)
 {
   RSAPublicKey key;
   char *comment;
   AuthenticationConnection *ac;
 
-  if (!load_public_key(filename, &key, &comment))
+  if (!load_public_key(geteuid(), filename, &key, &comment))
     {
       printf("Bad key file %s: %s\n", filename, strerror(errno));
+      exit_status = EXIT_STATUS_NOFILE;
       return;
     }
 
@@ -57,6 +67,7 @@ void delete_file(const char *filename)
     {
       fprintf(stderr,
 	      "Could not open a connection to your authentication agent.\n");
+      exit_status = EXIT_STATUS_NOAGENT;
       rsa_clear_public_key(&key);
       xfree(comment);
       return;
@@ -64,7 +75,10 @@ void delete_file(const char *filename)
   if (ssh_remove_identity(ac, &key))
     fprintf(stderr, "Identity removed: %s (%s)\n", filename, comment);
   else
-    fprintf(stderr, "Could not remove identity: %s\n", filename);
+    {
+      fprintf(stderr, "Could not remove identity: %s\n", filename);
+      exit_status = EXIT_STATUS_NOIDENTITY;
+    }
   rsa_clear_public_key(&key);
   xfree(comment);
   ssh_close_authentication_connection(ac);
@@ -80,6 +94,7 @@ void delete_all()
     {
       fprintf(stderr,
 	      "Could not open a connection to your authentication agent.\n");
+      exit_status = EXIT_STATUS_NOAGENT;
       return;
     }
 
@@ -87,7 +102,10 @@ void delete_all()
   if (ssh_remove_all_identities(ac))
     fprintf(stderr, "All identities removed.\n");
   else
-    fprintf(stderr, "Failed to remove all identitities.\n");
+    {
+      fprintf(stderr, "Failed to remove all identitities.\n");
+      exit_status = EXIT_STATUS_ERROR;
+    }
   
   /* Close the connection to the agent. */
   ssh_close_authentication_connection(ac);
@@ -101,16 +119,17 @@ void add_file(const char *filename)
   char *saved_comment, *comment, *pass;
   int first;
   
-  if (!load_public_key(filename, &public_key, &saved_comment))
+  if (!load_public_key(geteuid(), filename, &public_key, &saved_comment))
     {
       printf("Bad key file %s: %s\n", filename, strerror(errno));
+      exit_status = EXIT_STATUS_NOFILE;
       return;
     }
   rsa_clear_public_key(&public_key);
   
   pass = xstrdup("");
   first = 1;
-  while (!load_private_key(filename, pass, &key, &comment))
+  while (!load_private_key(geteuid(), filename, pass, &key, &comment))
     {
       char buf[1024];
       FILE *f;
@@ -130,6 +149,7 @@ void add_file(const char *filename)
 	    {
 	      pclose(f);
 	      xfree(saved_comment);
+	      exit_status = EXIT_STATUS_BADPASS;
 	      return;
 	    }
 	  pclose(f);
@@ -143,11 +163,12 @@ void add_file(const char *filename)
 	    printf("Need passphrase for %s (%s).\n", filename, saved_comment);
 	  else
 	    printf("Bad passphrase.\n");
-	  pass = read_passphrase("Enter passphrase: ", 1);
+	  pass = read_passphrase(geteuid(), "Enter passphrase: ", 1);
 	  if (strcmp(pass, "") == 0)
 	    {
 	      xfree(saved_comment);
 	      xfree(pass);
+	      exit_status = EXIT_STATUS_BADPASS;
 	      return;
 	    }
 	}
@@ -164,6 +185,7 @@ void add_file(const char *filename)
     {
       fprintf(stderr,
 	      "Could not open a connection to your authentication agent.\n");
+      exit_status = EXIT_STATUS_NOAGENT;
       rsa_clear_private_key(&key);
       xfree(comment);
       return;
@@ -171,7 +193,10 @@ void add_file(const char *filename)
   if (ssh_add_identity(ac, &key, comment))
     fprintf(stderr, "Identity added: %s (%s)\n", filename, comment);
   else
-    fprintf(stderr, "Could not add identity: %s\n", filename);
+    {
+      fprintf(stderr, "Could not add identity: %s\n", filename);
+      exit_status = EXIT_STATUS_ERROR;
+    }
   rsa_clear_private_key(&key);
   xfree(comment);
   ssh_close_authentication_connection(ac);
@@ -189,6 +214,7 @@ void list_identities()
   if (!ac)
     {
       fprintf(stderr, "Could not connect to authentication server.\n");
+      exit_status = EXIT_STATUS_NOAGENT;
       return;
     }
   mpz_init(&e);
@@ -252,7 +278,7 @@ int main(int ac, char **av)
       if (!pw)
 	{
 	  fprintf(stderr, "No user found with uid %d\n", (int)getuid());
-	  exit(1);
+	  exit(EXIT_STATUS_ERROR);
 	}
       sprintf(buf, "%s/%s", pw->pw_dir, SSH_CLIENT_IDENTITY);
       if (deleting)
@@ -260,5 +286,5 @@ int main(int ac, char **av)
       else
 	add_file(buf);
     }
-  exit(0);
+  exit(exit_status);
 }

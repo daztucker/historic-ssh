@@ -46,6 +46,7 @@ static int max_fd;		/* Max file descriptor number for select(). */
 static int child_pid;  			/* Pid of the child. */
 static volatile int child_terminated;	/* The child has terminated. */
 static volatile int child_wait_status;	/* Status from wait(). */
+static int child_just_terminated;	/* No select() done after termin. */
 
 RETSIGTYPE sigchld_handler(int sig)
 {
@@ -59,7 +60,10 @@ RETSIGTYPE sigchld_handler(int sig)
 	      wait_pid, child_pid);
       if (WIFEXITED(child_wait_status) ||
 	  WIFSIGNALED(child_wait_status))
-	child_terminated = 1;
+	{
+	  child_terminated = 1;
+	  child_just_terminated = 1;
+	}
     }
   signal(SIGCHLD, sigchld_handler);
 }
@@ -218,6 +222,9 @@ void wait_until_can_do_something(fd_set *readset, fd_set *writeset,
   struct timeval tv, *tvp;
   int ret;
 
+  /* Mark that we have slept since the child died. */
+  child_just_terminated = 0;
+
   /* Initialize select() masks. */
   FD_ZERO(readset);
   
@@ -284,7 +291,7 @@ void wait_until_can_do_something(fd_set *readset, fd_set *writeset,
   
   /* If the child has terminated and there was no data, close all descriptors
      to it. */
-  if (ret <= 0 && child_terminated)
+  if (ret <= 0 && child_terminated && !child_just_terminated)
     {
       if (fdout != -1)
 	close(fdout);
@@ -523,7 +530,7 @@ void server_loop(int pid, int fdin_arg, int fdout_arg, int fderr_arg)
 	{
 	  if (!channel_still_open())
 	    goto quit;
-	  if (!waiting_termination)
+	  if (!waiting_termination && !child_just_terminated)
 	    {
 	      const char *s = 
 		"Waiting for forwarded connections to terminate...\r\n";
@@ -616,6 +623,8 @@ void server_loop(int pid, int fdin_arg, int fdout_arg, int fderr_arg)
       do
 	{
 	  type = packet_read();
+	  if (type != SSH_CMSG_EXIT_CONFIRMATION)
+	    debug("Received packet of type %d after exit.\n", type);
 	}
       while (type != SSH_CMSG_EXIT_CONFIRMATION);
 

@@ -26,6 +26,8 @@ Functions for manipulating the known hosts files.
 #include "includes.h"
 #include "packet.h"
 #include "ssh.h"
+#include "userfile.h"
+#include "xmalloc.h"
 
 /* Reads a multiple-precision integer in hex from the buffer, and advances the
    pointer.  The integer must already be initialized.  This function is
@@ -168,11 +170,12 @@ int match_hostname(const char *host, const char *pattern, unsigned int len)
    HOST_NEW if the host is not known, and HOST_CHANGED if the host is known
    but used to have a different host key. */
 
-HostStatus check_host_in_hostfile(const char *filename, 
+HostStatus check_host_in_hostfile(uid_t uid,
+				  const char *filename, 
 				  const char *host, unsigned int bits,
 				  MP_INT *e, MP_INT *n)
 {
-  FILE *f;
+  UserFile uf;
   char line[8192];
   MP_INT ke, kn;
   unsigned int kbits, hostlen;
@@ -181,10 +184,10 @@ HostStatus check_host_in_hostfile(const char *filename,
   struct stat st;
 
   /* Open the file containing the list of known hosts. */
-  f = fopen(filename, "r");
-  if (!f)
+  uf = userfile_open(uid, filename, O_RDONLY, 0);
+  if (uf == NULL)
     {
-      if (stat(filename, &st) >= 0)
+      if (userfile_stat(uid, filename, &st) >= 0)
 	{
 	  packet_send_debug("Could not open %.900s for reading.", filename);
 	  packet_send_debug("If your home directory is on an NFS volume, it may need to be world-readable.");
@@ -205,7 +208,7 @@ HostStatus check_host_in_hostfile(const char *filename,
   end_return = HOST_NEW;
 
   /* Go trough the file. */
-  while (fgets(line, sizeof(line), f))
+  while (userfile_gets(line, sizeof(line), uf))
     {
       cp = line;
 
@@ -239,7 +242,7 @@ HostStatus check_host_in_hostfile(const char *filename,
 	  /* Ok, they match. */
 	  mpz_clear(&ke);
 	  mpz_clear(&kn);
-	  fclose(f);
+	  userfile_close(uf);
 	  return HOST_OK;
 	}
       
@@ -250,7 +253,7 @@ HostStatus check_host_in_hostfile(const char *filename,
   /* Clear variables and close the file. */
   mpz_clear(&ke);
   mpz_clear(&kn);
-  fclose(f);
+  userfile_close(uf);
 
   /* Return either HOST_NEW or HOST_CHANGED, depending on whether we saw a
      different key for the host. */
@@ -258,26 +261,39 @@ HostStatus check_host_in_hostfile(const char *filename,
 }
 
 /* Appends an entry to the host file.  Returns false if the entry
-   could not be appended. */
+   could not be appended.  All I/O will be done with the give uid using
+   userfile. */
 
-int add_host_to_hostfile(const char *filename, const char *host,
+int add_host_to_hostfile(uid_t uid, const char *filename, const char *host,
 			 unsigned int bits, MP_INT *e, MP_INT *n)
 {
-  FILE *f;
+  UserFile uf;
+  char buf[1000], *cp;
  
   /* Open the file for appending. */
-  f = fopen(filename, "a");
-  if (!f)
+  uf = userfile_open(uid, filename, O_WRONLY|O_APPEND|O_CREAT, 0600);
+  if (uf == NULL)
     return 0;
 
   /* Print the host name and key to the file. */
-  fprintf(f, "%s %u ", host, bits);
-  mpz_out_str(f, 10, e);
-  fprintf(f, " ");
-  mpz_out_str(f, 10, n);
-  fprintf(f, "\n");
+  sprintf(buf, "%.500s %u ", host, bits);
+  userfile_write(uf, buf, strlen(buf));
+  
+  cp = xmalloc(mpz_sizeinbase(e, 10) + 2);
+  mpz_get_str(cp, 10, e);
+  userfile_write(uf, cp, strlen(cp));
+  xfree(cp);
+
+  userfile_write(uf, " ", 1);
+
+  cp = xmalloc(mpz_sizeinbase(n, 10) + 2);
+  mpz_get_str(cp, 10, n);
+  userfile_write(uf, cp, strlen(cp));
+  xfree(cp);
+
+  userfile_write(uf, "\n", 1);
 
   /* Close the file. */
-  fclose(f);
+  userfile_close(uf);
   return 1;
 }

@@ -53,6 +53,7 @@ on a tty.
 #endif /* HAVE_UTMP_H */
 #ifdef HAVE_UTMPX_H
 #include <utmpx.h>
+#include <sys/mkdev.h>	/* for minor() */
 #endif /* HAVE_UTMPX_H */
 #ifdef HAVE_USERSEC_H
 #include <usersec.h>
@@ -302,17 +303,40 @@ void record_login(int pid, const char *ttyname, const char *user, uid_t uid,
     struct utmpx ux, *uxp;
     memset(&ux, 0, sizeof(ux));
     strncpy(ux.ut_line, ttyname + 5, sizeof(ux.ut_line));
-    uxp = getutxline(&ux);
-    if (uxp)
-      ux = *uxp;
+    if (strcmp(user, "") == 0) {
+	/* logout; find previous entry for pid and zonk it */
+	setutxent();
+	while ( (uxp = getutxent()) ) {
+		if (uxp->ut_pid != (pid_t)pid)
+			continue;
+		ux = *uxp;
+		break;
+	}
+	endutxent();
+    }
+    else {
+	/* login: find appropriate slot for this tty */
+	uxp = getutxline(&ux);
+	if (uxp)
+	  ux = *uxp;
+    }
     strncpy(ux.ut_user, user, sizeof(ux.ut_user));
 #ifdef __sgi
     strncpy(ux.ut_id, ttyname + 8, sizeof(ux.ut_id)); /* /dev/ttyq99 -> q99 */
 #else /* __sgi */
     if (sizeof(ux.ut_id) > 4)
       strncpy(ux.ut_id, ttyname + 5, sizeof(ux.ut_id));
-    else
-      strncpy(ux.ut_id, ttyname + strlen(ttyname) - 2, sizeof(ux.ut_id));
+    else {
+      struct stat st;
+      char buf[20];
+      
+      buf[0] = 0;
+      if (stat(ttyname, &st) == 0) {
+	/* allow for 1000 /dev/pts devices */
+	sprintf(buf, "P%03d", (int)minor(st.st_rdev));
+      }
+      strncpy(ux.ut_id, buf, sizeof(ux.ut_id));
+    }
 #endif /* __sgi */
     ux.ut_pid = pid;
     if (strcmp(user, "") == 0)
@@ -324,8 +348,21 @@ void record_login(int pid, const char *ttyname, const char *user, uid_t uid,
     strncpy(ux.ut_host, host, sizeof(ux.ut_host));
     ux.ut_host[sizeof(ux.ut_host) - 1] = 0;
     ux.ut_syslen = strlen(ux.ut_host);
+    ux.ut_exit.e_termination = 0;
+    ux.ut_exit.e_exit = 0;
+#ifdef HAVE_MAKEUTX
+    /*
+     * modutx/makeutx notify init(1) to clean up utmpx for this pid
+     * automatically if we don't manage to, for some odd reason
+     */
+    if (strcmp(user, "") == 0)
+	modutx(&ux);
+    else
+	makeutx(&ux);
+#else
     pututxline(&ux);
     updwtmpx(WTMPX_FILE, &ux);
+#endif
     endutxent();
   }
 #endif /* HAVE_UTMPX_H */

@@ -49,8 +49,8 @@ using the --with-rsaref configure option.
      R_RandomInit
      R_RandomUpdate
      R_RandomFinal
-   Both functions are exported by RSAREF and are thus part of the available
-   interface. */
+   These functions are exported by RSAREF and are thus part of the available
+   interface without modifying RSAREF. */
 
 #define _MD5_H_ /* Kludge to prevent inclusion of rsaref md5.h. */
 #include "rsaref2/source/global.h"

@@ -166,6 +166,10 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
  * $Endlog$
  */
 
+/* Define this to the canonical name of your host type (e.g., 
+   "sparc-sun-sunos4.0.3"). */
+#undef HOSTTYPE
+
 /* Define if you have SYSV-style /dev/ptmx and /dev/pts/. */
 #undef HAVE_DEV_PTMX
 
@@ -238,8 +242,8 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Location of system mail spool directory. */
 #undef MAIL_SPOOL_DIRECTORY
 
-/* Defined if mail goes to $HOME/newmail instead of a global mail spool. */
-#undef HAVE_TILDE_NEWMAIL
+/* Name of user's mail spool file if stored in user's home directory. */
+#undef MAIL_SPOOL_FILE
 
 /* Define this to be the default user path if you don't like the default. 
    See the --with-path=<path> configure option. */
@@ -309,6 +313,10 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 #undef HAVE_SCO_ETC_SHADOW
 #undef SCO
 
+/* Define this if _POSIX_SAVED_IDS does not imply that saved uids
+   work for seteuid. */
+#undef POSIX_SAVED_IDS_BROKEN_FOR_SETEUID
+
 /* The number of bytes in a int.  */
 #undef SIZEOF_INT
 
@@ -326,6 +334,9 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 /* Define if you have the fchmod function.  */
 #undef HAVE_FCHMOD
+
+/* Define if you have the ftruncate function.  */
+#undef HAVE_FTRUNCATE
 
 /* Define if you have the getdtablesize function.  */
 #undef HAVE_GETDTABLESIZE
@@ -345,14 +356,17 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define if you have the innetgr function.  */
 #undef HAVE_INNETGR
 
+/* Define if you have the makeutx function.  */
+#undef HAVE_MAKEUTX
+
 /* Define if you have the memcpy function.  */
 #undef HAVE_MEMCPY
 
 /* Define if you have the openpty function.  */
 #undef HAVE_OPENPTY
 
-/* Define if you have the popen function.  */
-#undef HAVE_POPEN
+/* Define if you have the revoke function.  */
+#undef HAVE_REVOKE
 
 /* Define if you have the seteuid function.  */
 #undef HAVE_SETEUID
@@ -435,17 +449,26 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define if you have the <utmpx.h> header file.  */
 #undef HAVE_UTMPX_H
 
+/* Define if you have the auth library (-lauth).  */
+#undef HAVE_LIBAUTH
+
 /* Define if you have the crypt library (-lcrypt).  */
 #undef HAVE_LIBCRYPT
 
 /* Define if you have the gen library (-lgen).  */
 #undef HAVE_LIBGEN
 
+/* Define if you have the inet library (-linet).  */
+#undef HAVE_LIBINET
+
 /* Define if you have the nsl library (-lnsl).  */
 #undef HAVE_LIBNSL
 
 /* Define if you have the s library (-ls).  */
 #undef HAVE_LIBS
+
+/* Define if you have the shadow library (-lshadow).  */
+#undef HAVE_LIBSHADOW
 
 /* Define if you have the socket library (-lsocket).  */
 #undef HAVE_LIBSOCKET

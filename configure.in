@@ -133,7 +133,7 @@
 
 AC_INIT(sshd.c)
 AC_CONFIG_HEADER(config.h)
-AC_PREREQ(2.4)
+AC_PREREQ(2.7)
 
 if test -f /etc/krb.conf; then
   AC_MSG_WARN(Ssh does not yet support Kerberos!)
@@ -143,6 +143,8 @@ AC_CANONICAL_HOST
 
 AC_PROG_CC
 AC_C_CROSS
+
+AC_DEFINE_UNQUOTED(HOSTTYPE, "$host")
 
 case "$host" in
   *-*-sunos4.1.1*)
@@ -154,13 +156,16 @@ case "$host" in
     os_sunos=yes
     ;;
   *-sgi-irix5*)
-    # Irix stuff from snabb@niksula.hut.fi and tsurmacz@asic.ict.pwr.wroc.pl.
+    # Irix stuff from snabb@niksula.hut.fi, tsurmacz@asic.ict.pwr.wroc.pl,
+    # C.Martin@sheffield.ac.uk, raistlin@uni-paderborn.de
     no_libsocket=yes
     no_libsun=yes
+    no_libnsl=yes
     ;;
   *-sgi-irix6*)
     # from d-champion@uchicago.edu
     no_libsocket=yes
+    no_libnsl=yes
     no_libsun=yes
     if test "`uname -s`" = "IRIX64"; then
       CFLAGS="-32 $CFLAGS"
@@ -173,6 +178,7 @@ case "$host" in
     ;;
   *-ibm-aix*)
     os_aix=yes
+    AC_DEFINE(POSIX_SAVED_IDS_BROKEN_FOR_SETEUID)
     AC_CHECK_LIB(s, getuserattr)
     ;;
   mips-dec-mach3*)
@@ -182,7 +188,11 @@ case "$host" in
   *-dec-ultrix*)
     # Ultrix stuff from dmckilli@qc.bell.ca, jbotz@orixa.mtholyoke.edu.
     AC_DEFINE(O_NONBLOCK_BROKEN)
+    AC_DEFINE(POSIX_SAVED_IDS_BROKEN_FOR_SETEUID)
     no_vhangup=yes
+    # Ultrix shadow passwords implemented in auth-passwd.c.
+    no_shadows_password_checking=yes
+    AC_CHECK_LIB(auth, authenticate_user)
     AC_TRY_COMPILE([#include <syslog.h>],
 		   [int foo = LOG_DAEMON; ],
 		   ,
@@ -245,6 +255,7 @@ case "$host" in
     ;;
   *-*-machten*)
     AC_DEFINE(USE_STRLEN_FOR_AF_UNIX)
+    no_vhangup=yes
     ;;
   i*86-unknown-sco*)
     # From moi@dio.com
@@ -252,11 +263,16 @@ case "$host" in
     AC_DEFINE(SCO)
     no_ranlib=yes
     LIBS="-L/usr/lib/libp -lprot -lx $LIBS"
+    CFLAGS="$CFLAGS -UM_I86SM"
     ;;
   *-convex-bsd*)
     # From mark.martinec@nsc.ijs.si
     # On Convex, getpwnam sets pw_passwd if running as root
     no_shadows_password_checking=yes
+    ;;
+  *-sequent-ptx*)
+    # From geek+@cmu.edu
+    test_libinet=yes
     ;;
   *-*-freebsd*)
     # From Ollivier Robert: FreeBSD and NetBSD use master.passwd, but set
@@ -302,18 +318,6 @@ AC_ARG_ENABLE(warnings,
     CFLAGS="$CFLAGS -Wall"
   fi])
 
-if test -z "$no_vhangup"; then
-  AC_CHECK_FUNCS(vhangup)
-fi
-
-if test -z "$no_setsid"; then
-  AC_CHECK_FUNCS(setsid)
-fi
-
-AC_CHECK_FUNCS(gettimeofday times getrusage popen)
-AC_CHECK_FUNCS(strchr memcpy setlogin openpty _getpty clock fchmod ulimit)
-AC_CHECK_FUNCS(gethostname seteuid getdtablesize umask innetgr initgroups)
-
 AC_TYPE_SIGNAL
 AC_TYPE_SIZE_T
 AC_TYPE_UID_T
@@ -347,7 +351,12 @@ AC_EGREP_HEADER(ut_host, utmp.h, AC_DEFINE(HAVE_HOST_IN_UTMP))
 AC_EGREP_HEADER(ut_addr, utmp.h, AC_DEFINE(HAVE_ADDR_IN_UTMP))
 
 AC_CHECK_LIB(c, crypt, [true], AC_CHECK_LIB(crypt, crypt))
-AC_CHECK_LIB(nsl, main)
+if test -z "$no_libnsl"; then
+  AC_CHECK_LIB(nsl, main)
+fi
+if test -n "$test_libinet"; then
+  AC_CHECK_LIB(inet, inet_network)
+fi
 if test -z "$no_libsocket"; then
   AC_CHECK_LIB(socket, socket)
 fi
@@ -356,6 +365,18 @@ if test -z "$no_libsun"; then
 fi
 AC_CHECK_LIB(util, login, AC_DEFINE(HAVE_LIBUTIL_LOGIN)
 			  LIBS="$LIBS -lutil")
+
+if test -z "$no_vhangup"; then
+  AC_CHECK_FUNCS(vhangup)
+fi
+
+if test -z "$no_setsid"; then
+  AC_CHECK_FUNCS(setsid)
+fi
+
+AC_CHECK_FUNCS(gettimeofday times getrusage ftruncate revoke makeutx)
+AC_CHECK_FUNCS(strchr memcpy setlogin openpty _getpty clock fchmod ulimit)
+AC_CHECK_FUNCS(gethostname seteuid getdtablesize umask innetgr initgroups)
 
 AC_REPLACE_FUNCS(strerror memmove remove random putenv crypt socketpair)
 
@@ -412,6 +433,10 @@ if test -z "$no_shadows_password_checking"; then
   if test -f /etc/shadow; then
     AC_DEFINE(HAVE_ETC_SHADOW)
     AC_MSG_RESULT(/etc/shadow)
+    # SunOS C2 security uses this style of shadow passwords, but does not
+    # have getspent in a system library.  However, a libshadow.a library
+    # contaning these is publicly available.
+    AC_CHECK_LIB(shadow, getspent)
   elif test -n "$os_aix"; then
     AC_DEFINE(HAVE_ETC_SECURITY_PASSWD)
     AC_MSG_RESULT(/etc/security/passwd)
@@ -424,12 +449,18 @@ if test -z "$no_shadows_password_checking"; then
 fi
 
 AC_MSG_CHECKING(location of mail spool files)
-for dir in /var/spool/mail /var/mail /usr/spool/mail /usr/mail NEWMAIL
+for dir in /var/spool/mail /var/mail /usr/spool/mail /usr/mail FILE
 do
-  if test "$dir" = "NEWMAIL"; then
-    AC_DEFINE(HAVE_TILDE_NEWMAIL)
-    AC_MSG_RESULT(\$HOME/newmail)
-    AC_MSG_WARN(mail spool directory was not found: assuming you use \$HOME/newmail)
+  if test "$dir" = "FILE"; then
+    if test -f $HOME/.MailBox; then
+      AC_MSG_WARN(mail spool directory was not found: assuming you use \$HOME/.MailBox)
+      AC_DEFINE_UNQUOTED(MAIL_SPOOL_FILE, ".MailBox")
+      AC_MSG_RESULT(\$HOME/.MailBox)
+    else
+      AC_MSG_WARN(mail spool directory was not found: assuming you use \$HOME/newmail)
+      AC_DEFINE_UNQUOTED(MAIL_SPOOL_FILE, "newmail")
+      AC_MSG_RESULT(\$HOME/newmail)
+    fi
   elif test -d $dir; then
     AC_DEFINE_UNQUOTED(MAIL_SPOOL_DIRECTORY, "$dir")
     AC_MSG_RESULT($dir)
@@ -527,25 +558,6 @@ AC_ARG_WITH(idea,
   esac ],
   AC_MSG_RESULT(yes)
   CONFOBJS="$CONFOBJS idea.o"
-)
-
-AC_MSG_CHECKING(whether to use rsaref)
-AC_ARG_WITH(rsaref,
-[  --with-rsaref           Use RSAREF (try to avoid patent problems in U.S.)
-  --without-rsaref        Use normal RSA routines (default). ],
-[ case "$withval" in
-  no)
-       AC_MSG_RESULT(no)
-       ;;
-  *)
-       AC_MSG_RESULT(yes)
-       AC_DEFINE(RSAREF)
-       RSAREFDEP="rsaref2/source/librsaref.a"
-       LIBS="-lrsaref $LIBS"
-       LDFLAGS="-Lrsaref2/source $LDFLAGS"
-       ;;
-  esac ],
-  AC_MSG_RESULT(no)
 )
 
 AC_MSG_CHECKING(whether to use rsh)
@@ -693,6 +705,25 @@ AC_ARG_WITH(socks,
 		[],
 		[ AC_MSG_ERROR(Could not find the $withval library.  You must first install socks.) ])
     ;;
+  esac ],
+  AC_MSG_RESULT(no)
+)
+
+AC_MSG_CHECKING(whether to use rsaref)
+AC_ARG_WITH(rsaref,
+[  --with-rsaref           Use RSAREF (try to avoid patent problems in U.S.)
+  --without-rsaref        Use normal RSA routines (default). ],
+[ case "$withval" in
+  no)
+       AC_MSG_RESULT(no)
+       ;;
+  *)
+       AC_MSG_RESULT(yes)
+       AC_DEFINE(RSAREF)
+       RSAREFDEP="rsaref2/source/librsaref.a"
+       LIBS="-lrsaref $LIBS"
+       LDFLAGS="-Lrsaref2/source $LDFLAGS"
+       ;;
   esac ],
   AC_MSG_RESULT(no)
 )

@@ -178,7 +178,7 @@ agent connections.
 #include "cipher.h"
 #include "mpaux.h"
 #include "servconf.h"
-#include "uidswap.h"
+#include "userfile.h"
 #ifdef HAVE_USERSEC_H
 #include <usersec.h>
 #endif /* HAVE_USERSEC_H */
@@ -366,8 +366,8 @@ RETSIGTYPE key_regeneration_alarm(int sig)
       random_acquire_light_environmental_noise(&sensitive_data.random_state);
       rsa_generate_key(&sensitive_data.private_key, &public_key, 
 		       &sensitive_data.random_state, options.server_key_bits);
-      random_stir(&sensitive_data.random_state);
-      random_save(&sensitive_data.random_state, options.random_seed_file);
+      random_save(&sensitive_data.random_state, geteuid(),
+		  options.random_seed_file);
       key_used = 0;
       log("RSA key generation complete.");
     }
@@ -400,6 +400,12 @@ int main(int ac, char **av)
     av0 = strrchr(av[0], '/') + 1;
   else
     av0 = av[0];
+
+  /* Prevent core dumps to avoid revealing sensitive information. */
+  signals_prevent_core();
+
+  /* Set SIGPIPE to be ignored. */
+  signal(SIGPIPE, SIG_IGN);
 
   /* Initialize configuration options to their default values. */
   initialize_server_options(&options);
@@ -438,7 +444,7 @@ int main(int ac, char **av)
 	  break;
 	case '?':
 	default:
-	  fprintf(stderr, "sshd version %s\n", SSH_VERSION);
+	  fprintf(stderr, "sshd version %s [%s]\n", SSH_VERSION, HOSTTYPE);
 	  fprintf(stderr, "Usage: %s [options]\n", av0);
 	  fprintf(stderr, "Options:\n");
 	  fprintf(stderr, "  -f file    Configuration file (default %s/sshd_config)\n", ETCDIR);
@@ -486,10 +492,10 @@ int main(int ac, char **av)
 	   debug_flag || options.fascist_logging, 
 	   options.quiet_mode, options.log_facility);
 
-  debug("sshd version %.100s", SSH_VERSION);
+  debug("sshd version %.100s [%.100s]", SSH_VERSION, HOSTTYPE);
 
   /* Load the host key.  It must have empty passphrase. */
-  if (!load_private_key(options.host_key_file, "", 
+  if (!load_private_key(geteuid(), options.host_key_file, "", 
 			&sensitive_data.host_key, &comment))
     {
       if (debug_flag)
@@ -541,7 +547,12 @@ int main(int ac, char **av)
 	}
 #endif /* TIOCNOTTY */
 #ifdef HAVE_SETSID
-      (void)setsid();
+#ifdef ultrix
+      setpgrp(0, 0);
+#else /* ultrix */
+      if (setsid() < 0)
+	error("setsid: %.100s", strerror(errno));
+#endif /* ultrix */
 #endif /* HAVE_SETSID */
     }
 
@@ -574,7 +585,8 @@ int main(int ac, char **av)
   /* Initialize the random number generator. */
   debug("Initializing random number generator; seed file %.200s", 
 	options.random_seed_file);
-  random_initialize(&sensitive_data.random_state, options.random_seed_file);
+  random_initialize(&sensitive_data.random_state, geteuid(),
+		    options.random_seed_file);
   
   /* Chdir to the root directory so that the current disk can be unmounted
      if desired. */
@@ -598,8 +610,8 @@ int main(int ac, char **av)
       rsa_generate_key(&sensitive_data.private_key, &public_key,
 		       &sensitive_data.random_state,
 		   options.server_key_bits);
-      random_stir(&sensitive_data.random_state);
-      random_save(&sensitive_data.random_state, options.random_seed_file);
+      random_save(&sensitive_data.random_state, geteuid(),
+		  options.random_seed_file);
       log("RSA key generation complete.");
     }
   else
@@ -616,7 +628,7 @@ int main(int ac, char **av)
 		 sizeof(on));
 #ifdef SO_LINGER
       linger.l_onoff = 1;
-      linger.l_linger = 5;
+      linger.l_linger = 15;
       setsockopt(listen_sock, SOL_SOCKET, SO_LINGER, (void *)&linger, 
 		 sizeof(linger));
 #endif /* SO_LINGER */
@@ -660,8 +672,8 @@ int main(int ac, char **av)
       rsa_generate_key(&sensitive_data.private_key, &public_key,
 		       &sensitive_data.random_state,
 		       options.server_key_bits);
-      random_stir(&sensitive_data.random_state);
-      random_save(&sensitive_data.random_state, options.random_seed_file);
+      random_save(&sensitive_data.random_state, geteuid(),
+		  options.random_seed_file);
       log("RSA key generation complete.");
 
       /* Schedule server key regeneration alarm. */
@@ -778,7 +790,7 @@ int main(int ac, char **av)
   /* setsockopt(sock_in, SOL_SOCKET, SO_REUSEADDR, (void *)&on, sizeof(on)); */
 #ifdef SO_LINGER
   linger.l_onoff = 1;
-  linger.l_linger = 5;
+  linger.l_linger = 15;
   setsockopt(sock_in, SOL_SOCKET, SO_LINGER, (void *)&linger, sizeof(linger));
 #endif /* SO_LINGER */
 
@@ -1060,6 +1072,105 @@ void do_connection(int privileged_port)
   do_authentication(user, privileged_port);
 }
 
+/* Returns true if logging in as the specified user is permitted.  Returns
+   false if login is not permitted (e.g., the account is expired). */
+
+int login_permitted(char *user)
+{
+#ifdef HAVE_USERSEC_H
+  char *expiration, current_time[100], normalized[100];
+  int rlogin_permitted;
+  time_t t;
+  struct tm *tm;
+  if (setuserdb(S_READ) < 0)
+    {
+      debug("setuserdb S_READ failed.");
+      return 0;
+    }
+  if (getuserattr(user, S_RLOGINCHK, &rlogin_permitted, SEC_BOOL) < 0)
+    {
+      debug("getuserattr S_RLOGINCHK failed.");
+      enduserdb();
+      return 0;
+    }
+  if (getuserattr(user, S_EXPIRATION, &expiration, SEC_CHAR) < 0)
+    {
+      debug("getuserattr S_EXPIRATION failed.");
+      enduserdb();
+      return 0;
+    }
+  if (!rlogin_permitted)
+    {
+      debug("Remote logins to account %.100s not permitted by user profile.",
+	    user);
+      enduserdb();
+      return 0;
+    }
+  if (strcmp(expiration, "0") == 0)
+    {
+      /* The account does not expire - return success immediately. */
+      enduserdb();
+      return 1;
+    }
+  if (strlen(expiration) != 10)
+    {
+      debug("Account %.100s expiration date is in wrong format.", user);
+      enduserdb();
+      return 0;
+    }
+  t = time(NULL);
+  tm = localtime(&t);
+  sprintf(current_time, "%04d%02d%02d%02d%02d",
+	  tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday,
+	  tm->tm_hour, tm->tm_min);
+  if (expiration[8] < '7') /* Assume year < 70 is 20YY. */
+    strcpy(normalized, "20");
+  else
+    strcpy(normalized, "19");
+  strcat(normalized, expiration + 8);
+  strcat(normalized, expiration);
+  normalized[12] = '\0';
+  if (strcmp(normalized, current_time) < 0)
+    {
+      debug("Account %.100s has expired - access denied.", user);
+      enduserdb();
+      return 0;
+    }
+  enduserdb();
+#endif /* HAVE_USERSEC_H */
+  return 1;
+}
+
+/* This function is called by userfile_init after fork() to clean up sensitive
+   data.  RSA keys have already been destroyed before we get here.  However,
+   normal encryption keys and socket connections (access rights) need to
+   be destroyed. */
+
+static void sshd_userfile_cleanup(void *context)
+{
+  endpwent();
+
+  /* Close the connection descriptors; note that this is the child, and the 
+     server will still have the socket open, and it is important that we
+     do not shutdown it.  Note that the descriptors cannot be closed before
+     building the environment, as we call get_remote_ipaddr there. */
+  if (packet_get_connection_in() == packet_get_connection_out())
+    close(packet_get_connection_in());
+  else
+    {
+      close(packet_get_connection_in());
+      close(packet_get_connection_out());
+    }
+  /* Close all descriptors related to channels.  They will still remain
+     open in the parent. */
+  channel_close_all();
+
+  /* Set dummy encryption key to clear key data from memory.  This key will
+     never be used. */
+  packet_set_encryption_key((void *)"0123456789ABCDEF0123456789ABCDEF",
+			    16, SSH_CIPHER_3DES, 0);
+}
+
 /* Performs authentication of an incoming connection.  Session key has already
    been exchanged and encryption is enabled.  User is the user name to log
    in as (received from the clinet).  Privileged_port is true if the
@@ -1077,7 +1188,7 @@ void do_authentication(char *user, int privileged_port)
 			 
   /* Verify that the user is a valid user. */
   pw = getpwnam(user);
-  if (!pw)
+  if (!pw || !login_permitted(user))
     {
       /* The user does not exist. */
       packet_start(SSH_SMSG_FAILURE);
@@ -1110,6 +1221,12 @@ void do_authentication(char *user, int privileged_port)
   pwcopy.pw_dir = xstrdup(pw->pw_dir);
   pwcopy.pw_shell = xstrdup(pw->pw_shell);
   pw = &pwcopy;
+
+  /* Start a child process running on the user's uid.  It will be used to
+     read files in the user's directory.  Note that the private host
+     key has already been cleared when this is called.  We still want to
+     clean up at least the encryption keys. */
+  userfile_init(pw->pw_uid, sshd_userfile_cleanup, NULL);
 
   /* If we are not running as root, the user must have the same uid as the
      server. */
@@ -1174,8 +1291,8 @@ void do_authentication(char *user, int privileged_port)
 	      xfree(client_user);
 	      break;
 	    }
-	  debug("Rhosts authentication failed for %.100s, remote %.100s.",
-		user, client_user);
+	  debug("Rhosts authentication failed for '%.100s', remote '%.100s', host '%.200s'.",
+		user, client_user, get_canonical_hostname());
 	  xfree(client_user);
 	  break;
 
@@ -1219,8 +1336,8 @@ void do_authentication(char *user, int privileged_port)
 	      mpz_clear(&client_host_key_n);
 	      break;
 	    }
-	  debug("Rhosts authentication failed for %.100s, remote %.100s.",
-		user, client_user);
+	  debug("RhostsRSA authentication failed for '%.100s', remote '%.100s', host '%.200s'.",
+		user, client_user, get_canonical_hostname());
 	  xfree(client_user);
 	  mpz_clear(&client_host_key_e);
 	  mpz_clear(&client_host_key_n);
@@ -1579,6 +1696,15 @@ void do_exec_no_pty(const char *command, struct passwd *pw,
       log_init(av0, debug_flag && !inetd_flag, debug_flag, 
 	       options.quiet_mode, options.log_facility);
 
+#ifdef HAVE_SETSID
+#ifdef ultrix
+      setpgrp(0, 0);
+#else /* ultrix */
+      if (setsid() < 0)
+	error("setsid: %.100s", strerror(errno));
+#endif /* ultrix */
+#endif /* HAVE_SETSID */
+
 #ifdef USE_PIPES
       /* Redirect stdin.  We close the parent side of the socket pair,
          and make the child side the standard input. */
@@ -1624,6 +1750,9 @@ void do_exec_no_pty(const char *command, struct passwd *pw,
   close(pout[1]);
   close(perr[1]);
 
+  /* We no longer need the child running on user's privileges. */
+  userfile_uninit();
+
   /* Enter the interactive session. */
   server_loop(pid, pin[1], pout[0], perr[0]);
   /* server_loop has closed pin[1], pout[1], and perr[1]. */
@@ -1631,6 +1760,9 @@ void do_exec_no_pty(const char *command, struct passwd *pw,
   /* We are the parent.  Close the child sides of the socket pairs. */
   close(inout[0]);
   close(err[0]);
+
+  /* We no longer need the child running on user's privileges. */
+  userfile_uninit();
   
   /* Enter the interactive session.  Note: server_loop must be able to handle
      the case that fdin and fdout are the same. */
@@ -1675,7 +1807,6 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
   const char *hostname;
   time_t last_login_time;
   char buf[100], *time_string;
-  FILE *f;
   char line[256];
   struct stat st;
   int quiet_login;
@@ -1699,6 +1830,15 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
       /* Child.  Reinitialize the log because the pid has changed. */
       log_init(av0, debug_flag && !inetd_flag, debug_flag, options.quiet_mode, 
 	       options.log_facility);
+
+#ifdef HAVE_SETSID
+#ifdef ultrix
+      setpgrp(0, 0);
+#else /* ultrix */
+      if (setsid() < 0)
+	error("setsid: %.100s", strerror(errno));
+#endif /* ultrix */
+#endif /* HAVE_SETSID */
 
       /* Close the master side of the pseudo tty. */
       close(ptyfd);
@@ -1739,7 +1879,7 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
 
       /* Check if .hushlogin exists. */
       sprintf(line, "%.200s/.hushlogin", pw->pw_dir);
-      quiet_login = stat(line, &st) >= 0;
+      quiet_login = userfile_stat(pw->pw_uid, line, &st) >= 0;
       
       /* If the user has logged in before, display the time of last login. 
          However, don't display anything extra if a command has been 
@@ -1764,6 +1904,8 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
 	 print it in /etc/profile or similar. */
       if (command == NULL && options.print_motd && !quiet_login)
 	{
+	  FILE *f;
+
 	  /* Print /etc/motd if it exists. */
 	  f = fopen("/etc/motd", "r");
 	  if (f)
@@ -1795,6 +1937,9 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
   cleanup_context.pid = pid;
   cleanup_context.ttyname = ttyname;
   fatal_add_cleanup(pty_cleanup_proc, (void *)&cleanup_context);
+
+  /* We no longer need the child running on user's privileges. */
+  userfile_uninit();
 
   /* Enter interactive session. */
   server_loop(pid, ptyfd, fdout, -1);
@@ -1863,7 +2008,8 @@ void read_environment_file(char ***env, unsigned int *envsize,
   char buf[4096];
   char *cp, *value;
   
-  /* Open the environment file. */
+  /* Open the environment file.  Note that this is only called on the user's
+     uid, and thus should not cause security problems. */
   f = fopen(filename, "r");
   if (!f)
     return;  /* Not found. */
@@ -1928,7 +2074,7 @@ char *child_get_env(char **env, const char *name)
    settings, ulimit, etc.  This file exists at least on Solaris 2.x. */
 
 void read_etc_default_login(char ***env, unsigned int *envsize,
-			    struct passwd *pw)
+			    const char *user_shell, uid_t user_uid)
 {
   unsigned int defenvsize;
   char **defenv, *def;
@@ -1943,19 +2089,19 @@ void read_etc_default_login(char ***env, unsigned int *envsize,
   /* Set SHELL if ALTSHELL is YES. */
   def = child_get_env(defenv, "ALTSHELL");
   if (def != NULL && strcmp(def, "YES") == 0)
-    child_set_env(env, envsize, "SHELL", pw->pw_shell);
+    child_set_env(env, envsize, "SHELL", user_shell);
 
   /* Set PATH from SUPATH if we are logging in as root, and PATH
      otherwise.  If neither of these exists, we use the default ssh
      path. */
-  if (pw->pw_uid == 0)
+  if (user_uid == 0)
     def = child_get_env(defenv, "SUPATH");
   else
     def = child_get_env(defenv, "PATH");
   if (def != NULL)
     child_set_env(env, envsize, "PATH", def);
   else
-    child_set_env(env, envsize, "PATH", DEFAULT_PATH);
+    child_set_env(env, envsize, "PATH", DEFAULT_PATH ":" BINDIR);
 
   /* Set TZ if TIMEZONE is defined and we haven't inherited a value
      for TZ. */
@@ -2013,6 +2159,13 @@ void do_child(const char *command, struct passwd *pw, const char *term,
   extern char **environ;
   struct stat st;
   char *argv[10];
+  uid_t user_uid;
+  gid_t user_gid;
+  char *user_dir;
+  char *user_name;
+  char *user_shell;
+  char *remote_ip;
+  int remote_port;
 
   /* Check /etc/nologin. */
   f = fopen("/etc/nologin", "r");
@@ -2026,8 +2179,10 @@ void do_child(const char *command, struct passwd *pw, const char *term,
     }
 
 #ifdef HAVE_SETLOGIN
-  /* Set login name in the kernel. */
-  setlogin(pw->pw_name);
+  /* Set login name in the kernel.  Warning: setsid() must be called before
+     this. */
+  if (setlogin(pw->pw_name) < 0)
+    error("setlogin failed: %.100s", strerror(errno));
 #endif /* HAVE_SETLOGIN */
 
 #ifdef HAVE_USERSEC_H
@@ -2038,17 +2193,64 @@ void do_child(const char *command, struct passwd *pw, const char *term,
     log("setpcred %.100s: %.100s", strerror(errno));
 #endif /* HAVE_USERSEC_H */
 
+  /* Save some data that will be needed so that we can do certain cleanups
+     before we switch to user's uid.  (We must clear all sensitive data 
+     and access rights from memory before doing that.) */
+  user_uid = pw->pw_uid;
+  user_gid = pw->pw_gid;
+  user_dir = xstrdup(pw->pw_dir);
+  user_name = xstrdup(pw->pw_name);
+  user_shell = xstrdup(pw->pw_shell);
+  remote_ip = xstrdup(get_remote_ipaddr());
+  remote_port = get_remote_port();
+
+  /* Close the connection descriptors; note that this is the child, and the 
+     server will still have the socket open, and it is important that we
+     do not shutdown it.  Note that the descriptors cannot be closed before
+     building the environment, as we call get_remote_ipaddr there. */
+  if (packet_get_connection_in() == packet_get_connection_out())
+    close(packet_get_connection_in());
+  else
+    {
+      close(packet_get_connection_in());
+      close(packet_get_connection_out());
+    }
+  /* Close all descriptors related to channels.  They will still remain
+     open in the parent. */
+  channel_close_all();
+
+  /* Close any extra file descriptors.  Note that there may still be
+     descriptors left by system functions.  They will be closed later. */
+  endpwent();
+  endhostent();
+
+  /* Set dummy encryption key to clear information about the key from
+     memory.  This key will never be used. */
+  packet_set_encryption_key((void *)"0123456789ABCDEF0123456789ABCDEF", 32,
+			    SSH_CIPHER_3DES, 0);
+
+  /* Close any extra open file descriptors so that we don\'t have them
+     hanging around in clients.  Note that we want to do this after
+     initgroups, because at least on Solaris 2.3 it leaves file descriptors
+     open. */
+  for (i = 3; i < 64; i++)
+    {
+      if (i == auth_get_fd())
+	continue;
+      close(i);
+    }
+
   /* Set uid, gid, and groups. */
   if (getuid() == 0 || geteuid() == 0)
     { 
-      if (setgid(pw->pw_gid) < 0)
+      if (setgid(user_gid) < 0)
 	{
 	  perror("setgid");
 	  exit(1);
 	}
 #ifdef HAVE_INITGROUPS
       /* Initialize the group list. */
-      if (initgroups(pw->pw_name, pw->pw_gid) < 0)
+      if (initgroups(user_name, user_gid) < 0)
 	{
 	  perror("initgroups");
 	  exit(1);
@@ -2057,15 +2259,20 @@ void do_child(const char *command, struct passwd *pw, const char *term,
       endgrent();
 
       /* Permanently switch to the desired uid. */
-      permanently_set_uid(pw->pw_uid);
+      if (setuid(user_uid) < 0)
+	fatal("setuid %d: %s", (int)user_uid, strerror(errno));
     }
 
-  if (getuid() != pw->pw_uid || geteuid() != pw->pw_uid)
-    fatal("Failed to set uids to %d.", (int)pw->pw_uid);
+  if (getuid() != user_uid || geteuid() != user_uid)
+    fatal("Failed to set uids to %d.", (int)user_uid);
+
+  /* Reset signals to their default settings before starting the user
+     process. */
+  signals_reset();
 
   /* Get the shell from the password data.  An empty shell field is legal,
      and means /bin/sh. */
-  shell = (pw->pw_shell[0] == '\0') ? DEFAULT_SHELL : pw->pw_shell;
+  shell = (user_shell[0] == '\0') ? DEFAULT_SHELL : user_shell;
 
   /* Initialize the environment.  In the first part we allocate space for
      all environment variables. */
@@ -2074,28 +2281,29 @@ void do_child(const char *command, struct passwd *pw, const char *term,
   env[0] = NULL;
 
   /* Set basic environment. */
-  child_set_env(&env, &envsize, "USER", pw->pw_name);
-  child_set_env(&env, &envsize, "LOGNAME", pw->pw_name);
-  child_set_env(&env, &envsize, "HOME", pw->pw_dir);
-  child_set_env(&env, &envsize, "PATH", DEFAULT_PATH);
+  child_set_env(&env, &envsize, "USER", user_name);
+  child_set_env(&env, &envsize, "LOGNAME", user_name);
+  child_set_env(&env, &envsize, "HOME", user_dir);
+  child_set_env(&env, &envsize, "PATH", DEFAULT_PATH ":" BINDIR);
 
   /* Let it inherit timezone if we have one. */
   if (getenv("TZ"))
     child_set_env(&env, &envsize, "TZ", getenv("TZ"));
 
 #ifdef MAIL_SPOOL_DIRECTORY
-  sprintf(buf, "%.200s/%.50s", MAIL_SPOOL_DIRECTORY, pw->pw_name);
+  sprintf(buf, "%.200s/%.50s", MAIL_SPOOL_DIRECTORY, user_name);
   child_set_env(&env, &envsize, "MAIL", buf);
 #else /* MAIL_SPOOL_DIRECTORY */
-#ifdef HAVE_TILDE_NEWMAIL
-  sprintf(buf, "%.200s/newmail", pw->pw_dir);
+#ifdef MAIL_SPOOL_FILE
+  sprintf(buf, "%.200s/%.50s", user_dir, MAIL_SPOOL_FILE);
   child_set_env(&env, &envsize, "MAIL", buf);
-#endif /* HAVE_TILDE_NEWMAIL */
+#endif /* MAIL_SPOOL_FILE */
 #endif /* MAIL_SPOOL_DIRECTORY */
 
 #ifdef HAVE_ETC_DEFAULT_LOGIN
-  /* Read /etc/default/login; this exists at least on Solaris 2.x. */
-  read_etc_default_login(&env, &envsize, pw);
+  /* Read /etc/default/login; this exists at least on Solaris 2.x.  Note
+     that we are already running on the user's uid. */
+  read_etc_default_login(&env, &envsize, user_shell, user_uid);
 #else /* HAVE_ETC_DEFAULT_LOGIN */
   /* Normal systems set SHELL by default. */
   child_set_env(&env, &envsize, "SHELL", shell);
@@ -2120,8 +2328,7 @@ void do_child(const char *command, struct passwd *pw, const char *term,
     }
 
   /* Set SSH_CLIENT. */
-  sprintf(buf, "%.50s %d %d", 
-	  get_remote_ipaddr(), get_remote_port(), options.port);
+  sprintf(buf, "%.50s %d %d", remote_ip, remote_port, options.port);
   child_set_env(&env, &envsize, "SSH_CLIENT", buf);
 
   /* Set SSH_TTY if we have a pty. */
@@ -2137,7 +2344,7 @@ void do_child(const char *command, struct passwd *pw, const char *term,
     child_set_env(&env, &envsize, "DISPLAY", display);
 
   /* Set variable for forwarded authentication connection, if we have one. */
-  if (get_permanent_fd(pw->pw_shell) < 0)
+  if (get_permanent_fd(user_shell) < 0)
     {
       if (auth_get_socket_name() != NULL)
 	child_set_env(&env, &envsize, SSH_AUTHSOCKET_ENV_NAME, 
@@ -2155,7 +2362,7 @@ void do_child(const char *command, struct passwd *pw, const char *term,
   read_environment_file(&env, &envsize, "/etc/environment");
 
   /* Read $HOME/.ssh/environment. */
-  sprintf(buf, "%.200s/.ssh/environment", pw->pw_dir);
+  sprintf(buf, "%.200s/.ssh/environment", user_dir);
   read_environment_file(&env, &envsize, buf);
 
   /* If debugging, dump the environment to stderr. */
@@ -2166,48 +2373,17 @@ void do_child(const char *command, struct passwd *pw, const char *term,
 	fprintf(stderr, "  %.200s\n", env[i]);
     }
 
-  /* Close the connection descriptors; note that this is the child, and the 
-     server will still have the socket open, and it is important that we
-     do not shutdown it.  Note that the descriptors cannot be closed before
-     building the environment, as we call get_remote_ipaddr there. */
-  if (packet_get_connection_in() == packet_get_connection_out())
-    close(packet_get_connection_in());
-  else
-    {
-      close(packet_get_connection_in());
-      close(packet_get_connection_out());
-    }
-  /* Close all descriptors related to channels.  They will still remain
-     open in the parent. */
-  channel_close_all();
-
-  /* Close any extra file descriptors.  Note that there may still be
-     descriptors left by system functions.  They will be closed later. */
-  endpwent();
-  endhostent();
-
-  /* Close any extra open file descriptors so that we don\'t have them
-     hanging around in clients.  Note that we want to do this after
-     initgroups, because at least on Solaris 2.3 it leaves file descriptors
-     open. */
-  for (i = 3; i < 64; i++)
-    {
-      if (i == auth_get_fd())
-	continue;
-      close(i);
-    }
-
   /* Change current directory to the user\'s home directory. */
-  if (chdir(pw->pw_dir) < 0)
+  if (chdir(user_dir) < 0)
     fprintf(stderr, "Could not chdir to home directory %s: %s\n",
-	    pw->pw_dir, strerror(errno));
+	    user_dir, strerror(errno));
 
   /* Must take new environment into use so that .ssh/rc, /etc/sshrc and
      xauth are run in the proper environment. */
   environ = env;
 
   /* Run $HOME/.ssh/rc, /etc/sshrc, or xauth (whichever is found first
-     in this order). */
+     in this order).  Note that we are already running on the user's uid. */
   if (stat(SSH_USER_RC, &st) >= 0)
     {
       if (debug_flag)
@@ -2248,15 +2424,19 @@ void do_child(const char *command, struct passwd *pw, const char *term,
 	    if (debug_flag)
 	      fprintf(stderr, "Running %.100s add %.100s %.100s %.100s\n",
 		      XAUTH_PATH, display, auth_proto, auth_data);
+
+	    signal(SIGPIPE, SIG_IGN);
 	    
 	    f = popen(XAUTH_PATH " -q -", "w");
 	    if (f)
 	      {
 		fprintf(f, "add %s %s %s\n", display, auth_proto, auth_data);
-		fclose(f);
+		pclose(f);
 	      }
 	    else
 	      fprintf(stderr, "Could not run %s -q -\n", XAUTH_PATH);
+
+	    signal(SIGPIPE, SIG_DFL);
 	  }
       }
 #endif /* XAUTH_PATH */

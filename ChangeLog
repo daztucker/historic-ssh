@@ -1,3 +1,150 @@
+Thu Jan 25 08:05:18 1996  Tatu Ylonen  <ylo@trance.olari.clinet.fi>
+	
+	* sshd.c (do_child): moved clearing of resources before switching
+	  to user privileges.
+	
+	* sshd.c: Fixed a bug where fclose was used for a file opened with
+	  popen.
+
+	* randoms.c (random_acquire_light_environmental_noise): Take 128
+	  bits of noise from /dev/random about every five minutes.  It
+	  used to be more often, but people were complaining that ssh
+	  completely exhausts /dev/random.
+
+	* Eliminated uid swapping code.
+
+Wed Jan 24 13:06:24 1996  Tatu Ylonen  <ylo@trance.olari.clinet.fi>
+
+	* Makefile.in: $$ (referring to current pid) -> $$$$ because
+	  "make" eats the other $.
+
+Mon Jan 22 01:21:41 1996  Tatu Ylonen  <ylo@trance.olari.clinet.fi>
+
+	* serverloop.c: fixed problems with data not always being sent to
+	  the client.
+
+Sun Jan 21 13:31:55 1996  Tatu Ylonen  <ylo@trance.olari.clinet.fi>
+
+	* Makefile.in (install): Install scripts with INSTALL_DATA (patch
+	  from Andrey Chernov <ache@astral.msk.su>).
+
+Wed Jan 17 11:45:05 1996  Tatu Ylonen  <ylo@trance.olari.clinet.fi>
+
+	* configure.in: Added checking for libshadow.a if have /etc/shadow.
+
+Mon Jan 15 10:13:52 1996  Tatu Ylonen  <ylo@trance.olari.clinet.fi>
+
+	* buffer.c (buffer_append_space): Decreased buffer size increase
+	  from 32768 bytes to 4096 bytes.  This should reduce the ssh
+	  process size in interactive use.
+
+Sun Jan 14 10:29:19 1996  Tatu Ylonen  <ylo@trance.olari.clinet.fi>
+
+	* canohost.c (get_remote_hostname): Socket options (such as source
+	  routing) were checked for descriptor 0, which is wrong.  Fixed.
+
+Thu Jan 11 18:48:09 1996  Tatu Ylonen  <ylo@trance.olari.clinet.fi>
+
+	* sshd.c: Add BINDIR to DEFAULT_PATH.  The primary purpose of this
+	  is to make it more likely that scp will be found on the remote
+	  machine in case the shell does not read the user's rc-files.
+	  Corresponding changes in Makefile.in.
+
+	* configure.in: Added code to recognize $HOME/.MailBox as a possible
+	  incoming mailbox name (to be set in MAIL environment variable).
+	  sshd.c: code to handle MAIL_SPOOL_FILE
+	  acconfig.h: HAVE_TILDE_NEWMAIL -> MAIL_SPOOL_FILE
+
+	* configure.in: Add -linet on Dynix/ptx (from geek+@cmu.edu).
+
+	* login.c: Added SysVr4 (Solaris) utmp patches from Ian Donaldson
+ 	  <iand@aone.com.au>.
+	  configure.in: Added check for makeutx.
+
+	* Makefile.in: Added target hostinstall.  This can be used in a
+	  networked environment to generate host key and install config
+ 	  files on other machines after installing the binaries to a shared
+ 	  directory on one machine.
+
+	* sshd.c (login_permitted): Added code to check for expired
+	  accounts on AIX.  Also checks whether remote logins to the
+	  account are permitted.
+
+	* configure.in: Added check for -lauth (function
+	  authenticate_user) in Ultrix-specific code.
+
+	* random.c (initstate): Changed to use unsigned int instead of
+	  u_int (u_int is not defined on all systems).
+
+	* pty.c (pty_allocate): Use revoke() if it exists.  Added check
+ 	  for it in configure (patches from Christos Zoulas
+ 	  <christos@deshaw.com>).
+
+	* When falling back to rlogin, run rlogin if called as rlogin or
+	  rsh.  Otherwise, rsh may exec wrong rlogin, resulting in a loop.
+
+	* sshd.c (main): Print host type with -d.
+	  ssh.c: Print host type with -v.
+
+	* ssh.c (rsh_connect): Made rlogin run rlogin, rsh run rsh, etc.
+
+	* configure.in: Changed to use autoconf-2.7.
+	  Makefile.in: made bindir, sbindir, mandir separately configurable.
+	  config.guess: updated to config.guess from autoconf-2.7.
+	
+	* channels.c (x11_input_open): Use /tmp/.X11-unix/`hostname`0
+	  instead of /tmp/.X11-unix/X0 on HPSUX.
+
+	* configure.in: No vhangup on MachTen.
+	  includes.h: need machine/endian.h on MachTen.
+
+Sat Dec 16 14:03:21 1995  Tatu Ylonen  <ylo@trance.olari.clinet.fi>
+
+	* Removed LIBS from gen_minfd link line.
+
+Tue Dec  5 12:22:20 1995  Tatu Ylonen  <ylo@trance.olari.clinet.fi>
+
+	* Minor fixes to ssh.1.in.
+
+	* auth-passwd.c: fixed C2 security password authentication on alpha.
+
+	* sshd.c: increased SO_LINGER times to 15 seconds.
+
+Fri Dec  1 14:12:31 1995  Tatu Ylonen  <ylo@trance.olari.clinet.fi>
+
+	* sshd.c, pty.c: Call setsid() also for non-pty logins.  This is
+ 	  needed on BSD 4.4, where setlogin() works on a process group
+ 	  basis (What a Stupid Idea!), and setlogin() is being changed in
+ 	  FreeBSD to only work for process group leaders (Continued Brain
+ 	  Damage!).
+
+	* auth-passwd.c: Added support for Ultrix enhanced security.
+
+	* Renamed field "howmany" in authfd.h due to conflicts with system
+	  headers on Solaris 2.4.
+
+	* scp.c (sink): Don't use O_TRUNC if ftruncate exists.  Avoids
+	  corrupting files when copying on top of itself.
+
+Wed Nov 29 15:57:03 1995  Tatu Ylonen  <ylo@trance.olari.clinet.fi>
+
+	* Improved debugging messages sent to client when Rhosts/RhostsRSA
+	  authentication fails.
+
+	* configure.in, uidswap.c: Fixed uid-swapping on ultrix and aix.
+
+	* tildexpand.c: for ~/file, if HOME is set, use it; use getpwnam
+	  in this case only if HOME is not set.
+
+Tue Nov 21 03:01:23 1995  Tatu Ylonen  <ylo@trance.olari.clinet.fi>
+
+	* serverloop.c: Trying to prevent spurious "Waiting for
+	  connections to terminate" messages at client exit.
+
+	* ssh.1.in: Fixed small typo (.ne3).
+
+	* sshd.c: Fixed other setsid on Ultrix.
+
 Fri Nov 17 16:19:20 1995  Tatu Ylonen  <ylo@trance.olari.clinet.fi>
 
 	* Released 1.2.12.

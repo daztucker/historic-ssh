@@ -797,7 +797,14 @@ sink(argc, argv)
 		}
 		omode = mode;
 		mode |= S_IWRITE;
-		if ((ofd = open(np, O_WRONLY|O_CREAT|O_TRUNC, mode)) < 0) {
+#ifdef HAVE_FTRUNCATE
+	        /* Don't use O_TRUNC so the file doesn't get corrupted if
+		   copying on itself. */
+		ofd = open(np, O_WRONLY|O_CREAT, mode);
+#else /* HAVE_FTRUNCATE */
+		ofd = open(np, O_WRONLY|O_CREAT|O_TRUNC, mode);
+#endif /* HAVE_FTRUNCATE */
+		if (ofd < 0) {
 bad:			run_err("%s: %s", np, strerror(errno));
 			continue;
 		}
@@ -841,12 +848,12 @@ bad:			run_err("%s: %s", np, strerror(errno));
 			wrerr = YES;
 			wrerrno = j >= 0 ? EIO : errno; 
 		}
-#if 0
+#ifdef HAVE_FTRUNCATE
 		if (ftruncate(ofd, size)) {
 			run_err("%s: truncate: %s", np, strerror(errno));
 			wrerr = DISPLAYED;
 		}
-#endif
+#endif /* HAVE_FTRUNCATE */
 		if (pflag) {
 			if (exists || omode != mode)
 #ifdef HAVE_FCHMOD

@@ -70,7 +70,7 @@ arbitrary tcp/ip connections, and the authentication agent connection.
  */
 
 #include "includes.h"
-#ifndef HAVE_GETHOSTNAME
+#if !defined(HAVE_GETHOSTNAME) || defined(HPSUX_NONSTANDARD_X11_KLUDGE)
 #include <sys/utsname.h>
 #endif
 #include "ssh.h"
@@ -78,7 +78,6 @@ arbitrary tcp/ip connections, and the authentication agent connection.
 #include "xmalloc.h"
 #include "buffer.h"
 #include "authfd.h"
-#include "uidswap.h"
 
 /* Directory in which the fake unix-domain X11 displays reside. */
 #define X11_DIR "/tmp/.X11-unix"
@@ -503,8 +502,9 @@ void channel_after_select(fd_set *readset, fd_set *writeset)
 	      newsock = accept(ch->sock, &addr, &len);
 	      if (newsock < 0)
 		error("Accept from authentication socket failed");
-	      (void)channel_allocate(SSH_CHANNEL_AUTH_SOCKET_FD, newsock,
-				     xstrdup("accepted auth socket"));
+	      else
+		(void)channel_allocate(SSH_CHANNEL_AUTH_SOCKET_FD, newsock,
+				       xstrdup("accepted auth socket"));
 	    }
 	  break;
 
@@ -1146,7 +1146,7 @@ char *x11_create_display_inet(int screen_number)
   /* Set up a suitable value for the DISPLAY variable. */
 #ifdef HPSUX_NONSTANDARD_X11_KLUDGE
   /* HPSUX has some special shared memory stuff in their X server, which
-     appears to be enable if the host name matches that of the local machine.
+     appears to be enabled if the host name matches that of the local machine.
      However, it can be circumvented by using the IP address of the local
      machine instead.  */
   if (gethostname(hostname, sizeof(hostname)) < 0)
@@ -1157,7 +1157,7 @@ char *x11_create_display_inet(int screen_number)
     hp = gethostbyname(hostname);
     if (!hp->h_addr_list[0])
       {
-	error("Could not server IP address for %.200d.", hostname);
+	error("Could not get server IP address for %.200d.", hostname);
 	packet_send_debug("Could not get server IP address for %.200d.", 
 			  hostname);
 	shutdown(sock, 2);
@@ -1244,7 +1244,19 @@ void x11_input_open()
 	}
       /* Connect it to the display socket. */
       ssun.sun_family = AF_UNIX;
+#ifdef HPSUX_NONSTANDARD_X11_KLUDGE
+      {
+	struct utsname utsbuf;
+	/* HPSUX stores unix-domain sockets in /tmp/.X11-unix/`hostname`0 
+	   instead of the normal /tmp/.X11-unix/X0. */
+	if (uname(&utsbuf) < 0)
+	  fatal("uname: %.100s", strerror(errno));
+	sprintf(ssun.sun_path, "%.20s/%.64s%d",
+		X11_DIR, utsbuf.nodename, display_number);
+      }
+#else /* HPSUX_NONSTANDARD_X11_KLUDGE */
       sprintf(ssun.sun_path, "%.80s/X%d", X11_DIR, display_number);
+#endif /* HPSUX_NONSTANDARD_X11_KLUDGE */
       if (connect(sock, (struct sockaddr *)&ssun, AF_UNIX_SIZE(ssun)) < 0)
 	{
 	  error("connect %.100s: %.100s", ssun.sun_path, strerror(errno));
@@ -1437,9 +1449,6 @@ char *auth_get_socket_name()
 void auth_input_request_forwarding(struct passwd *pw)
 {
   int pfd = get_permanent_fd(pw->pw_shell);
-#ifdef HAVE_UMASK
-  mode_t savedumask;
-#endif /* HAVE_UMASK */
   
   if (pfd < 0) 
     {
@@ -1465,22 +1474,8 @@ void auth_input_request_forwarding(struct passwd *pw)
       strncpy(sunaddr.sun_path, channel_forwarded_auth_socket_name, 
 	      sizeof(sunaddr.sun_path));
 
-#ifdef HAVE_UMASK
-      savedumask = umask(0077);
-#endif /* HAVE_UMASK */
-
-      /* Temporarily use a privileged uid. */
-      temporarily_use_uid(pw->pw_uid);
-
       if (bind(sock, (struct sockaddr *)&sunaddr, AF_UNIX_SIZE(sunaddr)) < 0)
 	packet_disconnect("bind: %.100s", strerror(errno));
-
-      /* Restore the privileged uid. */
-      restore_uid();
-
-#ifdef HAVE_UMASK
-      umask(savedumask);
-#endif /* HAVE_UMASK */
 
       /* Start listening on the socket. */
       if (listen(sock, 5) < 0)

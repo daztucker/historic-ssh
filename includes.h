@@ -100,7 +100,7 @@ YOU_LOSE
 #undef uint32
 #endif /* __mips */
 
-#if defined(bsd_44) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__PARAGON__)
+#if defined(bsd_44) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__PARAGON__) || defined(__MACHTEN__)
 #include <sys/param.h>
 #include <machine/endian.h>
 #endif

@@ -40,6 +40,7 @@ Cryptographically strong random number generation.
 #include "includes.h"
 #include "randoms.h"
 #include "getput.h"
+#include "userfile.h"
 
 #ifdef HAVE_GETRUSAGE
 #include <sys/resource.h>
@@ -57,28 +58,31 @@ Cryptographically strong random number generation.
    can to initialize the random number generator.  More noise can be
    acquired later by calling random_add_noise + random_stir, or by
    calling random_get_environmental_noise again later when the environmental
-   situation has changed. */
+   situation has changed.  All I/O will be done with the given uid using
+   userfile. */
 
-void random_initialize(RandomState *state, const char *filename)
+void random_initialize(RandomState *state, uid_t uid, const char *filename)
 {
   char buf[8192];
-  int f, bytes;
+  int bytes;
+  UserFile uf;
   
   state->add_position = 0;
   state->next_available_byte = sizeof(state->stir_key);
+  state->last_dev_random_usage = 0;
 
   /* This isn't strictly necessary, but will keep programs like 3rd degree or
      purify silent. */
-  memset(state, 0, sizeof(state));
-  
+  memset(state->state, 0, sizeof(state->state));
+
   /* Get noise from the file. */
   random_add_noise(state, filename, strlen(filename)); /* Use the path. */
-  f = open(filename, O_RDONLY);
-  if (f >= 0)
+  uf = userfile_open(uid, filename, O_RDONLY, 0);
+  if (uf != NULL)
     {
-      state->state[0] += f;
-      bytes = read(f, buf, sizeof(buf));
-      close(f);
+      state->state[0] += (int)uf;
+      bytes = userfile_read(uf, buf, sizeof(buf));
+      userfile_close(uf);
       if (bytes > 0)
 	random_add_noise(state, buf, bytes);
       memset(buf, 0, sizeof(buf));
@@ -86,8 +90,8 @@ void random_initialize(RandomState *state, const char *filename)
   else
     { 
       /* Get all possible noise since we have no seed. */
-      random_acquire_environmental_noise(state);
-      random_save(state, filename);
+      random_acquire_environmental_noise(state, uid);
+      random_save(state, uid, filename);
     }
 
   /* Get easily available noise from the environment. */
@@ -107,7 +111,7 @@ void random_xor_noise(RandomState *state, unsigned int i, word32 value)
    We test the elapsed real time after each command, and abort if we have
    consumed over 30 seconds.  */
 
-void random_acquire_environmental_noise(RandomState *state)
+void random_acquire_environmental_noise(RandomState *state, uid_t uid)
 {
   time_t start_time;
 
@@ -118,19 +122,19 @@ void random_acquire_environmental_noise(RandomState *state)
      collecting more noise when we have spent 30 seconds real time; on a large
      system a single executed command is probably enough, whereas on small
      systems we must use all possible noise sources. */
-  random_get_noise_from_command(state, "ps laxww 2>/dev/null");
+  random_get_noise_from_command(state, uid, "ps laxww 2>/dev/null");
   if (time(NULL) - start_time < 30)
-    random_get_noise_from_command(state, "ps -al 2>/dev/null");
+    random_get_noise_from_command(state, uid, "ps -al 2>/dev/null");
   if (time(NULL) - start_time < 30)
-    random_get_noise_from_command(state, "ls -alni /tmp/. 2>/dev/null");
+    random_get_noise_from_command(state, uid, "ls -alni /tmp/. 2>/dev/null");
   if (time(NULL) - start_time < 30)
-    random_get_noise_from_command(state, "w 2>/dev/null");
+    random_get_noise_from_command(state, uid, "w 2>/dev/null");
   if (time(NULL) - start_time < 30)
-    random_get_noise_from_command(state, "netstat -s 2>/dev/null");
+    random_get_noise_from_command(state, uid, "netstat -s 2>/dev/null");
   if (time(NULL) - start_time < 30)
-    random_get_noise_from_command(state, "netstat -an 2>/dev/null");
+    random_get_noise_from_command(state, uid, "netstat -an 2>/dev/null");
   if (time(NULL) - start_time < 30)
-    random_get_noise_from_command(state, "netstat -in 2>/dev/null");
+    random_get_noise_from_command(state, uid, "netstat -in 2>/dev/null");
 
   /* Get other easily available noise. */
   random_acquire_light_environmental_noise(state);
@@ -144,21 +148,31 @@ void random_acquire_light_environmental_noise(RandomState *state)
   char buf[32];
   int len;
 
-  /* If /dev/random is available, read some data from there in non-blocking
-     mode and mix it into the pool. */
-  f = open("/dev/random", O_RDONLY);
-  if (f >= 0)
+  /* Stir first to make all bits depend on all other bits (some of
+     them not revealed to callers). */ 
+  random_stir(state);
+
+  /* About every five minutes, mix in some noise from /dev/random. */
+  if (time(NULL) - state->last_dev_random_usage > 5 * 60)
     {
-      /* Set the descriptor into non-blocking mode. */
+      state->last_dev_random_usage = time(NULL);
+
+      /* If /dev/random is available, read some data from there in non-blocking
+	 mode and mix it into the pool. */
+      f = open("/dev/random", O_RDONLY);
+      if (f >= 0)
+	{
+	  /* Set the descriptor into non-blocking mode. */
 #if defined(O_NONBLOCK) && !defined(O_NONBLOCK_BROKEN)
-      fcntl(f, F_SETFL, O_NONBLOCK);
+	  fcntl(f, F_SETFL, O_NONBLOCK);
 #else /* O_NONBLOCK && !O_NONBLOCK_BROKEN */
-      fcntl(f, F_SETFL, O_NDELAY);
+	  fcntl(f, F_SETFL, O_NDELAY);
 #endif /* O_NONBLOCK && !O_NONBLOCK_BROKEN */
-      len = read(f, buf, sizeof(buf));
-      close(f);
-      if (len > 0)
-	random_add_noise(state, buf, len);
+	  len = read(f, buf, sizeof(buf));
+	  close(f);
+	  if (len > 0)
+	    random_add_noise(state, buf, len);
+	}
     }
 
   /* Get miscellaneous noise from various system parameters and statistics. */
@@ -226,22 +240,22 @@ void random_acquire_light_environmental_noise(RandomState *state)
   random_stir(state);
 }
 
-/* Executes the given command, and processes its output as noise. */
+/* Executes the given command, and processes its output as noise.  The 
+   command will be run via userfile with the given uid. */
 
-void random_get_noise_from_command(RandomState *state, const char *cmd)
+void random_get_noise_from_command(RandomState *state, uid_t uid, 
+				   const char *cmd)
 {
-#ifdef HAVE_POPEN
   char line[1000];
-  FILE *f;
+  UserFile uf;
 
-  f = popen(cmd, "r");
-  if (!f)
+  uf = userfile_popen(uid, cmd, "r");
+  if (uf == NULL)
     return;
-  while (fgets(line, sizeof(line), f))
+  while (userfile_gets(line, sizeof(line), uf))
     random_add_noise(state, line, strlen(line));
-  pclose(f);
+  userfile_pclose(uf);
   memset(line, 0, sizeof(line));
-#endif /* HAVE_POPEN */
 }
 
 /* Adds the contents of the buffer as noise. */
@@ -340,17 +354,21 @@ unsigned int random_get_byte(RandomState *state)
 /* Saves random data in a disk file.  This is used to create a file that
    can be used as a random seed on future runs.  Only half of the random
    data in our pool is written to the file to avoid an observer being
-   able to deduce the contents of our random pool from the file. */
+   able to deduce the contents of our random pool from the file.
+   I/O will be done using the give uid with userfile. */
 
-void random_save(RandomState *state, const char *filename)
+void random_save(RandomState *state, uid_t uid, const char *filename)
 {
   char buf[RANDOM_STATE_BYTES / 2];  /* Save only half of its bits. */
-  int i, f;
+  int i;
+  UserFile uf;
 
   /* Get some environmental noise to make it harder to predict previous
      values from saved bits (besides, we have now probably consumed some
      resources so the noise may be really useful).  This also stirs
-     the pool. */
+     the pool.  We also clear the last /dev/random usage time to take
+     noise from there if available. */
+  state->last_dev_random_usage = 0;
   random_acquire_light_environmental_noise(state);
 
   /* Get as many bytes as is half the size of the pool.  I am assuming
@@ -368,12 +386,12 @@ void random_save(RandomState *state, const char *filename)
 
   /* Create and write the file.  Failure to create the file is silently
      ignored. */
-  f = open(filename, O_WRONLY|O_CREAT|O_TRUNC, 0600);
-  if (f >= 0)
+  uf = userfile_open(uid, filename, O_WRONLY|O_CREAT|O_TRUNC, 0600);
+  if (uf != NULL)
     {
       /* Creation successful.  Write data to the file. */
-      write(f, buf, sizeof(buf));
-      close(f);
+      userfile_write(uf, buf, sizeof(buf));
+      userfile_close(uf);
     }
   memset(buf, 0, sizeof(buf));
 }

@@ -90,7 +90,7 @@ login (authentication) dialog.
 #include "cipher.h"
 #include "md5.h"
 #include "mpaux.h"
-#include "uidswap.h"
+#include "userfile.h"
 
 /* Session id for the current session. */
 unsigned char session_id[16];
@@ -153,7 +153,8 @@ int ssh_proxy_connect(const char *host, int port, uid_t original_real_uid,
       char *argv[10];
 
       /* Child.  Permanently give up superuser privileges. */
-      permanently_set_uid(original_real_uid);
+      if (setuid(getuid()) < 0)
+	fatal("setuid: %s", strerror(errno));
 
       /* Redirect stdin and stdout. */
       close(pin[1]);
@@ -236,13 +237,10 @@ int ssh_create_socket(uid_t original_real_uid, int privileged)
     }
   else
     { 
-      /* Just create an ordinary socket on arbitrary port.  We use the
-	 user's uid to create the socket. */
-      temporarily_use_uid(original_real_uid);
+      /* Just create an ordinary socket on arbitrary port.  */
       sock = socket(AF_INET, SOCK_STREAM, 0);
       if (sock < 0)
 	fatal("socket: %.100s", strerror(errno));
-      restore_uid();
     }
   return sock;
 }
@@ -320,19 +318,14 @@ int ssh_connect(const char *host, int port, int connection_attempts,
 				   !anonymous && geteuid() == 0 && 
 				     port < 1024);
       
-	  /* Connect to the host.  We use the user's uid in the hope that
-	     it will help with the problems of tcp_wrappers showing the
-	     remote uid as root. */
-	  temporarily_use_uid(original_real_uid);
+	  /* Connect to the host. */
 	  if (connect(sock, (struct sockaddr *)&hostaddr, sizeof(hostaddr))
 	      >= 0)
 	    {
 	      /* Successful connect. */
-	      restore_uid();
 	      break;
 	    }
 	  debug("connect: %.100s", strerror(errno));
-	  restore_uid();
 
 	  /* Destroy the failed socket. */
 	  shutdown(sock, 2);
@@ -366,19 +359,14 @@ int ssh_connect(const char *host, int port, int connection_attempts,
 				       !anonymous && geteuid() == 0 && 
 				         port < 1024);
 
-	      /* Connect to the host.  We use the user's uid in the hope that
-	         it will help with tcp_wrappers showing the remote uid as
-		 root. */
-	      temporarily_use_uid(original_real_uid);
+	      /* Connect to the host. */
 	      if (connect(sock, (struct sockaddr *)&hostaddr, 
 			  sizeof(hostaddr)) >= 0)
 		{
 		  /* Successful connection. */
-		  restore_uid();
 		  break;
 		}
 	      debug("connect: %.100s", strerror(errno));
-	      restore_uid();
 
 	      /* Close the failed socket; there appear to be some problems 
 		 when reusing a socket for which connect() has already 
@@ -407,7 +395,7 @@ int ssh_connect(const char *host, int port, int connection_attempts,
 #endif /* TCP_NODELAY */
 #ifdef SO_LINGER
   linger.l_onoff = 1;
-  linger.l_linger = 5;
+  linger.l_linger = 15;
   setsockopt(sock, SOL_SOCKET, SO_LINGER, (void *)&linger, sizeof(linger));
 #endif /* SO_LINGER */
 
@@ -566,7 +554,7 @@ int try_rsa_authentication(struct passwd *pw, const char *authfile,
   int type, i;
 
   /* Try to load identification for the authentication key. */
-  if (!load_public_key(authfile, &public_key, &comment))
+  if (!load_public_key(pw->pw_uid, authfile, &public_key, &comment))
     return 0; /* Could not load it.  Fail. */
 
   debug("Trying RSA authentication with key '%.100s'", comment);
@@ -604,7 +592,7 @@ int try_rsa_authentication(struct passwd *pw, const char *authfile,
 
   /* Load the private key.  Try first with empty passphrase; if it fails, 
      ask for a passphrase. */
-  if (!load_private_key(authfile, "", &private_key, NULL))
+  if (!load_private_key(pw->pw_uid, authfile, "", &private_key, NULL))
     {
       char buf[300];
       /* Request passphrase from the user.  We read from /dev/tty to make
@@ -613,7 +601,7 @@ int try_rsa_authentication(struct passwd *pw, const char *authfile,
 	 return. */
       sprintf(buf, "Enter passphrase for RSA key '%.100s': ", comment);
       if (may_ask_passphrase)
-	passphrase = read_passphrase(buf, 0);
+	passphrase = read_passphrase(pw->pw_uid, buf, 0);
       else
 	{
 	  debug("Will not query passphrase for %.100s in batch mode.", 
@@ -622,7 +610,8 @@ int try_rsa_authentication(struct passwd *pw, const char *authfile,
 	}
       
       /* Load the authentication file using the pasphrase. */
-      if (!load_private_key(authfile, passphrase, &private_key, NULL))
+      if (!load_private_key(pw->pw_uid, authfile, passphrase, &private_key, 
+			    NULL))
 	{
 	  memset(passphrase, 0, strlen(passphrase));
 	  xfree(passphrase);
@@ -874,13 +863,15 @@ void ssh_login(RandomState *state, int host_key_valid,
   compute_session_id(session_id, check_bytes, host_key.bits, &host_key.n, 
 		     public_key.bits, &public_key.n);
 
-  /* Check if the host key is present in the user\'s list of known hosts
+  /* Check if the host key is present in the user's list of known hosts
      or in the systemwide list. */
-  host_status = check_host_in_hostfile(options->user_hostfile, 
+  host_status = check_host_in_hostfile(original_real_uid,
+				       options->user_hostfile, 
 				       host, host_key.bits, 
 				       &host_key.e, &host_key.n);
   if (host_status == HOST_NEW)
-    host_status = check_host_in_hostfile(options->system_hostfile, host, 
+    host_status = check_host_in_hostfile(original_real_uid,
+					 options->system_hostfile, host, 
 					 host_key.bits, &host_key.e, 
 					 &host_key.n);
 
@@ -913,7 +904,8 @@ void ssh_login(RandomState *state, int host_key_valid,
 	}
       /* If not in strict mode, add the key automatically to the local
 	 known_hosts file. */
-      if (!add_host_to_hostfile(options->user_hostfile, host, host_key.bits, 
+      if (!add_host_to_hostfile(original_real_uid,
+				options->user_hostfile, host, host_key.bits,
 				&host_key.e, &host_key.n))
 	log("Failed to add the host to the list of known hosts (%.500s).", 
 	    options->user_hostfile);
@@ -952,12 +944,12 @@ void ssh_login(RandomState *state, int host_key_valid,
   
   /* Initialize the random number generator. */
   sprintf(buf, "%.500s/%.200s", pw->pw_dir, SSH_CLIENT_SEEDFILE);
-  if (stat(buf, &st) < 0)
-    log("Creating random seed file ~/%.900s.  This may take a while.", 
+  if (userfile_stat(pw->pw_uid, buf, &st) < 0)
+    log("Creating random seed file ~/%.200s.  This may take a while.", 
 	SSH_CLIENT_SEEDFILE);
   else
     debug("Initializing random; seed file %.900s", buf);
-  random_initialize(state, buf);
+  random_initialize(state, pw->pw_uid, buf);
   
   /* Generate an encryption key for the session.   The key is a 256 bit
      random number, interpreted as a 32-byte key, with the least significant
@@ -966,8 +958,7 @@ void ssh_login(RandomState *state, int host_key_valid,
     session_key[i] = random_get_byte(state);
 
   /* Save the new random state. */
-  random_save(state, buf);
-  random_stir(state); /* This is supposed to be irreversible. */
+  random_save(state, pw->pw_uid, buf);
 
   /* According to the protocol spec, the first byte of the session key is
      the highest byte of the integer.  The session key is xored with the
@@ -1126,7 +1117,7 @@ void ssh_login(RandomState *state, int host_key_valid,
       debug("Doing password authentication.");
       if (options->cipher == SSH_CIPHER_NONE)
 	log("WARNING: Encryption is disabled! Password will be transmitted in clear text.");
-      password = read_passphrase("Password: ", 0);
+      password = read_passphrase(pw->pw_uid, "Password: ", 0);
       packet_start(SSH_CMSG_AUTH_PASSWORD);
       packet_put_string(password, strlen(password));
       memset(password, 0, strlen(password));

@@ -112,7 +112,7 @@ void do_change_passphrase(struct passwd *pw)
   
   /* Try to load the public key from the file the verify that it is
      readable and of the proper format. */
-  if (!load_public_key(buf, &public_key, NULL))
+  if (!load_public_key(geteuid(), buf, &public_key, NULL))
     {
       printf("%s is not a valid key file.\n", buf);
       exit(1);
@@ -121,15 +121,17 @@ void do_change_passphrase(struct passwd *pw)
   rsa_clear_public_key(&public_key);
 
   /* Try to load the file with empty passphrase. */
-  if (!load_private_key(buf, "", &private_key, &comment))
+  if (!load_private_key(geteuid(), buf, "", &private_key, &comment))
     {
       /* Read passphrase from the user. */
       if (identity_passphrase)
 	old_passphrase = xstrdup(identity_passphrase);
       else
-	old_passphrase = read_passphrase("Enter old passphrase: ", 1);
+	old_passphrase = read_passphrase(geteuid(), 
+					 "Enter old passphrase: ", 1);
       /* Try to load using the passphrase. */
-      if (!load_private_key(buf, old_passphrase, &private_key, &comment))
+      if (!load_private_key(geteuid(), buf, old_passphrase, &private_key, 
+			    &comment))
 	{
 	  memset(old_passphrase, 0, strlen(old_passphrase));
 	  xfree(old_passphrase);
@@ -151,8 +153,10 @@ void do_change_passphrase(struct passwd *pw)
   else
     {
       passphrase1 = 
-	read_passphrase("Enter new passphrase (empty for no passphrase): ", 1);
-      passphrase2 = read_passphrase("Enter same passphrase again: ", 1);
+	read_passphrase(geteuid(),
+			"Enter new passphrase (empty for no passphrase): ", 1);
+      passphrase2 = read_passphrase(geteuid(), 
+				    "Enter same passphrase again: ", 1);
 
       /* Verify that they are the same. */
       if (strcmp(passphrase1, passphrase2) != 0)
@@ -170,7 +174,8 @@ void do_change_passphrase(struct passwd *pw)
     }
 
   /* Save the file using the new passphrase. */
-  if (!save_private_key(buf, passphrase1, &private_key, comment, &state))
+  if (!save_private_key(geteuid(), buf, passphrase1, &private_key, comment, 
+			&state))
     {
       printf("Saving the key failed: %s: %s.\n",
 	     buf, strerror(errno));
@@ -228,14 +233,14 @@ void do_change_comment(struct passwd *pw)
   
   /* Try to load the public key from the file the verify that it is
      readable and of the proper format. */
-  if (!load_public_key(buf, &public_key, NULL))
+  if (!load_public_key(geteuid(), buf, &public_key, NULL))
     {
       printf("%s is not a valid key file.\n", buf);
       exit(1);
     }
 
   /* Try to load the file with empty passphrase. */
-  if (load_private_key(buf, "", &private_key, &comment))
+  if (load_private_key(geteuid(), buf, "", &private_key, &comment))
     passphrase = xstrdup("");
   else
     {
@@ -246,9 +251,10 @@ void do_change_comment(struct passwd *pw)
 	if (identity_new_passphrase)
 	  passphrase = xstrdup(identity_new_passphrase);
 	else
-	  passphrase = read_passphrase("Enter passphrase: ", 1);
+	  passphrase = read_passphrase(geteuid(), "Enter passphrase: ", 1);
       /* Try to load using the passphrase. */
-      if (!load_private_key(buf, passphrase, &private_key, &comment))
+      if (!load_private_key(geteuid(), buf, passphrase, &private_key, 
+			    &comment))
 	{
 	  memset(passphrase, 0, strlen(passphrase));
 	  xfree(passphrase);
@@ -280,7 +286,7 @@ void do_change_comment(struct passwd *pw)
     }
       
   /* Save the file using the new passphrase. */
-  if (!save_private_key(buf, passphrase, &private_key, new_comment, 
+  if (!save_private_key(geteuid(), buf, passphrase, &private_key, new_comment, 
 			&state))
     {
       printf("Saving the key failed: %s: %s.\n",
@@ -420,11 +426,11 @@ int main(int ac, char **av)
      user has no seed file, so display a message to the user. */
   printf("Initializing random number generator...\n");
   sprintf(buf, "%s/%s", pw->pw_dir, SSH_CLIENT_SEEDFILE);
-  random_initialize(&state, buf);
+  random_initialize(&state, geteuid(), buf);
 
-  /* Save random seed so we don\'t need to do all that time-consuming
+  /* Save random seed so we don't need to do all that time-consuming
      environmental noise collection the next time. */
-  random_save(&state, buf);
+  random_save(&state, geteuid(), buf);
 
   /* Generate the rsa key pair. */
   rsa_generate_key(&private_key, &public_key, &state, bits);
@@ -432,7 +438,7 @@ int main(int ac, char **av)
   /* Save the state again, just to remove any fear that the previous state
      could be used to recreate the key.  (That should not be possible anyway
      since the pool is stirred after save and some noise is added.) */
-  random_save(&state, buf);
+  random_save(&state, geteuid(), buf);
 
  ask_file_again:
 
@@ -477,8 +483,10 @@ int main(int ac, char **av)
       {
       passphrase_again:
 	passphrase1 = 
-	  read_passphrase("Enter passphrase (empty for no passphrase): ", 1);
-	passphrase2 = read_passphrase("Enter same passphrase again: ", 1);
+	  read_passphrase(geteuid(), 
+			  "Enter passphrase (empty for no passphrase): ", 1);
+	passphrase2 = read_passphrase(geteuid(),
+				      "Enter same passphrase again: ", 1);
 	if (strcmp(passphrase1, passphrase2) != 0)
 	  {
 	    /* The passphrases do not match.  Clear them and retry. */
@@ -521,7 +529,8 @@ int main(int ac, char **av)
     }
 
   /* Save the key with the given passphrase and comment. */
-  if (!save_private_key(buf, passphrase1, &private_key, buf2, &state))
+  if (!save_private_key(geteuid(), buf, passphrase1, &private_key, buf2, 
+			&state))
     {
       printf("Saving the key failed: %s: %s.\n",
 	     buf, strerror(errno));

@@ -101,8 +101,9 @@ void process_config_line(Options *options, const char *host,
 
 /* Reads the config file and modifies the options accordingly.  Options should
    already be initialized before this call.  This never returns if there
-   is an error.  If the file does not exist, this returns immediately. */
-void read_config_file(const char *filename, const char *host, 
+   is an error.  If the file does not exist, this returns immediately. 
+   All I/O will be done with the given uid via userfile. */
+void read_config_file(uid_t uid, const char *filename, const char *host, 
 		      Options *options);
 
 /* Adds a local TCP/IP port forward to options.  Never returns if there

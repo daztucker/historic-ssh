@@ -49,7 +49,7 @@ validity of the host key.
 #include "ssh.h"
 #include "md5.h"
 #include "mpaux.h"
-#include "uidswap.h"
+#include "userfile.h"
 
 /* Flags that may be set in authorized_keys options. */
 extern int no_port_forwarding_flag;
@@ -146,26 +146,19 @@ int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state)
   int authenticated;
   unsigned int bits;
   MP_INT e, n;
-  FILE *f;
+  UserFile uf;
   unsigned long linenum = 0;
   struct stat st;
 
   /* Open the file containing the authorized keys. */
   sprintf(line, "%.500s/%.100s", pw->pw_dir, SSH_USER_PERMITTED_KEYS);
   
-  /* Temporarily use the user's uid. */
-  temporarily_use_uid(pw->pw_uid);
-  if (stat(line, &st) < 0)
+  if (userfile_stat(pw->pw_uid, line, &st) < 0)
+    return 0;
+
+  uf = userfile_open(pw->pw_uid, line, O_RDONLY, 0);
+  if (uf == NULL)
     {
-      /* Restore the privileged uid. */
-      restore_uid();
-      return 0;
-    }
-  f = fopen(line, "r");
-  if (!f)
-    {
-      /* Restore the privileged uid. */
-      restore_uid();
       packet_send_debug("Could not open %.900s for reading.", line);
       packet_send_debug("If your home is on an NFS volume, it may need to be world-readable.");
       return 0;
@@ -181,7 +174,7 @@ int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state)
   /* Go though the accepted keys, looking for the current key.  If found,
      perform a challenge-response dialog to verify that the user really has
      the corresponding private key. */
-  while (fgets(line, sizeof(line), f))
+  while (userfile_gets(line, sizeof(line), uf))
     {
       char *cp;
       char *options;
@@ -432,11 +425,8 @@ int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state)
 	break;
     }
 
-  /* Restore the privileged uid. */
-  restore_uid();
-
   /* Close the file. */
-  fclose(f);
+  userfile_close(uf);
   
   /* Clear any mp-int variables. */
   mpz_clear(&n);

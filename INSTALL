@@ -11,6 +11,10 @@ For most machines and configurations, the following is all you need.
   make
   make install
 
+In a networked environment with shared binary directory, it is enough
+to do "make install" on one machine, and then "make hostinstall" on
+others to generate host keys and install configuration files.
+
 Then check (and edit if needed) the following files:
   /etc/sshd_config   (server configuration file)
   /etc/ssh_config    (client configuration file - defaults for users)
@@ -18,6 +22,8 @@ Then check (and edit if needed) the following files:
 You may also want to create the /etc/ssh_known_hosts for your site and update
 it periodically.  See the manual page for make-ssh-known-hosts on how to
 do this easily.  The file format is documented on the sshd manual page.
+
+You should also edit /etc/rc.local or equivalent to start sshd at boot.
 
 The source is written in ANSI C, and requires an ANSI C compiler or GCC.
 A copy of GCC is available on all major FTP sites (e.g., in 
@@ -74,6 +80,7 @@ The Makefile is generated from Makefile.in by running configure.  It supports
 the following targets:
   all: 		compile everything
   install:	install in $exec_prefix/bin and $prefix/man/man1.
+  hostinstall:	generate host key and install config files
   uninstall:	remove installed files
   clean:	remove object files and executables
   distclean:	remove anything not in the distribution
@@ -94,20 +101,20 @@ This software has been used at least in the following environments.
 	HPUX 9.0x, 10.0; HPPA
 	IRIX 5.2, 5.3; SGI Indy
 	IRIX 6.0.1; Mips-R8000
-	Linux 1.2.8 Slackware 2.1.0; i486
+	Linux 1.2.x Slackware 2.1.0, RedHat 2.1; i486
 	Mach3; Mips
 	Mach3/Lites; i386
-	Machten 2.2
+	Machten 2.2VM (m68k); Macintosh
 	NetBSD 1.0A; Pentium, Sparc
 	OSF/1 3.0, 3.2, 3.2a; Alpha
 	Sequent Dynix/ptx 3.2.0 V2.1.0; i386
 	SCO Unix; i386 (client only)
 	SINIX 5.42; Mips R4000
-	Solaris 2.3, 2.4; Sparc
+	Solaris 2.3, 2.4, 2.5; Sparc, i386
 	Sony NEWS-OS 3.3 (BSD 4.3); m68k
-	SunOS 4.1.2, 4.1.3, 4.1.4; Sparc
+	SunOS 4.1.1, 4.1.2, 4.1.3, 4.1.4; Sparc, Sun3
 	SysV 4.x; several platforms
-	Ultrix x.x; Mips
+	Ultrix 4.1; Mips
 	Unicos 8.0.3; Cray C90
 
 Please report back any other environments where you have used ssh,
@@ -120,8 +127,8 @@ if applicable.
 
 Not all compilers work in all environments.  If you have problems, try
 compiling with gcc-2.7.  *** SPARC NOTE: gcc-2.7.0 appears to generate
-bad code on Sparc (Solaris 2.3) when compiling without -O.  Try
-gcc-2.6.3 or compile with -O. ***
+bad code on Sparc when compiling without -O.  Try gcc-2.6.3 or compile
+with -O. ***
 
 Solaris 2.4 note: you need to install "kernel jumbo patch number
 101945-32" (dated August 31, 1995) for ssh to work.  The symptom is
@@ -142,6 +149,9 @@ configuring to force it to use cc instead of gcc.
 
 ConvexOS note: Convex "make" is broken.  Install GNU make first if you
 have trouble compiling ssh.
+
+Ultrix note: Ultrix /bin/sh is broken.  Run configure with "/bin/sh5
+configure [options]" if you are on Ultrix.
 
 
 COMPILING WITH RSAREF2
@@ -170,7 +180,7 @@ On alpha, one should edit rsaref2/source/global.h, and make UINT4
 
 LIBWRAP AND IDENTD
 
-Ssh does not normally use identd or tcp-wrappers.  However, it can be
+Sshd does not normally use identd or tcp-wrappers.  However, it can be
 compiled to use these by adding --with-libwrap on the command line.
 This requires that the tcp_wrappers libwrap.a library and the
 associated tcpd.h have been installed somewhere where the compiler can

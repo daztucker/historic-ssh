@@ -35,6 +35,7 @@ char *tilde_expand_filename(const char *filename, uid_t my_uid)
   char *expanded;
   struct passwd *pw;
   char user[100];
+  const char *homedir;
 
   /* Return immediately if no tilde. */
   if (filename[0] != '~')
@@ -61,19 +62,21 @@ char *tilde_expand_filename(const char *filename, uid_t my_uid)
       user[userlen] = 0;
       pw = getpwnam(user);
     }
-
+  
   /* Check that we found the user. */
   if (!pw)
     fatal("Unknown user %100s.", user);
   
+  homedir = pw->pw_dir;
+
   /* If referring to someones home directory, return it now. */
   if (!cp)
     { /* Only home directory specified */
-      return xstrdup(pw->pw_dir);
+      return xstrdup(homedir);
     }
   
   /* Build a path combining the specified directory and path. */
-  expanded = xmalloc(strlen(pw->pw_dir) + strlen(cp + 1) + 2);
-  sprintf(expanded, "%s/%s", pw->pw_dir, cp + 1);
+  expanded = xmalloc(strlen(homedir) + strlen(cp + 1) + 2);
+  sprintf(expanded, "%s/%s", homedir, cp + 1);
   return expanded;
 }

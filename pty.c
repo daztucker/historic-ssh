@@ -222,6 +222,11 @@ int pty_allocate(int *ptyfd, int *ttyfd, char *namebuf)
       sprintf(namebuf, "/dev/tty%c%c", ptymajors[i / num_minors], 
 	      ptyminors[i % num_minors]);
 
+#ifdef HAVE_REVOKE
+      if (revoke(namebuf) == -1)
+ 	error("pty_allocate: revoke failed for %.100s", namebuf);
+#endif
+
       /* Open the slave side. */
       *ttyfd = open(namebuf, O_RDWR|O_NOCTTY);
       if (*ttyfd < 0)
@@ -266,14 +271,6 @@ void pty_make_controlling_tty(int *ttyfd, const char *ttyname)
       close(fd);
     }
 #endif /* TIOCNOTTY */
-#ifdef HAVE_SETSID
-#ifdef ultrix
-  setpgrp(0, 0);
-#else /* ultrix */
-  if (setsid() < 0)
-    error("setsid: %.100s", strerror(errno));
-#endif /* ultrix */
-#endif /* HAVE_SETSID */
   
   /* Verify that we are successfully disconnected from the controlling tty. */
   fd = open("/dev/tty", O_RDWR|O_NOCTTY);
@@ -304,7 +301,7 @@ void pty_make_controlling_tty(int *ttyfd, const char *ttyname)
   else
     {
       close(fd);
-#ifdef HAVE_VHANGUP
+#if defined(HAVE_VHANGUP) && !defined(HAVE_REVOKE)
       signal(SIGHUP, SIG_IGN);
       vhangup();
       signal(SIGHUP, SIG_DFL);
@@ -314,7 +311,7 @@ void pty_make_controlling_tty(int *ttyfd, const char *ttyname)
 	      ttyname);
       close(*ttyfd);
       *ttyfd = fd;
-#endif /* HAVE_VHANGUP */
+#endif /* HAVE_VHANGUP && !HAVE_REVOKE */
     }
 }
 

@@ -130,7 +130,7 @@ char *get_remote_hostname(int socket)
     else
       ipproto = IPPROTO_IP;
     option_size = sizeof(options);
-    if (getsockopt(0, ipproto, IP_OPTIONS, (char *)options,
+    if (getsockopt(socket, ipproto, IP_OPTIONS, (char *)options,
 		   &option_size) >= 0 && option_size != 0)
       {
 	cp = text;

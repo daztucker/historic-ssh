@@ -77,6 +77,29 @@ Instead of adding the identity, removes the identity from the agent.
 .B \-D
 Deletes all identities from the agent.
 
+.SH RETURN STATUS
+
+.B Ssh-add
+returns one of the following exit statuses.  These may be useful in scripts.
+.IP 0
+The requested operation was performed successfully.
+.IP 1
+No connection could be made to the authentication agent.  Presumably
+there is no authentication agent active in the execution environment
+of
+.B ssh-add.
+.IP 2
+The user did not supply a required passphrase.
+.IP 3
+An identify file could not be found, was not readable, or was in
+bad format.
+.IP 4
+The agent does not have the requested identity.
+.IP 5
+An unspecified error has occurred; this is a catch-all for errors not
+listed above.
+.RT
+
 .SH FILES
 .TP 
 .I \&$HOME/\s+2.\s0ssh/identity

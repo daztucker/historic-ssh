@@ -1493,9 +1493,11 @@ More flags.  The exact definitions can be found in the POSIX standard.
 .IP "93 PARODD"
 
 .IP "192 TTY_OP_ISPEED"
-Specifies the input baud rate in bits per second.
+Specifies the input baud rate in bits per second (as a 32-bit int, msb
+first).
 .IP "193 TTY_OP_OSPEED"
-Specifies the output baud rate in bits per second.
+Specifies the output baud rate in bits per second (as a 32-bt int, msb
+first).
 .RT
 
 

@@ -363,15 +363,19 @@ int match_hostname(const char *host, const char *pattern, unsigned int len);
 /* Checks whether the given host is already in the list of our known hosts.
    Returns HOST_OK if the host is known and has the specified key,
    HOST_NEW if the host is not known, and HOST_CHANGED if the host is known
-   but used to have a different host key.  The host must be in all lowercase. */
+   but used to have a different host key.  The host must be in all lowercase. 
+   The check (file accesses) will be performed using the given uid with
+   userfile. */
 typedef enum { HOST_OK, HOST_NEW, HOST_CHANGED } HostStatus;
-HostStatus check_host_in_hostfile(const char *filename, 
+HostStatus check_host_in_hostfile(uid_t uid,
+				  const char *filename, 
 				  const char *host, unsigned int bits,
 				  MP_INT *e, MP_INT *n);
 
 /* Appends an entry to the host file.  Returns false if the entry
-   could not be appended. */
-int add_host_to_hostfile(const char *filename, const char *host,
+   could not be appended.  The operation will be performed with the given
+   uid using userfile. */
+int add_host_to_hostfile(uid_t uid, const char *filename, const char *host,
 			 unsigned int bits, MP_INT *e, MP_INT *n);
 
 /* Performs the RSA authentication challenge-response dialog with the client,
@@ -382,30 +386,34 @@ int auth_rsa_challenge_dialog(RandomState *state, unsigned int bits,
 
 /* Reads a passphrase from /dev/tty with echo turned off.  Returns the 
    passphrase (allocated with xmalloc).  Exits if EOF is encountered. 
-   If from_stdin is true, the passphrase will be read from stdin instead. */
-char *read_passphrase(const char *prompt, int from_stdin);
+   If from_stdin is true, the passphrase will be read from stdin instead. 
+   If this needs to use an auxiliary program to read the passphrase,
+   this will run it with the given uid using userfile. */
+char *read_passphrase(uid_t uid, const char *prompt, int from_stdin);
 
 /* Saves the authentication (private) key in a file, encrypting it with
    passphrase.  The identification of the file (lowest 64 bits of n)
    will precede the key to provide identification of the key without
-   needing a passphrase. */
-int save_private_key(const char *filename, const char *passphrase,
+   needing a passphrase.  File I/O will be done using the given uid with
+   userfile. */
+int save_private_key(uid_t uid, const char *filename, const char *passphrase,
 		     RSAPrivateKey *private_key, const char *comment,
 		     RandomState *state);
 
-/* Loads the public part of the key file (public key and comment). 
+/* Loads the public part of the key file (public key and comment).
    Returns 0 if an error occurred; zero if the public key was successfully
    read.  The comment of the key is returned in comment_return if it is
-   non-NULL; the caller must free the value with xfree. */
-int load_public_key(const char *filename, RSAPublicKey *pub, 
+   non-NULL; the caller must free the value with xfree.  File I/O will be
+   done with the given uid using userfile. */
+int load_public_key(uid_t uid, const char *filename, RSAPublicKey *pub, 
 		    char **comment_return);
 
 /* Loads the private key from the file.  Returns 0 if an error is encountered
    (file does not exist or is not readable, or passphrase is bad).
-   This initializes the private key.  The comment of the key is returned 
-   in comment_return if it is non-NULL; the caller must free the value 
-   with xfree. */
-int load_private_key(const char *filename, const char *passphrase,
+   This initializes the private key.  The comment of the key is returned
+   in comment_return if it is non-NULL; the caller must free the value
+   with xfree.  File I/O will be done with the given uid using userfile. */
+int load_private_key(uid_t uid, const char *filename, const char *passphrase,
 		     RSAPrivateKey *private_key, char **comment_return);
 
 /*------------ Definitions for logging. -----------------------*/
@@ -623,5 +631,18 @@ struct envstring {
   struct envstring *next;
   char *s;
 };
+
+
+/* Functions from signals.c. */
+
+/* Sets signal handlers so that core dumps are prevented.  This also
+   sets the maximum core dump size to zero as an extra precaution (where
+   supported).  The old core dump size limit is saved. */
+void signals_prevent_core();
+
+/* Sets all signals to their default state.  Restores RLIMIT_CORE previously
+   saved by prevent_core(). */
+void signals_reset();
+
 
 #endif /* SSH_H */

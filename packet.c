@@ -117,6 +117,11 @@ void packet_set_connection(int fd_in, int fd_out, RandomState *state)
 
   /* Kludge: arrange the close function to be called from fatal(). */
   fatal_add_cleanup((void (*)(void *))packet_close, NULL);
+
+  /* Initially set the connection interactive and enable keepalives.  The
+     values will be reset to their final values later (after 
+     authentication). */
+  packet_set_interactive(1, 1);
 }
 
 /* Sets the connection into non-blocking mode. */
@@ -670,7 +675,7 @@ int packet_not_very_much_data_to_write()
 
 void packet_set_interactive(int interactive, int keepalives)
 {
-  int on = 1;
+  int on = 1, off = 0;
 
   /* Record that we are in interactive mode. */
   interactive_mode = interactive;
@@ -712,6 +717,9 @@ void packet_set_interactive(int interactive, int keepalives)
 		     sizeof(throughput)) < 0)
 	error("setsockopt IPTOS_THROUGHPUT: %.100s", strerror(errno));
 #endif /* IPTOS_THROUGHPUT */
+      if (setsockopt(connection_in, IPPROTO_TCP, TCP_NODELAY, (void *)&off, 
+		     sizeof(off)) < 0)
+	error("setsockopt TCP_NODELAY: %.100s", strerror(errno));
     }
 }
 

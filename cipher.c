@@ -101,6 +101,9 @@ void cipher_set_key(CipherContext *context, int cipher,
 {
   unsigned char padded[32];
 
+  /* Clear the context to remove any traces of old keys. */
+  memset(context, 0, sizeof(*context));
+
   /* Set cipher type. */
   context->type = cipher;
 

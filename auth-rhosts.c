@@ -61,7 +61,7 @@ the login based on rhosts authentication.  This file also processes
 #include "packet.h"
 #include "ssh.h"
 #include "xmalloc.h"
-#include "uidswap.h"
+#include "userfile.h"
 
 /* Returns true if the strings are equal, ignoring case (a-z only). */
 
@@ -86,22 +86,23 @@ static int casefold_equal(const char *a, const char *b)
 
 /* This function processes an rhosts-style file (.rhosts, .shosts, or
    /etc/hosts.equiv).  This returns true if authentication can be granted
-   based on the file, and returns zero otherwise. */
+   based on the file, and returns zero otherwise.  All I/O will be done
+   using the given uid with userfile. */
 
-int check_rhosts_file(const char *filename, const char *hostname,
+int check_rhosts_file(uid_t uid, const char *filename, const char *hostname,
 		      const char *ipaddr, const char *client_user,
 		      const char *server_user)
 {
-  FILE *f;
+  UserFile uf;
   char buf[1024]; /* Must not be larger than host, user, dummy below. */
   
   /* Open the .rhosts file. */
-  f = fopen(filename, "r");
-  if (!f)
+  uf = userfile_open(uid, filename, O_RDONLY, 0);
+  if (uf == NULL)
     return 0; /* Cannot read the .rhosts - deny access. */
 
   /* Go through the file, checking every entry. */
-  while (fgets(buf, sizeof(buf), f))
+  while (userfile_gets(buf, sizeof(buf), uf))
     {
       /* All three must be at least as big as buf to avoid overflows. */
       char hostbuf[1024], userbuf[1024], dummy[1024], *host, *user, *cp;
@@ -205,7 +206,7 @@ int check_rhosts_file(const char *filename, const char *hostname,
 #endif /* HAVE_INNETGR */
 
       /* Found the user and host. */
-      fclose(f);
+      userfile_close(uf);
 
       /* If the entry was negated, deny access. */
       if (negated)
@@ -220,7 +221,7 @@ int check_rhosts_file(const char *filename, const char *hostname,
     }
      
   /* Authentication using this file denied. */
-  fclose(f);
+  userfile_close(uf);
   return 0;
 }
 
@@ -241,22 +242,19 @@ int auth_rhosts(struct passwd *pw, const char *client_user,
 
   /* Quick check: if the user has no .shosts or .rhosts files, return failure
      immediately without doing costly lookups from name servers. */
-  /* Switch to the user's uid. */
-  temporarily_use_uid(pw->pw_uid);
   for (rhosts_file_index = 0; rhosts_files[rhosts_file_index];
        rhosts_file_index++)
     {
       /* Check users .rhosts or .shosts. */
       sprintf(buf, "%.500s/%.100s", 
 	      pw->pw_dir, rhosts_files[rhosts_file_index]);
-      if (stat(buf, &st) >= 0)
+      if (userfile_stat(pw->pw_uid, buf, &st) >= 0)
 	break;
     }
-  /* Switch back to privileged uid. */
-  restore_uid();
 
-  if (!rhosts_files[rhosts_file_index] && stat("/etc/hosts.equiv", &st) < 0 &&
-      stat(SSH_HOSTS_EQUIV, &st) < 0)
+  if (!rhosts_files[rhosts_file_index] && 
+      userfile_stat(pw->pw_uid, "/etc/hosts.equiv", &st) < 0 &&
+      userfile_stat(pw->pw_uid, SSH_HOSTS_EQUIV, &st) < 0)
     return 0; /* The user has no .shosts or .rhosts file and there are no
 		 system-wide files. */
 
@@ -282,14 +280,16 @@ int auth_rhosts(struct passwd *pw, const char *client_user,
   /* If not logging in as superuser, try /etc/hosts.equiv and shosts.equiv. */
   if (pw->pw_uid != 0)
     {
-      if (check_rhosts_file("/etc/hosts.equiv", hostname, ipaddr, client_user,
+      if (check_rhosts_file(geteuid(), 
+			    "/etc/hosts.equiv", hostname, ipaddr, client_user,
 			    pw->pw_name))
 	{
 	  packet_send_debug("Accepted for %.100s [%.100s] by /etc/hosts.equiv.",
 			    hostname, ipaddr);
 	  return 1;
 	}
-      if (check_rhosts_file(SSH_HOSTS_EQUIV, hostname, ipaddr, client_user,
+      if (check_rhosts_file(geteuid(),
+			    SSH_HOSTS_EQUIV, hostname, ipaddr, client_user,
 			    pw->pw_name))
 	{
 	  packet_send_debug("Accepted for %.100s [%.100s] by %.100s.", 
@@ -300,7 +300,7 @@ int auth_rhosts(struct passwd *pw, const char *client_user,
 
   /* Check that the home directory is owned by root or the user, and is not 
      group or world writable. */
-  if (stat(pw->pw_dir, &st) < 0)
+  if (userfile_stat(pw->pw_uid, pw->pw_dir, &st) < 0)
     {
       log("Rhosts authentication refused for %.100: no home directory %.200s",
 	  pw->pw_name, pw->pw_dir);
@@ -320,15 +320,13 @@ int auth_rhosts(struct passwd *pw, const char *client_user,
     }
   
   /* Check all .rhosts files (currently .shosts and .rhosts). */
-  /* Temporarily use the user's uid. */
-  temporarily_use_uid(pw->pw_uid);
   for (rhosts_file_index = 0; rhosts_files[rhosts_file_index];
        rhosts_file_index++)
     {
       /* Check users .rhosts or .shosts. */
       sprintf(buf, "%.500s/%.100s", 
 	      pw->pw_dir, rhosts_files[rhosts_file_index]);
-      if (stat(buf, &st) < 0)
+      if (userfile_stat(pw->pw_uid, buf, &st) < 0)
 	continue; /* No such file. */
 
       /* Make sure that the file is either owned by the user or by root,
@@ -355,18 +353,18 @@ int auth_rhosts(struct passwd *pw, const char *client_user,
 	}
 
       /* Check if authentication is permitted by the file. */
-      if (check_rhosts_file(buf, hostname, ipaddr, client_user, pw->pw_name))
+      if (check_rhosts_file(pw->pw_uid, buf, hostname, ipaddr, client_user, 
+			    pw->pw_name))
 	{
 	  packet_send_debug("Accepted by %.100s.",
 			    rhosts_files[rhosts_file_index]);
-	  /* Restore the privileged uid. */
-	  restore_uid();
 	  return 1;
 	}
     }
 
   /* Rhosts authentication denied. */
-  /* Restore the privileged uid. */
-  restore_uid();
+  packet_send_debug("Rhosts/hosts.equiv authentication refused: client user '%.100s', server user '%.100s', client host '%.200s'.",
+		    client_user, pw->pw_name, get_canonical_hostname());
+
   return 0;
 }

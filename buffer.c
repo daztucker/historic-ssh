@@ -98,7 +98,7 @@ void buffer_append_space(Buffer *buffer, char **datap, unsigned int len)
     }
 
   /* Increase the size of the buffer and retry. */
-  buffer->alloc += len + 32768;
+  buffer->alloc += len + 4096;
   buffer->buf = xrealloc(buffer->buf, buffer->alloc);
   goto restart;
 }

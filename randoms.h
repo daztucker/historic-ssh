@@ -41,6 +41,7 @@ typedef struct
   unsigned char stir_key[64];		/* Extra data for next stirring. */
   unsigned int next_available_byte;	/* Index of next available byte. */
   unsigned int add_position;		/* Index to add noise. */
+  time_t last_dev_random_usage;		/* Time of last /dev/random usage. */
 } RandomState;
 
 /* Initializes the random number generator, loads any random information
@@ -48,21 +49,24 @@ typedef struct
    can to initialize the random number generator.  More noise can be
    acquired later by calling random_add_noise + random_stir, or by
    calling random_get_environmental_noise again later when the environmental
-   situation has changed. */
-void random_initialize(RandomState *state, const char *filename);
+   situation has changed.  All I/O will be done with the given uid. */
+void random_initialize(RandomState *state, uid_t uid, const char *filename);
 
 /* Acquires as much environmental noise as it can.  This is probably quite
    sufficient on a unix machine, but might be grossly inadequate on a
    single-user PC or a Macintosh.  This call random_stir automatically. 
-   This call may take many seconds to complete on a busy system. */
-void random_acquire_environmental_noise(RandomState *state);
+   This call may take many seconds to complete on a busy system. 
+   This will perform any commands with the given uid using userfile. */
+void random_acquire_environmental_noise(RandomState *state, uid_t uid);
 
 /* Acquires easily available noise from the environment. */
 void random_acquire_light_environmental_noise(RandomState *state);
 
 /* Executes the given command, and processes its output as noise.
-   random_stir should be called after this. */
-void random_get_noise_from_command(RandomState *state, const char *cmd);
+   random_stir should be called after this.  The command will be called
+   with the given uid via userfile. */
+void random_get_noise_from_command(RandomState *state, uid_t uid,
+				   const char *cmd);
 
 /* Adds the contents of the buffer as noise.  random_stir should be called
    after this. */
@@ -78,8 +82,9 @@ void random_stir(RandomState *state);
 unsigned int random_get_byte(RandomState *state);
 
 /* Saves some random bits in the file so that it can be used as a source
-   of randomness for later runs. */
-void random_save(RandomState *state, const char *filename);
+   of randomness for later runs.  I/O will be done with the given uid using
+   userfile. */
+void random_save(RandomState *state, uid_t uid, const char *filename);
 
 /* Zeroes and frees any data structures associated with the random number
    generator. */

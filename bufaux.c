@@ -103,9 +103,12 @@ void buffer_get_mp_int(Buffer *buffer, MP_INT *value)
       buffer_get(buffer, (char *)&byte, 1);
       sprintf(hex + 2 * i, "%02x", byte);
     }
+
   /* Read the hex string into a mp-int. */
   mpz_set_str(value, hex, 16);
-  /* Free the string. */
+
+  /* Free the string.  Clear it first to avoid leaving sensitive data. */
+  memset(hex, 0, strlen(hex));
   xfree(hex);
 }
 

@@ -3,18 +3,28 @@ This file is part of the ssh software, Copyright (c) 1995 Tatu Ylonen, Finland
 
 COPYING POLICY AND OTHER LEGAL ISSUES
 
-As far as I am concerned, the code I have written for this software
-can be used freely for any purpose.  Any derived versions of this
-software must be clearly marked as such, and if the derived work is
-incompatible with the protocol description in the RFC file, it must be
-called by a name other than "ssh" or "Secure Shell".
+As far as I am concerned, this software can be used freely for any
+purpose.  This software can be distributed freely, as long as it is
+not sold commercially without permission from Tatu Ylonen
+<ylo@cs.hut.fi>.  However, including this software on CD-ROMs
+containing other free software is explicitly permitted even when a
+modest fee is charged for the CD, as long as this software is not a
+primary selling argument for the CD.
+
+Building derived versions of this software is permitted, but any
+derived versions must be clearly marked as such, and if the derived
+work is incompatible with the protocol description in the RFC file (or
+a later version published by Tatu Ylonen), it must be called by a name
+other than "ssh" or "Secure Shell".
+
+"Ssh" and "Secure Shell" are trademarks of Tatu Ylonen <ylo@cs.hut.fi>
+and/or SSH Communications Security Oy, Finland.
 
 However, I am not implying to give any licenses to any patents or
-copyrights held by third parties, and the software includes parts that
-are not under my direct control.  As far as I know, all included
+copyrights held by third parties.  As far as I know, all included
 source code is used in accordance with the relevant license agreements
-and can be used freely for any purpose (the GNU license being the most
-restrictive); see below for details.
+and can be used and distributed freely for any purpose (the GNU
+license being the most restrictive); see below for details.
 
 The RSA algorithm and even the concept of public key encryption are
 claimed to patented in the United States.  These patents may interfere

@@ -360,6 +360,9 @@ Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>
 /* Define if you have the authenticate function.  */
 #undef HAVE_AUTHENTICATE
 
+/* Define if you have the chflags function.  */
+#undef HAVE_CHFLAGS
+
 /* Define if you have the clock function.  */
 #undef HAVE_CLOCK
 

@@ -1,3 +1,13 @@
+2000-06-30  Sami J. Lehtinen  <sjl@ssh.com>
+
+	* Updated license.
+
+	* Kerberos "none" ticket handling fix.
+
+	* Applied patch for BSD tty chown() bug.
+
+	* Previous: RSAREF buffer overflow bug fix.
+
 Wed Nov 17 19:02:04 1999  Timo J. Rinne  <tri@ssh.fi>
 
 	* Fixed copyright notices in almost all the files.

@@ -10,6 +10,9 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 /*
  * $Log: acconfig.h,v $
+ * Revision 1.13  1997/04/05 21:44:26  kivinen
+ * 	Added KRB5.
+ *
  * Revision 1.12  1997/03/27 03:08:36  kivinen
  * 	Added USELOGIN, PATH_LOGIN, HAVE_NO_TZ_IN_GETTIMEOFDAY,
  * 	KERBEROS and KERBEROS_TGT_PASSING defines.
@@ -337,6 +340,11 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 /* Define this if you want to compile in Kerberos support. */
 #undef KERBEROS
+
+/* Define this if you want to compile in Kerberos V5 support.
+   KERBEROS must be compiled in as well. This can be done at configure
+   time with the --with-kerberos5 argument*/
+#undef KRB5
 
 /* Define this if you want to pass the Kerberos TGT. */
 #undef KERBEROS_TGT_PASSING

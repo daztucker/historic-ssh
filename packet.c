@@ -15,8 +15,11 @@ with the other side.  This same code is used both on client and server side.
 */
 
 /*
- * $Id: packet.c,v 1.4 1995/07/27 03:59:37 ylo Exp $
+ * $Id: packet.c,v 1.5 1995/09/09 21:26:43 ylo Exp $
  * $Log: packet.c,v $
+ * Revision 1.5  1995/09/09  21:26:43  ylo
+ * /m/shadows/u2/users/ylo/ssh/README
+ *
  * Revision 1.4  1995/07/27  03:59:37  ylo
  * 	Fixed a bug in new rc4 keying.
  *
@@ -302,7 +305,7 @@ int packet_read()
       if (len == 0)
 	fatal("Connection closed by remote host.");
       if (len < 0)
-	fatal("Read from socket failed: %s", strerror(errno));
+	fatal("Read from socket failed: %.100s", strerror(errno));
       /* Append it to the buffer. */
       packet_process_incoming(buf, len);
     }
@@ -503,7 +506,7 @@ void packet_disconnect(const char *fmt, ...)
   packet_close();
 
   /* Display the error locally and exit. */
-  fatal("Local: %s", buf);
+  fatal("Local: %.100s", buf);
 }
 
 /* Checks if there is any buffered output, and tries to write some of the
@@ -519,7 +522,7 @@ void packet_write_poll()
 	if (errno == EAGAIN)
 	  return;
         else
-	  fatal("Write failed: %s", strerror(errno));
+	  fatal("Write failed: %.100s", strerror(errno));
       buffer_consume(&output, len);
     }
 }
@@ -565,10 +568,11 @@ void packet_set_interactive(int interactive)
   interactive_mode = interactive;
 
   /* For now, we always set SO_KEEPALIVE.  I know some people don't like this,
-     but otherwise the server may never notice if the client machine reboots. */
+     but otherwise the server may never notice if the client machine 
+     reboots. */
   if (setsockopt(connection, SOL_SOCKET, SO_KEEPALIVE, (void *)&on, 
 		 sizeof(on)) < 0)
-    error("setsockopt SO_KEEPALIVE: %s", strerror(errno));
+    error("setsockopt SO_KEEPALIVE: %.100s", strerror(errno));
 
   if (interactive)
     {
@@ -578,11 +582,11 @@ void packet_set_interactive(int interactive)
       int lowdelay = IPTOS_LOWDELAY;
       if (setsockopt(connection, IPPROTO_IP, IP_TOS, (void *)&lowdelay, 
 		     sizeof(lowdelay)) < 0)
-	error("setsockopt IPTOS_LOWDELAY: %s", strerror(errno));
+	error("setsockopt IPTOS_LOWDELAY: %.100s", strerror(errno));
 #endif /* IPTOS_LOWDELAY */
       if (setsockopt(connection, IPPROTO_TCP, TCP_NODELAY, (void *)&on, 
 		     sizeof(on)) < 0)
-	error("setsockopt TCP_NODELAY: %s", strerror(errno));
+	error("setsockopt TCP_NODELAY: %.100s", strerror(errno));
     }
   else
     {
@@ -592,7 +596,7 @@ void packet_set_interactive(int interactive)
       int throughput = IPTOS_THROUGHPUT;
       if (setsockopt(connection, IPPROTO_IP, IP_TOS, (void *)&throughput, 
 		     sizeof(throughput)) < 0)
-	error("setsockopt IPTOS_THROUGHPUT: %s", strerror(errno));
+	error("setsockopt IPTOS_THROUGHPUT: %.100s", strerror(errno));
 #endif /* IPTOS_THROUGHPUT */
     }
 }

@@ -16,8 +16,19 @@ the login based on rhosts authentication.  This file also processes
 */
 
 /*
- * $Id: auth-rhosts.c,v 1.5 1997/03/26 06:59:58 kivinen Exp $
+ * $Id: auth-rhosts.c,v 1.8 1998/04/30 03:58:38 kivinen Exp $
  * $Log: auth-rhosts.c,v $
+ * Revision 1.8  1998/04/30 03:58:38  kivinen
+ * 	Fixed typo.
+ *
+ * Revision 1.7  1998/04/30 01:50:40  kivinen
+ * 	Added parsing of comments in the end of any lind.
+ *
+ * Revision 1.6  1998/03/27 16:55:50  kivinen
+ * 	Added check that .rhosts / .shosts cannot contain control
+ * 	characters. Added ignore_root_rhosts support. Fixed .*hosts
+ * 	ALLOW_GROUP_WRITEABLITY support.
+ *
  * Revision 1.5  1997/03/26 06:59:58  kivinen
  * 	Changed uid 0 to UID_ROOT.
  *
@@ -120,11 +131,22 @@ int check_rhosts_file(uid_t uid, const char *filename, const char *hostname,
   while (userfile_gets(buf, sizeof(buf), uf))
     {
       /* All three must be at least as big as buf to avoid overflows. */
-      char hostbuf[1024], userbuf[1024], dummy[1024], *host, *user, *cp;
+      char hostbuf[1024], userbuf[1024], dummy[1024], *host, *user, *cp, *c;
       int negated;
       
+      for(cp = buf; *cp; cp++)
+	{
+	  if (*cp < 32 && !isspace(*cp))
+	    {
+	      packet_send_debug("Found control characters in the .rhosts or .shosts file, rest of the file ignored");
+	      userfile_close(uf);
+	      return 0;
+	    }
+	}
       for (cp = buf; *cp == ' ' || *cp == '\t'; cp++)
 	;
+      if ((c = strchr(cp, '#')) != NULL)
+	*c = '\0';
       if (*cp == '#' || *cp == '\n' || !*cp)
 	continue;
 
@@ -249,10 +271,12 @@ int check_rhosts_file(uid_t uid, const char *filename, const char *hostname,
 /* Tries to authenticate the user using the .shosts or .rhosts file.  
    Returns true if authentication succeeds.  If ignore_rhosts is
    true, only /etc/hosts.equiv will be considered (.rhosts and .shosts
-   are ignored). */
+   are ignored), unless the user is root and ignore_root_rhosts isn't
+   true. */
 
 int auth_rhosts(struct passwd *pw, const char *client_user,
-		int ignore_rhosts, int strict_modes)
+		int ignore_rhosts, int ignore_root_rhosts,
+		int strict_modes)
 {
   char buf[1024];
   const char *hostname, *ipaddr;
@@ -331,7 +355,12 @@ int auth_rhosts(struct passwd *pw, const char *client_user,
     }
   if (strict_modes && 
       ((st.st_uid != UID_ROOT && st.st_uid != pw->pw_uid) ||
-       (st.st_mode & 022) != 0))
+#ifdef ALLOW_GROUP_WRITEABILITY
+       (st.st_mode & 002) != 0)
+#else
+       (st.st_mode & 022) != 0)
+#endif
+      )
     {
       log_msg("Rhosts authentication refused for %.100s: bad ownership or modes for home directory.",
 	  pw->pw_name);
@@ -365,8 +394,9 @@ int auth_rhosts(struct passwd *pw, const char *client_user,
 	}
 
       /* Check if we have been configured to ignore .rhosts and .shosts 
-	 files. */
-      if (ignore_rhosts)
+	 files.  If root, check ignore_root_rhosts first. */
+      if ((pw->pw_uid == UID_ROOT && ignore_root_rhosts) ||
+	  (pw->pw_uid != UID_ROOT && ignore_rhosts))
 	{
 	  packet_send_debug("Server has been configured to ignore %.100s.",
 			    rhosts_files[rhosts_file_index]);

@@ -18,8 +18,24 @@ agent connections.
 */
 
 /*
- * $Id: sshd.c,v 1.20 1996/09/27 17:19:16 ylo Exp $
+ * $Id: sshd.c,v 1.26 1996/10/29 22:46:25 kivinen Exp $
  * $Log: sshd.c,v $
+ * Revision 1.26  1996/10/29 22:46:25  kivinen
+ * 	log -> log_msg. Added old agent emulation code (disable agent
+ * 	forwarding if the other end is too old).
+ *
+ * Revision 1.25  1996/10/23 15:59:13  ttsalo
+ *       Changed BINDIR's name to SSH_BINDIR to prevent conflicts
+ *
+ * Revision 1.24  1996/10/21 16:35:23  ttsalo
+ *       Removed some fd auth code
+ *
+ * Revision 1.23  1996/10/21 16:18:34  ttsalo
+ *       Had to remove BINDIR from line 2518
+ *
+ * Revision 1.22  1996/10/20 16:19:36  ttsalo
+ *      Added global variable 'original_real_uid' and it's initialization
+ *
  * Revision 1.20  1996/09/27 17:19:16  ylo
  * 	Merged ultrix patches from Corey Satten.
  *
@@ -329,6 +345,10 @@ char **saved_argv;
    the SIGHUP signal handler. */
 int listen_sock;
 
+/* This is not really needed, and could be eliminated if server-specific
+   and client-specific code were removed from newchannels.c */
+uid_t original_real_uid = 0;
+
 /* Flags set in auth-rsa from authorized_keys flags.  These are set in
   auth-rsa.c. */
 int no_port_forwarding_flag = 0;
@@ -402,10 +422,10 @@ RETSIGTYPE sighup_handler(int sig)
 
 void sighup_restart()
 {
-  log("Received SIGHUP; restarting.");
+  log_msg("Received SIGHUP; restarting.");
   close(listen_sock);
   execv(saved_argv[0], saved_argv);
-  log("RESTART FAILED: av[0]='%s', error: %s.", 
+  log_msg("RESTART FAILED: av[0]='%s', error: %s.", 
       saved_argv[0], strerror(errno));
   exit(1);
 }
@@ -416,7 +436,7 @@ void sighup_restart()
 
 RETSIGTYPE sigterm_handler(int sig)
 {
-  log("Received signal %d; terminating.", sig);
+  log_msg("Received signal %d; terminating.", sig);
   close(listen_sock);
   exit(255);
 }
@@ -454,14 +474,14 @@ RETSIGTYPE key_regeneration_alarm(int sig)
   if (key_used)
     {
       /* This should really be done in the background. */
-      log("Generating new %d bit RSA key.", options.server_key_bits);
+      log_msg("Generating new %d bit RSA key.", options.server_key_bits);
       random_acquire_light_environmental_noise(&sensitive_data.random_state);
       rsa_generate_key(&sensitive_data.private_key, &public_key, 
 		       &sensitive_data.random_state, options.server_key_bits);
       random_save(&sensitive_data.random_state, geteuid(),
 		  options.random_seed_file);
       key_used = 0;
-      log("RSA key generation complete.");
+      log_msg("RSA key generation complete.");
     }
 
   /* Reschedule the alarm. */
@@ -701,13 +721,13 @@ int main(int ac, char **av)
       debug("inetd sockets after dupping: %d, %d", sock_in, sock_out);
 
       /* Generate an rsa key. */
-      log("Generating %d bit RSA key.", options.server_key_bits);
+      log_msg("Generating %d bit RSA key.", options.server_key_bits);
       rsa_generate_key(&sensitive_data.private_key, &public_key,
 		       &sensitive_data.random_state,
 		   options.server_key_bits);
       random_save(&sensitive_data.random_state, geteuid(),
 		  options.random_seed_file);
-      log("RSA key generation complete.");
+      log_msg("RSA key generation complete.");
     }
   else
     {
@@ -758,18 +778,18 @@ int main(int ac, char **av)
 	}
 
       /* Start listening on the port. */
-      log("Server listening on port %d.", options.port);
+      log_msg("Server listening on port %d.", options.port);
       if (listen(listen_sock, 5) < 0)
 	fatal("listen: %.100s", strerror(errno));
 
       /* Generate an rsa key. */
-      log("Generating %d bit RSA key.", options.server_key_bits);
+      log_msg("Generating %d bit RSA key.", options.server_key_bits);
       rsa_generate_key(&sensitive_data.private_key, &public_key,
 		       &sensitive_data.random_state,
 		       options.server_key_bits);
       random_save(&sensitive_data.random_state, geteuid(),
 		  options.random_seed_file);
-      log("RSA key generation complete.");
+      log_msg("RSA key generation complete.");
 
       /* Schedule server key regeneration alarm. */
       signal(SIGALRM, key_regeneration_alarm);
@@ -816,7 +836,7 @@ int main(int ac, char **av)
 		continue;
 	      }
 	    /* if from inet: refuse(&req); */
-	    log("connect from %.500s", eval_client(&req));
+	    log_msg("connect from %.500s", eval_client(&req));
 	  }
 #endif /* LIBWRAP */
 
@@ -894,7 +914,7 @@ int main(int ac, char **av)
   packet_set_connection(sock_in, sock_out, &sensitive_data.random_state);
 
   /* Log the connection. */
-  log("Connection from %.100s port %d", 
+  log_msg("Connection from %.100s port %d", 
       get_remote_ipaddr(), get_remote_port());
 
   /* Check whether logins are denied from this host. */
@@ -907,7 +927,7 @@ int main(int ac, char **av)
 	if (match_pattern(hostname, options.deny_hosts[i]) ||
 	    match_pattern(ipaddr, options.deny_hosts[i]))
 	  {
-	    log("Connection from %.200s denied.\n", hostname);
+	    log_msg("Connection from %.200s denied.\n", hostname);
 	    hostname = "You are not allowed to connect.  Go away!\r\n";
 	    write(sock_out, hostname, strlen(hostname));
 	    close(sock_in);
@@ -1008,7 +1028,7 @@ int main(int ac, char **av)
 	  break;
       if (i >= options.num_allow_hosts)
 	{
-	  log("Connection from %.200s not allowed.\n", hostname);
+	  log_msg("Connection from %.200s not allowed.\n", hostname);
 	  packet_disconnect("Sorry, you are not allowed to connect.");
 	  /*NOTREACHED*/
 	}
@@ -1024,7 +1044,7 @@ int main(int ac, char **av)
   auth_delete_socket(NULL);
   
   /* The connection has been terminated. */
-  log("Closing connection to %.100s", get_remote_ipaddr());
+  log_msg("Closing connection to %.100s", get_remote_ipaddr());
   packet_close();
   exit(0);
 }
@@ -1386,14 +1406,14 @@ void do_authentication(char *user, int privileged_port)
 	case SSH_CMSG_AUTH_RHOSTS:
 	  if (!options.rhosts_authentication)
 	    {
-	      log("Rhosts authentication disabled.");
+	      log_msg("Rhosts authentication disabled.");
 	      break;
 	    }
 
 	  /* Rhosts authentication (also uses /etc/hosts.equiv). */
 	  if (!privileged_port)
 	    {
-	      log("Rhosts authentication not available for connections from unprivileged port.");
+	      log_msg("Rhosts authentication not available for connections from unprivileged port.");
 	      break;
 	    }
 
@@ -1407,7 +1427,7 @@ void do_authentication(char *user, int privileged_port)
 			  options.strict_modes))
 	    {
 	      /* Authentication accepted. */
-	      log("Rhosts authentication accepted for %.100s, remote %.100s on %.700s.",
+	      log_msg("Rhosts authentication accepted for %.100s, remote %.100s on %.700s.",
 		  user, client_user, get_canonical_hostname());
 	      authentication_type = SSH_AUTH_RHOSTS;
 	      authenticated = 1;
@@ -1422,7 +1442,7 @@ void do_authentication(char *user, int privileged_port)
 	case SSH_CMSG_AUTH_RHOSTS_RSA:
 	  if (!options.rhosts_rsa_authentication)
 	    {
-	      log("Rhosts with RSA authentication disabled.");
+	      log_msg("Rhosts with RSA authentication disabled.");
 	      break;
 	    }
 
@@ -1430,7 +1450,7 @@ void do_authentication(char *user, int privileged_port)
 	     host authentication. */
 	  if (!privileged_port)
 	    {
-	      log("Rhosts authentication not available for connections from unprivileged port.");
+	      log_msg("Rhosts authentication not available for connections from unprivileged port.");
 	      break;
 	    }
 
@@ -1470,7 +1490,7 @@ void do_authentication(char *user, int privileged_port)
 	case SSH_CMSG_AUTH_RSA:
 	  if (!options.rsa_authentication)
 	    {
-	      log("RSA authentication disabled.");
+	      log_msg("RSA authentication disabled.");
 	      break;
 	    }
 
@@ -1484,7 +1504,7 @@ void do_authentication(char *user, int privileged_port)
 	      { 
 		/* Successful authentication. */
 		mpz_clear(&n);
-		log("RSA authentication for %.100s accepted.", user);
+		log_msg("RSA authentication for %.100s accepted.", user);
 		authentication_type = SSH_AUTH_RSA;
 		authenticated = 1;
 		break;
@@ -1497,7 +1517,7 @@ void do_authentication(char *user, int privileged_port)
 	case SSH_CMSG_AUTH_PASSWORD:
 	  if (!options.password_authentication)
 	    {
-	      log("Password authentication disabled.");
+	      log_msg("Password authentication disabled.");
 	      break;
 	    }
 
@@ -1530,7 +1550,7 @@ void do_authentication(char *user, int privileged_port)
 	      /* Clear the password from memory. */
 	      memset(password, 0, strlen(password));
 	      xfree(password);
-	      log("Password authentication for %.100s accepted.", user);
+	      log_msg("Password authentication for %.100s accepted.", user);
 	      authentication_type = SSH_AUTH_PASSWORD;
 	      authenticated = 1;
 	      break;
@@ -1543,7 +1563,7 @@ void do_authentication(char *user, int privileged_port)
 	default:
 	  /* Any unknown messages will be ignored (and failure returned)
 	     during authentication. */
-	  log("Unknown message during authentication: type %d", type);
+	  log_msg("Unknown message during authentication: type %d", type);
 	  break; /* Respond with a failure message. */
 	}
       /* If successfully authenticated, break out of loop. */
@@ -1567,7 +1587,7 @@ void do_authentication(char *user, int privileged_port)
     if (pw->pw_uid == 0 && options.permit_root_login == 0)
       {
 	if (forced_command)
-	  log("Root login accepted for forced command.", forced_command);
+	  log_msg("Root login accepted for forced command.", forced_command);
 	else
 	  packet_disconnect("ROOT LOGIN REFUSED FROM %.200s", 
 			    get_canonical_hostname());
@@ -1760,6 +1780,11 @@ void do_authenticated(struct passwd *pw)
 	      debug("Authentication agent forwarding not permitted for this authentication.");
 	      goto fail;
 	    }
+	  if (emulation_information & EMULATE_OLD_AGENT_BUG)
+	    {
+	      debug("Authentication agent forwarding denied because the other end uses too old version.");
+	      goto fail;
+	    }
 	  debug("Received authentication agent forwarding request.");
 	  auth_input_request_forwarding(pw);
 	  break;
@@ -1810,7 +1835,7 @@ void do_authenticated(struct passwd *pw)
 	default:
 	  /* Any unknown messages in this phase are ignored, and a failure
 	     message is returned. */
-	  log("Unknown packet type received after authentication: %d", type);
+	  log_msg("Unknown packet type received after authentication: %d", type);
 	  goto fail;
 	}
 
@@ -2286,7 +2311,7 @@ void read_etc_default_login(char ***env, unsigned int *envsize,
   if (def != NULL)
     child_set_env(env, envsize, "PATH", def);
   else
-    child_set_env(env, envsize, "PATH", DEFAULT_PATH ":" BINDIR);
+    child_set_env(env, envsize, "PATH", DEFAULT_PATH ":" SSH_BINDIR);
 
   /* Set TZ if TIMEZONE is defined and we haven't inherited a value
      for TZ. */
@@ -2373,9 +2398,9 @@ void do_child(const char *command, struct passwd *pw, const char *term,
 	 violation of the user's privacy (and even potentially illegal with
 	 respect to privacy/data protection laws in some countries). */
       if (pw->pw_uid == 0)
-	log("executing remote command as root: %.200s", command);
+	log_msg("executing remote command as root: %.200s", command);
       else
-	log("executing remote command as user %.200s", pw->pw_name);
+	log_msg("executing remote command as user %.200s", pw->pw_name);
     }
   
 #ifdef HAVE_SETLOGIN
@@ -2390,7 +2415,7 @@ void do_child(const char *command, struct passwd *pw, const char *term,
      includes, but it seems to be important.  This also does setuid
      (but we do it below as well just in case). */
   if (setpcred((char *)pw->pw_name, NULL))
-    log("setpcred %.100s: %.100s", strerror(errno));
+    log_msg("setpcred %.100s: %.100s", strerror(errno));
 #endif /* HAVE_USERSEC_H */
 
   /* Save some data that will be needed so that we can do certain cleanups
@@ -2508,7 +2533,7 @@ void do_child(const char *command, struct passwd *pw, const char *term,
   child_set_env(&env, &envsize, "USER", user_name);
   child_set_env(&env, &envsize, "LOGNAME", user_name);
   child_set_env(&env, &envsize, "HOME", user_dir);
-  child_set_env(&env, &envsize, "PATH", DEFAULT_PATH ":" BINDIR);
+  child_set_env(&env, &envsize, "PATH", DEFAULT_PATH ":" SSH_BINDIR);
 
   /* Let it inherit timezone if we have one. */
   if (getenv("TZ"))
@@ -2568,18 +2593,9 @@ void do_child(const char *command, struct passwd *pw, const char *term,
     child_set_env(&env, &envsize, "DISPLAY", display);
 
   /* Set variable for forwarded authentication connection, if we have one. */
-  if (get_permanent_fd(shell) < 0)
-    {
-      if (auth_get_socket_name() != NULL)
-	child_set_env(&env, &envsize, SSH_AUTHSOCKET_ENV_NAME, 
-		      auth_get_socket_name());
-    }
-  else
-    if (auth_get_fd() >= 0)
-      {
-	sprintf(buf, "%d", auth_get_fd());
-	child_set_env(&env, &envsize, SSH_AUTHFD_ENV_NAME, buf);
-      }
+  if (auth_get_socket_name() != NULL)
+    child_set_env(&env, &envsize, SSH_AUTHSOCKET_ENV_NAME, 
+		  auth_get_socket_name());
 
   /* Read environment variable settings from /etc/environment.  (This exists
      at least on AIX, but could be useful also elsewhere.) */

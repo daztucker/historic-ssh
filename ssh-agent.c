@@ -14,8 +14,18 @@ The authentication agent program.
 */
 
 /*
- * $Id: ssh-agent.c,v 1.6 1995/09/21 17:13:31 ylo Exp $
+ * $Id: ssh-agent.c,v 1.3 1996/05/28 12:44:52 ylo Exp $
  * $Log: ssh-agent.c,v $
+ * Revision 1.3  1996/05/28 12:44:52  ylo
+ * 	Remove unix-domain socket if a killed by a signal.
+ *
+ * Revision 1.2  1996/04/26 00:24:47  ylo
+ * 	Fixed memory leaks.
+ * 	Fixed free -> xfree (xmalloced data).
+ *
+ * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.6  1995/09/21  17:13:31  ylo
  * 	Support AF_UNIX_SIZE.
  *
@@ -203,6 +213,8 @@ void process_remove_identity(SocketEntry *e)
 	if (i < num_identities - 1)
 	  identities[i] = identities[num_identities - 1];
 	num_identities--;
+	if (num_identities == 0)
+	  xfree(identities);
 	mpz_clear(&dummy);
 	mpz_clear(&n);
 
@@ -235,7 +247,8 @@ void process_remove_all_identities(SocketEntry *e)
 
   /* Mark that there are no identities. */
   num_identities = 0;
-
+  xfree(identities);
+  
   /* Send success. */
   buffer_put_int(&e->output, 1);
   buffer_put_char(&e->output, SSH_AGENT_SUCCESS);
@@ -306,6 +319,8 @@ void process_message(SocketEntry *e)
       shutdown(e->fd, 2);
       close(e->fd);
       e->type = AUTH_UNUSED;
+      buffer_free(&e->input);
+      buffer_free(&e->output);
       return;
     }
   if (buffer_len(&e->input) < msg_len + 4)
@@ -402,7 +417,7 @@ void after_select(fd_set *readset, fd_set *writeset)
 {
   unsigned int i;
   int len, sock, port;
-  char buf[1024];
+  char buf[1024], *p;
   struct sockaddr_in sin;
   struct sockaddr_un sunaddr;
 
@@ -421,27 +436,33 @@ void after_select(fd_set *readset, fd_set *writeset)
 		exit(0);
 	      }
 	  process_auth_fd_input:
-	    if (len != 3 || (unsigned char)buf[0] != SSH_AUTHFD_CONNECT)
-	      break; /* Incorrect message; ignore it. */
-	    /* It is a connection request message. */
-	    port = (unsigned char)buf[1] * 256 + (unsigned char)buf[2];
-	    memset(&sin, 0, sizeof(sin));
-	    sin.sin_family = AF_INET;
-	    sin.sin_addr.s_addr = htonl(0x7f000001); /* localhost */
-	    sin.sin_port = htons(port);
-	    sock = socket(AF_INET, SOCK_STREAM, 0);
-	    if (sock < 0)
-	      {
-		perror("socket");
-		break;
-	      }
-	    if (connect(sock, (struct sockaddr *)&sin, sizeof(sin)) < 0)
-	      {
-		perror("connecting to port requested in authfd message");
-		close(sock);
-		break;
-	      }
-	    new_socket(AUTH_CONNECTION, sock);
+	    /* We allow for simultaneously recv'ing sends from multiple
+	       clients, as can happen with, e.g., SunOS 4. */
+	    for (p = buf; len >= 3; len -= 3, p += 3)
+ 	      {
+		if ((unsigned char)p[0] != SSH_AUTHFD_CONNECT)
+		  break; /* Incorrect message; ignore it and give up. */
+	      
+		/* It is a connection request message. */
+		port = (unsigned char)p[1] * 256 + (unsigned char)p[2];
+		memset(&sin, 0, sizeof(sin));
+		sin.sin_family = AF_INET;
+		sin.sin_addr.s_addr = htonl(0x7f000001); /* localhost */
+		sin.sin_port = htons(port);
+		sock = socket(AF_INET, SOCK_STREAM, 0);
+		if (sock < 0)
+		  {
+		    perror("socket");
+		    break;
+		  }
+		if (connect(sock, (struct sockaddr *)&sin, sizeof(sin)) < 0)
+		  {
+		    perror("connecting to port requested in authfd message");
+		    close(sock);
+		    break;
+		  }
+		new_socket(AUTH_CONNECTION, sock);
+	       }
 	  }
 	break;
       case AUTH_SOCKET:
@@ -466,6 +487,8 @@ void after_select(fd_set *readset, fd_set *writeset)
 		shutdown(sockets[i].fd, 2);
 		close(sockets[i].fd);
 		sockets[i].type = AUTH_UNUSED;
+		buffer_free(&sockets[i].input);
+		buffer_free(&sockets[i].output);
 		break;
 	      }
 	    goto process_auth_fd_input;
@@ -482,6 +505,8 @@ void after_select(fd_set *readset, fd_set *writeset)
 		shutdown(sockets[i].fd, 2);
 		close(sockets[i].fd);
 		sockets[i].type = AUTH_UNUSED;
+		buffer_free(&sockets[i].input);
+		buffer_free(&sockets[i].output);
 		break;
 	      }
 	    buffer_consume(&sockets[i].output, len);
@@ -494,6 +519,8 @@ void after_select(fd_set *readset, fd_set *writeset)
 		shutdown(sockets[i].fd, 2);
 		close(sockets[i].fd);
 		sockets[i].type = AUTH_UNUSED;
+		buffer_free(&sockets[i].input);
+		buffer_free(&sockets[i].output);
 		break;
 	      }
 	    buffer_append(&sockets[i].input, buf, len);
@@ -518,6 +545,13 @@ RETSIGTYPE check_parent_exists(int sig)
     }
   signal(SIGALRM, check_parent_exists);
   alarm(10);
+}
+
+RETSIGTYPE remove_socket_on_signal(int sig)
+{
+  remove(socket_name);
+  /* fprintf(stderr, "Received signal %d - Auth. agent exiting.\n", sig); */
+  exit(1);
 }
 
 int main(int ac, char **av)
@@ -584,6 +618,8 @@ int main(int ac, char **av)
 	}
       new_socket(AUTH_SOCKET, sock);
       signal(SIGALRM, check_parent_exists);
+      signal(SIGHUP, remove_socket_on_signal);
+      signal(SIGTERM, remove_socket_on_signal);
       alarm(10);
     }
   else 
@@ -620,7 +656,7 @@ int main(int ac, char **av)
       /* Close duped descriptors. */
       for (i = 0; i < cnt; i++)
 	close(dups[i]);
-      free(dups);
+      xfree(dups);
       
       if (fork() != 0)
 	{ /* Parent - execute the given command. */

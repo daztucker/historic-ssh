@@ -16,84 +16,92 @@ of X11, TCP/IP, and authentication connections.
 */
 
 /*
- * $Id: ssh.c,v 1.31 1998/07/08 00:47:18 kivinen Exp $
+ * $Id: ssh.c,v 1.33 1999/02/22 08:14:06 tri Exp $
  * $Log: ssh.c,v $
+ * Revision 1.33  1999/02/22 08:14:06  tri
+ * 	Final fixes for 1.2.27.
+ *
+ * Revision 1.32  1999/02/21 19:52:46  ylo
+ *      Intermediate commit of ssh1.2.27 stuff.
+ *      Main change is sprintf -> snprintf; however, there are also
+ *      many other changes.
+ *
  * Revision 1.31  1998/07/08 00:47:18  kivinen
- * 	Fixed typo (privileged).
+ *      Fixed typo (privileged).
  *
  * Revision 1.30  1998/05/23  20:25:44  kivinen
- * 	Changed () -> (void). Added check that {ssh,slogin}{,1}{.old}
- * 	are known program names, not host names. Added missing break
- * 	to 'g' option switch clause.
+ *      Changed () -> (void). Added check that {ssh,slogin}{,1}{.old}
+ *      are known program names, not host names. Added missing break
+ *      to 'g' option switch clause.
  *
  * Revision 1.29  1998/04/17  00:40:07  kivinen
- * 	Fixed -f code so that it will also use setpgid/setpgrp if
- * 	setsid is not available.
+ *      Fixed -f code so that it will also use setpgid/setpgrp if
+ *      setsid is not available.
  *
  * Revision 1.28  1998/03/27 17:27:34  kivinen
- * 	Removed TSS. Take copy of pw struct immediately.
+ *      Removed TSS. Take copy of pw struct immediately.
  *
  * Revision 1.27  1998/03/27 17:02:23  kivinen
- * 	Added -g option. Combined getpwuid calls to get around linux
- * 	nis bug. Added gateway ports support.
+ *      Added -g option. Combined getpwuid calls to get around linux
+ *      nis bug. Added gateway ports support.
  *
  * Revision 1.26  1998/01/02 06:22:47  kivinen
- * 	Added xauthlocation option support.
+ *      Added xauthlocation option support.
  *
  * Revision 1.25  1997/08/09 21:17:47  ylo
- * 	Fixed out-of-date comment about being back to user's
- * 	permissions.
+ *      Fixed out-of-date comment about being back to user's
+ *      permissions.
  *
  * Revision 1.24  1997/08/07 16:22:26  kivinen
- * 	Moved privileged port check to add_local_forward function.
+ *      Moved privileged port check to add_local_forward function.
  *
  * Revision 1.23  1997/04/27 21:55:01  kivinen
- * 	Added F-SECURE stuff.
+ *      Added F-SECURE stuff.
  *
  * Revision 1.22  1997/04/05 22:00:11  kivinen
- * 	Added LIBWRAP stuff at the beginning.
+ *      Added LIBWRAP stuff at the beginning.
  *
  * Revision 1.21  1997/03/27 13:46:23  kivinen
- * 	Fixed typo.
+ *      Fixed typo.
  *
  * Revision 1.20  1997/03/27 03:10:56  kivinen
- * 	Added kerberos patches from Glenn Machin.
- * 	Added -V and -k options.
+ *      Added kerberos patches from Glenn Machin.
+ *      Added -V and -k options.
  *
  * Revision 1.19  1997/03/26 07:17:17  kivinen
- * 	Fixed usage so it will display only supported encryption
- * 	algorithms.
+ *      Fixed usage so it will display only supported encryption
+ *      algorithms.
  *
  * Revision 1.18  1997/03/26 05:34:17  kivinen
- * 	Added -P option.
+ *      Added -P option.
  *
  * Revision 1.17  1997/03/19 19:25:30  kivinen
- * 	Added input buffer clearing for error conditions, so packet.c
- * 	can check that buffer must be empty before new packet is read
- * 	in.
+ *      Added input buffer clearing for error conditions, so packet.c
+ *      can check that buffer must be empty before new packet is read
+ *      in.
  *
  * Revision 1.16  1997/03/19 17:43:41  kivinen
- * 	Limit hostname and username to 255 characters.
+ *      Limit hostname and username to 255 characters.
  *
  * Revision 1.15  1996/11/24 08:25:39  kivinen
- * 	Added SSH_NO_{PORT,X11}_FORWARDING support.
+ *      Added SSH_NO_{PORT,X11}_FORWARDING support.
  *
  * Revision 1.14  1996/11/19 22:46:03  kivinen
- * 	Added parenthes.
+ *      Added parenthes.
  *
  * Revision 1.13  1996/11/07 06:52:52  kivinen
- * 	Allow user@host for ssh too. Patch from peter@baileynm.com
- * 	(Peter da Silva).
+ *      Allow user@host for ssh too. Patch from peter@baileynm.com
+ *      (Peter da Silva).
  *
  * Revision 1.12  1996/11/04 22:13:44  kivinen
- * 	Fixed warning message of old agent to be displayed only if
- * 	user really tried to forward agent (agent running and
- * 	forwarding is not disabled).
+ *      Fixed warning message of old agent to be displayed only if
+ *      user really tried to forward agent (agent running and
+ *      forwarding is not disabled).
  *
  * Revision 1.11  1996/10/29 22:45:10  kivinen
- * 	log -> log_msg. Added old agent emulation code (disable agent
- * 	forwarding if the other end is too old).
- * 	Added userfile_uninit again. Agent doesn't need it any more.
+ *      log -> log_msg. Added old agent emulation code (disable agent
+ *      forwarding if the other end is too old).
+ *      Added userfile_uninit again. Agent doesn't need it any more.
  *
  * Revision 1.10  1996/10/20 16:23:01  ttsalo
  *       use normal close() to close authentication socket
@@ -102,84 +110,84 @@ of X11, TCP/IP, and authentication connections.
  *      Added global variable 'original_real_uid' and it's initialization
  *
  * Revision 1.8  1996/10/04 01:00:13  kivinen
- * 	Commented userfile_uninit out because we might need userfile
- * 	later to open agent connections.
+ *      Commented userfile_uninit out because we might need userfile
+ *      later to open agent connections.
  *
  * Revision 1.7  1996/09/08 17:48:12  ttsalo
- * 	Changed authfd's type from int to UserFile
+ *      Changed authfd's type from int to UserFile
  *
  * Revision 1.6  1996/07/29 03:41:23  ylo
- * 	Recognize remsh as a possible name for ssh.
+ *      Recognize remsh as a possible name for ssh.
  *
  * Revision 1.5  1996/07/15 07:19:47  ylo
- * 	Added passing of -8 to rlogin/rsh when falling back to them.
+ *      Added passing of -8 to rlogin/rsh when falling back to them.
  *
  * Revision 1.4  1996/07/14 23:33:20  ylo
- * 	Pass -n to rsh/rlogin if given to ssh.
+ *      Pass -n to rsh/rlogin if given to ssh.
  *
  * Revision 1.3  1996/05/29 07:41:34  ylo
- * 	Added arguments to userfile_init.
+ *      Added arguments to userfile_init.
  *
  * Revision 1.2  1996/02/25 13:53:24  ylo
- * 	Fixed a bug that caused falling back to rsh to hang.
+ *      Fixed a bug that caused falling back to rsh to hang.
  *
  * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
- * 	Imported ssh-1.2.13.
+ *      Imported ssh-1.2.13.
  *
  * Revision 1.17  1995/09/27  02:48:53  ylo
- * 	Added SOCKS support.
+ *      Added SOCKS support.
  *
  * Revision 1.16  1995/09/27  02:16:10  ylo
- * 	Print "rsh" command line if -v.
+ *      Print "rsh" command line if -v.
  *
  * Revision 1.15  1995/09/25  00:01:16  ylo
- * 	Moved client main loop to clientloop.c.
+ *      Moved client main loop to clientloop.c.
  *
  * Revision 1.14  1995/09/22  22:23:55  ylo
- * 	Changed argument list of ssh_login.
+ *      Changed argument list of ssh_login.
  *
  * Revision 1.13  1995/09/21  17:13:47  ylo
- * 	Don't print "Connection closed" if -q.
+ *      Don't print "Connection closed" if -q.
  *
  * Revision 1.12  1995/09/13  12:03:37  ylo
- * 	Fixed rhosts authentication.
- * 	Moved channel_prepare_select to the correct location (should
- * 	fix channel closes being reported only after a keypress).
+ *      Fixed rhosts authentication.
+ *      Moved channel_prepare_select to the correct location (should
+ *      fix channel closes being reported only after a keypress).
  *
  * Revision 1.11  1995/09/10  22:47:34  ylo
- * 	Added uidswap stuff (fixes security problems).  Changed to use
- * 	original_real_uid instead of getuid in various places.
- * 	#ifdef'd some SIGWINCH stuff.
+ *      Added uidswap stuff (fixes security problems).  Changed to use
+ *      original_real_uid instead of getuid in various places.
+ *      #ifdef'd some SIGWINCH stuff.
  *
  * Revision 1.10  1995/09/09  21:26:45  ylo
  * /m/shadows/u2/users/ylo/ssh/README
  *
  * Revision 1.9  1995/08/31  09:23:32  ylo
- * 	Copy struct pw.
+ *      Copy struct pw.
  *
  * Revision 1.8  1995/08/29  22:33:24  ylo
- * 	Clear IEXTEN when going to raw mode.
+ *      Clear IEXTEN when going to raw mode.
  *
  * Revision 1.7  1995/08/21  23:28:32  ylo
- * 	Added -q.
- * 	Added dummy syslog facility argument to log_init.
+ *      Added -q.
+ *      Added dummy syslog facility argument to log_init.
  *
  * Revision 1.6  1995/08/18  22:56:33  ylo
- * 	Clarified some error messages.
+ *      Clarified some error messages.
  *
  * Revision 1.5  1995/07/27  00:40:34  ylo
- * 	Added GlobalKnownHostsFile and UserKnownHostsFile.
+ *      Added GlobalKnownHostsFile and UserKnownHostsFile.
  *
  * Revision 1.4  1995/07/26  23:15:25  ylo
- * 	Removed include version.h.
+ *      Removed include version.h.
  *
  * Revision 1.3  1995/07/15  13:27:56  ylo
- * 	Fixed a typo in usage().
- * 	Moved -l in running rsh after the host.
+ *      Fixed a typo in usage().
+ *      Moved -l in running rsh after the host.
  *
  * Revision 1.2  1995/07/13  01:40:03  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
+ *      Removed "Last modified" header.
+ *      Added cvs log.
  *
  * $Endlog$
  */
@@ -287,21 +295,21 @@ void usage(void)
   fprintf(stderr, "  -e char     Set escape character; ``none'' = disable (default: ~).\n");
   fprintf(stderr, "  -c cipher   Select encryption algorithm: "
 #ifdef WITH_DES
-	  "``des'', "
+          "``des'', "
 #endif /* WITH_DES */
 #ifdef WITH_ARCFOUR
-	  "``arcfour'', "
+          "``arcfour'', "
 #endif /* WITH_ARCFOUR */
 #ifdef WITH_NONE
-	  "``none'', "
+          "``none'', "
 #endif /* WITH_NONE */
 #ifdef WITH_IDEA
-	  "``idea'', "
+          "``idea'', "
 #endif /* WITH_IDEA */
 #ifdef WITH_BLOWFISH
-	  "``blowfish'', "
+          "``blowfish'', "
 #endif /* WITH_BLOWFISH */
-	  "``3des''\n");
+          "``3des''\n");
   fprintf(stderr, "  -p port     Connect to this port.  Server must be on the same port.\n");
   fprintf(stderr, "  -P          Don't use privileged source port.\n");
 #ifndef SSH_NO_PORT_FORWARDING
@@ -331,7 +339,7 @@ void rsh_connect(char *host, char *user, Buffer *command)
 
   /* Switch to the original uid permanently. */
   if (setuid(getuid()) < 0)
-    fatal("setuid: %s", strerror(errno));
+    fatal("setuid: %.100s", strerror(errno));
 
   /* Compute the full path of the suitable rsh/rlogin program. */
   if (strchr(av0, '/'))
@@ -343,7 +351,7 @@ void rsh_connect(char *host, char *user, Buffer *command)
       strncpy(rsh_program_name, RSH_PATH, sizeof(rsh_program_name));
       rsh_program_name[sizeof(rsh_program_name) - 20] = '\0';
       if (strchr(rsh_program_name, '/'))
-	*strrchr(rsh_program_name, '/') = '\0';
+        *strrchr(rsh_program_name, '/') = '\0';
       sprintf(rsh_program_name + strlen(rsh_program_name), "/rlogin");
     }
   else
@@ -374,11 +382,11 @@ void rsh_connect(char *host, char *user, Buffer *command)
   if (debug_flag)
     {
       for (i = 0; args[i]; i++)
-	{
-	  if (i != 0)
-	    fprintf(stderr, " ");
-	  fprintf(stderr, "%s", args[i]);
-	}
+        {
+          if (i != 0)
+            fprintf(stderr, " ");
+          fprintf(stderr, "%s", args[i]);
+        }
       fprintf(stderr, "\n");
     }
   execv(rsh_program_name, args);
@@ -480,203 +488,203 @@ int main(int ac, char **av)
   for (optind = 1; optind < ac; optind++)
     {
       if (av[optind][0] != '-')
-	{
-	  if (host)
-	    break;
-	  host = av[optind];
-	  
-	  /* allows 'user@host' */
-	  if(cp = strchr(host, '@')) {
-	    options.user = host;
-	    *cp++ = '\0';
-	    host = cp;
-	  }
-	  continue;
-	}
+        {
+          if (host)
+            break;
+          host = av[optind];
+          
+          /* allows 'user@host' */
+          if(cp = strchr(host, '@')) {
+            options.user = host;
+            *cp++ = '\0';
+            host = cp;
+          }
+          continue;
+        }
       opt = av[optind][1];
       if (!opt)
-	usage();
+        usage();
       if (strchr("eilcpLRo", opt)) /* options with arguments */
-	{
-	  optarg = av[optind] + 2;
-	  if (strcmp(optarg, "") == 0)
-	    {
-	      if (optind >= ac - 1)
-		usage();
-	      optarg = av[++optind];
-	    }
-	}
+        {
+          optarg = av[optind] + 2;
+          if (strcmp(optarg, "") == 0)
+            {
+              if (optind >= ac - 1)
+                usage();
+              optarg = av[++optind];
+            }
+        }
       else
-	{
-	  if (av[optind][2])
-	    usage();
-	  optarg = NULL;
-	}
+        {
+          if (av[optind][2])
+            usage();
+          optarg = NULL;
+        }
       switch (opt)
-	{
-	case 'n':
-	  stdin_null_flag = 1;
-	  break;
+        {
+        case 'n':
+          stdin_null_flag = 1;
+          break;
 
-	case 'f':
-	  fork_after_authentication_flag = 1;
-	  stdin_null_flag = 1;
-	  break;
+        case 'f':
+          fork_after_authentication_flag = 1;
+          stdin_null_flag = 1;
+          break;
 
-	case 'x':
-	  options.forward_x11 = 0;
-	  break;
+        case 'x':
+          options.forward_x11 = 0;
+          break;
 
-	case 'a':
-	  options.forward_agent = 0;
-	  break;
+        case 'a':
+          options.forward_agent = 0;
+          break;
 
-	case 'k':
-	  options.kerberos_tgt_passing = 0;
-	  break;
-	  
-	case 'i':
-	  if (userfile_stat(original_real_uid, optarg, &st) < 0)
-	    {
-	      fprintf(stderr, "Warning: Identity file %s does not exist.\n",
-		      optarg);
-	      break;
-	    }
-	  if (options.num_identity_files >= SSH_MAX_IDENTITY_FILES)
-	    fatal("Too many identity files specified (max %d)",
-		  SSH_MAX_IDENTITY_FILES);
-	  options.identity_files[options.num_identity_files++] = 
-	    xstrdup(optarg);
-	  break;
+        case 'k':
+          options.kerberos_tgt_passing = 0;
+          break;
+          
+        case 'i':
+          if (userfile_stat(original_real_uid, optarg, &st) < 0)
+            {
+              fprintf(stderr, "Warning: Identity file %s does not exist.\n",
+                      optarg);
+              break;
+            }
+          if (options.num_identity_files >= SSH_MAX_IDENTITY_FILES)
+            fatal("Too many identity files specified (max %d)",
+                  SSH_MAX_IDENTITY_FILES);
+          options.identity_files[options.num_identity_files++] = 
+            xstrdup(optarg);
+          break;
 
-	case 't':
-	  tty_flag = 1;
-	  break;
+        case 't':
+          tty_flag = 1;
+          break;
 
-	case 'V':
+        case 'V':
 #ifdef F_SECURE_COMMERCIAL
 
 #endif /* F_SECURE_COMMERCIAL */
-	  fprintf(stderr, "SSH Version %s [%s], protocol version %d.%d.\n",
-		  SSH_VERSION, HOSTTYPE, PROTOCOL_MAJOR, PROTOCOL_MINOR);
+          fprintf(stderr, "SSH Version %s [%s], protocol version %d.%d.\n",
+                  SSH_VERSION, HOSTTYPE, PROTOCOL_MAJOR, PROTOCOL_MINOR);
 #ifdef RSAREF
-	  fprintf(stderr, "Compiled with RSAREF.\n");
+          fprintf(stderr, "Compiled with RSAREF.\n");
 #else /* RSAREF */
-	  fprintf(stderr, "Standard version.  Does not use RSAREF.\n");
+          fprintf(stderr, "Standard version.  Does not use RSAREF.\n");
 #endif /* RSAREF */
-	  exit(0);
-	  
-	case 'v':
-	  debug_flag = 1;
+          exit(0);
+          
+        case 'v':
+          debug_flag = 1;
 #ifdef F_SECURE_COMMERCIAL
 
 #endif /* F_SECURE_COMMERCIAL */
-	  fprintf(stderr, "SSH Version %s [%s], protocol version %d.%d.\n",
-		  SSH_VERSION, HOSTTYPE, PROTOCOL_MAJOR, PROTOCOL_MINOR);
+          fprintf(stderr, "SSH Version %s [%s], protocol version %d.%d.\n",
+                  SSH_VERSION, HOSTTYPE, PROTOCOL_MAJOR, PROTOCOL_MINOR);
 #ifdef RSAREF
-	  fprintf(stderr, "Compiled with RSAREF.\n");
+          fprintf(stderr, "Compiled with RSAREF.\n");
 #else /* RSAREF */
-	  fprintf(stderr, "Standard version.  Does not use RSAREF.\n");
+          fprintf(stderr, "Standard version.  Does not use RSAREF.\n");
 #endif /* RSAREF */
-	  break;
+          break;
 
-	case 'q':
-	  quiet_flag = 1;
-	  break;
+        case 'q':
+          quiet_flag = 1;
+          break;
 
-	case 'e':
-	  if (optarg[0] == '^' && optarg[2] == 0 &&
-	      (unsigned char)optarg[1] >= 64 && (unsigned char)optarg[1] < 128)
-	    options.escape_char = (unsigned char)optarg[1] & 31;
-	  else
-	    if (strlen(optarg) == 1)
-	      options.escape_char = (unsigned char)optarg[0];
-	    else
-	      if (strcmp(optarg, "none") == 0)
-		options.escape_char = -2;
-	      else
-		{
-		  fprintf(stderr, "Bad escape character '%s'.\n", optarg);
-		  exit(1);
-		}
-	  break;
+        case 'e':
+          if (optarg[0] == '^' && optarg[2] == 0 &&
+              (unsigned char)optarg[1] >= 64 && (unsigned char)optarg[1] < 128)
+            options.escape_char = (unsigned char)optarg[1] & 31;
+          else
+            if (strlen(optarg) == 1)
+              options.escape_char = (unsigned char)optarg[0];
+            else
+              if (strcmp(optarg, "none") == 0)
+                options.escape_char = -2;
+              else
+                {
+                  fprintf(stderr, "Bad escape character '%s'.\n", optarg);
+                  exit(1);
+                }
+          break;
 
-	case 'c':
-	  options.cipher = cipher_number(optarg);
-	  if (options.cipher == -1)
-	    {
-	      fprintf(stderr, "Unknown cipher type '%s'\n", optarg);
-	      exit(1);
-	    }
-	  break;
+        case 'c':
+          options.cipher = cipher_number(optarg);
+          if (options.cipher == -1)
+            {
+              fprintf(stderr, "Unknown cipher type '%s'\n", optarg);
+              exit(1);
+            }
+          break;
 
-	case 'p':
-	  options.port = atoi(optarg);
-	  if (options.port < 1 || options.port > 65535)
-	    {
-	      fprintf(stderr, "Bad port %s.\n", optarg);
-	      exit(1);
-	    }
-	  break;
+        case 'p':
+          options.port = atoi(optarg);
+          if (options.port < 1 || options.port > 65535)
+            {
+              fprintf(stderr, "Bad port %s.\n", optarg);
+              exit(1);
+            }
+          break;
 
-	case 'l':
-	  options.user = optarg;
-	  break;
+        case 'l':
+          options.user = optarg;
+          break;
 
-	case 'R':
+        case 'R':
 #ifndef SSH_NO_PORT_FORWARDING
-	  if (sscanf(optarg, "%d:%255[^:]:%d", &fwd_port, buf, 
-		     &fwd_host_port) != 3)
-	    {
-	      fprintf(stderr, "Bad forwarding specification '%s'.\n", optarg);
-	      usage();
-	      /*NOTREACHED*/
-	    }
-	  add_remote_forward(&options, fwd_port, buf, fwd_host_port);
+          if (sscanf(optarg, "%d:%255[^:]:%d", &fwd_port, buf, 
+                     &fwd_host_port) != 3)
+            {
+              fprintf(stderr, "Bad forwarding specification '%s'.\n", optarg);
+              usage();
+              /*NOTREACHED*/
+            }
+          add_remote_forward(&options, fwd_port, buf, fwd_host_port);
 #endif
-	  break;
+          break;
 
-	case 'L':
+        case 'L':
 #ifndef SSH_NO_PORT_FORWARDING
-	  if (sscanf(optarg, "%d:%255[^:]:%d", &fwd_port, buf, 
-		     &fwd_host_port) != 3)
-	    {
-	      fprintf(stderr, "Bad forwarding specification '%s'.\n", optarg);
-	      usage();
-	      /*NOTREACHED*/
-	    }
-	  add_local_forward(&options, fwd_port, buf, fwd_host_port);
+          if (sscanf(optarg, "%d:%255[^:]:%d", &fwd_port, buf, 
+                     &fwd_host_port) != 3)
+            {
+              fprintf(stderr, "Bad forwarding specification '%s'.\n", optarg);
+              usage();
+              /*NOTREACHED*/
+            }
+          add_local_forward(&options, fwd_port, buf, fwd_host_port);
 #endif
-	  break;
+          break;
 
-	case 'C':
-	  options.compression = 1;
-	  break;
+        case 'C':
+          options.compression = 1;
+          break;
 
-	case 'o':
-	  dummy = 1;
-	  process_config_line(&options, host ? host : "", optarg,
-			      "command-line", 0, &dummy);
-	  break;
+        case 'o':
+          dummy = 1;
+          process_config_line(&options, host ? host : "", optarg,
+                              "command-line", 0, &dummy);
+          break;
 
-	case '8':
-	  /* Ssh is always 8-bit-clean.  This option is only
-	     recognized for backwards compatibility with ssh, and is
-	     passed to rsh/rlogin if falling back to them. */
-	  binary_clean_flag = 1;
-	  break;
+        case '8':
+          /* Ssh is always 8-bit-clean.  This option is only
+             recognized for backwards compatibility with ssh, and is
+             passed to rsh/rlogin if falling back to them. */
+          binary_clean_flag = 1;
+          break;
 
-	case 'P':
-	  use_privileged_port = 0;
-	  break;
+        case 'P':
+          use_privileged_port = 0;
+          break;
 
-	case 'g':
-	  options.gateway_ports = 1;
-	  break;
+        case 'g':
+          options.gateway_ports = 1;
+          break;
 
-	default:
-	  usage();
-	}
+        default:
+          usage();
+        }
     }
 
  /* Check that we got a host name. */
@@ -698,11 +706,11 @@ int main(int ac, char **av)
     {
       /* A command has been specified.  Store it into the buffer. */
       for (i = optind; i < ac; i++)
-	{
-	  if (i > optind)
-	    buffer_append(&command, " ", 1);
-	  buffer_append(&command, av[i], strlen(av[i]));
-	}
+        {
+          if (i > optind)
+            buffer_append(&command, " ", 1);
+          buffer_append(&command, av[i], strlen(av[i]));
+        }
     }
 
   /* Cannot fork to background if no command. */
@@ -717,7 +725,7 @@ int main(int ac, char **av)
   if (!isatty(fileno(stdin)))
     {
       if (tty_flag)
-	fprintf(stderr, "Pseudo-terminal will not be allocated because stdin is not a terminal.\n");
+        fprintf(stderr, "Pseudo-terminal will not be allocated because stdin is not a terminal.\n");
       tty_flag = 0;
     }
 
@@ -726,7 +734,7 @@ int main(int ac, char **av)
   log_init(av[0], 1, debug_flag, quiet_flag, SYSLOG_FACILITY_USER);
 
   /* Read per-user configuration file. */
-  sprintf(buf, "%.100s/%s", pw->pw_dir, SSH_USER_CONFFILE);
+  snprintf(buf, sizeof(buf), "%.100s/%.100s", pw->pw_dir, SSH_USER_CONFFILE);
   read_config_file(original_real_uid, buf, host, &options);
 
   /* Read systemwide configuration file. */
@@ -739,13 +747,22 @@ int main(int ac, char **av)
       options.no_user_given = 1;
       options.user = xstrdup(pw->pw_name);
     }
-
+  
   if (options.hostname != NULL)
     host = options.hostname;
 
   /* Limit the hostname and username length to 255 characters */
   if (strlen(host) > 255 || strlen(options.user) > 255)
     fatal("Hostname or username is longer than 255 characters.");
+
+  /* Disable kerberos, if client is suid */
+  if (original_real_uid != original_effective_uid)
+    {
+      if (options.kerberos_authentication || options.kerberos_tgt_passing)
+        log_msg("Warning: Kerberos authentication disabled in SUID client.");
+      options.kerberos_authentication = 0;
+      options.kerberos_tgt_passing = 0;
+    }
 
   /* Disable rhosts authentication if not running as root. */
   if (original_effective_uid != UID_ROOT)
@@ -777,26 +794,26 @@ int main(int ac, char **av)
      yet used by this call, although a pointer to it is stored, and thus it
      need not be initialized. */
   ok = ssh_connect(host, options.port, options.connection_attempts,
-		   !use_privileged_port,
-		   original_real_uid, options.proxy_command, &random_state);
+                   !use_privileged_port,
+                   original_real_uid, options.proxy_command, &random_state);
 
   /* Check if the connection failed, and try "rsh" if appropriate. */
   if (!ok)
     {
       userfile_uninit();
       if (options.port != 0)
-	log_msg("Secure connection to %.100s on port %d refused%s.", 
-	    host, options.port,
-	    options.fallback_to_rsh ? "; reverting to insecure method" : "");
+        log_msg("Secure connection to %.100s on port %d refused%.100s.", 
+            host, options.port,
+            options.fallback_to_rsh ? "; reverting to insecure method" : "");
       else
-	log_msg("Secure connection to %.100s refused%s.", host,
-	    options.fallback_to_rsh ? "; reverting to insecure method" : "");
+        log_msg("Secure connection to %.100s refused%.100s.", host,
+            options.fallback_to_rsh ? "; reverting to insecure method" : "");
 
       if (options.fallback_to_rsh)
-	{
-	  rsh_connect(host, options.user, &command);
-	  fatal("rsh_connect returned");
-	}
+        {
+          rsh_connect(host, options.user, &command);
+          fatal("rsh_connect returned");
+        }
       exit(1);
       /*NOTREACHED*/
     }
@@ -809,12 +826,12 @@ int main(int ac, char **av)
   if (ok)
     {
       if (load_private_key(geteuid(), HOST_KEY_FILE, "", &host_private_key, 
-			   NULL))
-	host_private_key_loaded = 1;
+                           NULL))
+        host_private_key_loaded = 1;
     }
 
   /* Create ~/.ssh directory if it doesn\'t already exist. */
-  sprintf(buf, "%.100s/%s", pw->pw_dir, SSH_USER_DIR);
+  snprintf(buf, sizeof(buf), "%.100s/%.100s", pw->pw_dir, SSH_USER_DIR);
   if (userfile_stat(original_real_uid, buf, &st) < 0)
     if (userfile_mkdir(original_real_uid, buf, 0755) < 0)
       error("Could not create directory '%.200s'.", buf);
@@ -826,14 +843,14 @@ int main(int ac, char **av)
 
   /* Expand ~ in known host file names. */
   options.system_hostfile = tilde_expand_filename(options.system_hostfile,
-						  original_real_uid);
+                                                  original_real_uid);
   options.user_hostfile = tilde_expand_filename(options.user_hostfile,
-						original_real_uid);
+                                                original_real_uid);
 
   /* Log into the remote system.  This never returns if the login fails. 
      Note: this initializes the random state, and leaves it initialized. */
   ssh_login(&random_state, host_private_key_loaded, &host_private_key, 
-	    host, &options, original_real_uid);
+            host, &options, original_real_uid);
 
   /* We no longer need the host private key.  Clear it now. */
   if (host_private_key_loaded)
@@ -845,7 +862,7 @@ int main(int ac, char **av)
       debug("Requesting compression at level %d.", options.compression_level);
 
       if (options.compression_level < 1 || options.compression_level > 9)
-	fatal("Compression level must be from 1 (fast) to 9 (slow, best).");
+        fatal("Compression level must be from 1 (fast) to 9 (slow, best).");
 
       /* Send the request. */
       packet_start(SSH_CMSG_REQUEST_COMPRESSION);
@@ -854,12 +871,12 @@ int main(int ac, char **av)
       packet_write_wait();
       type = packet_read();
       if (type == SSH_SMSG_SUCCESS)
-	packet_start_compression(options.compression_level);
+        packet_start_compression(options.compression_level);
       else
-	{
-	  packet_get_all();
-	  log_msg("Warning: Remote host refused compression.");
-	}
+        {
+          packet_get_all();
+          log_msg("Warning: Remote host refused compression.");
+        }
     }
 
   /* Allocate a pseudo tty if appropriate. */
@@ -874,13 +891,13 @@ int main(int ac, char **av)
          string. */
       cp = getenv("TERM");
       if (!cp)
-	cp = "";
+        cp = "";
       packet_put_string(cp, strlen(cp));
 
       /* Store window size in the packet. */
 #ifdef SIGWINCH
       if (ioctl(fileno(stdin), TIOCGWINSZ, &ws) < 0)
-	memset(&ws, 0, sizeof(ws));
+        memset(&ws, 0, sizeof(ws));
       packet_put_int(ws.ws_row);
       packet_put_int(ws.ws_col);
       packet_put_int(ws.ws_xpixel);
@@ -902,12 +919,12 @@ int main(int ac, char **av)
       /* Read response from the server. */
       type = packet_read();
       if (type == SSH_SMSG_SUCCESS)
-	interactive = 1;
+        interactive = 1;
       else
-	{
-	  packet_get_all();
-	  log_msg("Warning: Remote host failed or refused to allocate a pseudo tty.");
-	}
+        {
+          packet_get_all();
+          log_msg("Warning: Remote host failed or refused to allocate a pseudo tty.");
+        }
     }
 
 #ifndef SSH_NO_X11_FORWARDING
@@ -920,49 +937,49 @@ int main(int ac, char **av)
 
 #ifdef XAUTH_PATH
       /* Try to get Xauthority information for the display. */
-      sprintf(line, "%.100s list %.200s 2>/dev/null", 
-	      options.xauth_path, getenv("DISPLAY"));
+      snprintf(line, sizeof(line), "%.100s list %.200s 2>/dev/null", 
+              options.xauth_path, getenv("DISPLAY"));
       /* Note that we are already running on the user's uid. */
       uf = userfile_popen(original_real_uid, line, "r");
       if (uf && userfile_gets(line, sizeof(line), uf) && 
-	  sscanf(line, "%*s %s %s", proto, data) == 2)
-	got_data = 1;
+          sscanf(line, "%*s %s %s", proto, data) == 2)
+        got_data = 1;
       else
-	debug("Failed to get local xauth data.");
+        debug("Failed to get local xauth data.");
       if (uf)
-	userfile_pclose(uf);
+        userfile_pclose(uf);
 #else /* XAUTH_PATH */
       debug("No xauth data: no xauth program was found at configure time.");
 #endif /* XAUTH_PATH */
       /* If we didn't get authentication data, just make up some data.  The
-	 forwarding code will check the validity of the response anyway, and
-	 substitute this data.  The X11 server, however, will ignore this
-	 fake data and use whatever authentication mechanisms it was using
-	 otherwise for the local connection. */
+         forwarding code will check the validity of the response anyway, and
+         substitute this data.  The X11 server, however, will ignore this
+         fake data and use whatever authentication mechanisms it was using
+         otherwise for the local connection. */
       if (!got_data)
-	{
-	  strcpy(proto, "MIT-MAGIC-COOKIE-1");
-	  for (i = 0; i < 16; i++)
-	    sprintf(data + 2 * i, "%02x", random_get_byte(&random_state));
-	}
+        {
+          strcpy(proto, "MIT-MAGIC-COOKIE-1");
+          for (i = 0; i < 16; i++)
+            sprintf(data + 2 * i, "%02x", random_get_byte(&random_state));
+        }
 
       /* Got local authentication reasonable information.  Request forwarding
-	 with authentication spoofing. */
+         with authentication spoofing. */
       debug("Requesting X11 forwarding with authentication spoofing.");
       x11_request_forwarding_with_spoofing(&random_state, proto, data);
 
       /* Read response from the server. */
       type = packet_read();
       if (type == SSH_SMSG_SUCCESS)
-	{
-	  forwarded = 1;
-	  interactive = 1;
-	}
+        {
+          forwarded = 1;
+          interactive = 1;
+        }
       else
-	{
-	  packet_get_all();
-	  log_msg("Warning: Remote host denied X11 forwarding, perhaps xauth program could not be run on the server side.");
-	}
+        {
+          packet_get_all();
+          log_msg("Warning: Remote host denied X11 forwarding, perhaps xauth program could not be run on the server side.");
+        }
     }
 #endif /* SSH_NO_X11_FORWARDING */
 
@@ -974,15 +991,15 @@ int main(int ac, char **av)
       /* Clear agent forwarding if we don\'t have an agent. */
       authfd = ssh_get_authentication_fd();
       if (authfd == -1)
-	options.forward_agent = 0;
+        options.forward_agent = 0;
       else
-	close(authfd);
+        close(authfd);
       if ((emulation_information & EMULATE_OLD_AGENT_BUG) &&
-	  options.forward_agent)
-	{
-	  log_msg("Warning: Denied agent forwarding because the other end has too old version.");
-	  options.forward_agent = 0;
-	}
+          options.forward_agent)
+        {
+          log_msg("Warning: Denied agent forwarding because the other end has too old version.");
+          options.forward_agent = 0;
+        }
     }
   
   /* Request authentication agent forwarding if appropriate. */
@@ -994,10 +1011,10 @@ int main(int ac, char **av)
       /* Read response from the server. */
       type = packet_read();
       if (type != SSH_SMSG_SUCCESS)
-	{
-	  packet_get_all();
-	  log_msg("Warning: Remote host denied authentication agent forwarding.");
-	}
+        {
+          packet_get_all();
+          log_msg("Warning: Remote host denied authentication agent forwarding.");
+        }
     }
 
 #ifndef SSH_NO_PORT_FORWARDING
@@ -1005,23 +1022,23 @@ int main(int ac, char **av)
   for (i = 0; i < options.num_local_forwards; i++)
     {
       debug("Connections to local port %d forwarded to remote address %.200s:%d",
-	    options.local_forwards[i].port, options.local_forwards[i].host, 
-	    options.local_forwards[i].host_port);
+            options.local_forwards[i].port, options.local_forwards[i].host, 
+            options.local_forwards[i].host_port);
       channel_request_local_forwarding(options.local_forwards[i].port,
-				       options.local_forwards[i].host,
-				       options.local_forwards[i].host_port,
-				       options.gateway_ports);
+                                       options.local_forwards[i].host,
+                                       options.local_forwards[i].host_port,
+                                       options.gateway_ports);
     }
 
   /* Initiate remote TCP/IP port forwardings. */
   for (i = 0; i < options.num_remote_forwards; i++)
     {
       debug("Connections to remote port %d forwarded to local address %.200s:%d",
-	    options.remote_forwards[i].port, options.remote_forwards[i].host, 
-	    options.remote_forwards[i].host_port);
+            options.remote_forwards[i].port, options.remote_forwards[i].host, 
+            options.remote_forwards[i].host_port);
       channel_request_remote_forwarding(options.remote_forwards[i].port,
-					options.remote_forwards[i].host,
-					options.remote_forwards[i].host_port);
+                                        options.remote_forwards[i].host,
+                                        options.remote_forwards[i].host_port);
     }
 #endif /* SSH_NO_PORT_FORWARDING */
 
@@ -1034,9 +1051,9 @@ int main(int ac, char **av)
     {
       int ret = fork();
       if (ret == -1)
-	fatal("fork failed: %.100s", strerror(errno));
+        fatal("fork failed: %.100s", strerror(errno));
       if (ret != 0)
-	exit(0);
+        exit(0);
 #ifdef HAVE_SETSID
       setsid();
 #else /* HAVE_SETSID */
@@ -1046,9 +1063,9 @@ int main(int ac, char **av)
       setpgrp(0, 0);
 #endif /* HAVE_SETPGID */
 #endif /* HAVE_SETSID */
-      if(tty_flag) {	/* user did combination of -f and -t */
+      if(tty_flag) {    /* user did combination of -f and -t */
         debug("Stopped using local pty.");
-        tty_flag = 0;	/* no longer have a tty... */
+        tty_flag = 0;   /* no longer have a tty... */
       }
     }
 
@@ -1058,7 +1075,7 @@ int main(int ac, char **av)
     {
       int len = buffer_len(&command);
       if (len > 900)
-	len = 900;
+        len = 900;
       debug("Sending command: %.*s", len, buffer_ptr(&command));
       packet_start(SSH_CMSG_EXEC_CMD);
       packet_put_string(buffer_ptr(&command), buffer_len(&command));

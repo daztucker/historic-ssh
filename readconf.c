@@ -14,8 +14,14 @@ Functions for reading the configuration files.
 */
 
 /*
- * $Id: readconf.c,v 1.3 1995/07/27 00:39:00 ylo Exp $
+ * $Id: readconf.c,v 1.5 1995/09/06 19:52:36 ylo Exp $
  * $Log: readconf.c,v $
+ * Revision 1.5  1995/09/06  19:52:36  ylo
+ * 	Fixed spelling of fascist.
+ *
+ * Revision 1.4  1995/08/21  23:25:55  ylo
+ * 	Minor cleanup.
+ *
  * Revision 1.3  1995/07/27  00:39:00  ylo
  * 	Added GlobalKnownHostsFile and UserKnownHostsFile.
  *
@@ -54,7 +60,7 @@ Functions for reading the configuration files.
      RemoteForward 9999 shadows.cs.hut.fi:9999
      Cipher 3des
 
-   Host facist.blob.com
+   Host fascist.blob.com
      Port 23123
      User tylonen
      RhostsAuthentication no
@@ -106,10 +112,10 @@ typedef enum
 
 /* Textual representations of the tokens. */
 
-struct
+static struct
 {
   const char *name;
-  int opcode;
+  OpCodes opcode;
 } keywords[] =
 {
   { "ForwardAgent", oForwardAgent },
@@ -172,12 +178,14 @@ void add_remote_forward(Options *options, int port, const char *host,
 /* Returns the number of the token pointed to by cp of length len.
    Never returns if the token is not known. */
 
-static int parse_token(const char *cp, const char *filename, int linenum)
+static OpCodes parse_token(const char *cp, const char *filename, int linenum)
 {
-  int i;
+  unsigned int i;
+
   for (i = 0; keywords[i].name; i++)
     if (strcmp(cp, keywords[i].name) == 0)
       return keywords[i].opcode;
+
   fatal("%.200s line %d: Bad configuration option: %.100s", 
 	filename, linenum, cp);
   /*NOTREACHED*/
@@ -196,7 +204,7 @@ void process_config_line(Options *options, const char *host,
 
   /* Skip leading whitespace. */
   cp = line + strspn(line, WHITESPACE);
-  if (!*cp || *cp == '\n' || *cp == '#' || !*cp)
+  if (!*cp || *cp == '\n' || *cp == '#')
     return;
 
   /* Get the keyword. (Each line is supposed to begin with a keyword). */

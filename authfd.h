@@ -14,8 +14,12 @@ Functions to interface with the SSH_AUTHENTICATION_FD socket.
 */
 
 /*
- * $Id: authfd.h,v 1.4 1996/10/20 16:24:39 ttsalo Exp $
+ * $Id: authfd.h,v 1.5 1997/03/26 07:01:19 kivinen Exp $
  * $Log: authfd.h,v $
+ * Revision 1.5  1997/03/26 07:01:19  kivinen
+ * 	Removed ssh_close_authentication function.
+ * 	Fixed prototypes.
+ *
  * Revision 1.4  1996/10/20 16:24:39  ttsalo
  *      Removed ssh_close_authentication_socket
  *
@@ -75,17 +79,17 @@ typedef struct
 } AuthenticationConnection;
 
 /* Returns the authentication fd or -1 if there is none. */
-int ssh_get_authentication_fd();
+int ssh_get_authentication_fd(void);
 
 /* Opens a socket to the authentication server.  Returns the number of
    that socket, or -1 if no connection could be made. */
-int ssh_get_authentication_connection_fd();
+int ssh_get_authentication_connection_fd(void);
 
 /* Opens and connects a private socket for communication with the
    authentication agent.  Returns NULL if an error occurred and the 
    connection could not be opened.  The connection should be closed by
    the caller by calling ssh_close_authentication_connection(). */
-AuthenticationConnection *ssh_get_authentication_connection();
+AuthenticationConnection *ssh_get_authentication_connection(void);
 
 /* Closes the connection to the authentication agent and frees any associated
    memory. */
@@ -129,8 +133,5 @@ int ssh_remove_identity(AuthenticationConnection *connection,
    meant to be used by normal applications.  This returns true if the
    operation was successful. */
 int ssh_remove_all_identities(AuthenticationConnection *connection);
-
-/* Closes the connection to the authentication agent. */
-void ssh_close_authentication(AuthenticationConnection *connection);
 
 #endif /* AUTHFD_H */

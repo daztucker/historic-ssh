@@ -14,8 +14,11 @@ RSA key generation, encryption and decryption.
 */
 
 /*
- * $Id: rsa.h,v 1.2 1996/02/19 16:09:38 huima Exp $
+ * $Id: rsa.h,v 1.3 1997/03/26 07:11:51 kivinen Exp $
  * $Log: rsa.h,v $
+ * Revision 1.3  1997/03/26 07:11:51  kivinen
+ * 	Fixed prototypes.
+ *
  * Revision 1.2  1996/02/19 16:09:38  huima
  * 	Comments fixed.
  *
@@ -87,7 +90,7 @@ void rsa_public(MP_INT *output, MP_INT *input, RSAPublicKey *pub);
 
 /* Sets MP_INT memory allocation routines to ones that clear any memory
    when freed. */
-void rsa_set_mp_memory_allocation();
+void rsa_set_mp_memory_allocation(void);
 
 /* Indicates whether the rsa module is permitted to show messages on
    the terminal. */

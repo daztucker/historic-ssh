@@ -17,8 +17,11 @@ suitable code.
 */
 
 /*
- * $Id: ttymodes.c,v 1.3 1995/08/18 22:58:34 ylo Exp $
+ * $Id: ttymodes.c,v 1.4 1995/09/09 21:26:48 ylo Exp $
  * $Log: ttymodes.c,v $
+ * Revision 1.4  1995/09/09  21:26:48  ylo
+ * /m/shadows/u2/users/ylo/ssh/README
+ *
  * Revision 1.3  1995/08/18  22:58:34  ylo
  * 	Added support for NextStep.
  * 	Fixed typos with EXTB.
@@ -251,7 +254,7 @@ void tty_make_modes(int fd)
   if (tcgetattr(fd, &tio) < 0)
     {
       packet_put_char(TTY_OP_END);
-      log("tcgetattr: %s", strerror(errno));
+      log("tcgetattr: %.100s", strerror(errno));
       return;
     }
 #endif /* USING_TERMIOS */
@@ -259,32 +262,32 @@ void tty_make_modes(int fd)
   if (ioctl(fd, TIOCGETP, &tio) < 0)
     {
       packet_put_char(TTY_OP_END);
-      log("ioctl(fd, TIOCGETP, ...): %s", strerror(errno));
+      log("ioctl(fd, TIOCGETP, ...): %.100s", strerror(errno));
       return;
     }
   if (ioctl(fd, TIOCGETC, &tiotc) < 0)
     {
       packet_put_char(TTY_OP_END);
-      log("ioctl(fd, TIOCGETC, ...): %s", strerror(errno));
+      log("ioctl(fd, TIOCGETC, ...): %.100s", strerror(errno));
       return;
     }
   if (ioctl(fd, TIOCLGET, &tiolm) < 0)
     {
       packet_put_char(TTY_OP_END);
-      log("ioctl(fd, TIOCLGET, ...): %s", strerror(errno));
+      log("ioctl(fd, TIOCLGET, ...): %.100s", strerror(errno));
       return;
     }
   if (ioctl(fd, TIOCGLTC, &tioltc) < 0)
     {
       packet_put_char(TTY_OP_END);
-      log("ioctl(fd, TIOCGLTC, ...): %s", strerror(errno));
+      log("ioctl(fd, TIOCGLTC, ...): %.100s", strerror(errno));
       return;
     }
 #ifdef TIOCGSTAT
   if (ioctl(fd, TIOCGSTAT, &tiots) < 0) 
     {
       packet_put_char(TTY_OP_END);
-      log("ioctl(fd, TIOCGSTAT, ...): %s", strerror(errno));
+      log("ioctl(fd, TIOCGSTAT, ...): %.100s", strerror(errno));
       return;
     }
 #endif /* TIOCGSTAT */
@@ -471,7 +474,7 @@ void tty_parse_modes(int fd)
   /* Set the new modes for the terminal. */
 #ifdef USING_TERMIOS
   if (tcsetattr(fd, TCSANOW, &tio) < 0)
-    log("Setting tty modes failed: %s", strerror(errno));
+    log("Setting tty modes failed: %.100s", strerror(errno));
 #endif /* USING_TERMIOS */
 #ifdef USING_SGTTY
   if (ioctl(fd, TIOCSETP, &tio) < 0
@@ -482,6 +485,6 @@ void tty_parse_modes(int fd)
       || ioctl(fd, TIOCSSTAT, &tiots) < 0
 #endif /* TIOCSSTAT */
      ) 
-    log("Setting tty modes failed: %s", strerror(errno));
+    log("Setting tty modes failed: %.100s", strerror(errno));
 #endif /* USING_SGTTY */
 }

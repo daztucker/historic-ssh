@@ -9,8 +9,11 @@
 
 */
 /*
- * $Id: auth-kerberos.c,v 1.2 1997/04/17 03:56:51 kivinen Exp $
+ * $Id: auth-kerberos.c,v 1.3 1998/01/02 06:13:56 kivinen Exp $
  * $Log: auth-kerberos.c,v $
+ * Revision 1.3  1998/01/02 06:13:56  kivinen
+ * 	Fixed kerberos ticket allocation.
+ *
  * Revision 1.2  1997/04/17 03:56:51  kivinen
  * 	Kept FILE: prefix in kerberos ticket filename as DCE cache
  * 	code requires it (patch from Doug Engert <DEEngert@anl.gov>).
@@ -230,7 +233,7 @@ int auth_kerberos_tgt( char *server_user, krb5_data *krb5data)
   if (retval = chown(ccname+5, pwd->pw_uid, -1))
     goto errout;
   
-  ticket = xmalloc(strlen(ccname + 5) + 1);
+  ticket = xmalloc(strlen(ccname) + 1);
   (void) sprintf(ticket, "%s", ccname);
   
   /* Successful */

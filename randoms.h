@@ -2,10 +2,11 @@
 
 random.h
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Sat Mar  4 14:49:05 1995 ylo
 
@@ -14,17 +15,20 @@ Cryptographically strong random number generator.
 */
 
 /*
- * $Id: randoms.h,v 1.1.1.1 1996/02/18 21:38:10 ylo Exp $
+ * $Id: randoms.h,v 1.2 1999/11/17 17:04:50 tri Exp $
  * $Log: randoms.h,v $
+ * Revision 1.2  1999/11/17 17:04:50  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.1.1.1  1996/02/18 21:38:10  ylo
- * 	Imported ssh-1.2.13.
+ *      Imported ssh-1.2.13.
  *
  * Revision 1.3  1995/09/13  12:00:02  ylo
- * 	Changes to make this work on Cray.
+ *      Changes to make this work on Cray.
  *
  * Revision 1.2  1995/07/13  01:29:28  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
+ *      Removed "Last modified" header.
+ *      Added cvs log.
  *
  * $Endlog$
  */
@@ -34,17 +38,17 @@ Cryptographically strong random number generator.
 
 #include "md5.h"
 
-#define RANDOM_STATE_BITS	8192
-#define RANDOM_STATE_BYTES	(RANDOM_STATE_BITS / 8)
+#define RANDOM_STATE_BITS       8192
+#define RANDOM_STATE_BYTES      (RANDOM_STATE_BITS / 8)
 
 /* Structure for the random state. */
 typedef struct
 {
   unsigned char state[RANDOM_STATE_BYTES];/* Pool of random data. */
-  unsigned char stir_key[64];		/* Extra data for next stirring. */
-  unsigned int next_available_byte;	/* Index of next available byte. */
-  unsigned int add_position;		/* Index to add noise. */
-  time_t last_dev_random_usage;		/* Time of last /dev/random usage. */
+  unsigned char stir_key[64];           /* Extra data for next stirring. */
+  unsigned int next_available_byte;     /* Index of next available byte. */
+  unsigned int add_position;            /* Index to add noise. */
+  time_t last_dev_random_usage;         /* Time of last /dev/random usage. */
 } RandomState;
 
 /* Initializes the random number generator, loads any random information
@@ -69,7 +73,7 @@ void random_acquire_light_environmental_noise(RandomState *state);
    random_stir should be called after this.  The command will be called
    with the given uid via userfile. */
 void random_get_noise_from_command(RandomState *state, uid_t uid,
-				   const char *cmd);
+                                   const char *cmd);
 
 /* Adds the contents of the buffer as noise.  random_stir should be called
    after this. */

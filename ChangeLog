@@ -1,3 +1,47 @@
+Sun Apr  6 00:41:55 1997  Tero Kivinen  <kivinen@ssh.fi>
+
+	* gmp: Added -Wa,+DA1.1 to SFLAGS on hppa1.1 machines.
+	Fixed the (cd mpn; ...) > foo stuff so that it works even if
+	some brain damaged cd prints something (it does in hpsux). 
+	
+	* Removed restriction that ssh only used priviledged port if
+	server port was < 1024.
+	
+	* Added setting of allow_severity and deny_severity in ssh.c too,
+	because newchannels.c uses libwrap also. 
+	
+	* Fixed ssh-agent option parsing.
+
+	* Added -- option support in ssh-agent, patch from
+	Charles M. Hannum <mycroft@gnu.ai.mit.edu>.
+	
+	* Added closing of agent socket in parent process, patch from
+	Charles M. Hannum <mycroft@gnu.ai.mit.edu>.
+	
+	* Added check for existance of O_NOCTTY (patch from
+	KOJIMA Hajime <kjm@rins.ryukoku.ac.jp>).
+	
+	* Added setting of SSH_AGENT_PID when running command too. 
+
+	* Fixed ssh-add SECURE_RPC support, so it will work even if no
+	passphrase is found. 
+	
+	* Fixed closing of pty, and changed it to use shutdown first and
+	close the pty only after pty have been released, patch from
+	Charles M. Hannum <mycroft@gnu.ai.mit.edu>. 
+	
+	* Fixed typo on allow_tcp_forwarding code.
+	
+	* Fixed the quoting of ' character in readpass.
+	
+	* Added check for $HOME/MailBox as mail spool file in configure.
+	
+	* Fixed kerberos patches (KRB5 define, error_code, -lcom_err and
+	unbalanced } in sshconnect.c). 
+	
+	* Changed make install so it will rename old ssh to ssh.old and 
+	then install new version. 
+
 Thu Mar 27 04:49:50 1997  Tero Kivinen  <kivinen@ssh.fi>
 
 	* Added kerberos patches from Glenn Machin <gmachin@sandia.gov>.

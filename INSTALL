@@ -120,7 +120,7 @@ This software has been used at least in the following environments.
 	Sequent Dynix/ptx 3.2.0 V2.1.0; i386
 	SCO Unix; i386 (client only)
 	SINIX 5.42; Mips R4000
-	Solaris 2.3, 2.4, 2.5; Sparc, i386
+	Solaris 2.3, 2.4, 2.5, 2.5.1; Sparc, i386
 	Sony NEWS-OS 3.3 (BSD 4.3); m68k
 	SunOS 4.1.1, 4.1.2, 4.1.3, 4.1.4; Sparc, Sun3
 	SysV 4.x; several platforms

@@ -8,8 +8,12 @@
 #
 # Created: Wed Mar 22 17:37:49 1995 ylo
 #
-# $Id: Makefile.in,v 1.30 1997/03/27 05:59:25 kivinen Exp $
+# $Id: Makefile.in,v 1.31 1997/04/05 21:43:50 kivinen Exp $
 # $Log: Makefile.in,v $
+# Revision 1.31  1997/04/05 21:43:50  kivinen
+# 	Changed make install so it will rename old ssh to ssh.old and
+# 	then install new version.
+#
 # Revision 1.30  1997/03/27 05:59:25  kivinen
 # 	Added LIBS to XLIBS.
 #
@@ -431,6 +435,9 @@ hostinstall: $(PROGRAMS) make-dirs generate-host-key install-configs
 # bound to a non-privileged port).  Also, password authentication may
 # not be available if non-root and using shadow passwords.
 install: $(PROGRAMS) make-dirs generate-host-key install-configs
+	-rm -f $(install_prefix)$(bindir)/ssh.old
+	-mv $(install_prefix)$(bindir)/ssh $(install_prefix)$(bindir)/ssh.old
+	-chmod 755 $(install_prefix)$(bindir)/ssh.old
 	$(INSTALL_PROGRAM) -o root -m $(SSH_INSTALL_MODE) ssh $(install_prefix)$(bindir)/ssh
 	-if test "`echo ssh | sed '$(transform)'`" '!=' ssh; then \
 	  rm -f $(install_prefix)$(bindir)/`echo ssh | sed '$(transform)'`; \
@@ -443,6 +450,8 @@ install: $(PROGRAMS) make-dirs generate-host-key install-configs
 	  $(LN_S) ssh \
 	    $(install_prefix)$(bindir)/`echo slogin | sed '$(transform)'`; fi
 	-for p in $(NORMAL_PROGRAMS) $(X_PROGRAMS); do \
+	  rm -f $(install_prefix)$(bindir)/$$p.old ; \
+	  mv $(install_prefix)$(bindir)/$$p $(install_prefix)$(bindir)/$$p.old; \
 	  $(INSTALL_PROGRAM) -m 0755 $$p $(install_prefix)$(bindir)/$$p; \
 	  if test "`echo $$p | sed '$(transform)'`" '!=' $$p; then \
 	    rm -f $(install_prefix)$(bindir)/`echo $$p | sed '$(transform)'`; \
@@ -450,6 +459,8 @@ install: $(PROGRAMS) make-dirs generate-host-key install-configs
 	      $(install_prefix)$(bindir)/`echo $$p | sed '$(transform)'`; fi; \
 	done
 	-for p in $(SCRIPT_PROGRAMS); do \
+	  rm -f $(install_prefix)$(bindir)/$$p.old ; \
+	  mv $(install_prefix)$(bindir)/$$p $(install_prefix)$(bindir)/$$p.old; \
 	  $(INSTALL_DATA) $$p $(install_prefix)$(bindir)/$$p; \
 	  chmod 755 $(install_prefix)$(bindir)/$$p; \
 	  if test "`echo $$p | sed '$(transform)'`" '!=' $$p; then \
@@ -457,8 +468,9 @@ install: $(PROGRAMS) make-dirs generate-host-key install-configs
 	    $(LN_S) $$p \
 	      $(install_prefix)$(bindir)/`echo $$p | sed '$(transform)'`; fi; \
 	done
-	-rm -f $(install_prefix)$(bindir)/`echo sshd | sed '$(transform)'`
 	-for p in $(SBIN_PROGRAMS); do \
+	  rm -f $(install_prefix)$(sbindir)/$$p.old ; \
+	  mv $(install_prefix)$(bindir)/$$p $(install_prefix)$(sbindir)/$$p.old; \
 	  $(INSTALL_PROGRAM) -m 0755 $$p $(install_prefix)$(sbindir)/$$p; \
 	  if test "`echo $$p | sed '$(transform)'`" '!=' $$p; then \
 	    rm -f $(install_prefix)$(sbindir)/`echo $$p | sed '$(transform)'`;\

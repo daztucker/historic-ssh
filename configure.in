@@ -8,8 +8,13 @@
 #
 # Created: Wed Mar 22 18:02:48 1995 ylo
 #
-# $Id: configure.in,v 1.42 1997/03/27 03:14:52 kivinen Exp $
+# $Id: configure.in,v 1.43 1997/04/05 21:46:36 kivinen Exp $
 # $Log: configure.in,v $
+# Revision 1.43  1997/04/05 21:46:36  kivinen
+# 	Added check for $HOME/MailBox.
+# 	Added KRB5 define, added -lcom_err to KERBEROS_LIBS. Added
+# 	-lndbm to KERBEROS_LIBS if it exists.
+#
 # Revision 1.42  1997/03/27 03:14:52  kivinen
 # 	Added kerberos patches from Glenn Machin.
 # 	Added USELOGIN patches from Brian Cully.
@@ -781,9 +786,15 @@ do
       AC_DEFINE_UNQUOTED(MAIL_SPOOL_FILE, ".MailBox")
       AC_MSG_RESULT(\$HOME/.MailBox)
     else
-      AC_MSG_WARN(mail spool directory was not found: assuming you use \$HOME/newmail)
-      AC_DEFINE_UNQUOTED(MAIL_SPOOL_FILE, "newmail")
-      AC_MSG_RESULT(\$HOME/newmail)
+      if test -f $HOME/MailBox; then
+          AC_MSG_WARN(mail spool directory was not found: assuming you use \$HOME/MailBox)
+          AC_DEFINE_UNQUOTED(MAIL_SPOOL_FILE, "MailBox")
+          AC_MSG_RESULT(\$HOME/MailBox)
+      else
+          AC_MSG_WARN(mail spool directory was not found: assuming you use \$HOME/newmail)
+          AC_DEFINE_UNQUOTED(MAIL_SPOOL_FILE, "newmail")
+          AC_MSG_RESULT(\$HOME/newmail)
+      fi
     fi
   elif test -d $dir; then
     AC_DEFINE_UNQUOTED(MAIL_SPOOL_DIRECTORY, "$dir")
@@ -1126,9 +1137,11 @@ no)
 *)
   AC_MSG_RESULT(yes)
   AC_DEFINE(KERBEROS)
+  AC_DEFINE(KRB5)
   KERBEROS_ROOT="$with_kerberos5"
   KERBEROS_INCS="-I${KERBEROS_ROOT}/include"
-  KERBEROS_LIBS="-L${KERBEROS_ROOT}/lib -lkrb5 -lcrypto"
+  KERBEROS_LIBS="-L${KERBEROS_ROOT}/lib -lkrb5 -lcrypto -lcom_err"
+  AC_CHECK_LIB(ndbm, dbm_open, KERBEROS_LIBS="$KERBEROS_LIBS -lndbm")
   KERBEROS_OBJS="auth-kerberos.o"
   ;;
 esac

@@ -16,8 +16,11 @@ arbitrary tcp/ip connections, and the authentication agent connection.
 */
 
 /*
- * $Id: newchannels.c,v 1.40 1997/08/21 22:16:26 ylo Exp $
+ * $Id: newchannels.c,v 1.41 1998/01/03 06:41:38 kivinen Exp $
  * $Log: newchannels.c,v $
+ * Revision 1.41  1998/01/03 06:41:38  kivinen
+ * 	Fixed bug in allow/deny forward to host name handling.
+ *
  * Revision 1.40  1997/08/21 22:16:26  ylo
  * 	Fixed security bug with port number > 65535 in remote forwarding.
  *

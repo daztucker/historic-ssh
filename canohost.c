@@ -2,10 +2,11 @@
 
 canohost.c
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Sun Jul  2 17:52:22 1995 ylo
 
@@ -14,12 +15,15 @@ Functions for returning the canonical host name of the remote site.
 */
 
 /*
- * $Id: canohost.c,v 1.5 1999/02/21 19:51:58 ylo Exp $
+ * $Id: canohost.c,v 1.6 1999/11/17 17:04:41 tri Exp $
  * $Log: canohost.c,v $
+ * Revision 1.6  1999/11/17 17:04:41  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.5  1999/02/21 19:51:58  ylo
- * 	Intermediate commit of ssh1.2.27 stuff.
- * 	Main change is sprintf -> snprintf; however, there are also
- * 	many other changes.
+ *      Intermediate commit of ssh1.2.27 stuff.
+ *      Main change is sprintf -> snprintf; however, there are also
+ *      many other changes.
  *
  * Revision 1.4  1998/05/23 20:21:01  kivinen
  *      Changed () -> (void).

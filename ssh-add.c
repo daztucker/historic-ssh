@@ -14,39 +14,44 @@ Adds an identity to the authentication server, or removes an identity.
 */
 
 /*
- * $Id: ssh-add.c,v 1.6 1998/05/23 20:24:29 kivinen Exp $
+ * $Id: ssh-add.c,v 1.7 1999/02/21 19:52:39 ylo Exp $
  * $Log: ssh-add.c,v $
- * Revision 1.6  1998/05/23  20:24:29  kivinen
- * 	Changed () -> (void).
+ * Revision 1.7  1999/02/21 19:52:39  ylo
+ * 	Intermediate commit of ssh1.2.27 stuff.
+ * 	Main change is sprintf -> snprintf; however, there are also
+ * 	many other changes.
+ *
+ * Revision 1.6  1998/05/23 20:24:29  kivinen
+ *      Changed () -> (void).
  *
  * Revision 1.5  1997/04/17  04:18:19  kivinen
- * 	Added -p (pipe) option support.
+ *      Added -p (pipe) option support.
  *
  * Revision 1.4  1997/04/05 21:54:21  kivinen
- * 	Added check that userfile_get_des_1_magic_phrase succeeds.
+ *      Added check that userfile_get_des_1_magic_phrase succeeds.
  *
  * Revision 1.3  1997/03/19 17:37:59  kivinen
- * 	Added SECURE_RPC, SECURE_NFS and NIS_PLUS support from Andy
- * 	Polyakov <appro@fy.chalmers.se>.
+ *      Added SECURE_RPC, SECURE_NFS and NIS_PLUS support from Andy
+ *      Polyakov <appro@fy.chalmers.se>.
  *
  * Revision 1.2  1996/10/20 16:19:33  ttsalo
  *      Added global variable 'original_real_uid' and it's initialization
  *
  * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
- * 	Imported ssh-1.2.13.
+ *      Imported ssh-1.2.13.
  *
  * Revision 1.4  1995/10/02  01:27:34  ylo
- * 	Loop asking for a proper passphrase until the user aborts or
- * 	gives an empty passphrase.  (This avoids problems of
- * 	accidentally typing the wrong passphrase without noticing it
- * 	when using ssh-add from .Xsession.real.)
+ *      Loop asking for a proper passphrase until the user aborts or
+ *      gives an empty passphrase.  (This avoids problems of
+ *      accidentally typing the wrong passphrase without noticing it
+ *      when using ssh-add from .Xsession.real.)
  *
  * Revision 1.3  1995/08/29  22:24:21  ylo
- * 	Added delete_all.
+ *      Added delete_all.
  *
  * Revision 1.2  1995/07/13  01:38:15  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
+ *      Removed "Last modified" header.
+ *      Added cvs log.
  *
  * $Endlog$
  */
@@ -58,12 +63,12 @@ Adds an identity to the authentication server, or removes an identity.
 #include "xmalloc.h"
 #include "authfd.h"
 
-#define EXIT_STATUS_OK		0
-#define EXIT_STATUS_NOAGENT	1
-#define EXIT_STATUS_BADPASS	2
-#define EXIT_STATUS_NOFILE	3
-#define EXIT_STATUS_NOIDENTITY	4
-#define EXIT_STATUS_ERROR	5
+#define EXIT_STATUS_OK          0
+#define EXIT_STATUS_NOAGENT     1
+#define EXIT_STATUS_BADPASS     2
+#define EXIT_STATUS_NOFILE      3
+#define EXIT_STATUS_NOIDENTITY  4
+#define EXIT_STATUS_ERROR       5
 
 int exit_status = 0;
 
@@ -89,7 +94,7 @@ void delete_file(const char *filename)
   if (!ac)
     {
       fprintf(stderr,
-	      "Could not open a connection to your authentication agent.\n");
+              "Could not open a connection to your authentication agent.\n");
       exit_status = EXIT_STATUS_NOAGENT;
       rsa_clear_public_key(&key);
       xfree(comment);
@@ -116,7 +121,7 @@ void delete_all(void)
   if (!ac)
     {
       fprintf(stderr,
-	      "Could not open a connection to your authentication agent.\n");
+              "Could not open a connection to your authentication agent.\n");
       exit_status = EXIT_STATUS_NOAGENT;
       return;
     }
@@ -163,53 +168,54 @@ void add_file(const char *filename)
 
 #ifdef SECURE_RPC
       if (query_cnt == 0)
-	{
-	  pass = userfile_get_des_1_magic_phrase(geteuid());
-	  if (pass == NULL)
-	    pass = xstrdup("");
-	  query_cnt = 1;
-	  continue;
-	}
+        {
+          pass = userfile_get_des_1_magic_phrase(geteuid());
+          if (pass == NULL)
+            pass = xstrdup("");
+          query_cnt = 1;
+          continue;
+        }
 #else
       if (query_cnt == 0)
-	query_cnt = 1;
+        query_cnt = 1;
 #endif
       
       
       /* Ask for a passphrase. */
       if (!use_stdin && getenv("DISPLAY") && !isatty(fileno(stdin)))
-	{
-	  sprintf(buf, "ssh-askpass '%sEnter passphrase for %.100s'", 
-		  query_cnt <= 1 ? "" : "You entered wrong passphrase.  ", 
-		  saved_comment);
-	  f = popen(buf, "r");
-	  if (!fgets(buf, sizeof(buf), f))
-	    {
-	      pclose(f);
-	      xfree(saved_comment);
-	      exit_status = EXIT_STATUS_BADPASS;
-	      return;
-	    }
-	  pclose(f);
-	  if (strchr(buf, '\n'))
-	    *strchr(buf, '\n') = 0;
-	  pass = xstrdup(buf);
-	}
+        {
+          snprintf(buf, sizeof(buf),
+                   "ssh-askpass '%sEnter passphrase for %.100s'", 
+                   query_cnt <= 1 ? "" : "You entered wrong passphrase.  ", 
+                   saved_comment);
+          f = popen(buf, "r");
+          if (!fgets(buf, sizeof(buf), f))
+            {
+              pclose(f);
+              xfree(saved_comment);
+              exit_status = EXIT_STATUS_BADPASS;
+              return;
+            }
+          pclose(f);
+          if (strchr(buf, '\n'))
+            *strchr(buf, '\n') = 0;
+          pass = xstrdup(buf);
+        }
       else
-	{
-	  if (query_cnt <= 1)
-	    printf("Need passphrase for %s (%s).\n", filename, saved_comment);
-	  else
-	    printf("Bad passphrase.\n");
-	  pass = read_passphrase(geteuid(), "Enter passphrase: ", 1);
-	  if (strcmp(pass, "") == 0)
-	    {
-	      xfree(saved_comment);
-	      xfree(pass);
-	      exit_status = EXIT_STATUS_BADPASS;
-	      return;
-	    }
-	}
+        {
+          if (query_cnt <= 1)
+            printf("Need passphrase for %s (%s).\n", filename, saved_comment);
+          else
+            printf("Bad passphrase.\n");
+          pass = read_passphrase(geteuid(), "Enter passphrase: ", 1);
+          if (strcmp(pass, "") == 0)
+            {
+              xfree(saved_comment);
+              xfree(pass);
+              exit_status = EXIT_STATUS_BADPASS;
+              return;
+            }
+        }
       query_cnt++;
     }
   memset(pass, 0, strlen(pass));
@@ -222,7 +228,7 @@ void add_file(const char *filename)
   if (!ac)
     {
       fprintf(stderr,
-	      "Could not open a connection to your authentication agent.\n");
+              "Could not open a connection to your authentication agent.\n");
       exit_status = EXIT_STATUS_NOAGENT;
       rsa_clear_private_key(&key);
       xfree(comment);
@@ -290,46 +296,46 @@ int main(int ac, char **av)
   for (i = 1; i < ac; i++)
     {
       if (strcmp(av[i], "-p") == 0)
-	{
-	  use_stdin = 1;
-	  continue;
-	}
+        {
+          use_stdin = 1;
+          continue;
+        }
       if (strcmp(av[i], "-l") == 0)
-	{
-	  list_identities();
-	  no_files = 0; /* Don't default-add/delete if -l. */
-	  continue;
-	}
+        {
+          list_identities();
+          no_files = 0; /* Don't default-add/delete if -l. */
+          continue;
+        }
       if (strcmp(av[i], "-d") == 0)
-	{
-	  deleting = 1;
-	  continue;
-	}
+        {
+          deleting = 1;
+          continue;
+        }
       if (strcmp(av[i], "-D") == 0)
-	{
-	  delete_all();
-	  no_files = 0;
-	  continue;
-	}
+        {
+          delete_all();
+          no_files = 0;
+          continue;
+        }
       no_files = 0;
       if (deleting)
-	delete_file(av[i]);
+        delete_file(av[i]);
       else
-	add_file(av[i]);
+        add_file(av[i]);
     }
   if (no_files)
     {
       pw = getpwuid(getuid());
       if (!pw)
-	{
-	  fprintf(stderr, "No user found with uid %d\n", (int)getuid());
-	  exit(EXIT_STATUS_ERROR);
-	}
-      sprintf(buf, "%s/%s", pw->pw_dir, SSH_CLIENT_IDENTITY);
+        {
+          fprintf(stderr, "No user found with uid %d\n", (int)getuid());
+          exit(EXIT_STATUS_ERROR);
+        }
+      snprintf(buf, sizeof(buf), "%s/%s", pw->pw_dir, SSH_CLIENT_IDENTITY);
       if (deleting)
-	delete_file(buf);
+        delete_file(buf);
       else
-	add_file(buf);
+        add_file(buf);
     }
   exit(exit_status);
 }

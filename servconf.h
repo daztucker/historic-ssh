@@ -14,8 +14,11 @@ Definitions for server configuration data and for the functions reading it.
 */
 
 /*
- * $Id: servconf.h,v 1.9 1998/01/03 06:42:11 kivinen Exp $
+ * $Id: servconf.h,v 1.10 1998/03/27 17:00:09 kivinen Exp $
  * $Log: servconf.h,v $
+ * Revision 1.10  1998/03/27 17:00:09  kivinen
+ * 	Added IgnoreRootRhosts option.
+ *
  * Revision 1.9  1998/01/03 06:42:11  kivinen
  * 	Added allow/deny groups option.
  *
@@ -81,6 +84,8 @@ typedef struct
   int key_regeneration_time;	/* Server key lifetime (seconds). */
   int permit_root_login;	/* 0 = forced cmd only, 1 = no pwd, 2 = yes. */
   int ignore_rhosts;		/* Ignore .rhosts and .shosts. */
+  int ignore_root_rhosts;	/* Ignore .rhosts and .shosts for root,
+				   defaults to ignore_rhosts if not given. */
   int quiet_mode;		/* If true, don't log anything but fatals. */
   int fascist_logging;		/* Perform very verbose logging. */
   int print_motd;		/* If true, print /etc/motd. */

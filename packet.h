@@ -14,8 +14,17 @@ Interface for the packet protocol functions.
 */
 
 /*
- * $Id: packet.h,v 1.1.1.1 1996/02/18 21:38:10 ylo Exp $
+ * $Id: packet.h,v 1.4 1997/03/26 07:11:41 kivinen Exp $
  * $Log: packet.h,v $
+ * Revision 1.4  1997/03/26 07:11:41  kivinen
+ * 	Fixed prototypes.
+ *
+ * Revision 1.3  1997/03/19 19:26:16  kivinen
+ * 	Added packet_get_all prototype.
+ *
+ * Revision 1.2  1996/11/24 08:24:14  kivinen
+ * 	Fixed the comment of packet_send_debug.
+ *
  * Revision 1.1.1.1  1996/02/18 21:38:10  ylo
  * 	Imported ssh-1.2.13.
  *
@@ -137,6 +146,9 @@ void packet_get_mp_int(MP_INT *value);
    integer into which the length of the string is stored. */
 char *packet_get_string(unsigned int *length_ptr);
 
+/* Clears incoming data buffer */
+void packet_get_all(void);
+     
 /* Logs the error in syslog using LOG_INFO, constructs and sends a disconnect
    packet, closes the connection, and exits.  This function never returns.
    The error message should not contain a newline.  The total length of the
@@ -146,11 +158,12 @@ void packet_disconnect(const char *fmt, ...);
 /* Sends a diagnostic message to the other side.  This message
    can be sent at any time (but not while constructing another message).
    The message is printed immediately, but only if the client is being
-   executed in verbose mode.  These messages are primarily intended to
-   ease debugging authentication problems.  The total length of the message
-   must not exceed 1024 bytes.  This will automatically call
-   packet_write_wait.  If the remote side protocol flags do not indicate
-   that it supports SSH_MSG_DEBUG, this will do nothing. */
+   executed in verbose mode. If the first character of the message is '*'
+   the message is printed to stderr always.
+   These messages are primarily intended to ease debugging authentication
+   problems. The total length of the message must not exceed 1024 bytes. This
+   will automatically call packet_write_wait. If the remote side protocol flags
+   do not indicate that it supports SSH_MSG_DEBUG, this will do nothing. */
 void packet_send_debug(const char *fmt, ...);
 
 /* Checks if there is any buffered output, and tries to write some of the

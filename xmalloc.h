@@ -8,12 +8,21 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Mon Mar 20 22:09:17 1995 ylo
-Last modified: Tue Apr 25 02:34:49 1995 ylo
 
 Versions of malloc and friends that check their results, and never return
 failure (they call fatal if they encounter an error).
 
 */
+
+/*
+ * $Id: xmalloc.h,v 1.2 1995/07/13 01:41:41 ylo Exp $
+ * $Log: xmalloc.h,v $
+ * Revision 1.2  1995/07/13  01:41:41  ylo
+ * 	Removed "Last modified" header.
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
 
 #ifndef XMALLOC_H
 #define XMALLOC_H

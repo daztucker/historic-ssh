@@ -15,8 +15,11 @@ login (authentication) dialog.
 */
 
 /*
- * $Id: sshconnect.c,v 1.23 1997/04/27 21:55:51 kivinen Exp $
+ * $Id: sshconnect.c,v 1.24 1998/01/02 06:23:28 kivinen Exp $
  * $Log: sshconnect.c,v $
+ * Revision 1.24  1998/01/02 06:23:28  kivinen
+ * 	Changed "foo's password" prompt to "foo@bar's password".
+ *
  * Revision 1.23  1997/04/27 21:55:51  kivinen
  * 	Added F-SECURE stuff.
  *
@@ -1736,7 +1739,7 @@ void ssh_login(RandomState *state, int host_key_valid,
       debug("Doing password authentication.");
       if (options->cipher == SSH_CIPHER_NONE)
 	log_msg("WARNING: Encryption is disabled! Password will be transmitted in clear text.");
-      sprintf(prompt, "%.30s's password: ", server_user);
+      sprintf(prompt, "%.30s@%.30s's password: ", server_user, host);
       for(i = 0; i < options->number_of_password_prompts; i++)
 	{
 	  password = read_passphrase(pw->pw_uid, prompt, 0);

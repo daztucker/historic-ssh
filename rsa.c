@@ -37,8 +37,11 @@ Description of the RSA algorithm can be found e.g. from the following sources:
 */
 
 /*
- * $Id: rsa.c,v 1.3 1995/09/06 16:00:12 ylo Exp $
+ * $Id: rsa.c,v 1.1.1.1 1996/02/18 21:38:12 ylo Exp $
  * $Log: rsa.c,v $
+ * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.3  1995/09/06  16:00:12  ylo
  * 	Added missing xfree in rsa_free.
  *

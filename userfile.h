@@ -17,6 +17,12 @@ This works by forking a separate process to do the reading.
 
 /*
  * $Log: userfile.h,v $
+ * Revision 1.9  1997/03/26 05:36:21  kivinen
+ * 	Fixed prototypes.
+ *
+ * Revision 1.8  1997/03/19 17:53:56  kivinen
+ * 	Added USERFILE_GET_DES_1_MAGIC_PHRASE.
+ *
  * Revision 1.7  1996/10/29 22:48:43  kivinen
  * 	Removed userfile_local_socket_connect and userfile_send
  * 	prototypes.
@@ -58,11 +64,11 @@ void userfile_init(const char *username, uid_t uid, gid_t gid,
 
 /* Stops reading files as an ordinary user.  It is not an error to call this
    even if userfile_init has not been called. */
-void userfile_uninit();
+void userfile_uninit(void);
 
 /* Closes any pipes the userfile might have open.  This should be called after
    every fork. */
-void userfile_close_pipes();
+void userfile_close_pipes(void);
 
 /* Opens a file using the given uid.  The uid must be either the current
    effective uid (in which case userfile_init need not have been called) or
@@ -123,5 +129,8 @@ int userfile_check_owner_permissions(struct passwd *pw, const char *path);
 
 /* Encapsulate a normal file descriptor inside a struct UserFile */
 UserFile userfile_encapsulate_fd(int fd);
+
+/* Get sun des 1 magic phrase, return NULL if not found */
+char *userfile_get_des_1_magic_phrase(uid_t uid);
 
 #endif /* USERFILE_H */

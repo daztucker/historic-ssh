@@ -13,8 +13,11 @@ Created: Tue Mar 21 15:42:09 1995 ylo
 */
 
 /*
- * $Id: ttymodes.h,v 1.1.1.1 1996/02/18 21:38:10 ylo Exp $
+ * $Id: ttymodes.h,v 1.2 1996/11/03 15:57:14 ttsalo Exp $
  * $Log: ttymodes.h,v $
+ * Revision 1.2  1996/11/03 15:57:14  ttsalo
+ *       tc_statusc -> ts_statusc (line 86)
+ *
  * Revision 1.1.1.1  1996/02/18 21:38:10  ylo
  * 	Imported ssh-1.2.13.
  *
@@ -83,7 +86,7 @@ TTYCHAR(VFLUSH, 15)		SGTTYCHAR(tioltc.t_flushc, 15)
 TTYCHAR(VSWTCH, 16)		/* n/a */
 #endif /* VSWTCH */
 #if defined(VSTATUS) || (defined(USING_SGTTY) && defined(TIOCGSTAT))
-TTYCHAR(VSTATUS, 17)		SGTTYCHAR(tiots.tc_statusc, 17)
+TTYCHAR(VSTATUS, 17)		SGTTYCHAR(tiots.ts_statusc, 17)
 #endif /* VSTATUS */
 #ifdef VDISCARD
 TTYCHAR(VDISCARD, 18)		/* n/a */

@@ -2,10 +2,11 @@
 
 rsa.c
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Fri Mar  3 22:07:06 1995 ylo
 
@@ -37,32 +38,35 @@ Description of the RSA algorithm can be found e.g. from the following sources:
 */
 
 /*
- * $Id: rsa.c,v 1.5 1998/07/08 14:54:26 tri Exp $
+ * $Id: rsa.c,v 1.6 1999/11/17 17:04:52 tri Exp $
  * $Log: rsa.c,v $
+ * Revision 1.6  1999/11/17 17:04:52  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.5  1998/07/08 14:54:26  tri
- * 	Print progress identification in rsa key generation
- * 	to stderr instead of stdout.
+ *      Print progress identification in rsa key generation
+ *      to stderr instead of stdout.
  *
  * Revision 1.4  1998/05/23 20:23:56  kivinen
- * 	Changed () -> (void). Added #include "ssh.h".
+ *      Changed () -> (void). Added #include "ssh.h".
  *
  * Revision 1.3  1997/08/21  22:26:55  ylo
- * 	Set the two highest bits of the prime to one to ensure that we
- * 	end up with the right number of bits for the generated key.
- * 	(Bug reported by Ian Goldberg.)
+ *      Set the two highest bits of the prime to one to ensure that we
+ *      end up with the right number of bits for the generated key.
+ *      (Bug reported by Ian Goldberg.)
  *
  * Revision 1.2  1997/04/27 21:53:46  kivinen
- * 	Added check that mpz_set_str succeed.
+ *      Added check that mpz_set_str succeed.
  *
  * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
- * 	Imported ssh-1.2.13.
+ *      Imported ssh-1.2.13.
  *
  * Revision 1.3  1995/09/06  16:00:12  ylo
- * 	Added missing xfree in rsa_free.
+ *      Added missing xfree in rsa_free.
  *
  * Revision 1.2  1995/07/13  01:31:25  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
+ *      Removed "Last modified" header.
+ *      Added cvs log.
  *
  * $Endlog$
  */
@@ -269,10 +273,10 @@ void rsa_random_prime(MP_INT *ret, RandomState *state, unsigned int bits)
   else
     {
       for (num_primes = 0; small_primes[num_primes] != 0; num_primes++)
-	{
-	  mpz_mod_ui(&aux, &start, small_primes[num_primes]);
-	  moduli[num_primes] = mpz_get_ui(&aux);
-	}
+        {
+          mpz_mod_ui(&aux, &start, small_primes[num_primes]);
+          moduli[num_primes] = mpz_get_ui(&aux);
+        }
     }
 
   /* Look for numbers that are not evenly divisible by any of the small
@@ -282,50 +286,50 @@ void rsa_random_prime(MP_INT *ret, RandomState *state, unsigned int bits)
       unsigned int i;
 
       if (difference > 0x70000000)
-	{ /* Should never happen, I think... */
-	  if (rsa_verbose)
-	    fprintf(stderr, 
-		    "rsa_random_prime: failed to find a prime, retrying.\n");
-	  xfree(moduli);
-	  goto retry;
-	}
+        { /* Should never happen, I think... */
+          if (rsa_verbose)
+            fprintf(stderr, 
+                    "rsa_random_prime: failed to find a prime, retrying.\n");
+          xfree(moduli);
+          goto retry;
+        }
 
       /* Check if it is a multiple of any small prime.  Note that this
-	 updates the moduli into negative values as difference grows. */
+         updates the moduli into negative values as difference grows. */
       for (i = 0; i < num_primes; i++)
-	{
-	  while (moduli[i] + difference >= small_primes[i])
-	    moduli[i] -= small_primes[i];
-	  if (moduli[i] + difference == 0)
-	    break;
-	}
+        {
+          while (moduli[i] + difference >= small_primes[i])
+            moduli[i] -= small_primes[i];
+          if (moduli[i] + difference == 0)
+            break;
+        }
       if (i < num_primes)
-	continue; /* Multiple of a known prime. */
+        continue; /* Multiple of a known prime. */
 
       /* It passed the small prime test (not divisible by any of them). */
       if (rsa_verbose)
-	{
-	  fprintf(stderr, ".");
-	}
+        {
+          fprintf(stderr, ".");
+        }
 
       /* Compute the number in question. */
       mpz_add_ui(ret, &start, difference);
 
       /* Perform the fermat test for witness 2.  This means:
-	 it is not prime if 2^n mod n != 2. */
+         it is not prime if 2^n mod n != 2. */
       mpz_set_ui(&aux, 2);
       mpz_powm(&aux, &aux, ret, ret);
       if (mpz_cmp_ui(&aux, 2) == 0)
-	{
-	  /* Passed the fermat test for witness 2. */
-	  if (rsa_verbose)
-	    {
-	      fprintf(stderr, "+");
-	    }
-	  /* Perform a more tests.  These are probably unnecessary. */
-	  if (mpz_probab_prime_p(ret, 20))
-	    break; /* It is a prime with probability 1 - 2^-40. */
-	}
+        {
+          /* Passed the fermat test for witness 2. */
+          if (rsa_verbose)
+            {
+              fprintf(stderr, "+");
+            }
+          /* Perform a more tests.  These are probably unnecessary. */
+          if (mpz_probab_prime_p(ret, 20))
+            break; /* It is a prime with probability 1 - 2^-40. */
+        }
     }
 
   /* Found a (probable) prime.  It is in ret. */
@@ -343,7 +347,7 @@ void rsa_random_prime(MP_INT *ret, RandomState *state, unsigned int bits)
   if (mpz_get_ui(&aux) != 1)
     {
       if (rsa_verbose)
-	fprintf(stderr, "rsa_random_prime: high bit not set, retrying.\n");
+        fprintf(stderr, "rsa_random_prime: high bit not set, retrying.\n");
       goto retry;
     }
   mpz_clear(&start);
@@ -393,8 +397,8 @@ static void mpz_mod_inverse(MP_INT *x, MP_INT *a, MP_INT *n)
    p must be smaller than q. */
 
 static void derive_rsa_keys(MP_INT *n, MP_INT *e, MP_INT *d, MP_INT *u,
-			    MP_INT *p, MP_INT *q,
-			    unsigned int ebits)
+                            MP_INT *p, MP_INT *q,
+                            unsigned int ebits)
 {
   MP_INT p_minus_1, q_minus_1, aux, phi, G, F;
 
@@ -422,11 +426,11 @@ static void derive_rsa_keys(MP_INT *n, MP_INT *e, MP_INT *d, MP_INT *u,
   if (rsa_verbose)
     {
       if (mpz_cmp_ui(&G, 100) >= 0)
-	{
-	  fprintf(stderr, "Warning: G="); 
-	  mpz_out_str(stdout, 10, &G);
-	  fprintf(stderr, " is large (many spare key sets); key may be bad!\n");
-	}
+        {
+          fprintf(stderr, "Warning: G="); 
+          mpz_out_str(stdout, 10, &G);
+          fprintf(stderr, " is large (many spare key sets); key may be bad!\n");
+        }
     }
 
   /* F = phi / G; the number of relative prime numbers per spare key set. */
@@ -470,7 +474,7 @@ static void derive_rsa_keys(MP_INT *n, MP_INT *e, MP_INT *d, MP_INT *u,
    rsa_clear_public_key. */
 
 void rsa_generate_key(RSAPrivateKey *prv, RSAPublicKey *pub, 
-		      RandomState *state, unsigned int bits)
+                      RandomState *state, unsigned int bits)
 {
   MP_INT test, aux;
   unsigned int pbits, qbits;
@@ -516,7 +520,7 @@ void rsa_generate_key(RSAPrivateKey *prv, RSAPublicKey *pub,
   if (ret == 0)
     {
       if (rsa_verbose)
-	fprintf(stderr, "Generated the same prime twice!\n");
+        fprintf(stderr, "Generated the same prime twice!\n");
       goto retry;
     }
   if (ret > 0)
@@ -533,7 +537,7 @@ void rsa_generate_key(RSAPrivateKey *prv, RSAPublicKey *pub,
   if (mpz_cmp(&aux, &test) < 0)
     {
       if (rsa_verbose)
-	fprintf(stderr, "The primes are too close together.\n");
+        fprintf(stderr, "The primes are too close together.\n");
       goto retry;
     }
 
@@ -543,7 +547,7 @@ void rsa_generate_key(RSAPrivateKey *prv, RSAPublicKey *pub,
   if (mpz_cmp_ui(&aux, 1) != 0)
     {
       if (rsa_verbose)
-	fprintf(stderr, "The primes are not relatively prime!\n");
+        fprintf(stderr, "The primes are not relatively prime!\n");
       goto retry;
     }
   
@@ -569,7 +573,7 @@ void rsa_generate_key(RSAPrivateKey *prv, RSAPublicKey *pub,
   if (mpz_cmp(&aux, &test) != 0)
     {
       if (rsa_verbose)
-	fprintf(stderr, "**** private+public failed to decrypt.\n");
+        fprintf(stderr, "**** private+public failed to decrypt.\n");
       goto retry0;
     }
 
@@ -578,7 +582,7 @@ void rsa_generate_key(RSAPrivateKey *prv, RSAPublicKey *pub,
   if (mpz_cmp(&aux, &test) != 0)
     {
       if (rsa_verbose)
-	fprintf(stderr, "**** public+private failed to decrypt.\n");
+        fprintf(stderr, "**** public+private failed to decrypt.\n");
       goto retry0;
     }
 #endif /* !RSAREF */

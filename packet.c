@@ -15,8 +15,11 @@ with the other side.  This same code is used both on client and server side.
 */
 
 /*
- * $Id: packet.c,v 1.2 1996/05/28 16:42:13 ylo Exp $
+ * $Id: packet.c,v 1.3 1996/09/22 21:58:38 ylo Exp $
  * $Log: packet.c,v $
+ * Revision 1.3  1996/09/22 21:58:38  ylo
+ * 	Added code to clear keepalives properly when requested.
+ *
  * Revision 1.2  1996/05/28 16:42:13  ylo
  * 	Workaround for Solaris select() bug while reading version id.
  *
@@ -712,7 +715,14 @@ void packet_set_interactive(int interactive, int keepalives)
 		     sizeof(on)) < 0)
 	error("setsockopt SO_KEEPALIVE: %.100s", strerror(errno));
     }
-
+  else
+    {
+      /* Clear keepalives if we don't want them. */
+      if (setsockopt(connection_in, SOL_SOCKET, SO_KEEPALIVE, (void *)&off, 
+		     sizeof(off)) < 0)
+	error("setsockopt SO_KEEPALIVE off: %.100s", strerror(errno));
+    }
+  
   if (interactive)
     {
       /* Set IP options for an interactive connection.  Use IPTOS_LOWDELAY

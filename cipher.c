@@ -12,8 +12,11 @@ Created: Wed Apr 19 17:41:39 1995 ylo
 */
 
 /*
- * $Id: cipher.c,v 1.3 1995/08/18 22:48:01 ylo Exp $
+ * $Id: cipher.c,v 1.1.1.1 1996/02/18 21:38:11 ylo Exp $
  * $Log: cipher.c,v $
+ * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.3  1995/08/18  22:48:01  ylo
  * 	Added code to permit compiling without idea.
  *

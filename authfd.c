@@ -14,8 +14,11 @@ Functions for connecting the local authentication agent.
 */
 
 /*
- * $Id: authfd.c,v 1.12 1997/03/26 07:00:57 kivinen Exp $
+ * $Id: authfd.c,v 1.13 1997/04/17 04:00:46 kivinen Exp $
  * $Log: authfd.c,v $
+ * Revision 1.13  1997/04/17 04:00:46  kivinen
+ * 	Removed extra namelen variable.
+ *
  * Revision 1.12  1997/03/26 07:00:57  kivinen
  * 	Changed uid 0 to UID_ROOT.
  * 	Fixed memory leak.
@@ -96,7 +99,7 @@ Functions for connecting the local authentication agent.
 int ssh_get_authentication_fd()
 {
   char *authsocket, *authsocketdir;
-  int sock, namelen;
+  int sock;
   struct sockaddr_un sunaddr;
   struct stat st;
   struct passwd *pw;

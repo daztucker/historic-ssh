@@ -19,11 +19,21 @@ agent connections.
 */
 
 /*
- * $Id: sshd.c,v 1.66 2000/07/05 13:43:58 sjl Exp $
+ * $Id: sshd.c,v 1.69 2001/01/17 14:40:04 tri Exp $
  * $Log: sshd.c,v $
+ * Revision 1.69  2001/01/17 14:40:04  tri
+ * 	No debug packets from server if debug is not on or quiet is on.
+ *
+ * Revision 1.68  2000/11/24 13:07:29  sjl
+ *      chflags() omission.
+ *
+ * Revision 1.67  2000/08/11 12:31:43  sjl
+ *      Fixed a compile-time bug, which bombed the compilation in
+ *      NetBSD (??).
+ *
  * Revision 1.66  2000/07/05 13:43:58  sjl
- * 	Applied patch for disallowing access via unsupported ciphers
- * 	by Markus Friedl.
+ *      Applied patch for disallowing access via unsupported ciphers
+ *      by Markus Friedl.
  *
  * Revision 1.65  2000/06/30 07:49:52  sjl
  *      Applied the patch for BSD tty chown() bug.
@@ -896,6 +906,9 @@ int main(int ac, char **av)
   log_init(av0, debug_flag && !inetd_flag, 
            debug_flag || options.fascist_logging, 
            options.quiet_mode, options.log_facility);
+
+  /* Initialize debug packet sender. */
+  packet_init_debug(debug_flag, options.quiet_mode);
 
 #ifdef F_SECURE_COMMERCIAL
 
@@ -2957,19 +2970,20 @@ void do_authenticated(struct passwd *pw)
                                 "chflags.");
                           /* Remove user definable flags. */
                           if (chflags(ttyname, st.st_flags &
+                                      ~(
 #ifdef UF_NODUMP
-                                      UF_NODUMP |
+                                        UF_NODUMP |
 #endif /* UF_NODUMP */
 #ifdef UF_IMMUTABLE
-                                      UF_IMMUTABLE |
+                                        UF_IMMUTABLE |
 #endif /* UF_IMMUTABLE */
 #ifdef UF_APPEND
-                                      UF_APPEND |
+                                        UF_APPEND |
 #endif /* UF_APPEND */
 #ifdef UF_OPAQUE
-                                      UF_OPAQUE |
+                                        UF_OPAQUE |
 #endif /* UF_OPAQUE */
-                                      0)) < 0)
+                                        0)) < 0)
                             {
                               debug("chflags failed for %s, error: %s",
                                     ttyname, strerror(errno));

@@ -14,146 +14,156 @@ Generic header file for ssh.
 */
 
 /*
- * $Id: ssh.h,v 1.25 1998/07/08 01:05:30 kivinen Exp $
+ * $Id: ssh.h,v 1.27 1999/04/29 07:52:25 tri Exp $
  * $Log: ssh.h,v $
+ * Revision 1.27  1999/04/29 07:52:25  tri
+ * 	Replaced OSF1/C2 security support with more complete SIA
+ *         (Security Integration Architecture) support by Tom Woodburn.
+ *
+ * Revision 1.26  1998/08/07 12:29:36  tri
+ *      Changed agent socket name /tmp/ssh-$USER/agent-socket-<pid>
+ *      to /tmp/ssh-$USER/ssh-<pid>-agent in order to avoid
+ *      ambiguities on systems with 14 character filename and
+ *      to provide concistency with ssh2.
+ *
  * Revision 1.25  1998/07/08 01:05:30  kivinen
- * 	Added consts.
+ *      Added consts.
  *
  * Revision 1.24  1998/07/08 00:50:13  kivinen
- * 	Added some prototypes. Added setting PASSWD_PATH if not set in
- * 	by the configure.
+ *      Added some prototypes. Added setting PASSWD_PATH if not set in
+ *      by the configure.
  *
  * Revision 1.23  1998/05/23  20:37:44  kivinen
- * 	Added OSF1 C2 prototypes.
+ *      Added OSF1 C2 prototypes.
  *
  * Revision 1.22  1998/03/27  17:02:55  kivinen
- * 	Added gateway ports option. Added ignore root rhosts option.
+ *      Added gateway ports option. Added ignore root rhosts option.
  *
  * Revision 1.21  1998/01/02 06:23:01  kivinen
- * 	Renamed SSH_AUTHENTICATION_SOCKET to SSH_AUTH_SOCK.
+ *      Renamed SSH_AUTHENTICATION_SOCKET to SSH_AUTH_SOCK.
  *
  * Revision 1.20  1997/04/27 21:55:35  kivinen
- * 	Added channel_add_{allow,deny}_forwd_{to,port} prototypes.
- * 	Added match_port prototype.
+ *      Added channel_add_{allow,deny}_forwd_{to,port} prototypes.
+ *      Added match_port prototype.
  *
  * Revision 1.19  1997/04/21 01:06:44  kivinen
- * 	Fixed prototype for server_loop to have cleanup_context
- * 	instead of ttyname.
+ *      Fixed prototype for server_loop to have cleanup_context
+ *      instead of ttyname.
  *
  * Revision 1.18  1997/04/17 04:17:02  kivinen
- * 	Added read_confirmation prototype.
- * 	Added ttyname to server_loop prototype.
+ *      Added read_confirmation prototype.
+ *      Added ttyname to server_loop prototype.
  *
  * Revision 1.17  1997/04/05 22:01:10  kivinen
- * 	Fixed typo in SSH_AUTH_KERBEROS.
+ *      Fixed typo in SSH_AUTH_KERBEROS.
  *
  * Revision 1.16  1997/03/27 03:11:13  kivinen
- * 	Added kerberos patches from Glenn Machin.
+ *      Added kerberos patches from Glenn Machin.
  *
  * Revision 1.15  1997/03/26 07:12:09  kivinen
- * 	Fixed prototypes.
- * 	Added UID_ROOT define.
+ *      Fixed prototypes.
+ *      Added UID_ROOT define.
  *
  * Revision 1.14  1997/03/19 17:44:13  kivinen
- * 	Added TISAuthentication stuff from Andre April
- * 	<Andre.April@cediti.be>.
+ *      Added TISAuthentication stuff from Andre April
+ *      <Andre.April@cediti.be>.
  *
  * Revision 1.13  1996/12/04 18:14:30  ttsalo
  *     Added new option, LOCAL_HOSTNAME_IN_DEBUG
  *
  * Revision 1.12  1996/11/24 08:27:48  kivinen
- * 	Fixed auth_input_request_forwarding prototype.
+ *      Fixed auth_input_request_forwarding prototype.
  *
  * Revision 1.11  1996/11/05 16:03:00  ttsalo
  *       Removed the get_permanent_fd prototype
  *
  * Revision 1.10  1996/10/29 22:46:55  kivinen
- * 	Changed PROTOCOL_MINOR from 4 to 5.
- * 	log -> log_msg.
+ *      Changed PROTOCOL_MINOR from 4 to 5.
+ *      log -> log_msg.
  *
  * Revision 1.9  1996/10/20 16:28:39  ttsalo
  *      Added global variable original_real_uid
  *
  * Revision 1.8  1996/09/24 20:17:54  ylo
- * 	Changed identity files to be always encrypted with 3DES (used
- * 	to be IDEA, when it is compiled in).  This is to make identity
- * 	files more compatible with versions that don't include IDEA
- * 	for patent reasons.
+ *      Changed identity files to be always encrypted with 3DES (used
+ *      to be IDEA, when it is compiled in).  This is to make identity
+ *      files more compatible with versions that don't include IDEA
+ *      for patent reasons.
  *
  * Revision 1.7  1996/09/08 17:21:09  ttsalo
- * 	A lot of changes in agent-socket handling
+ *      A lot of changes in agent-socket handling
  *
  * Revision 1.6  1996/09/04 12:42:31  ttsalo
- * 	Added pid to agent-socket name
+ *      Added pid to agent-socket name
  *
  * Revision 1.5  1996/08/29 14:51:24  ttsalo
- * 	Agent-socket directory handling implemented
+ *      Agent-socket directory handling implemented
  *
  * Revision 1.4  1996/08/21 20:43:56  ttsalo
- * 	Made ssh-agent use a different, more secure way of storing
- * 	it's initial socket.
+ *      Made ssh-agent use a different, more secure way of storing
+ *      it's initial socket.
  *
  * Revision 1.3  1996/08/13 09:04:21  ttsalo
- * 	Home directory, .ssh and .ssh/authorized_keys are now
- * 	checked for wrong owner and group & world writeability.
+ *      Home directory, .ssh and .ssh/authorized_keys are now
+ *      checked for wrong owner and group & world writeability.
  *
  * Revision 1.2  1996/04/22 23:49:45  huima
  * Changed protocol version to 1.4, added calls to emulate module.
  *
  * Revision 1.1.1.1  1996/02/18  21:38:10  ylo
- * 	Imported ssh-1.2.13.
+ *      Imported ssh-1.2.13.
  *
  * Revision 1.16  1995/10/02  01:31:13  ylo
- * 	Moved sshd.pid to PIDDIR.  Also changed file name.
- * 	Added SSH_HOSTS_EQUIV (shosts.equiv).
+ *      Moved sshd.pid to PIDDIR.  Also changed file name.
+ *      Added SSH_HOSTS_EQUIV (shosts.equiv).
  *
  * Revision 1.15  1995/09/27  02:16:24  ylo
- * 	Added SSH_USER_RC and SSH_SYSTEM_RC.
+ *      Added SSH_USER_RC and SSH_SYSTEM_RC.
  *
  * Revision 1.14  1995/09/25  00:02:06  ylo
- * 	Added client_loop.
- * 	Added screen number arguments.
- * 	Added connection_attempts.
+ *      Added client_loop.
+ *      Added screen number arguments.
+ *      Added connection_attempts.
  *
  * Revision 1.13  1995/09/22  22:23:41  ylo
- * 	Changed argument list of ssh_login.
+ *      Changed argument list of ssh_login.
  *
  * Revision 1.12  1995/09/21  17:14:08  ylo
- * 	Added original_real_uid argument to ssh_connect.
+ *      Added original_real_uid argument to ssh_connect.
  *
  * Revision 1.11  1995/09/10  22:47:59  ylo
- * 	Added server_loop.
- * 	Added original_real_uid parameter to ssh_login.
+ *      Added server_loop.
+ *      Added original_real_uid parameter to ssh_login.
  *
  * Revision 1.10  1995/09/09  21:26:46  ylo
  * /m/shadows/u2/users/ylo/ssh/README
  *
  * Revision 1.9  1995/08/31  09:23:42  ylo
- * 	Added support for ETCDIR.
+ *      Added support for ETCDIR.
  *
  * Revision 1.8  1995/08/29  22:33:52  ylo
- * 	Added get_remote_ipaddr, get_permanent_fd.
- * 	Deleted SSH_NUM_DUPS.
+ *      Added get_remote_ipaddr, get_permanent_fd.
+ *      Deleted SSH_NUM_DUPS.
  *
  * Revision 1.7  1995/08/21  23:28:57  ylo
- * 	Added SERVER_CONFIG_FILE.
- * 	Added syslog facility definitions.
+ *      Added SERVER_CONFIG_FILE.
+ *      Added syslog facility definitions.
  *
  * Revision 1.6  1995/08/18  22:57:06  ylo
- * 	Now uses 3DES as the authfile cipher if IDEA is not available.
+ *      Now uses 3DES as the authfile cipher if IDEA is not available.
  *
  * Revision 1.5  1995/07/27  00:41:04  ylo
- * 	Added GlobalKnownHostsFile and UserKnownHostsFile.
+ *      Added GlobalKnownHostsFile and UserKnownHostsFile.
  *
  * Revision 1.4  1995/07/26  23:28:56  ylo
- * 	Changed PROTOCOL_MINOR from 0 to 1.
+ *      Changed PROTOCOL_MINOR from 0 to 1.
  *
  * Revision 1.3  1995/07/16  01:02:26  ylo
- * 	Removed host argument from record_logout.
+ *      Removed host argument from record_logout.
  *
  * Revision 1.2  1995/07/13  01:40:22  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
+ *      Removed "Last modified" header.
+ *      Added cvs log.
  *
  * $Endlog$
  */
@@ -169,74 +179,74 @@ Generic header file for ssh.
 /* The default cipher used if IDEA is not supported by the remote host. 
    It is recommended that this be one of the mandatory ciphers (DES, 3DES),
    though that is not required. */
-#define SSH_FALLBACK_CIPHER	SSH_CIPHER_3DES
+#define SSH_FALLBACK_CIPHER     SSH_CIPHER_3DES
 
 /* Cipher used for encrypting authentication files. */
-#define SSH_AUTHFILE_CIPHER	SSH_CIPHER_3DES
+#define SSH_AUTHFILE_CIPHER     SSH_CIPHER_3DES
 
 /* Default port number. */
-#define SSH_DEFAULT_PORT	22
+#define SSH_DEFAULT_PORT        22
 
 /* Maximum number of TCP/IP ports forwarded per direction. */
-#define SSH_MAX_FORWARDS_PER_DIRECTION	100
+#define SSH_MAX_FORWARDS_PER_DIRECTION  100
 
 /* Maximum number of RSA authentication identity files that can be specified
    in configuration files or on the command line. */
-#define SSH_MAX_IDENTITY_FILES		100
+#define SSH_MAX_IDENTITY_FILES          100
 
 /* Major protocol version.  Different version indicates major incompatiblity
    that prevents communication.  */
-#define PROTOCOL_MAJOR		1
+#define PROTOCOL_MAJOR          1
 
 /* Minor protocol version.  Different version indicates minor incompatibility
    that does not prevent interoperation. */
-#define PROTOCOL_MINOR		5
+#define PROTOCOL_MINOR          5
 
 /* Name for the service.  The port named by this service overrides the default
    port if present. */
-#define SSH_SERVICE_NAME	"ssh"
+#define SSH_SERVICE_NAME        "ssh"
 
 /* System-wide file containing host keys of known hosts.  This file should be
    world-readable. */
-#define SSH_SYSTEM_HOSTFILE	ETCDIR "/ssh_known_hosts"
+#define SSH_SYSTEM_HOSTFILE     ETCDIR "/ssh_known_hosts"
 
-/*  HOST_KEY_FILE		/etc/ssh_host_key,
-    SERVER_CONFIG_FILE		/etc/sshd_config,
-and HOST_CONFIG_FILE		/etc/ssh_config
+/*  HOST_KEY_FILE               /etc/ssh_host_key,
+    SERVER_CONFIG_FILE          /etc/sshd_config,
+and HOST_CONFIG_FILE            /etc/ssh_config
 are all defined in Makefile.in.  Of these, ssh_host_key should be readable
 only by root, whereas ssh_config should be world-readable. */
 
 /* Random seed file for the daemon.  This file should be readable only by 
    root. */
-#define SSH_DAEMON_SEED_FILE	ETCDIR "/ssh_random_seed"
+#define SSH_DAEMON_SEED_FILE    ETCDIR "/ssh_random_seed"
 
 /* The process id of the daemon listening for connections is saved
    here to make it easier to kill the correct daemon when necessary. */
-#define SSH_DAEMON_PID_FILE	PIDDIR "/sshd.pid"
+#define SSH_DAEMON_PID_FILE     PIDDIR "/sshd.pid"
 
 /* The directory in user\'s home directory in which the files reside.
    The directory should be world-readable (though not all files are). */
-#define SSH_USER_DIR		".ssh"
+#define SSH_USER_DIR            ".ssh"
 
 /* Per-user file containing host keys of known hosts.  This file need
    not be readable by anyone except the user him/herself, though this does
    not contain anything particularly secret. */
-#define SSH_USER_HOSTFILE	"~/.ssh/known_hosts"
+#define SSH_USER_HOSTFILE       "~/.ssh/known_hosts"
 
 /* Name of the file containing client-side random seed.  This file should
    only be readable by the user him/herself. */
-#define SSH_CLIENT_SEEDFILE	".ssh/random_seed"
+#define SSH_CLIENT_SEEDFILE     ".ssh/random_seed"
 
 /* Name of the default file containing client-side authentication key. 
    This file should only be readable by the user him/herself. */
-#define SSH_CLIENT_IDENTITY	".ssh/identity"
+#define SSH_CLIENT_IDENTITY     ".ssh/identity"
 
 /* Configuration file in user\'s home directory.  This file need not be
    readable by anyone but the user him/herself, but does not contain
    anything particularly secret.  If the user\'s home directory resides
    on an NFS volume where root is mapped to nobody, this may need to be
    world-readable. */
-#define SSH_USER_CONFFILE	".ssh/config"
+#define SSH_USER_CONFFILE       ".ssh/config"
 
 /* File containing a list of those rsa keys that permit logging in as
    this user.  This file need not be
@@ -245,17 +255,17 @@ only by root, whereas ssh_config should be world-readable. */
    on an NFS volume where root is mapped to nobody, this may need to be
    world-readable.  (This file is read by the daemon which is running as 
    root.) */
-#define SSH_USER_PERMITTED_KEYS	".ssh/authorized_keys"
+#define SSH_USER_PERMITTED_KEYS ".ssh/authorized_keys"
 
 /* Per-user and system-wide ssh "rc" files.  These files are executed with
    /bin/sh before starting the shell or command if they exist.  They
    will be passed "proto cookie" as arguments if X11 forwarding with
    spoofing is in use.  xauth will be run if neither of these exists. */
-#define SSH_USER_RC		".ssh/rc"
-#define SSH_SYSTEM_RC		ETCDIR "/sshrc"
+#define SSH_USER_RC             ".ssh/rc"
+#define SSH_SYSTEM_RC           ETCDIR "/sshrc"
 
 /* Ssh-only version of /etc/hosts.equiv. */
-#define SSH_HOSTS_EQUIV		ETCDIR "/shosts.equiv"
+#define SSH_HOSTS_EQUIV         ETCDIR "/shosts.equiv"
 
 /* Additionally, the daemon may use ~/.rhosts and /etc/hosts.equiv if 
    rhosts authentication is enabled. */
@@ -278,11 +288,11 @@ only by root, whereas ssh_config should be world-readable. */
    for example), but only the last directory in the path will be
    dynamically created and deleted by sshd and ssh-agent. */
 #define SSH_AGENT_SOCKET_DIR    "/tmp/ssh-%.50s"
-#define SSH_AGENT_SOCKET	"agent-socket-%d"
+#define SSH_AGENT_SOCKET        "ssh-%d-agent"
 
 /* Name of the environment variable containing the pathname of the
    authentication socket. */
-#define SSH_AUTHSOCKET_ENV_NAME		"SSH_AUTH_SOCK"
+#define SSH_AUTHSOCKET_ENV_NAME         "SSH_AUTH_SOCK"
 
 /* Check that we always have PASSWD_PATH set */
 #ifndef PASSWD_PATH
@@ -291,11 +301,11 @@ only by root, whereas ssh_config should be world-readable. */
 
 /* Force host key length and server key length to differ by at least this
    many bits.  This is to make double encryption with rsaref work. */
-#define SSH_KEY_BITS_RESERVED		128
+#define SSH_KEY_BITS_RESERVED           128
 
 /* Length of the session key in bytes.  (Specified as 256 bits in the 
    protocol.)  */
-#define SSH_SESSION_KEY_LENGTH		32
+#define SSH_SESSION_KEY_LENGTH          32
 
 #ifdef KERBEROS
 #ifdef KRB5
@@ -306,86 +316,86 @@ only by root, whereas ssh_config should be world-readable. */
 
 /* Authentication methods.  New types can be added, but old types should not
    be removed for compatibility.  The maximum allowed value is 31. */
-#define SSH_AUTH_RHOSTS		1
-#define SSH_AUTH_RSA		2
-#define SSH_AUTH_PASSWORD	3
-#define SSH_AUTH_RHOSTS_RSA	4
-#define SSH_AUTH_TIS		5
-#define SSH_AUTH_KERBEROS	6
-#define SSH_PASS_KERBEROS_TGT	7
+#define SSH_AUTH_RHOSTS         1
+#define SSH_AUTH_RSA            2
+#define SSH_AUTH_PASSWORD       3
+#define SSH_AUTH_RHOSTS_RSA     4
+#define SSH_AUTH_TIS            5
+#define SSH_AUTH_KERBEROS       6
+#define SSH_PASS_KERBEROS_TGT   7
 
 /* These are reserved for official patches, do not use them */
-#define SSH_AUTH_RESERVED_1	8
-#define SSH_AUTH_RESERVED_2	9
-#define SSH_AUTH_RESERVED_3	10
-#define SSH_AUTH_RESERVED_4	11
-#define SSH_AUTH_RESERVED_5	12
-#define SSH_AUTH_RESERVED_6	13
-#define SSH_AUTH_RESERVED_7	14
-#define SSH_AUTH_RESERVED_8	15
+#define SSH_AUTH_RESERVED_1     8
+#define SSH_AUTH_RESERVED_2     9
+#define SSH_AUTH_RESERVED_3     10
+#define SSH_AUTH_RESERVED_4     11
+#define SSH_AUTH_RESERVED_5     12
+#define SSH_AUTH_RESERVED_6     13
+#define SSH_AUTH_RESERVED_7     14
+#define SSH_AUTH_RESERVED_8     15
 
 /* If you add new methods add them after this using random number between 16-31
    so if someone else adds also new methods you dont use same number. */
 
 /* Protocol flags.  These are bit masks. */
-#define SSH_PROTOFLAG_SCREEN_NUMBER	1 /* X11 forwarding includes screen */
-#define SSH_PROTOFLAG_HOST_IN_FWD_OPEN	2 /* forwarding opens contain host */
+#define SSH_PROTOFLAG_SCREEN_NUMBER     1 /* X11 forwarding includes screen */
+#define SSH_PROTOFLAG_HOST_IN_FWD_OPEN  2 /* forwarding opens contain host */
 
 /* Definition of message types.  New values can be added, but old values
    should not be removed or without careful consideration of the consequences
    for compatibility.  The maximum value is 254; value 255 is reserved
    for future extension. */
-/* Message name */			/* msg code */  /* arguments */
-#define SSH_MSG_NONE				0	/* no message */
-#define SSH_MSG_DISCONNECT			1	/* cause (string) */
-#define SSH_SMSG_PUBLIC_KEY			2	/* ck,msk,srvk,hostk */
-#define SSH_CMSG_SESSION_KEY			3	/* key (MP_INT) */
-#define SSH_CMSG_USER				4	/* user (string) */
-#define SSH_CMSG_AUTH_RHOSTS			5	/* user (string) */
-#define SSH_CMSG_AUTH_RSA			6	/* modulus (MP_INT) */
-#define SSH_SMSG_AUTH_RSA_CHALLENGE		7	/* int (MP_INT) */
-#define SSH_CMSG_AUTH_RSA_RESPONSE		8	/* int (MP_INT) */
-#define SSH_CMSG_AUTH_PASSWORD			9	/* pass (string) */
-#define SSH_CMSG_REQUEST_PTY		        10	/* TERM, tty modes */
-#define SSH_CMSG_WINDOW_SIZE		        11	/* row,col,xpix,ypix */
-#define SSH_CMSG_EXEC_SHELL			12	/* */
-#define SSH_CMSG_EXEC_CMD			13	/* cmd (string) */
-#define SSH_SMSG_SUCCESS			14	/* */
-#define SSH_SMSG_FAILURE			15	/* */
-#define SSH_CMSG_STDIN_DATA			16	/* data (string) */
-#define SSH_SMSG_STDOUT_DATA			17	/* data (string) */
-#define SSH_SMSG_STDERR_DATA			18	/* data (string) */
-#define SSH_CMSG_EOF				19	/* */
-#define SSH_SMSG_EXITSTATUS			20	/* status (int) */
-#define SSH_MSG_CHANNEL_OPEN_CONFIRMATION	21	/* channel (int) */
-#define SSH_MSG_CHANNEL_OPEN_FAILURE		22	/* channel (int) */
-#define SSH_MSG_CHANNEL_DATA			23	/* ch,data (int,str) */
-#define SSH_MSG_CHANNEL_CLOSE			24	/* channel (int) */
-#define SSH_MSG_CHANNEL_CLOSE_CONFIRMATION	25	/* channel (int) */
+/* Message name */                      /* msg code */  /* arguments */
+#define SSH_MSG_NONE                            0       /* no message */
+#define SSH_MSG_DISCONNECT                      1       /* cause (string) */
+#define SSH_SMSG_PUBLIC_KEY                     2       /* ck,msk,srvk,hostk */
+#define SSH_CMSG_SESSION_KEY                    3       /* key (MP_INT) */
+#define SSH_CMSG_USER                           4       /* user (string) */
+#define SSH_CMSG_AUTH_RHOSTS                    5       /* user (string) */
+#define SSH_CMSG_AUTH_RSA                       6       /* modulus (MP_INT) */
+#define SSH_SMSG_AUTH_RSA_CHALLENGE             7       /* int (MP_INT) */
+#define SSH_CMSG_AUTH_RSA_RESPONSE              8       /* int (MP_INT) */
+#define SSH_CMSG_AUTH_PASSWORD                  9       /* pass (string) */
+#define SSH_CMSG_REQUEST_PTY                    10      /* TERM, tty modes */
+#define SSH_CMSG_WINDOW_SIZE                    11      /* row,col,xpix,ypix */
+#define SSH_CMSG_EXEC_SHELL                     12      /* */
+#define SSH_CMSG_EXEC_CMD                       13      /* cmd (string) */
+#define SSH_SMSG_SUCCESS                        14      /* */
+#define SSH_SMSG_FAILURE                        15      /* */
+#define SSH_CMSG_STDIN_DATA                     16      /* data (string) */
+#define SSH_SMSG_STDOUT_DATA                    17      /* data (string) */
+#define SSH_SMSG_STDERR_DATA                    18      /* data (string) */
+#define SSH_CMSG_EOF                            19      /* */
+#define SSH_SMSG_EXITSTATUS                     20      /* status (int) */
+#define SSH_MSG_CHANNEL_OPEN_CONFIRMATION       21      /* channel (int) */
+#define SSH_MSG_CHANNEL_OPEN_FAILURE            22      /* channel (int) */
+#define SSH_MSG_CHANNEL_DATA                    23      /* ch,data (int,str) */
+#define SSH_MSG_CHANNEL_CLOSE                   24      /* channel (int) */
+#define SSH_MSG_CHANNEL_CLOSE_CONFIRMATION      25      /* channel (int) */
 
 /* new channel protocol */
 #define SSH_MSG_CHANNEL_INPUT_EOF               24
 #define SSH_MSG_CHANNEL_OUTPUT_CLOSED           25
 
 /*      SSH_CMSG_X11_REQUEST_FORWARDING         26         OBSOLETE */
-#define SSH_SMSG_X11_OPEN			27	/* channel (int) */
-#define SSH_CMSG_PORT_FORWARD_REQUEST		28	/* p,host,hp (i,s,i) */
-#define SSH_MSG_PORT_OPEN			29	/* ch,h,p (i,s,i) */
-#define SSH_CMSG_AGENT_REQUEST_FORWARDING	30	/* */
-#define SSH_SMSG_AGENT_OPEN			31	/* port (int) */
-#define SSH_MSG_IGNORE				32	/* string */
-#define SSH_CMSG_EXIT_CONFIRMATION		33	/* */
-#define SSH_CMSG_X11_REQUEST_FORWARDING		34	/* proto,data (s,s) */
-#define SSH_CMSG_AUTH_RHOSTS_RSA		35	/* user,mod (s,mpi) */
-#define SSH_MSG_DEBUG				36	/* string */
-#define SSH_CMSG_REQUEST_COMPRESSION		37	/* level 1-9 (int) */
-#define SSH_CMSG_MAX_PACKET_SIZE		38	/* max_size (int) */
+#define SSH_SMSG_X11_OPEN                       27      /* channel (int) */
+#define SSH_CMSG_PORT_FORWARD_REQUEST           28      /* p,host,hp (i,s,i) */
+#define SSH_MSG_PORT_OPEN                       29      /* ch,h,p (i,s,i) */
+#define SSH_CMSG_AGENT_REQUEST_FORWARDING       30      /* */
+#define SSH_SMSG_AGENT_OPEN                     31      /* port (int) */
+#define SSH_MSG_IGNORE                          32      /* string */
+#define SSH_CMSG_EXIT_CONFIRMATION              33      /* */
+#define SSH_CMSG_X11_REQUEST_FORWARDING         34      /* proto,data (s,s) */
+#define SSH_CMSG_AUTH_RHOSTS_RSA                35      /* user,mod (s,mpi) */
+#define SSH_MSG_DEBUG                           36      /* string */
+#define SSH_CMSG_REQUEST_COMPRESSION            37      /* level 1-9 (int) */
+#define SSH_CMSG_MAX_PACKET_SIZE                38      /* max_size (int) */
 
 /* Support for TIS authentication server
    Contributed by Andre April <Andre.April@cediti.be>. */
-#define SSH_CMSG_AUTH_TIS			39	/* */
-#define SSH_SMSG_AUTH_TIS_CHALLENGE		40	/* string */
-#define SSH_CMSG_AUTH_TIS_RESPONSE		41	/* pass (string) */
+#define SSH_CMSG_AUTH_TIS                       39      /* */
+#define SSH_SMSG_AUTH_TIS_CHALLENGE             40      /* string */
+#define SSH_CMSG_AUTH_TIS_RESPONSE              41      /* pass (string) */
 
 /* Support for kerberos authentication by Glenn Machin and Dug Song
    <dugsong@umich.edu> */
@@ -394,8 +404,8 @@ only by root, whereas ssh_config should be world-readable. */
 #define SSH_CMSG_HAVE_KERBEROS_TGT              44      /* string (credentials) */
 
 /* Reserved for official extensions, do not use these */
-#define SSH_CMSG_RESERVED_START			45
-#define SSH_CMSG_RESERVED_END			63
+#define SSH_CMSG_RESERVED_START                 45
+#define SSH_CMSG_RESERVED_END                   63
 
 /* If ou add new messages add them starting from something after 64, better to
    use some random number between 64-127 so if someone else adds something else
@@ -415,12 +425,12 @@ only by root, whereas ssh_config should be world-readable. */
    information is not available.  This must be called before record_login. 
    The host from which the user logged in is stored in buf. */
 unsigned long get_last_login_time(uid_t uid, const char *logname, 
-				  char *buf, unsigned int bufsize);
+                                  char *buf, unsigned int bufsize);
 
 /* Records that the user has logged in.  This does many things normally
    done by login(1). */
 void record_login(int pid, const char *ttyname, const char *user, uid_t uid,
-		  const char *host, struct sockaddr_in *addr);
+                  const char *host, struct sockaddr_in *addr);
 
 /* Records that the user has logged out.  This does many thigs normally
    done by login(1) or init. */
@@ -437,8 +447,8 @@ void record_logout(int pid, const char *ttyname);
    connection is successful, this calls packet_set_connection for the
    connection. */
 int ssh_connect(const char *host, int port, int connection_attempts,
-		int anonymous, uid_t original_real_uid,
-		const char *proxy_command, RandomState *random_state);
+                int anonymous, uid_t original_real_uid,
+                const char *proxy_command, RandomState *random_state);
 
 /* Starts a dialog with the server, and authenticates the current user on the
    server.  This does not need any extra privileges.  The basic connection
@@ -447,7 +457,7 @@ int ssh_connect(const char *host, int port, int connection_attempts,
    This initializes the random state, and leaves it initialized (it will also
    have references from the packet module). */
 void ssh_login(RandomState *state, int host_key_valid, RSAPrivateKey *host_key,
-	       const char *host, Options *options, uid_t original_real_uid);
+               const char *host, Options *options, uid_t original_real_uid);
 
 /*------------ Definitions for various authentication methods. -------*/
 
@@ -456,22 +466,22 @@ void ssh_login(RandomState *state, int host_key_valid, RSAPrivateKey *host_key,
    consider .rhosts and .shosts (/etc/hosts.equiv will still be used). 
    If strict_modes is true, checks ownership and modes of .rhosts/.shosts. */
 int auth_rhosts(struct passwd *pw, const char *client_user,
-		int ignore_rhosts, int ignore_root_rhosts,
-		int strict_modes);
+                int ignore_rhosts, int ignore_root_rhosts,
+                int strict_modes);
 
 /* Tries to authenticate the user using the .rhosts file and the host using
    its host key.  Returns true if authentication succeeds. */
 int auth_rhosts_rsa(RandomState *state,
-		    struct passwd *pw, const char *client_user,
-		    unsigned int bits, MP_INT *client_host_key_e,
-		    MP_INT *client_host_key_n, int ignore_rhosts,
-		    int ignore_root_rhosts, int strict_modes);
+                    struct passwd *pw, const char *client_user,
+                    unsigned int bits, MP_INT *client_host_key_e,
+                    MP_INT *client_host_key_n, int ignore_rhosts,
+                    int ignore_root_rhosts, int strict_modes);
 
 /* Tries to authenticate the user using password.  Returns true if
    authentication succeeds. */
 #if defined(KERBEROS) && defined(KRB5)
 int auth_password(const char *server_user, const char *password,
-		  krb5_principal client);
+                  krb5_principal client);
 #else /* defined(KERBEROS) && defined(KRB5) */
 int auth_password(const char *server_user, const char *password);
 #endif /* defined(KERBEROS) && defined(KRB5) */
@@ -480,7 +490,7 @@ int auth_password(const char *server_user, const char *password);
    0 if the client could not be authenticated, and 1 if authentication was
    successful.  This may exit if there is a serious protocol violation. */
 int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state,
-	     int strict_modes);
+             int strict_modes);
 
 /* Parses an RSA key (number of bits, e, n) from a string.  Moves the pointer
    over the key.  Skips any whitespace at the beginning and at end. */
@@ -510,7 +520,7 @@ int get_remote_port(void);
    indicate negation).  Returns true if there is a positive match; zero
    otherwise. */
 int match_hostname(const char *host, const char *ip,
-		   const char *pattern, unsigned int len);
+                   const char *pattern, unsigned int len);
 
 /* Checks whether the given host is already in the list of our known hosts.
    Returns HOST_OK if the host is known and has the specified key,
@@ -520,21 +530,21 @@ int match_hostname(const char *host, const char *ip,
    userfile. */
 typedef enum { HOST_OK, HOST_NEW, HOST_CHANGED } HostStatus;
 HostStatus check_host_in_hostfile(uid_t uid,
-				  const char *filename, 
-				  const char *host, unsigned int bits,
-				  MP_INT *e, MP_INT *n);
+                                  const char *filename, 
+                                  const char *host, unsigned int bits,
+                                  MP_INT *e, MP_INT *n);
 
 /* Appends an entry to the host file.  Returns false if the entry
    could not be appended.  The operation will be performed with the given
    uid using userfile. */
 int add_host_to_hostfile(uid_t uid, const char *filename, const char *host,
-			 unsigned int bits, MP_INT *e, MP_INT *n);
+                         unsigned int bits, MP_INT *e, MP_INT *n);
 
 /* Performs the RSA authentication challenge-response dialog with the client,
    and returns true (non-zero) if the client gave the correct answer to
    our challenge; returns zero if the client gives a wrong answer. */
 int auth_rsa_challenge_dialog(RandomState *state, unsigned int bits,
-			      MP_INT *e, MP_INT *n);
+                              MP_INT *e, MP_INT *n);
 
 /* Reads a passphrase from /dev/tty with echo turned off.  Returns the 
    passphrase (allocated with xmalloc).  Exits if EOF is encountered. 
@@ -553,8 +563,8 @@ void read_confirmation(const char *prompt);
    needing a passphrase.  File I/O will be done using the given uid with
    userfile. */
 int save_private_key(uid_t uid, const char *filename, const char *passphrase,
-		     RSAPrivateKey *private_key, const char *comment,
-		     RandomState *state);
+                     RSAPrivateKey *private_key, const char *comment,
+                     RandomState *state);
 
 /* Loads the public part of the key file (public key and comment).
    Returns 0 if an error occurred; zero if the public key was successfully
@@ -562,7 +572,7 @@ int save_private_key(uid_t uid, const char *filename, const char *passphrase,
    non-NULL; the caller must free the value with xfree.  File I/O will be
    done with the given uid using userfile. */
 int load_public_key(uid_t uid, const char *filename, RSAPublicKey *pub, 
-		    char **comment_return);
+                    char **comment_return);
 
 /* Loads the private key from the file.  Returns 0 if an error is encountered
    (file does not exist or is not readable, or passphrase is bad).
@@ -570,7 +580,7 @@ int load_public_key(uid_t uid, const char *filename, RSAPublicKey *pub,
    in comment_return if it is non-NULL; the caller must free the value
    with xfree.  File I/O will be done with the given uid using userfile. */
 int load_private_key(uid_t uid, const char *filename, const char *passphrase,
-		     RSAPrivateKey *private_key, char **comment_return);
+                     RSAPrivateKey *private_key, char **comment_return);
 
 /*------------ Definitions for logging. -----------------------*/
 
@@ -603,7 +613,7 @@ typedef enum {
    If quiet is non-zero, none of these will log send anything to syslog
    (but maybe to stderr). */
 void log_init(char *av0, int on_stderr, int debug, int quiet,
-	      SyslogFacility facility);
+              SyslogFacility facility);
 
 /* Outputs a message to syslog or stderr, depending on the implementation. 
    The format must guarantee that the final message does not exceed 1024 
@@ -714,15 +724,15 @@ char *channel_open_message(void);
    channel to host:port from remote side.  This never returns if there
    was an error. */
 void channel_request_local_forwarding(int port, const char *host,
-				      int remote_port,
-				      int gateway_ports);
+                                      int remote_port,
+                                      int gateway_ports);
 
 /* Initiate forwarding of connections to port "port" on remote host through
    the secure channel to host:port from local side.  This never returns
    if there was an error.  This registers that open requests for that
    port are permitted. */
 void channel_request_remote_forwarding(int port, const char *host,
-				       int remote_port);
+                                       int remote_port);
 
 /* Permits opening to any host/port in SSH_MSG_PORT_OPEN.  This is usually
    called by the server, because the user could connect to any port anyway,
@@ -775,7 +785,7 @@ void x11_request_forwarding(void);
 /* Requests forwarding for X11 connections, with authentication spoofing.
    This should be called in the client only.  */
 void x11_request_forwarding_with_spoofing(RandomState *state,
-					  const char *proto, const char *data);
+                                          const char *proto, const char *data);
 
 /* Sends a message to the server to request authentication fd forwarding. */
 void auth_request_forwarding(void);
@@ -808,7 +818,7 @@ int match_pattern(const char *s, const char *pattern);
 /* this combines the effect of match_pattern on a username, hostname
    and IP address. */
 int match_user(const char *user, const char *host, const char *ip,
-	       const char *pattern);
+               const char *pattern);
 /* Check that host name matches the pattern. If the pattern only contains
    numbers and periods, and wildcards compare it against the ip address
    otherwise assume it is host name */
@@ -830,7 +840,7 @@ char *tilde_expand_filename(const char *filename, uid_t my_uid);
    This will close fdin, fdout and fderr after releasing pty (if ttyname is non
    NULL) */
 void server_loop(int pid, int fdin, int fdout, int fderr,
-		 void *cleanup_context);
+                 void *cleanup_context);
 
 /* Client side main loop for the interactive session. */
 int client_loop(int have_pty, int escape_char);
@@ -862,16 +872,5 @@ extern uid_t original_real_uid;
 #else
 #define UID_ROOT 0
 #endif
-
-#ifdef HAVE_OSF1_C2_SECURITY
-void initialize_osf_security(int ac, char **av);
-
-const char *osf1c2_check_account_and_terminal(const char *username,
-					      const char *terminal);
-
-int osf1c2_getprpwent(char *p, char *n, int len);
-
-char *osf1c2crypt(const char *pw, char *salt);
-#endif /* HAVE_OSF1_C2_SECURITY */
 
 #endif /* SSH_H */

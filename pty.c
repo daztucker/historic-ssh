@@ -8,9 +8,23 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Fri Mar 17 04:37:25 1995 ylo
-Last modified: Tue Jul  4 01:37:30 1995 ylo
+
+Allocating a pseudo-terminal, and making it the controlling tty.
 
 */
+
+/*
+ * $Id: pty.c,v 1.3 1995/07/16 01:03:28 ylo Exp $
+ * $Log: pty.c,v $
+ * Revision 1.3  1995/07/16  01:03:28  ylo
+ * 	Added pty_release.
+ *
+ * Revision 1.2  1995/07/13  01:28:20  ylo
+ * 	Removed "Last modified" header.
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
 
 #include "includes.h"
 #include "pty.h"
@@ -187,6 +201,17 @@ int pty_allocate(int *ptyfd, int *ttyfd, char *namebuf)
 #endif /* HAVE_DEV_PTMX */
 #endif /* HAVE__GETPTY */
 #endif /* HAVE_OPENPTY */
+}
+
+/* Releases the tty.  Its ownership is returned to root, and permissions to
+   0666. */
+
+void pty_release(const char *ttyname)
+{
+  if (chown(ttyname, (uid_t)0, (gid_t)0) < 0)
+    debug("chown %.100s 0 0 failed: %s", ttyname, strerror(errno));
+  if (chmod(ttyname, (mode_t)0666) < 0)
+    debug("chmod %.100s 0666 failed: %s", ttyname, strerror(errno));
 }
 
 /* Makes the tty the processes controlling tty and sets it to sane modes. */

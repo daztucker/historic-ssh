@@ -14,8 +14,11 @@ Client-side versions of debug(), log_msg(), etc.  These print to stderr.
 */
 
 /*
- * $Id: log-client.c,v 1.4 1996/10/29 22:37:59 kivinen Exp $
+ * $Id: log-client.c,v 1.5 1996/12/04 18:16:15 ttsalo Exp $
  * $Log: log-client.c,v $
+ * Revision 1.5  1996/12/04 18:16:15  ttsalo
+ *     debug() can now prefix every message with local hostname
+ *
  * Revision 1.4  1996/10/29 22:37:59  kivinen
  * 	log -> log_msg.
  *
@@ -46,11 +49,23 @@ Client-side versions of debug(), log_msg(), etc.  These print to stderr.
 static int log_debug = 0;
 static int log_quiet = 0;
 
+/* Name of the host we are running on. This is used in debug()
+   and initialized in log_init() */
+#ifdef HAVE_GETHOSTNAME
+static char local_hostname[257];
+#endif
+
 void log_init(char *av0, int on_stderr, int debug, int quiet,
 	      SyslogFacility facility)
 {
   log_debug = debug;
   log_quiet = quiet;
+  
+  /* Get our own hostname */
+#ifdef HAVE_GETHOSTNAME
+  if (gethostname(local_hostname, sizeof(local_hostname)) < 0)
+    fatal("gethostname: %.100s", strerror(errno));
+#endif
 }
 
 void log_msg(const char *fmt, ...)
@@ -82,6 +97,9 @@ void debug(const char *fmt, ...)
   va_list args;
   if (log_quiet || !log_debug)
     return;
+#if defined(HAVE_GETHOSTNAME) && defined(LOCAL_HOSTNAME_IN_DEBUG)
+  fprintf(stderr, "%s: ", local_hostname);
+#endif
   va_start(args, fmt);
   vfprintf(stderr, fmt, args);
   fprintf(stderr, "\r\n");

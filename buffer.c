@@ -8,9 +8,20 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Sat Mar 18 04:15:33 1995 ylo
-Last modified: Mon Jul  3 17:33:29 1995 ylo
+
+Functions for manipulating fifo buffers (that can grow if needed).
 
 */
+
+/*
+ * $Id: buffer.c,v 1.2 1995/07/13 01:18:46 ylo Exp $
+ * $Log: buffer.c,v $
+ * Revision 1.2  1995/07/13  01:18:46  ylo
+ * 	Removed "Last modified" header.
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
 
 #include "includes.h"
 #include "xmalloc.h"

@@ -15,8 +15,11 @@ to the system log.
 */
 
 /*
- * $Id: log-server.c,v 1.4 1995/09/09 21:26:42 ylo Exp $
+ * $Id: log-server.c,v 1.5 1995/10/02 01:22:57 ylo Exp $
  * $Log: log-server.c,v $
+ * Revision 1.5  1995/10/02  01:22:57  ylo
+ * 	Include sys/syslog.h if needed.
+ *
  * Revision 1.4  1995/09/09  21:26:42  ylo
  * /m/shadows/u2/users/ylo/ssh/README
  *
@@ -114,8 +117,8 @@ void log(const char *fmt, ...)
   vsprintf(buf, fmt, args);
   va_end(args);
   if (log_on_stderr)
-    fprintf(stderr, "%s\n", buf);
-  syslog(LOG_INFO, "%.500s", buf);
+    fprintf(stderr, "log: %s\n", buf);
+  syslog(LOG_INFO, "log: %.500s", buf);
 }
 
 /* Debugging messages that should not be logged during normal operation. */
@@ -130,8 +133,8 @@ void debug(const char *fmt, ...)
   vsprintf(buf, fmt, args);
   va_end(args);
   if (log_on_stderr)
-    fprintf(stderr, "%s\n", buf);
-  syslog(LOG_DEBUG, "%.500s", buf);
+    fprintf(stderr, "debug: %s\n", buf);
+  syslog(LOG_DEBUG, "debug: %.500s", buf);
 }
 
 /* Error messages that should be logged. */
@@ -146,8 +149,8 @@ void error(const char *fmt, ...)
   vsprintf(buf, fmt, args);
   va_end(args);
   if (log_on_stderr)
-    fprintf(stderr, "%s\n", buf);
-  syslog(LOG_ERR, "%.500s", buf);
+    fprintf(stderr, "error: %s\n", buf);
+  syslog(LOG_ERR, "error: %.500s", buf);
 }
 
 /* Fatal messages.  This function never returns. */
@@ -162,8 +165,8 @@ void fatal(const char *fmt, ...)
   vsprintf(buf, fmt, args);
   va_end(args);
   if (log_on_stderr)
-    fprintf(stderr, "%s\n", buf);
-  syslog(LOG_NOTICE, "%.500s", buf);
+    fprintf(stderr, "fatal: %s\n", buf);
+  syslog(LOG_ERR, "fatal: %.500s", buf);
 
   /* Unlink any X11 sockets if necessary. */
   channel_stop_listening();

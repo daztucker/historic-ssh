@@ -2,20 +2,24 @@
 
 tildexpand.c
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Wed Jul 12 01:07:36 1995 ylo
 
 */
 
 /*
- * $Id: tildexpand.c,v 1.3 1999/02/22 08:14:14 tri Exp $
+ * $Id: tildexpand.c,v 1.4 1999/11/17 17:05:00 tri Exp $
  * $Log: tildexpand.c,v $
+ * Revision 1.4  1999/11/17 17:05:00  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.3  1999/02/22 08:14:14  tri
- * 	Final fixes for 1.2.27.
+ *      Final fixes for 1.2.27.
  *
  * Revision 1.2  1999/02/21 19:52:59  ylo
  *      Intermediate commit of ssh1.2.27 stuff.

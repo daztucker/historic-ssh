@@ -16,8 +16,14 @@ the login based on rhosts authentication.  This file also processes
 */
 
 /*
- * $Id: auth-rhosts.c,v 1.3 1996/10/29 22:34:25 kivinen Exp $
+ * $Id: auth-rhosts.c,v 1.5 1997/03/26 06:59:58 kivinen Exp $
  * $Log: auth-rhosts.c,v $
+ * Revision 1.5  1997/03/26 06:59:58  kivinen
+ * 	Changed uid 0 to UID_ROOT.
+ *
+ * Revision 1.4  1997/03/19 15:59:07  kivinen
+ * 	Limit hostname and username to 255 characters.
+ *
  * Revision 1.3  1996/10/29 22:34:25  kivinen
  * 	log -> log_msg.
  *
@@ -151,6 +157,12 @@ int check_rhosts_file(uid_t uid, const char *filename, const char *hostname,
 
       host = hostbuf;
       user = userbuf;
+      /* Truncate host and user name to 255 to avoid buffer overflows in system
+	 libraries */
+      if (strlen(host) > 255)
+	host[255] = '\0';
+      if (strlen(user) > 255)
+	user[255] = '\0';
       negated = 0;
 
       /* Process negated host names, or positive netgroups. */
@@ -287,7 +299,7 @@ int auth_rhosts(struct passwd *pw, const char *client_user,
     }
 
   /* If not logging in as superuser, try /etc/hosts.equiv and shosts.equiv. */
-  if (pw->pw_uid != 0)
+  if (pw->pw_uid != UID_ROOT)
     {
       if (check_rhosts_file(geteuid(), 
 			    "/etc/hosts.equiv", hostname, ipaddr, client_user,
@@ -318,7 +330,7 @@ int auth_rhosts(struct passwd *pw, const char *client_user,
       return 0;
     }
   if (strict_modes && 
-      ((st.st_uid != 0 && st.st_uid != pw->pw_uid) ||
+      ((st.st_uid != UID_ROOT && st.st_uid != pw->pw_uid) ||
        (st.st_mode & 022) != 0))
     {
       log_msg("Rhosts authentication refused for %.100s: bad ownership or modes for home directory.",
@@ -343,7 +355,7 @@ int auth_rhosts(struct passwd *pw, const char *client_user,
 	 to help avoid novices accidentally allowing access to their account
 	 by anyone. */
       if (strict_modes &&
-	  ((st.st_uid != 0 && st.st_uid != pw->pw_uid) ||
+	  ((st.st_uid != UID_ROOT && st.st_uid != pw->pw_uid) ||
 	   (st.st_mode & 022) != 0))
 	{
 	  log_msg("Rhosts authentication refused for %.100s: bad modes for %.200s",

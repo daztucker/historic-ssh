@@ -14,8 +14,11 @@ Cryptographically strong random number generation.
 */
 
 /*
- * $Id: randoms.c,v 1.4 1995/09/13 11:59:07 ylo Exp $
+ * $Id: randoms.c,v 1.5 1995/09/21 17:12:23 ylo Exp $
  * $Log: randoms.c,v $
+ * Revision 1.5  1995/09/21  17:12:23  ylo
+ * 	Don't use the second argument of gettimeofday.
+ *
  * Revision 1.4  1995/09/13  11:59:07  ylo
  * 	Large modifications to make this work on machines without 32
  * 	bit integer type (Cray).
@@ -132,7 +135,9 @@ void random_acquire_environmental_noise(RandomState *state)
 
 void random_acquire_light_environmental_noise(RandomState *state)
 {
-  random_xor_noise(state, state->state[0] % (RANDOM_STATE_BYTES / 4),
+  random_xor_noise(state, 
+		   (unsigned int)(state->state[0] + 256*state->state[1]) % 
+		     (RANDOM_STATE_BYTES / 4),
 		   (word32)time(NULL));
 
 #ifdef HAVE_GETTIMEOFDAY

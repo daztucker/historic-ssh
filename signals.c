@@ -16,7 +16,10 @@ maximum core dump size.
 
 /*
  * $Log: signals.c,v $
- * Revision 1.8  1998/05/04 13:37:05  kivinen
+ * Revision 1.9  1998/05/23  20:24:15  kivinen
+ * 	Changed () -> (void).
+ *
+ * Revision 1.8  1998/05/04  13:37:05  kivinen
  * 	Fixed SIGPWR code so that will check if SIGPWR is same than
  * 	SIGINFO and only include it to switch clause if it is
  * 	different.
@@ -68,7 +71,7 @@ static RETSIGTYPE signal_handler(int sig)
    sets the maximum core dump size to zero as an extra precaution (where
    supported).  The old core dump size limit is saved. */
 
-void signals_prevent_core()
+void signals_prevent_core(void)
 {
   int sig;
 
@@ -125,7 +128,7 @@ void signals_prevent_core()
 /* Sets all signals to their default state.  Restores RLIMIT_CORE previously
    saved by prevent_core(). */
 
-void signals_reset()
+void signals_reset(void)
 {
   int sig;
 

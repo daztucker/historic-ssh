@@ -17,8 +17,14 @@ suitable code.
 */
 
 /*
- * $Id: ttymodes.c,v 1.2 1996/10/29 22:47:53 kivinen Exp $
+ * $Id: ttymodes.c,v 1.4 1998/04/17 00:42:50 kivinen Exp $
  * $Log: ttymodes.c,v $
+ * Revision 1.4  1998/04/17 00:42:50  kivinen
+ * 	Fixed previous fix.
+ *
+ * Revision 1.3  1998/03/27 17:05:47  kivinen
+ * 	Combine ECHOE and LCRTBS/LCRTERA flags.
+ *
  * Revision 1.2  1996/10/29 22:47:53  kivinen
  * 	log -> log_msg.
  *
@@ -304,6 +310,10 @@ void tty_make_modes(int fd)
       return;
     }
 #endif /* TIOCGSTAT */
+  /* termio's ECHOE is really both LCRTBS and LCRTERA - so wire them
+     together */
+  if (tiolm & LCRTBS)
+    tiolm |= LCRTERA;
 #endif /* USING_SGTTY */
 
   /* Store input and output baud rates. */
@@ -490,6 +500,10 @@ void tty_parse_modes(int fd)
     log_msg("Setting tty modes failed: %.100s", strerror(errno));
 #endif /* USING_TERMIOS */
 #ifdef USING_SGTTY
+  /* termio's ECHOE is really both LCRTBS and LCRTERA -
+     so wire them together */
+  if (tiolm & LCRTERA)
+    tiolm |= LCRTBS;
   if (ioctl(fd, TIOCSETP, &tio) < 0
       || ioctl(fd, TIOCSETC, &tiotc) < 0
       || ioctl(fd, TIOCLSET, &tiolm) < 0

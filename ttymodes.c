@@ -17,8 +17,11 @@ suitable code.
 */
 
 /*
- * $Id: ttymodes.c,v 1.6 1995/10/02 01:29:44 ylo Exp $
+ * $Id: ttymodes.c,v 1.1.1.1 1996/02/18 21:38:12 ylo Exp $
  * $Log: ttymodes.c,v $
+ * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.6  1995/10/02  01:29:44  ylo
  * 	Changed warning message to make it less likely people will
  * 	report it as a bug because it is not.

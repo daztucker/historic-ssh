@@ -10,6 +10,23 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 /*
  * $Log: acconfig.h,v $
+ * Revision 1.8  1995/09/06  15:57:37  ylo
+ * 	Added BROKEN_INET_ADDR
+ *
+ * Revision 1.7  1995/08/29  22:17:54  ylo
+ * 	Removed AGENT_USES_SOCKET
+ * 	Added HPSUX_BROKEN_PTYS
+ *
+ * Revision 1.6  1995/08/21  23:20:17  ylo
+ * 	Removed NO_RHOSTS_AUTHENTICATION.
+ * 	Fixed a typo.
+ *
+ * Revision 1.5  1995/08/18  23:42:14  ylo
+ * 	Added HAVE_SECURID.
+ *
+ * Revision 1.4  1995/08/18  22:41:46  ylo
+ * 	Added O_NONBLOCK_BROKEN, WITHOUT_IDEA, crypt, __FreeBSD__, TTY_GROUP.
+ *
  * Revision 1.3  1995/07/27  00:36:32  ylo
  * 	Added SSH_UTMP, SSH_WTMP, SSH_LASTLOG, DEFAUL_PATH.
  *
@@ -20,10 +37,6 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
  */
 
 @TOP@
-
-/* Define to use a unix-domain socket instead of an open file descriptor
-   for communicating with the authentication agent. */
-#undef AGENT_USES_SOCKET
 
 /* Define if you have SYSV-style /dev/ptmx and /dev/pts/. */
 #undef HAVE_DEV_PTMX
@@ -60,11 +73,6 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
    (e.g. SGI IRIX). */
 #undef LASTLOG_IS_DIR
 
-/* Define to disable .rhosts and /etc/hosts.equiv authentication in server. 
-   However, .rhosts and /etc/hosts.equiv with RSA host authentication are
-   not affected by this. */
-#undef NO_RHOSTS_AUTHENTICATION
-
 /* Define to use RSAREF. */
 #undef RSAREF
 
@@ -86,3 +94,31 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define this to be the default user path if you don't like the default. 
    See the --with-path=<path> configure option. */
 #undef DEFAULT_PATH
+
+/* Define this if O_NONBLOCK does not work on your system (e.g., Ultrix). */
+#undef O_NONBLOCK_BROKEN
+
+/* Define this to leave out IDEA encryption. */
+#undef WITHOUT_IDEA
+
+/* This is defined to pw_encrypt on Linux when using John Faugh's shadow 
+   password implementation. */
+#undef crypt
+
+/* This is defined on 386BSD to preted we are on FreeBSD. */
+#undef __FreeBSD__
+
+/* If defines, this overrides "tty" as the terminal group. */
+#undef TTY_GROUP
+
+/* Define this if you want to support Security Dynammics SecurID
+   cards. */
+#undef HAVE_SECURID
+
+/* Define this if you have HPUX.  HPSUX has broken ptys (EOF is not passed
+   from the slave side to the master side). */
+#undef HPSUX_BROKEN_PTYS
+
+/* Define this if inet_network should be used instead of inet_addr.  This is
+   the case on DGUX 5.4. */
+#undef BROKEN_INET_ADDR

@@ -2,10 +2,11 @@
 
 ssh-keygen.c
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1994 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1994 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Mon Mar 27 02:26:40 1995 ylo
 
@@ -14,12 +15,15 @@ Identity and host key generation and maintenance.
 */
 
 /*
- * $Id: ssh-keygen.c,v 1.13 1999/02/21 19:52:44 ylo Exp $
+ * $Id: ssh-keygen.c,v 1.14 1999/11/17 17:04:57 tri Exp $
  * $Log: ssh-keygen.c,v $
+ * Revision 1.14  1999/11/17 17:04:57  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.13  1999/02/21 19:52:44  ylo
- * 	Intermediate commit of ssh1.2.27 stuff.
- * 	Main change is sprintf -> snprintf; however, there are also
- * 	many other changes.
+ *      Intermediate commit of ssh1.2.27 stuff.
+ *      Main change is sprintf -> snprintf; however, there are also
+ *      many other changes.
  *
  * Revision 1.12  1998/05/23 20:37:28  kivinen
  *      Changed () -> (void).

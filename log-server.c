@@ -15,8 +15,12 @@ output to the system log.
 */
 
 /*
- * $Id: log-server.c,v 1.3 1997/03/27 03:09:58 kivinen Exp $
+ * $Id: log-server.c,v 1.4 1997/04/17 04:05:51 kivinen Exp $
  * $Log: log-server.c,v $
+ * Revision 1.4  1997/04/17 04:05:51  kivinen
+ * 	Added return to end of syslog_severity to remove warning about
+ * 	it.
+ *
  * Revision 1.3  1997/03/27 03:09:58  kivinen
  * 	Added kerberos patches from Glenn Machin.
  *
@@ -152,6 +156,7 @@ static int syslog_severity(int severity)
     default:
       fatal("syslog_severity: bad severity %d", severity);
     }
+  return 0;
 }
 
 /* Log this message (information that usually should go to the log) at

@@ -8,11 +8,23 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Sat Apr 22 00:03:10 1995 ylo
-Last modified: Wed Jul 12 00:17:39 1995 ylo
 
 Functions for reading the configuration files.
 
 */
+
+/*
+ * $Id: readconf.c,v 1.3 1995/07/27 00:39:00 ylo Exp $
+ * $Log: readconf.c,v $
+ * Revision 1.3  1995/07/27  00:39:00  ylo
+ * 	Added GlobalKnownHostsFile and UserKnownHostsFile.
+ *
+ * Revision 1.2  1995/07/13  01:30:39  ylo
+ * 	Removed "Last modified" header.
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
 
 /* Format of the configuration file:
 
@@ -88,7 +100,8 @@ typedef enum
   oForwardAgent, oForwardX11, oRhostsAuthentication,
   oPasswordAuthentication, oRSAAuthentication, oFallBackToRsh, oUseRsh,
   oIdentityFile, oHostName, oPort, oCipher, oRemoteForward, oLocalForward, 
-  oUser, oHost, oEscapeChar, oRhostsRSAAuthentication
+  oUser, oHost, oEscapeChar, oRhostsRSAAuthentication,
+  oGlobalKnownHostsFile, oUserKnownHostsFile
 } OpCodes;
 
 /* Textual representations of the tokens. */
@@ -116,6 +129,8 @@ struct
   { "Host", oHost },
   { "EscapeChar", oEscapeChar },
   { "RhostsRSAAuthentication", oRhostsRSAAuthentication },
+  { "GlobalKnownHostsFile", oGlobalKnownHostsFile },
+  { "UserKnownHostsFile", oUserKnownHostsFile },
   { NULL, 0 }
 };
 
@@ -262,6 +277,14 @@ void process_config_line(Options *options, const char *host,
 	*charptr = xstrdup(cp);
       break;
       
+    case oGlobalKnownHostsFile:
+      charptr = &options->system_hostfile;
+      goto parse_string;
+      
+    case oUserKnownHostsFile:
+      charptr = &options->user_hostfile;
+      goto parse_string;
+
     case oHostName:
       charptr = &options->hostname;
       goto parse_string;
@@ -427,6 +450,8 @@ void initialize_options(Options *options)
   options->hostname = NULL;
   options->user = NULL;
   options->escape_char = -1;
+  options->system_hostfile = NULL;
+  options->user_hostfile = NULL;
   options->num_local_forwards = 0;
   options->num_remote_forwards = 0;
 }
@@ -464,6 +489,10 @@ void fill_default_options(Options *options)
     }
   if (options->escape_char == -1)
     options->escape_char = '~';
+  if (options->system_hostfile == NULL)
+    options->system_hostfile = SSH_SYSTEM_HOSTFILE;
+  if (options->user_hostfile == NULL)
+    options->user_hostfile = SSH_USER_HOSTFILE;
   /* options->user will be set in the main program if appropriate */
   /* options->hostname will be set in the main program if appropriate */
 }

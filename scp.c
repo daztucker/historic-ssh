@@ -11,8 +11,11 @@ and ssh has the necessary privileges.)
 */
 
 /*
- * $Id: scp.c,v 1.9 1995/10/02 01:26:02 ylo Exp $
+ * $Id: scp.c,v 1.1.1.1 1996/02/18 21:38:11 ylo Exp $
  * $Log: scp.c,v $
+ * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.9  1995/10/02  01:26:02  ylo
  * 	Fixed code for no HAVE_FCHMOD case.
  *
@@ -72,7 +75,7 @@ and ssh has the necessary privileges.)
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$Id: scp.c,v 1.9 1995/10/02 01:26:02 ylo Exp $
+ *	$Id: scp.c,v 1.1.1.1 1996/02/18 21:38:11 ylo Exp $
  */
 
 #ifndef lint
@@ -999,7 +1002,7 @@ run_err(const char *fmt, ...)
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$Id: scp.c,v 1.9 1995/10/02 01:26:02 ylo Exp $
+ *	$Id: scp.c,v 1.1.1.1 1996/02/18 21:38:11 ylo Exp $
  */
 
 char *

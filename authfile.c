@@ -15,8 +15,11 @@ for reading the passphrase from the user.
 */
 
 /*
- * $Id: authfile.c,v 1.3 1995/07/13 01:16:38 ylo Exp $
+ * $Id: authfile.c,v 1.4 1995/08/21 23:21:56 ylo Exp $
  * $Log: authfile.c,v $
+ * Revision 1.4  1995/08/21  23:21:56  ylo
+ * 	Don't complain about bad passphrase if passphrase was empty.
+ *
  * Revision 1.3  1995/07/13  01:16:38  ylo
  * 	Removed "Last modified" header.
  *
@@ -290,7 +293,8 @@ int load_private_key(const char *filename, const char *passphrase,
   if (check1 != buffer_get_char(&decrypted) ||
       check2 != buffer_get_char(&decrypted))
     {
-      debug("Bad passphrase supplied for key file %.200s.", filename);
+      if (strcmp(passphrase, "") != 0)
+	debug("Bad passphrase supplied for key file %.200s.", filename);
       /* Bad passphrase. */
       buffer_free(&decrypted);
     fail:

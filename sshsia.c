@@ -7,21 +7,21 @@ Author: Tom Woodburn <woodburn@zk3.dec.com>
 Helper functions for using the SIA (Security Integration Architecture)
 functions of Tru64 UNIX.
 
-initialize_sia() is based on initialize_osf_security() from Christophe
+ssh_sia_initialize() is based on initialize_osf_security() from Christophe
 Wolfhugel's osfc2.c (Copyright (c) 1995 Christophe Wolfhugel). 
 
+Copyright (c) 1999 COMPAQ Computer Corp, all rights reserved
 Copyright (c) 1999 SSH Communications Security Oy, Espoo, Finland
-                   and Compaq Computer Corporation
 
 */
 
 /*
- * $Id: sshsia.c,v 1.3 1999/04/30 06:48:51 tri Exp $
+ * $Id: sshsia.c,v 1.6 1999/11/17 15:54:48 tri Exp $
  * $Log: sshsia.c,v $
- * Revision 1.3  1999/04/30 06:48:51  tri
- * 	Changed copyright.
+ * Revision 1.6  1999/11/17 15:54:48  tri
+ * 	Streamlined local SIA interface names.
  *
- * Revision 1.2  1999/04/29 08:02:36  tri
+ * Revision 1.5  1999/11/17 15:48:05  tri
  *      Fixed copyright notice.
  *
  * Revision 1.1  1999/04/29 07:52:32  tri
@@ -41,7 +41,7 @@ static char **argv = NULL;
 static int c2security = 0;
 
 void
-initialize_sia(int ac, char **av)
+ssh_sia_initialize(int ac, char **av)
 {
   FILE *f;
   char buf[256];
@@ -81,11 +81,11 @@ initialize_sia(int ac, char **av)
     set_auth_parameters(ac, av);
 }
 
-/* get_sia_args() returns the arguments passed to initialize_sia(), which
+/* ssh_sia_get_args() returns the arguments passed to ssh_sia_initialize(), which
    typically are the arguments from main(). */
 
 void
-get_sia_args(int *ac, char ***av)
+ssh_sia_get_args(int *ac, char ***av)
 {
   *ac = argc;
   *av = argv;
@@ -99,7 +99,7 @@ get_sia_args(int *ac, char ***av)
    sia_ses_reauthent() doesn't (at least not yet). */
 
 /*
- * NAME:  my_sia_validate_user
+ * NAME:  ssh_sia_validate_user
  *
  * FUNCTION:  Verify a user/passphrase combination.
  *
@@ -110,7 +110,7 @@ get_sia_args(int *ac, char ***av)
  */
 
 int
-my_sia_validate_user(sia_collect_func_t *collect, /* communication routine */
+ssh_sia_validate_user(sia_collect_func_t *collect, /* communication routine */
                      int argc,
                      char **argv,
                      char *hostname,    /* remote host (or user@host) info */
@@ -133,7 +133,7 @@ my_sia_validate_user(sia_collect_func_t *collect, /* communication routine */
   return status;
 }
 
-/* sia_no_password() returns 1 if the user has a null password and is
+/* ssh_sia_no_password() returns 1 if the user has a null password and is
    allowed to login with it, 0 otherwise.
 
    sshd makes the same check on other platforms by calling:
@@ -146,7 +146,7 @@ my_sia_validate_user(sia_collect_func_t *collect, /* communication routine */
    audit record would be generated. */
 
 int
-sia_no_password(const char *server_user)
+ssh_sia_no_password(const char *server_user)
 {
   int no_password = 0;
 

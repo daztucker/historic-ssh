@@ -8,11 +8,20 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Wed Mar 29 01:17:41 1995 ylo
-Last modified: Wed Jul 12 00:47:09 1995 ylo
+Last modified: Thu Jul 13 04:11:41 1995 ylo
 
 Functions to interface with the SSH_AUTHENTICATION_FD socket.
 
 */
+
+/*
+ * $Id: authfd.h,v 1.2 1995/07/13 01:11:42 ylo Exp $
+ * $Log: authfd.h,v $
+ * Revision 1.2  1995/07/13  01:11:42  ylo
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
 
 #ifndef AUTHFD_H
 #define AUTHFD_H

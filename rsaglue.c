@@ -18,8 +18,11 @@ using the --with-rsaref configure option.
 */
 
 /*
- * $Id: rsaglue.c,v 1.4 1995/07/26 23:29:34 ylo Exp $
+ * $Id: rsaglue.c,v 1.1.1.1 1996/02/18 21:38:12 ylo Exp $
  * $Log: rsaglue.c,v $
+ * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.4  1995/07/26  23:29:34  ylo
  * 	Display a fatal error if key size > 1024 with RSAREF.
  *

@@ -2,10 +2,11 @@
 
 readconf.c
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Sat Apr 22 00:03:10 1995 ylo
 
@@ -14,76 +15,79 @@ Functions for reading the configuration files.
 */
 
 /*
- * $Id: readconf.c,v 1.15 1998/07/08 00:46:30 kivinen Exp $
+ * $Id: readconf.c,v 1.16 1999/11/17 17:04:51 tri Exp $
  * $Log: readconf.c,v $
+ * Revision 1.16  1999/11/17 17:04:51  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.15  1998/07/08 00:46:30  kivinen
- * 	Fixed typo (privileged).
+ *      Fixed typo (privileged).
  *
  * Revision 1.14  1998/05/23  20:23:39  kivinen
- * 	Removed extra comma at the end of OpCodes enum.
+ *      Removed extra comma at the end of OpCodes enum.
  *
  * Revision 1.13  1998/04/30  01:55:12  kivinen
- * 	Added PasswordPromptLogin and PasswordPromptHost options, so
- * 	now the password prompt is configurable.
+ *      Added PasswordPromptLogin and PasswordPromptHost options, so
+ *      now the password prompt is configurable.
  *
  * Revision 1.12  1998/03/27 16:59:33  kivinen
- * 	Added GatewayPorts option.
+ *      Added GatewayPorts option.
  *
  * Revision 1.11  1998/01/02 06:19:58  kivinen
- * 	Added xauthlocation option.
+ *      Added xauthlocation option.
  *
  * Revision 1.10  1997/08/21 22:16:45  ylo
- * 	Fixed security bug with port number > 65535 in local forwarding.
+ *      Fixed security bug with port number > 65535 in local forwarding.
  *
  * Revision 1.9  1997/08/09 20:22:44  ylo
- * 	Removed extra newline from fatal message.
+ *      Removed extra newline from fatal message.
  *
  * Revision 1.8  1997/08/07 16:23:55  kivinen
- * 	Moved privileged port check to add_local_forward function.
+ *      Moved privileged port check to add_local_forward function.
  *
  * Revision 1.7  1997/04/23 00:01:18  kivinen
- * 	Added ClearAllForwardins and NumberOfPasswordPrompts options.
+ *      Added ClearAllForwardins and NumberOfPasswordPrompts options.
  *
  * Revision 1.6  1997/04/17 04:21:08  kivinen
- * 	Changed StrictHostKeyChecking to have three possible values,
- * 	yes, no, and ask.
+ *      Changed StrictHostKeyChecking to have three possible values,
+ *      yes, no, and ask.
  *
  * Revision 1.5  1997/03/27 03:10:16  kivinen
- * 	Added kerberos patches from Glenn Machin.
+ *      Added kerberos patches from Glenn Machin.
  *
  * Revision 1.4  1997/03/26 05:34:37  kivinen
- * 	Added UsePriviledgedPort option.
+ *      Added UsePriviledgedPort option.
  *
  * Revision 1.3  1997/03/25 05:40:58  kivinen
- * 	Changed keywords to be case insensitive.
- * 	Added = to WHITESPACE so now it allows options in format
- * 	Foo=bar.
+ *      Changed keywords to be case insensitive.
+ *      Added = to WHITESPACE so now it allows options in format
+ *      Foo=bar.
  *
  * Revision 1.2  1997/03/19 17:54:37  kivinen
- * 	Added TIS authentication code from Andre April
- * 	<Andre.April@cediti.be>.
+ *      Added TIS authentication code from Andre April
+ *      <Andre.April@cediti.be>.
  *
  * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
- * 	Imported ssh-1.2.13.
+ *      Imported ssh-1.2.13.
  *
  * Revision 1.7  1995/09/24  23:59:44  ylo
- * 	Added ConnectionAttempts.
+ *      Added ConnectionAttempts.
  *
  * Revision 1.6  1995/09/09  21:26:44  ylo
  * /m/shadows/u2/users/ylo/ssh/README
  *
  * Revision 1.5  1995/09/06  19:52:36  ylo
- * 	Fixed spelling of fascist.
+ *      Fixed spelling of fascist.
  *
  * Revision 1.4  1995/08/21  23:25:55  ylo
- * 	Minor cleanup.
+ *      Minor cleanup.
  *
  * Revision 1.3  1995/07/27  00:39:00  ylo
- * 	Added GlobalKnownHostsFile and UserKnownHostsFile.
+ *      Added GlobalKnownHostsFile and UserKnownHostsFile.
  *
  * Revision 1.2  1995/07/13  01:30:39  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
+ *      Removed "Last modified" header.
+ *      Added cvs log.
  *
  * $Endlog$
  */
@@ -230,7 +234,7 @@ static struct
    is an error. */
 
 void add_local_forward(Options *options, int port, const char *host,
-		       int host_port)
+                       int host_port)
 {
   Forward *fwd;
   if ((port < 1024 || port > 65535) && original_real_uid != UID_ROOT)
@@ -247,12 +251,12 @@ void add_local_forward(Options *options, int port, const char *host,
    is an error. */
 
 void add_remote_forward(Options *options, int port, const char *host,
-		       int host_port)
+                       int host_port)
 {
   Forward *fwd;
   if (options->num_remote_forwards >= SSH_MAX_FORWARDS_PER_DIRECTION)
     fatal("Too many remote forwards (max %d).", 
-	  SSH_MAX_FORWARDS_PER_DIRECTION);
+          SSH_MAX_FORWARDS_PER_DIRECTION);
   fwd = &options->remote_forwards[options->num_remote_forwards++];
   fwd->port = port;
   fwd->host = xstrdup(host);
@@ -271,7 +275,7 @@ static OpCodes parse_token(const char *cp, const char *filename, int linenum)
       return keywords[i].opcode;
 
   fatal("%.200s line %d: Bad configuration option.",
-	filename, linenum);
+        filename, linenum);
   /*NOTREACHED*/
   return 0;
 }
@@ -280,8 +284,8 @@ static OpCodes parse_token(const char *cp, const char *filename, int linenum)
    This only sets those values that have not already been set. */
 
 void process_config_line(Options *options, const char *host,
-			 char *line, const char *filename, int linenum,
-			 int *activep)
+                         char *line, const char *filename, int linenum,
+                         int *activep)
 {
   char buf[256], *cp, *string, **charptr;
   int opcode, *intptr, value, fwd_port, fwd_host_port, i;
@@ -305,21 +309,21 @@ void process_config_line(Options *options, const char *host,
     parse_flag:
       cp = strtok(NULL, WHITESPACE);
       if (!cp)
-	fatal("%.200s line %d: Missing yes/no argument.",
-	      filename, linenum);
+        fatal("%.200s line %d: Missing yes/no argument.",
+              filename, linenum);
       value = 0; /* To avoid compiler warning... */
       for(i = 0; cp[i]; i++)
-	cp[i] = tolower(cp[i]);
+        cp[i] = tolower(cp[i]);
       if (strcmp(cp, "yes") == 0 || strcmp(cp, "true") == 0)
-	value = 1;
+        value = 1;
       else
-	if (strcmp(cp, "no") == 0 || strcmp(cp, "false") == 0)
-	  value = 0;
-	else
-	  fatal("%.200s line %d: Bad yes/no argument.", 
-		filename, linenum);
+        if (strcmp(cp, "no") == 0 || strcmp(cp, "false") == 0)
+          value = 0;
+        else
+          fatal("%.200s line %d: Bad yes/no argument.", 
+                filename, linenum);
       if (*activep && *intptr == -1)
-	*intptr = value;
+        *intptr = value;
       break;
       
     case oForwardX11:
@@ -369,24 +373,24 @@ void process_config_line(Options *options, const char *host,
     case oStrictHostKeyChecking:
       cp = strtok(NULL, WHITESPACE);
       if (!cp)
-	fatal("%.200s line %d: Missing yes/no/ask argument.",
-	      filename, linenum);
+        fatal("%.200s line %d: Missing yes/no/ask argument.",
+              filename, linenum);
       value = 0; /* To avoid compiler warning... */
       for(i = 0; cp[i]; i++)
-	cp[i] = tolower(cp[i]);
+        cp[i] = tolower(cp[i]);
       if (strcmp(cp, "yes") == 0 || strcmp(cp, "true") == 0)
-	value = 1;
+        value = 1;
       else
-	if (strcmp(cp, "no") == 0 || strcmp(cp, "false") == 0)
-	  value = 0;
-	else
-	  if (strcmp(cp, "ask") == 0)
-	    value = 2;
-	  else
-	    fatal("%.200s line %d: Bad yes/no/ask argument.", 
-		  filename, linenum);
+        if (strcmp(cp, "no") == 0 || strcmp(cp, "false") == 0)
+          value = 0;
+        else
+          if (strcmp(cp, "ask") == 0)
+            value = 2;
+          else
+            fatal("%.200s line %d: Bad yes/no/ask argument.", 
+                  filename, linenum);
       if (*activep && options->strict_host_key_checking == -1)
-	options->strict_host_key_checking = value;
+        options->strict_host_key_checking = value;
       break;
       
     case oCompression:
@@ -408,14 +412,14 @@ void process_config_line(Options *options, const char *host,
     case oIdentityFile:
       cp = strtok(NULL, WHITESPACE);
       if (!cp)
-	fatal("%.200s line %d: Missing argument.", filename, linenum);
+        fatal("%.200s line %d: Missing argument.", filename, linenum);
       if (*activep)
-	{
-	  if (options->num_identity_files >= SSH_MAX_IDENTITY_FILES)
-	    fatal("%.200s line %d: Too many identity files specified (max %d).",
-		  filename, linenum, SSH_MAX_IDENTITY_FILES);
-	  options->identity_files[options->num_identity_files++] = xstrdup(cp);
-	}
+        {
+          if (options->num_identity_files >= SSH_MAX_IDENTITY_FILES)
+            fatal("%.200s line %d: Too many identity files specified (max %d).",
+                  filename, linenum, SSH_MAX_IDENTITY_FILES);
+          options->identity_files[options->num_identity_files++] = xstrdup(cp);
+        }
       break;
       
     case oUser:
@@ -423,9 +427,9 @@ void process_config_line(Options *options, const char *host,
     parse_string:
       cp = strtok(NULL, WHITESPACE);
       if (!cp)
-	fatal("%.200s line %d: Missing argument.", filename, linenum);
+        fatal("%.200s line %d: Missing argument.", filename, linenum);
       if (*activep && *charptr == NULL)
-	*charptr = xstrdup(cp);
+        *charptr = xstrdup(cp);
       break;
       
     case oGlobalKnownHostsFile:
@@ -444,15 +448,15 @@ void process_config_line(Options *options, const char *host,
       charptr = &options->proxy_command;
       string = xstrdup("");
       while ((cp = strtok(NULL, WHITESPACE)) != NULL)
-	{
-	  string = xrealloc(string, strlen(string) + strlen(cp) + 2);
-	  strcat(string, " ");
-	  strcat(string, cp);
-	}
+        {
+          string = xrealloc(string, strlen(string) + strlen(cp) + 2);
+          strcat(string, " ");
+          strcat(string, cp);
+        }
       if (*activep && *charptr == NULL)
-	*charptr = string;
+        *charptr = string;
       else
-	xfree(string);
+        xfree(string);
       return;
 
     case oPort:
@@ -460,41 +464,41 @@ void process_config_line(Options *options, const char *host,
     parse_int:
       cp = strtok(NULL, WHITESPACE);
       if (!cp)
-	fatal("%.200s line %d: Missing argument.", filename, linenum);
+        fatal("%.200s line %d: Missing argument.", filename, linenum);
       if (cp[0] < '0' || cp[0] > '9')
-	fatal("%.200s line %d: Bad number.", filename, linenum);
-      if (*cp == '0')	/* Octal or hex */
-	{
-	  int base;
-	  
-	  cp++;
-	  if (*cp == 'x')	/* Hex */
-	    {
-	      cp++;
-	      base = 16;
-	    }
-	  else
-	    base = 8;
-	  value = 0;
-	  while ((base == 16 && isxdigit(*cp)) ||
-		 (base == 8 && isdigit(*cp) && *cp < '8'))
-	    {
-	      value *= base;
-	      if (*cp >= 'a' && *cp <= 'f')
-		value += *cp - 'a' + 10;
-	      else if (*cp >= 'A' && *cp <= 'F')
-		value += *cp - 'A' + 10;
-	      else
-		value += *cp - '0';
-	      cp++;
-	    }
-	}
+        fatal("%.200s line %d: Bad number.", filename, linenum);
+      if (*cp == '0')   /* Octal or hex */
+        {
+          int base;
+          
+          cp++;
+          if (*cp == 'x')       /* Hex */
+            {
+              cp++;
+              base = 16;
+            }
+          else
+            base = 8;
+          value = 0;
+          while ((base == 16 && isxdigit(*cp)) ||
+                 (base == 8 && isdigit(*cp) && *cp < '8'))
+            {
+              value *= base;
+              if (*cp >= 'a' && *cp <= 'f')
+                value += *cp - 'a' + 10;
+              else if (*cp >= 'A' && *cp <= 'F')
+                value += *cp - 'A' + 10;
+              else
+                value += *cp - '0';
+              cp++;
+            }
+        }
       else
-	{
-	  value = atoi(cp);
-	}
+        {
+          value = atoi(cp);
+        }
       if (*activep && *intptr == -1)
-	*intptr = value;
+        *intptr = value;
       break;
       
     case oConnectionAttempts:
@@ -518,9 +522,9 @@ void process_config_line(Options *options, const char *host,
       cp = strtok(NULL, WHITESPACE);
       value = cipher_number(cp);
       if (value == -1)
-	fatal("%.200s line %d: Bad cipher.", filename, linenum);
+        fatal("%.200s line %d: Bad cipher.", filename, linenum);
       if (*activep && *intptr == -1)
-	*intptr = value;
+        *intptr = value;
       break;
       
     case oClearAllForwardings:
@@ -530,50 +534,50 @@ void process_config_line(Options *options, const char *host,
     case oRemoteForward:
       cp = strtok(NULL, WHITESPACE);
       if (!cp)
-	fatal("%.200s line %d: Missing argument.", filename, linenum);
+        fatal("%.200s line %d: Missing argument.", filename, linenum);
       if (cp[0] < '0' || cp[0] > '9')
-	fatal("%.200s line %d: Badly formatted port number.", 
-	      filename, linenum);
+        fatal("%.200s line %d: Badly formatted port number.", 
+              filename, linenum);
       fwd_port = atoi(cp);
       cp = strtok(NULL, WHITESPACE);
       if (!cp)
-	fatal("%.200s line %d: Missing second argument.", 
-	      filename, linenum);
+        fatal("%.200s line %d: Missing second argument.", 
+              filename, linenum);
       if (sscanf(cp, "%255[^:]:%d", buf, &fwd_host_port) != 2)
-	fatal("%.200s line %d: Badly formatted host:port.", 
-	      filename, linenum);
+        fatal("%.200s line %d: Badly formatted host:port.", 
+              filename, linenum);
       if (*activep)
-	add_remote_forward(options, fwd_port, buf, fwd_host_port);
+        add_remote_forward(options, fwd_port, buf, fwd_host_port);
       break;
       
     case oLocalForward:
       cp = strtok(NULL, WHITESPACE);
       if (!cp)
-	fatal("%.200s line %d: Missing argument.", filename, linenum);
+        fatal("%.200s line %d: Missing argument.", filename, linenum);
       if (cp[0] < '0' || cp[0] > '9')
-	fatal("%.200s line %d: Badly formatted port number.", 
-	      filename, linenum);
+        fatal("%.200s line %d: Badly formatted port number.", 
+              filename, linenum);
       fwd_port = atoi(cp);
       cp = strtok(NULL, WHITESPACE);
       if (!cp)
-	fatal("%.200s line %d: Missing second argument.", 
-	      filename, linenum);
+        fatal("%.200s line %d: Missing second argument.", 
+              filename, linenum);
       if (sscanf(cp, "%255[^:]:%d", buf, &fwd_host_port) != 2)
-	fatal("%.200s line %d: Badly formatted host:port.", 
-	      filename, linenum);
+        fatal("%.200s line %d: Badly formatted host:port.", 
+              filename, linenum);
       if (*activep)
-	add_local_forward(options, fwd_port, buf, fwd_host_port);
+        add_local_forward(options, fwd_port, buf, fwd_host_port);
       break;
       
     case oHost:
       *activep = 0;
       while ((cp = strtok(NULL, WHITESPACE)) != NULL)
-	if (match_pattern(host, cp))
-	  {
-	    debug("Applying options for %.100s", cp);
-	    *activep = 1;
-	    break;
-	  }
+        if (match_pattern(host, cp))
+          {
+            debug("Applying options for %.100s", cp);
+            *activep = 1;
+            break;
+          }
       /* Avoid garbage check below, as strtok already returned NULL. */
       return;
 
@@ -581,25 +585,25 @@ void process_config_line(Options *options, const char *host,
       intptr = &options->escape_char;
       cp = strtok(NULL, WHITESPACE);
       if (!cp)
-	fatal("%.200s line %d: Missing argument.", filename, linenum);
+        fatal("%.200s line %d: Missing argument.", filename, linenum);
       if (cp[0] == '^' && cp[2] == 0 && 
-	  (unsigned char)cp[1] >= 64 && (unsigned char)cp[1] < 128)
-	value = (unsigned char)cp[1] & 31;
+          (unsigned char)cp[1] >= 64 && (unsigned char)cp[1] < 128)
+        value = (unsigned char)cp[1] & 31;
       else
-	if (strlen(cp) == 1)
-	  value = (unsigned char)cp[0];
-	else
-	  if (strcmp(cp, "none") == 0)
-	    value = -2;
-	  else
-	    {
-	      fatal("%.200s line %d: Bad escape character.", 
-		    filename, linenum);
-	      /*NOTREACHED*/
-	      value = 0; /* Avoid compiler warning. */
-	    }
+        if (strlen(cp) == 1)
+          value = (unsigned char)cp[0];
+        else
+          if (strcmp(cp, "none") == 0)
+            value = -2;
+          else
+            {
+              fatal("%.200s line %d: Bad escape character.", 
+                    filename, linenum);
+              /*NOTREACHED*/
+              value = 0; /* Avoid compiler warning. */
+            }
       if (*activep && *intptr == -1)
-	*intptr = value;
+        *intptr = value;
       break;
       
     case oXauthPath:
@@ -607,13 +611,13 @@ void process_config_line(Options *options, const char *host,
     parse_pathname:
       cp = strtok(NULL, WHITESPACE);
       if (!cp)
- 	{
- 	  fprintf(stderr, "%s line %d: missing file name.\n",
- 		  filename, linenum);
- 	  exit(1);
- 	}
+        {
+          fprintf(stderr, "%s line %d: missing file name.\n",
+                  filename, linenum);
+          exit(1);
+        }
       if (*charptr == NULL)
- 	*charptr = tilde_expand_filename(cp, getuid());
+        *charptr = tilde_expand_filename(cp, getuid());
       break;
       
     case oGatewayPorts:
@@ -627,7 +631,7 @@ void process_config_line(Options *options, const char *host,
   /* Check that there is no garbage at end of line. */
   if (strtok(NULL, WHITESPACE) != NULL)
     fatal("%.200s line %d: garbage at end of line.",
-	  filename, linenum);
+          filename, linenum);
 }
 
 
@@ -637,7 +641,7 @@ void process_config_line(Options *options, const char *host,
    All I/O will be done with the given uid using userfile. */
 
 void read_config_file(uid_t uid, const char *filename, const char *host, 
-		      Options *options)
+                      Options *options)
 {
   UserFile uf;
   char line[1024];
@@ -778,7 +782,7 @@ void fill_default_options(Options *options)
   if (options->num_identity_files == 0)
     {
       options->identity_files[0] = 
-	xmalloc(2 + strlen(SSH_CLIENT_IDENTITY) + 1);
+        xmalloc(2 + strlen(SSH_CLIENT_IDENTITY) + 1);
       sprintf(options->identity_files[0], "~/%.100s", SSH_CLIENT_IDENTITY);
       options->num_identity_files = 1;
     }

@@ -2,10 +2,11 @@
 
 rsaglue.c
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Tue Apr 11 15:17:50 1995 ylo
 
@@ -18,35 +19,44 @@ using the --with-rsaref configure option.
 */
 
 /*
- * $Id: rsaglue.c,v 1.5 1997/03/19 21:29:59 kivinen Exp $
+ * $Id: rsaglue.c,v 1.8 1999/12/10 23:27:25 sjl Exp $
  * $Log: rsaglue.c,v $
+ * Revision 1.8  1999/12/10 23:27:25  sjl
+ * 	Added space to please Tatu.
+ *
+ * Revision 1.7  1999/11/24 14:47:59  ttsalo
+ *     Applied a fix for checking key lengths when using RSAREF
+ *
+ * Revision 1.6  1999/11/17 17:04:53  tri
+ *      Fixed copyright notices.
+ *
  * Revision 1.5  1997/03/19 21:29:59  kivinen
- * 	Added missing &.
+ *      Added missing &.
  *
  * Revision 1.4  1997/03/19 21:14:08  kivinen
- * 	Added checks that public key exponent cannot be less than 3.
+ *      Added checks that public key exponent cannot be less than 3.
  *
  * Revision 1.3  1996/07/31 07:02:32  huima
  * *** empty log message ***
  *
  * Revision 1.2  1996/07/07 12:48:14  ylo
- * 	A fixed size buffer was used to store decrypted value without
- * 	checking bounds, which could cause stack to be overwritten
- * 	with very large keys.  Changed to use xmallocated buffer.
+ *      A fixed size buffer was used to store decrypted value without
+ *      checking bounds, which could cause stack to be overwritten
+ *      with very large keys.  Changed to use xmallocated buffer.
  *
  * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
- * 	Imported ssh-1.2.13.
+ *      Imported ssh-1.2.13.
  *
  * Revision 1.4  1995/07/26  23:29:34  ylo
- * 	Display a fatal error if key size > 1024 with RSAREF.
+ *      Display a fatal error if key size > 1024 with RSAREF.
  *
  * Revision 1.3  1995/07/26  17:08:59  ylo
- * 	Changed to use new functions in mpaux.c for
- * 	linearizing/unlinearizing mp-ints.
+ *      Changed to use new functions in mpaux.c for
+ *      linearizing/unlinearizing mp-ints.
  *
  * Revision 1.2  1995/07/13  01:33:27  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
+ *      Removed "Last modified" header.
+ *      Added cvs log.
  *
  * $Endlog$
  */
@@ -124,7 +134,7 @@ void rsaref_private_key(R_RSA_PRIVATE_KEY *rsa, RSAPrivateKey *key)
 /* Performs a public key encrypt operation. */
 
 void rsa_public_encrypt(MP_INT *output, MP_INT *input, RSAPublicKey *key,
-			RandomState *random_state)
+                        RandomState *random_state)
 {
   unsigned char input_data[MAX_RSA_MODULUS_LEN];
   unsigned char output_data[MAX_RSA_MODULUS_LEN];
@@ -135,10 +145,14 @@ void rsa_public_encrypt(MP_INT *output, MP_INT *input, RSAPublicKey *key,
 
   if (key->bits > MAX_RSA_MODULUS_BITS)
     fatal("RSA key has too many bits for RSAREF to handle (max %d).",
-	  MAX_RSA_MODULUS_BITS);
+          MAX_RSA_MODULUS_BITS);
 
   input_bits = mpz_sizeinbase(input, 2);
   input_len = (input_bits + 7) / 8;
+  if (input_bits > MAX_RSA_MODULUS_BITS)
+    fatal("Attempted to encrypt a block too large (%d bits, %d max) (malicious?).",
+          input_bits, MAX_RSA_MODULUS_BITS);
+
   gmp_to_rsaref(input_data, input_len, input);
 
   rsaref_public_key(&public_key, key);
@@ -149,7 +163,7 @@ void rsa_public_encrypt(MP_INT *output, MP_INT *input, RSAPublicKey *key,
   R_RandomUpdate(&rands, buf, 256);
 
   if (RSAPublicEncrypt(output_data, &output_len, input_data, input_len, 
-		       &public_key, &rands) != 0)
+                       &public_key, &rands) != 0)
     fatal("RSAPublicEncrypt failed");
 
   R_RandomFinal(&rands);
@@ -168,16 +182,20 @@ void rsa_private_decrypt(MP_INT *output, MP_INT *input, RSAPrivateKey *key)
 
   if (key->bits > MAX_RSA_MODULUS_BITS)
     fatal("RSA key has too many bits for RSAREF to handle (max %d).",
-	  MAX_RSA_MODULUS_BITS);
+          MAX_RSA_MODULUS_BITS);
   
   input_bits = mpz_sizeinbase(input, 2);
   input_len = (input_bits + 7) / 8;
+  if(input_bits > MAX_RSA_MODULUS_BITS)
+    fatal("Received session key too long (%d bits, %d max) (malicious?).",
+          input_bits, MAX_RSA_MODULUS_BITS);
+
   gmp_to_rsaref(input_data, input_len, input);
 
   rsaref_private_key(&private_key, key);
 
   if (RSAPrivateDecrypt(output_data, &output_len, input_data, input_len,
-			&private_key) != 0)
+                        &private_key) != 0)
     fatal("RSAPrivateDecrypt failed");
 
   rsaref_to_gmp(output, output_data, output_len);
@@ -188,7 +206,7 @@ void rsa_private_decrypt(MP_INT *output, MP_INT *input, RSAPrivateKey *key)
 /* Encrypt input using the public key.  Input should be a 256 bit value. */
 
 void rsa_public_encrypt(MP_INT *output, MP_INT *input, RSAPublicKey *key,
-			RandomState *state)
+                        RandomState *state)
 {
   MP_INT aux;
   unsigned int i, input_bits, input_len, len;
@@ -206,7 +224,7 @@ void rsa_public_encrypt(MP_INT *output, MP_INT *input, RSAPublicKey *key,
     {
       unsigned int byte;
       do
-	byte = random_get_byte(state);
+        byte = random_get_byte(state);
       while (byte == 0);
       mpz_mul_2exp(&aux, &aux, 8);
       mpz_add_ui(&aux, &aux, byte);

@@ -14,8 +14,22 @@ Generic header file for ssh.
 */
 
 /*
- * $Id: ssh.h,v 1.5 1995/07/27 00:41:04 ylo Exp $
+ * $Id: ssh.h,v 1.9 1995/08/31 09:23:42 ylo Exp $
  * $Log: ssh.h,v $
+ * Revision 1.9  1995/08/31  09:23:42  ylo
+ * 	Added support for ETCDIR.
+ *
+ * Revision 1.8  1995/08/29  22:33:52  ylo
+ * 	Added get_remote_ipaddr, get_permanent_fd.
+ * 	Deleted SSH_NUM_DUPS.
+ *
+ * Revision 1.7  1995/08/21  23:28:57  ylo
+ * 	Added SERVER_CONFIG_FILE.
+ * 	Added syslog facility definitions.
+ *
+ * Revision 1.6  1995/08/18  22:57:06  ylo
+ * 	Now uses 3DES as the authfile cipher if IDEA is not available.
+ *
  * Revision 1.5  1995/07/27  00:41:04  ylo
  * 	Added GlobalKnownHostsFile and UserKnownHostsFile.
  *
@@ -54,20 +68,21 @@ Generic header file for ssh.
 
 /* System-wide file containing host keys of known hosts.  This file should be
    world-readable. */
-#define SSH_SYSTEM_HOSTFILE	"/etc/ssh_known_hosts"
+#define SSH_SYSTEM_HOSTFILE	ETCDIR "/ssh_known_hosts"
 
-/*  HOST_KEY_FILE		/etc/ssh_host_key
+/*  HOST_KEY_FILE		/etc/ssh_host_key,
+    SERVER_CONFIG_FILE		/etc/sshd_config,
 and HOST_CONFIG_FILE		/etc/ssh_config
-are both defined in Makefile.in.  Of these, ssh_host_key should be readable
+are all defined in Makefile.in.  Of these, ssh_host_key should be readable
 only by root, whereas ssh_config should be world-readable. */
 
 /* Random seed file for the daemon.  This file should be readable only by 
    root. */
-#define SSH_DAEMON_SEED_FILE	"/etc/ssh_random_seed"
+#define SSH_DAEMON_SEED_FILE	ETCDIR "/ssh_random_seed"
 
 /* The process id of the daemon listening for connections is saved
    here to make it easier to kill the correct daemon when necessary. */
-#define SSH_DAEMON_PID_FILE	"/etc/sshd_pid"
+#define SSH_DAEMON_PID_FILE	ETCDIR "/sshd_pid"
 
 /* The directory in user\'s home directory in which the files reside.
    The directory should be world-readable (though not all files are). */
@@ -76,7 +91,7 @@ only by root, whereas ssh_config should be world-readable. */
 /* Per-user file containing host keys of known hosts.  This file need
    not be readable by anyone except the user him/herself, though this does
    not contain anything particularly secret. */
-#define SSH_USER_HOSTFILE	".ssh/known_hosts"
+#define SSH_USER_HOSTFILE	"~/.ssh/known_hosts"
 
 /* Name of the file containing client-side random seed.  This file should
    only be readable by the user him/herself. */
@@ -127,15 +142,14 @@ only by root, whereas ssh_config should be world-readable. */
 #define SSH_AUTHSOCKET_ENV_NAME	"SSH_AUTHENTICATION_SOCKET"
 
 /* Cipher used for encrypting authentication files. */
+#ifdef WITHOUT_IDEA
+#define SSH_AUTHFILE_CIPHER	SSH_CIPHER_3DES
+#else
 #define SSH_AUTHFILE_CIPHER	SSH_CIPHER_IDEA
+#endif
 
 /* Default port number. */
 #define SSH_DEFAULT_PORT	22
-
-/* Number of file descriptors to dup before creating authentication fd.
-   These are used to move the authentication fd rather high, because some
-   shells arbitrarily close descriptors with lower values. */
-#define SSH_NUM_DUPS		20
 
 /* Force host key length and server key length to differ by at least this
    many bits.  This is to make double encryption with rsaref work. */
@@ -275,6 +289,10 @@ int auth_rsa_read_key(char **cpp, unsigned int *bitsp, MP_INT *e, MP_INT *n);
    cached, so it is efficient to call this several times. */
 const char *get_canonical_hostname();
 
+/* Returns the remote IP address as an ascii string.  The value need not be
+   freed by the caller. */
+const char *get_remote_ipaddr();
+
 /* Tries to match the host name (which must be in all lowercase) against the
    comma-separated sequence of subpatterns (each possibly preceded by ! to 
    indicate negation).  Returns true if there is a positive match; zero
@@ -331,10 +349,27 @@ int load_private_key(const char *filename, const char *passphrase,
 
 /*------------ Definitions for logging. -----------------------*/
 
+/* Supported syslog facilities. */
+typedef enum
+{
+  SYSLOG_FACILITY_DAEMON,
+  SYSLOG_FACILITY_USER,
+  SYSLOG_FACILITY_AUTH,
+  SYSLOG_FACILITY_LOCAL0,
+  SYSLOG_FACILITY_LOCAL1,
+  SYSLOG_FACILITY_LOCAL2,
+  SYSLOG_FACILITY_LOCAL3,
+  SYSLOG_FACILITY_LOCAL4,
+  SYSLOG_FACILITY_LOCAL5,
+  SYSLOG_FACILITY_LOCAL6,
+  SYSLOG_FACILITY_LOCAL7
+} SyslogFacility;
+
 /* Initializes logging.  If debug is non-zero, debug() will output something.
    If quiet is non-zero, none of these will log send anything to syslog
    (but maybe to stderr). */
-void log_init(char *av0, int on_stderr, int debug, int quiet);
+void log_init(char *av0, int on_stderr, int debug, int quiet,
+	      SyslogFacility facility);
 
 /* Outputs a message to syslog or stderr, depending on the implementation. 
    The format must guarantee that the final message does not exceed 1024 
@@ -476,7 +511,7 @@ char *auth_get_socket_name(void);
 
 /* This if called to process SSH_CMSG_AGENT_REQUEST_FORWARDING on the server.
    This starts forwarding authentication requests. */
-void auth_input_request_forwarding(uid_t uid, gid_t gid);
+void auth_input_request_forwarding(struct passwd *pw);
 
 /* This is called to process an SSH_SMSG_AGENT_OPEN message. */
 void auth_input_open_request(void);
@@ -488,5 +523,10 @@ int match_pattern(const char *s, const char *pattern);
 /* Expands tildes in the file name.  Returns data allocated by xmalloc.
    Warning: this calls getpw*. */
 char *tilde_expand_filename(const char *filename, uid_t my_uid);
+
+/* Gets a file descriptor that won't get closed by shell pathname.
+   If pathname is NULL, the path is inferred from the SHELL environment
+   variable or the user id. */
+int get_permanent_fd(const char *pathname);
 
 #endif /* SSH_H */

@@ -15,8 +15,12 @@ the password is valid for the user.
 */
 
 /*
- * $Id: auth-passwd.c,v 1.10 1997/04/05 21:45:25 kivinen Exp $
+ * $Id: auth-passwd.c,v 1.11 1997/04/17 03:57:05 kivinen Exp $
  * $Log: auth-passwd.c,v $
+ * Revision 1.11  1997/04/17 03:57:05  kivinen
+ * 	Kept FILE: prefix in kerberos ticket filename as DCE cache
+ * 	code requires it (patch from Doug Engert <DEEngert@anl.gov>).
+ *
  * Revision 1.10  1997/04/05 21:45:25  kivinen
  * 	Changed verify_krb_v5_tgt to take *error_code instead of
  * 	error_code.
@@ -544,8 +548,8 @@ int auth_password(const char *server_user, const char *password)
 	      
             /* get_name pulls out just the name not the
                type */
-	      strcpy(ccname, krb5_cc_get_name(ssh_context, ccache));
-	      (void) chown(ccname, pw->pw_uid, pw->pw_gid);
+	      strcpy(ccname + 5, krb5_cc_get_name(ssh_context, ccache));
+	      (void) chown(ccname + 5, pw->pw_uid, pw->pw_gid);
 	      
 	      /* If tgt was passed unlink file */
 	      if (ticket)

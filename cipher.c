@@ -2,65 +2,69 @@
 
 cipher.c
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Wed Apr 19 17:41:39 1995 ylo
 
 */
 
 /*
- * $Id: cipher.c,v 1.12 1998/05/23 20:21:09 kivinen Exp $
+ * $Id: cipher.c,v 1.13 1999/11/17 17:04:41 tri Exp $
  * $Log: cipher.c,v $
+ * Revision 1.13  1999/11/17 17:04:41  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.12  1998/05/23 20:21:09  kivinen
- * 	Changed () -> (void).
+ *      Changed () -> (void).
  *
  * Revision 1.11  1998/04/30  01:51:32  kivinen
- * 	Reserved cipher number 7 to Bernard Perrot
- * 	<perrot@lal.in2p3.fr> for some weak 40 bit encryption method.
+ *      Reserved cipher number 7 to Bernard Perrot
+ *      <perrot@lal.in2p3.fr> for some weak 40 bit encryption method.
  *
  * Revision 1.10  1998/03/27 17:23:43  kivinen
- * 	Removed TSS.
+ *      Removed TSS.
  *
  * Revision 1.9  1997/03/26 07:03:04  kivinen
- * 	Added check that warning about arcfour is given only once.
+ *      Added check that warning about arcfour is given only once.
  *
  * Revision 1.8  1997/03/25 05:38:50  kivinen
- * 	#ifndef WITH_IDEA -> #ifdef WITH_IDEA.
+ *      #ifndef WITH_IDEA -> #ifdef WITH_IDEA.
  *
  * Revision 1.7  1997/03/19 22:26:38  kivinen
- * 	Removed WITH_3DES ifdefs, as it is mandatory.
+ *      Removed WITH_3DES ifdefs, as it is mandatory.
  *
  * Revision 1.6  1997/03/19 22:17:11  kivinen
- * 	Enabled none encryption internally anyway, because it is
- * 	required to read host keys.
+ *      Enabled none encryption internally anyway, because it is
+ *      required to read host keys.
  *
  * Revision 1.5  1997/03/19 21:29:45  kivinen
- * 	Added missing }.
+ *      Added missing }.
  *
  * Revision 1.4  1997/03/19 17:34:56  kivinen
- * 	Made all ciphers optional.
+ *      Made all ciphers optional.
  *
  * Revision 1.3  1996/09/28 12:01:04  ylo
- * 	Removed TSS (put inside #ifdef WITH_TSS).
+ *      Removed TSS (put inside #ifdef WITH_TSS).
  *
  * Revision 1.2  1996/09/27 13:55:02  ttsalo
- * 	Added blowfish
+ *      Added blowfish
  *
  * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
- * 	Imported ssh-1.2.13.
+ *      Imported ssh-1.2.13.
  *
  * Revision 1.3  1995/08/18  22:48:01  ylo
- * 	Added code to permit compiling without idea.
+ *      Added code to permit compiling without idea.
  *
- * 	With triple-des, if the key length is only 16 bytes, reuse the
- * 	beginning of the key for the third DES key.
+ *      With triple-des, if the key length is only 16 bytes, reuse the
+ *      beginning of the key for the third DES key.
  *
  * Revision 1.2  1995/07/13  01:19:45  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
+ *      Removed "Last modified" header.
+ *      Added cvs log.
  *
  * $Endlog$
  */
@@ -131,7 +135,7 @@ int cipher_number(const char *name)
       return SSH_CIPHER_ARCFOUR;
 #else
       if (!warning_given)
-	log_msg("Arcfour cipher is disabled in this host, using blowfish cipher instead");
+        log_msg("Arcfour cipher is disabled in this host, using blowfish cipher instead");
       warning_given = 1;
       return SSH_CIPHER_BLOWFISH;
 #endif
@@ -141,15 +145,15 @@ int cipher_number(const char *name)
     if (strcmp(cipher_names[i], name) == 0)
       {
 #if !defined(WITH_ARCFOUR) && defined(WITH_BLOWFISH)
-	if (i == SSH_CIPHER_ARCFOUR)
-	  {
-	    if (!warning_given)
-	      log_msg("Arcfour cipher is disabled in this host, using blowfish cipher instead");
-	    warning_given = 1;
-	    return SSH_CIPHER_BLOWFISH;
-	  }
+        if (i == SSH_CIPHER_ARCFOUR)
+          {
+            if (!warning_given)
+              log_msg("Arcfour cipher is disabled in this host, using blowfish cipher instead");
+            warning_given = 1;
+            return SSH_CIPHER_BLOWFISH;
+          }
 #endif
-	return i;
+        return i;
       }
   return -1;
 }
@@ -158,7 +162,7 @@ int cipher_number(const char *name)
    passphrase and using the resulting 16 bytes as the key. */
 
 void cipher_set_key_string(CipherContext *context, int cipher,
-			   const char *passphrase, int for_encryption)
+                           const char *passphrase, int for_encryption)
 {
   struct MD5Context md;
   unsigned char digest[16];
@@ -176,7 +180,7 @@ void cipher_set_key_string(CipherContext *context, int cipher,
 /* Selects the cipher to use and sets the key. */
 
 void cipher_set_key(CipherContext *context, int cipher,
-		    const unsigned char *key, int keylen, int for_encryption)
+                    const unsigned char *key, int keylen, int for_encryption)
 {
   unsigned char padded[32];
 
@@ -200,7 +204,7 @@ void cipher_set_key(CipherContext *context, int cipher,
 #ifdef WITH_IDEA
     case SSH_CIPHER_IDEA:
       if (keylen < 16)
-	error("Key length %d is insufficient for IDEA.", keylen);
+        error("Key length %d is insufficient for IDEA.", keylen);
       idea_set_key(&context->u.idea.key, padded);
       memset(context->u.idea.iv, 0, sizeof(context->u.idea.iv));
       break;
@@ -209,10 +213,10 @@ void cipher_set_key(CipherContext *context, int cipher,
 #ifdef WITH_DES
     case SSH_CIPHER_DES:
       /* Note: the least significant bit of each byte of key is parity, 
-	 and must be ignored by the implementation.  8 bytes of key are
-	 used. */
+         and must be ignored by the implementation.  8 bytes of key are
+         used. */
       if (keylen < 8)
-	error("Key length %d is insufficient for DES.", keylen);
+        error("Key length %d is insufficient for DES.", keylen);
       des_set_key(padded, &context->u.des.key);
       memset(context->u.des.iv, 0, sizeof(context->u.des.iv));
       break;
@@ -220,16 +224,16 @@ void cipher_set_key(CipherContext *context, int cipher,
 
     case SSH_CIPHER_3DES:
       /* Note: the least significant bit of each byte of key is parity, 
-	 and must be ignored by the implementation.  16 bytes of key are
-	 used (first and last keys are the same). */
+         and must be ignored by the implementation.  16 bytes of key are
+         used (first and last keys are the same). */
       if (keylen < 16)
-	error("Key length %d is insufficient for 3DES.", keylen);
+        error("Key length %d is insufficient for 3DES.", keylen);
       des_set_key(padded, &context->u.des3.key1);
       des_set_key(padded + 8, &context->u.des3.key2);
       if (keylen <= 16)
-	des_set_key(padded, &context->u.des3.key3);
+        des_set_key(padded, &context->u.des3.key3);
       else
-	des_set_key(padded + 16, &context->u.des3.key3);
+        des_set_key(padded + 16, &context->u.des3.key3);
       memset(context->u.des3.iv1, 0, sizeof(context->u.des3.iv1));
       memset(context->u.des3.iv2, 0, sizeof(context->u.des3.iv2));
       memset(context->u.des3.iv3, 0, sizeof(context->u.des3.iv3));
@@ -244,7 +248,7 @@ void cipher_set_key(CipherContext *context, int cipher,
 #ifdef WITH_BLOWFISH
     case SSH_CIPHER_BLOWFISH:
       if (keylen < 8)
-	error("Key length %d is insufficient for Blowfish", keylen);
+        error("Key length %d is insufficient for Blowfish", keylen);
       blowfish_set_key(&context->u.blowfish, key, keylen, for_encryption);
       break;
 #endif /* WITH_BLOWFISH */
@@ -257,7 +261,7 @@ void cipher_set_key(CipherContext *context, int cipher,
 /* Encrypts data using the cipher. */
 
 void cipher_encrypt(CipherContext *context, unsigned char *dest,
-		    const unsigned char *src, unsigned int len)
+                    const unsigned char *src, unsigned int len)
 {
   switch (context->type)
     {
@@ -268,7 +272,7 @@ void cipher_encrypt(CipherContext *context, unsigned char *dest,
 #ifdef WITH_IDEA
     case SSH_CIPHER_IDEA:
       idea_cfb_encrypt(&context->u.idea.key, context->u.idea.iv, 
-		       dest, src, len);
+                       dest, src, len);
       break;
 #endif /* WITH_IDEA */
 
@@ -280,9 +284,9 @@ void cipher_encrypt(CipherContext *context, unsigned char *dest,
 
     case SSH_CIPHER_3DES:
       des_3cbc_encrypt(&context->u.des3.key1, context->u.des3.iv1,
-		       &context->u.des3.key2, context->u.des3.iv2,
-		       &context->u.des3.key3, context->u.des3.iv3,
-		       dest, src, len);
+                       &context->u.des3.key2, context->u.des3.iv2,
+                       &context->u.des3.key3, context->u.des3.iv3,
+                       dest, src, len);
       break;
 
 #ifdef WITH_ARCFOUR
@@ -305,7 +309,7 @@ void cipher_encrypt(CipherContext *context, unsigned char *dest,
 /* Decrypts data using the cipher. */
 
 void cipher_decrypt(CipherContext *context, unsigned char *dest,
-		    const unsigned char *src, unsigned int len)
+                    const unsigned char *src, unsigned int len)
 {
   switch (context->type)
     {
@@ -316,7 +320,7 @@ void cipher_decrypt(CipherContext *context, unsigned char *dest,
 #ifdef WITH_IDEA
     case SSH_CIPHER_IDEA:
       idea_cfb_decrypt(&context->u.idea.key, context->u.idea.iv, 
-		       dest, src, len);
+                       dest, src, len);
       break;
 #endif /* WITH_IDEA */
 
@@ -328,9 +332,9 @@ void cipher_decrypt(CipherContext *context, unsigned char *dest,
 
     case SSH_CIPHER_3DES:
       des_3cbc_decrypt(&context->u.des3.key1, context->u.des3.iv1,
-		       &context->u.des3.key2, context->u.des3.iv2,
-		       &context->u.des3.key3, context->u.des3.iv3,
-		       dest, src, len);
+                       &context->u.des3.key2, context->u.des3.iv2,
+                       &context->u.des3.key3, context->u.des3.iv3,
+                       dest, src, len);
       break;
 
 #ifdef WITH_ARCFOUR

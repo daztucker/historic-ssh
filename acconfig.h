@@ -10,6 +10,9 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 /*
  * $Log: acconfig.h,v $
+ * Revision 1.16  1997/05/13 22:32:06  kivinen
+ * 	Added SOCKS4 and SOCKS5.
+ *
  * Revision 1.15  1997/04/22 23:57:14  kivinen
  * 	Added HAVE_STRUCT_SPWD_EXPIRE and HAVE_STRUCT_SPWD_INACT.
  *
@@ -269,6 +272,8 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 /* Define this if compiling with SOCKS (the firewall traversal library). */
 #undef SOCKS
+#undef SOCKS4
+#undef SOCKS5
 
 /* Define these if on SCO Unix. */
 #undef HAVE_SCO_ETC_SHADOW

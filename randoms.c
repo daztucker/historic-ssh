@@ -2,10 +2,11 @@
 
 random.c
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Sat Mar  4 14:55:57 1995 ylo
 
@@ -14,38 +15,41 @@ Cryptographically strong random number generation.
 */
 
 /*
- * $Id: randoms.c,v 1.4 1998/05/23 20:23:13 kivinen Exp $
+ * $Id: randoms.c,v 1.5 1999/11/17 17:04:50 tri Exp $
  * $Log: randoms.c,v $
+ * Revision 1.5  1999/11/17 17:04:50  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.4  1998/05/23 20:23:13  kivinen
- * 	Changed uint32 to word32.
+ *      Changed uint32 to word32.
  *
  * Revision 1.3  1998/04/17  00:39:38  kivinen
- * 	Removed sys/resource.h including (it is already included in
- * 	the includes.h).
+ *      Removed sys/resource.h including (it is already included in
+ *      the includes.h).
  *
  * Revision 1.2  1997/03/26 05:35:54  kivinen
- * 	Added HAVE_NO_TZ_IN_GETTIMEOFDAY support.
+ *      Added HAVE_NO_TZ_IN_GETTIMEOFDAY support.
  *
  * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
- * 	Imported ssh-1.2.13.
+ *      Imported ssh-1.2.13.
  *
  * Revision 1.6  1995/10/02  01:25:24  ylo
- * 	Added a cast to avoid compiler warning; also minor change in
- * 	noise collection.
+ *      Added a cast to avoid compiler warning; also minor change in
+ *      noise collection.
  *
  * Revision 1.5  1995/09/21  17:12:23  ylo
- * 	Don't use the second argument of gettimeofday.
+ *      Don't use the second argument of gettimeofday.
  *
  * Revision 1.4  1995/09/13  11:59:07  ylo
- * 	Large modifications to make this work on machines without 32
- * 	bit integer type (Cray).
+ *      Large modifications to make this work on machines without 32
+ *      bit integer type (Cray).
  *
  * Revision 1.3  1995/08/29  22:22:50  ylo
- * 	Removed extra '&'.
+ *      Removed extra '&'.
  *
  * Revision 1.2  1995/07/13  01:29:20  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
+ *      Removed "Last modified" header.
+ *      Added cvs log.
  *
  * $Endlog$
  */
@@ -96,7 +100,7 @@ void random_initialize(RandomState *state, uid_t uid, const char *filename)
       bytes = userfile_read(uf, buf, sizeof(buf));
       userfile_close(uf);
       if (bytes > 0)
-	random_add_noise(state, buf, bytes);
+        random_add_noise(state, buf, bytes);
       memset(buf, 0, sizeof(buf));
     }
   else
@@ -170,28 +174,28 @@ void random_acquire_light_environmental_noise(RandomState *state)
       state->last_dev_random_usage = time(NULL);
 
       /* If /dev/random is available, read some data from there in non-blocking
-	 mode and mix it into the pool. */
+         mode and mix it into the pool. */
       f = open("/dev/random", O_RDONLY);
       if (f >= 0)
-	{
-	  /* Set the descriptor into non-blocking mode. */
+        {
+          /* Set the descriptor into non-blocking mode. */
 #if defined(O_NONBLOCK) && !defined(O_NONBLOCK_BROKEN)
-	  fcntl(f, F_SETFL, O_NONBLOCK);
+          fcntl(f, F_SETFL, O_NONBLOCK);
 #else /* O_NONBLOCK && !O_NONBLOCK_BROKEN */
-	  fcntl(f, F_SETFL, O_NDELAY);
+          fcntl(f, F_SETFL, O_NDELAY);
 #endif /* O_NONBLOCK && !O_NONBLOCK_BROKEN */
-	  len = read(f, buf, sizeof(buf));
-	  close(f);
-	  if (len > 0)
-	    random_add_noise(state, buf, len);
-	}
+          len = read(f, buf, sizeof(buf));
+          close(f);
+          if (len > 0)
+            random_add_noise(state, buf, len);
+        }
     }
 
   /* Get miscellaneous noise from various system parameters and statistics. */
   random_xor_noise(state,
-		   (unsigned int)(state->state[0] + 256*state->state[1]) % 
-		     (RANDOM_STATE_BYTES / 4),
-		   (word32)time(NULL));
+                   (unsigned int)(state->state[0] + 256*state->state[1]) % 
+                     (RANDOM_STATE_BYTES / 4),
+                   (word32)time(NULL));
 
 #ifdef HAVE_GETTIMEOFDAY
   {
@@ -213,8 +217,8 @@ void random_acquire_light_environmental_noise(RandomState *state)
     struct tms tm;
     random_xor_noise(state, 2, (word32)times(&tm));
     random_xor_noise(state, 4, (word32)(tm.tms_utime ^ (tm.tms_stime << 8) ^ 
-					(tm.tms_cutime << 16) ^ 
-					(tm.tms_cstime << 24)));
+                                        (tm.tms_cutime << 16) ^ 
+                                        (tm.tms_cstime << 24)));
   }
 #endif /* HAVE_TIMES */
 #ifdef HAVE_GETRUSAGE
@@ -223,9 +227,9 @@ void random_acquire_light_environmental_noise(RandomState *state)
     getrusage(RUSAGE_SELF, &ru);
     getrusage(RUSAGE_CHILDREN, &cru);
     random_xor_noise(state, 0, (word32)(ru.ru_utime.tv_usec + 
-					cru.ru_utime.tv_usec));
+                                        cru.ru_utime.tv_usec));
     random_xor_noise(state, 2, (word32)(ru.ru_stime.tv_usec + 
-					cru.ru_stime.tv_usec));
+                                        cru.ru_stime.tv_usec));
     random_xor_noise(state, 5, (word32)(ru.ru_maxrss + cru.ru_maxrss));
     random_xor_noise(state, 6, (word32)(ru.ru_ixrss + cru.ru_ixrss));
     random_xor_noise(state, 7, (word32)(ru.ru_idrss + cru.ru_idrss));
@@ -235,9 +239,9 @@ void random_acquire_light_environmental_noise(RandomState *state)
     random_xor_noise(state, 11, (word32)(ru.ru_inblock + cru.ru_inblock));
     random_xor_noise(state, 12, (word32)(ru.ru_oublock + cru.ru_oublock));
     random_xor_noise(state, 13, (word32)((ru.ru_msgsnd ^ ru.ru_msgrcv ^ 
-					  ru.ru_nsignals) +
-					 (cru.ru_msgsnd ^ cru.ru_msgrcv ^ 
-					  cru.ru_nsignals)));
+                                          ru.ru_nsignals) +
+                                         (cru.ru_msgsnd ^ cru.ru_msgrcv ^ 
+                                          cru.ru_nsignals)));
     random_xor_noise(state, 14, (word32)(ru.ru_nvcsw + cru.ru_nvcsw));
     random_xor_noise(state, 15, (word32)(ru.ru_nivcsw + cru.ru_nivcsw));
   }
@@ -260,7 +264,7 @@ void random_acquire_light_environmental_noise(RandomState *state)
    command will be run via userfile with the given uid. */
 
 void random_get_noise_from_command(RandomState *state, uid_t uid, 
-				   const char *cmd)
+                                   const char *cmd)
 {
   char line[1000];
   UserFile uf;
@@ -283,10 +287,10 @@ void random_add_noise(RandomState *state, const void *buf, unsigned int bytes)
   while (bytes > 0)
     {
       if (pos >= RANDOM_STATE_BYTES)
-	{
-	  pos = 0;
-	  random_stir(state);
-	}
+        {
+          pos = 0;
+          random_stir(state);
+        }
       state->state[pos] ^= *input;
       input++;
       bytes--;
@@ -360,7 +364,7 @@ unsigned int random_get_byte(RandomState *state)
   if (state->next_available_byte >= RANDOM_STATE_BYTES)
     {
       /* Get some easily available noise.  More importantly, this stirs
-	 the pool. */
+         the pool. */
       random_acquire_light_environmental_noise(state);
     }
   assert(state->next_available_byte < RANDOM_STATE_BYTES);

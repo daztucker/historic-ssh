@@ -14,8 +14,11 @@ Functions to interface with the SSH_AUTHENTICATION_FD socket.
 */
 
 /*
- * $Id: authfd.h,v 1.1.1.1 1996/02/18 21:38:11 ylo Exp $
+ * $Id: authfd.h,v 1.2 1996/09/08 17:21:05 ttsalo Exp $
  * $Log: authfd.h,v $
+ * Revision 1.2  1996/09/08 17:21:05  ttsalo
+ * 	A lot of changes in agent-socket handling
+ *
  * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
  * 	Imported ssh-1.2.13.
  *
@@ -41,6 +44,7 @@ Functions to interface with the SSH_AUTHENTICATION_FD socket.
 #define AUTHFD_H
 
 #include "buffer.h"
+#include "userfile.h"
 
 /* Message types for SSH_AUTHENTICATION_FD socket. */
 #define SSH_AUTHFD_CONNECT	0xf0
@@ -64,13 +68,14 @@ typedef struct
   int num_identities;
 } AuthenticationConnection;
 
-/* Returns the number of the authentication fd, or -1 if there is none. */
-int ssh_get_authentication_fd();
+/* Returns a UserFile structure for handling the authentication fd,
+   or NULL if there is none. */
+UserFile ssh_get_authentication_fd();
 
 /* This should be called for any descriptor returned by 
    ssh_get_authentication_fd().  Depending on the way the descriptor was
    obtained, this may close the descriptor. */
-void ssh_close_authentication_socket(int authfd);
+void ssh_close_authentication_socket(UserFile authfd);
 
 /* Opens a socket to the authentication server.  Returns the number of
    that socket, or -1 if no connection could be made. */

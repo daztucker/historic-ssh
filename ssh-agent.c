@@ -2,10 +2,11 @@
 
 ssh-agent.c
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Wed Mar 29 03:46:59 1995 ylo
 
@@ -14,12 +15,15 @@ The authentication agent program.
 */
 
 /*
- * $Id: ssh-agent.c,v 1.21 1999/02/21 19:52:40 ylo Exp $
+ * $Id: ssh-agent.c,v 1.22 1999/11/17 17:04:56 tri Exp $
  * $Log: ssh-agent.c,v $
+ * Revision 1.22  1999/11/17 17:04:56  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.21  1999/02/21 19:52:40  ylo
- * 	Intermediate commit of ssh1.2.27 stuff.
- * 	Main change is sprintf -> snprintf; however, there are also
- * 	many other changes.
+ *      Intermediate commit of ssh1.2.27 stuff.
+ *      Main change is sprintf -> snprintf; however, there are also
+ *      many other changes.
  *
  * Revision 1.20  1999/01/26 17:40:34  tri
  *      Ignore forwarding notice packets, that may be added

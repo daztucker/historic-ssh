@@ -12,8 +12,11 @@ Created: Mon Aug 21 15:48:58 1995 ylo
 */
 
 /*
- * $Id: servconf.c,v 1.8 1997/04/05 21:50:07 kivinen Exp $
+ * $Id: servconf.c,v 1.9 1997/04/21 01:03:59 kivinen Exp $
  * $Log: servconf.c,v $
+ * Revision 1.9  1997/04/21 01:03:59  kivinen
+ * 	Fixed allow_tcp_forwarding option default to yes.
+ *
  * Revision 1.8  1997/04/05 21:50:07  kivinen
  * 	Fixed bug in allow_tcp_forwarding code.
  *
@@ -161,7 +164,7 @@ void fill_default_server_options(ServerOptions *options)
     options->kerberos_tgt_passing = 0;
 #endif /* defined(KERBEROS_TGT_PASSING) && defined(KRB5) */
   if (options->allow_tcp_forwarding == -1)
-    options->allow_tcp_forwarding = 0;
+    options->allow_tcp_forwarding = 1;
   if (options->tis_authentication == -1)
     options->tis_authentication = 0;
   if (options->password_authentication == -1)

@@ -15,8 +15,22 @@ login (authentication) dialog.
 */
 
 /*
- * $Id: sshconnect.c,v 1.11 1995/09/13 12:03:55 ylo Exp $
+ * $Id: sshconnect.c,v 1.15 1995/09/27 02:16:40 ylo Exp $
  * $Log: sshconnect.c,v $
+ * Revision 1.15  1995/09/27  02:16:40  ylo
+ * 	Eliminated compiler warning.
+ *
+ * Revision 1.14  1995/09/25  00:02:55  ylo
+ * 	Added connection_attempts.
+ * 	Added screen number forwarding.
+ *
+ * Revision 1.13  1995/09/22  22:23:23  ylo
+ * 	Changed interface of ssh_login to use the option structure
+ * 	instead of numerous individual arguments.
+ *
+ * Revision 1.12  1995/09/21  17:17:44  ylo
+ * 	Added original_real_uid argument to ssh_connect.
+ *
  * Revision 1.11  1995/09/13  12:03:55  ylo
  * 	Added debugging output to print uids.
  *
@@ -77,10 +91,6 @@ login (authentication) dialog.
 #include "md5.h"
 #include "mpaux.h"
 
-/* Maximum number of times to try connecting if the host returns
-   ECONNREFUSED. */
-#define MAX_CONNECTION_ATTEMPTS		4
-
 /* This variable is set to true if remote protocol version is 1.1 or higher. 
    XXX remove this variable later. */
 int remote_protocol_1_1 = 0;
@@ -91,12 +101,14 @@ unsigned char session_id[16];
 /* Opens a TCP/IP connection to the remote server on the given host.  If
    port is 0, the default port will be used.  If anonymous is zero,
    a privileged port will be allocated to make the connection. 
-   This requires super-user privileges if anonymous is false. */
+   This requires super-user privileges if anonymous is false. 
+   Connection_attempts specifies the maximum number of tries (one per
+   second). */
 
-int ssh_connect(const char *host, int port, int anonymous,
-		uid_t original_real_uid)
+int ssh_connect(const char *host, int port, int connection_attempts,
+		int anonymous, uid_t original_real_uid)
 {
-  int sock, attempt, i;
+  int sock = -1, attempt, i;
   int on = 1;
   struct servent *sp;
   struct hostent *hp;
@@ -124,7 +136,7 @@ int ssh_connect(const char *host, int port, int anonymous,
   /* Try to connect several times.  On some machines, the first time will
      sometimes fail.  In general socket code appears to behave quite
      magically on many machines. */
-  for (attempt = 0; attempt < MAX_CONNECTION_ATTEMPTS; attempt++)
+  for (attempt = 0; attempt < connection_attempts; attempt++)
     {
       if (attempt > 0)
 	debug("Trying again...");
@@ -223,7 +235,7 @@ int ssh_connect(const char *host, int port, int anonymous,
       sleep(1);
     }
   /* Return failure if we didn't get a successful connection. */
-  if (attempt >= MAX_CONNECTION_ATTEMPTS)
+  if (attempt >= connection_attempts)
     return -1;
 
   debug("Connection established.");
@@ -582,13 +594,8 @@ int try_rhosts_rsa_authentication(const char *local_user,
 
 void ssh_login(RandomState *state, int host_key_valid, 
 	       RSAPrivateKey *own_host_key,
-	       int sock, const char *orighost, const char *user, 
-	       unsigned int num_identity_files, char **identity_files, 
-	       int rhosts_authentication, int rhosts_rsa_authentication,
-	       int rsa_authentication,
-	       int password_authentication, int cipher_type,
-	       const char *system_hostfile, const char *user_hostfile,
-	       uid_t original_real_uid)
+	       int sock, const char *orighost, 
+	       Options *options, uid_t original_real_uid)
 {
   int i, type, remote_major, remote_minor;
   char buf[1024]; /* Must not be larger than remote_version. */
@@ -678,7 +685,7 @@ void ssh_login(RandomState *state, int host_key_valid,
   if (!pw)
     fatal("User id %d not found from user database.", original_real_uid);
   local_user = xstrdup(pw->pw_name);
-  server_user = user ? user : local_user;
+  server_user = options->user ? options->user : local_user;
 
   /* Initialize the connection in the packet protocol module. */
   packet_set_connection(sock, state);
@@ -725,10 +732,11 @@ void ssh_login(RandomState *state, int host_key_valid,
 
   /* Check if the host key is present in the user\'s list of known hosts
      or in the systemwide list. */
-  host_status = check_host_in_hostfile(user_hostfile, host, host_key.bits, 
+  host_status = check_host_in_hostfile(options->user_hostfile, 
+				       host, host_key.bits, 
 				       &host_key.e, &host_key.n);
   if (host_status == HOST_NEW)
-    host_status = check_host_in_hostfile(system_hostfile, host, 
+    host_status = check_host_in_hostfile(options->system_hostfile, host, 
 					 host_key.bits, &host_key.e, 
 					 &host_key.n);
 
@@ -753,10 +761,10 @@ void ssh_login(RandomState *state, int host_key_valid,
       break;
     case HOST_NEW:
       /* The host is new. */
-      if (!add_host_to_hostfile(user_hostfile, host, host_key.bits, 
+      if (!add_host_to_hostfile(options->user_hostfile, host, host_key.bits, 
 				&host_key.e, &host_key.n))
 	log("Failed to add the host to the list of known hosts (%.500s).", 
-	    user_hostfile);
+	    options->user_hostfile);
       else
 	log("Host '%.200s' added to the list of known hosts.", host);
       break;
@@ -770,9 +778,9 @@ void ssh_login(RandomState *state, int host_key_valid,
       error("It is also possible that the host key has just been changed.");
       error("Please contact your system administrator.");
       error("Add correct host key in %s to get rid of this message.", 
-	    user_hostfile);
+	    options->user_hostfile);
       error("Password authentication is disabled to avoid trojan horses.");
-      password_authentication = 0;
+      options->password_authentication = 0;
       /* XXX Should permit the user to change to use the new id.  This could
          be done by converting the host key to an identifying sentence, tell
 	 that the host identifies itself by that sentence, and ask the user
@@ -848,26 +856,26 @@ void ssh_login(RandomState *state, int host_key_valid,
       rsa_public_encrypt(&key, &key, &public_key, state);
     }
 
-  if (cipher_type == SSH_CIPHER_NOT_SET)
+  if (options->cipher == SSH_CIPHER_NOT_SET)
     if (cipher_mask() & supported_ciphers & (1 << SSH_CIPHER_IDEA))
-      cipher_type = SSH_CIPHER_IDEA;
+      options->cipher = SSH_CIPHER_IDEA;
     else
       {
 	debug("IDEA not supported, using %.100s instead.",
 	      cipher_name(SSH_FALLBACK_CIPHER));
-	cipher_type = SSH_FALLBACK_CIPHER;
+	options->cipher = SSH_FALLBACK_CIPHER;
       }
 
   /* Check that the selected cipher is supported. */
-  if (!(supported_ciphers & (1 << cipher_type)))
+  if (!(supported_ciphers & (1 << options->cipher)))
     fatal("Selected cipher type %.100s not supported by server.", 
-	  cipher_name(cipher_type));
+	  cipher_name(options->cipher));
 
-  debug("Encryption type: %.100s", cipher_name(cipher_type));
+  debug("Encryption type: %.100s", cipher_name(options->cipher));
 
   /* Send the encrypted session key to the server. */
   packet_start(SSH_CMSG_SESSION_KEY);
-  packet_put_char(cipher_type);
+  packet_put_char(options->cipher);
 
   /* Send the check bytes back to the server. */
   for (i = 0; i < 8; i++)
@@ -877,7 +885,7 @@ void ssh_login(RandomState *state, int host_key_valid,
   packet_put_mp_int(&key);
 
   /* Send protocol flags. */
-  packet_put_int(0);
+  packet_put_int(SSH_PROTOFLAG_SCREEN_NUMBER);
 
   /* Send the packet now. */
   packet_send();
@@ -893,7 +901,7 @@ void ssh_login(RandomState *state, int host_key_valid,
   
   /* Set the encryption key. */
   packet_set_encryption_key(session_key, SSH_SESSION_KEY_LENGTH, 
-			    cipher_type, 1);
+			    options->cipher, 1);
 
   /* We will no longer need the session key here.  Destroy any extra copies. */
   memset(session_key, 0, sizeof(session_key));
@@ -923,7 +931,7 @@ void ssh_login(RandomState *state, int host_key_valid,
   /* Use rhosts authentication if running in privileged socket and we do not
      wish to remain anonymous. */
   if ((supported_authentications & (1 << SSH_AUTH_RHOSTS)) && 
-      rhosts_authentication)
+      options->rhosts_authentication)
     {
       debug("Trying rhosts authentication.");
       packet_start(SSH_CMSG_AUTH_RHOSTS);
@@ -943,7 +951,7 @@ void ssh_login(RandomState *state, int host_key_valid,
   /* Try .rhosts or /etc/hosts.equiv authentication with RSA host 
      authentication. */
   if ((supported_authentications & (1 << SSH_AUTH_RHOSTS_RSA)) &&
-      rhosts_rsa_authentication && host_key_valid)
+      options->rhosts_rsa_authentication && host_key_valid)
     {
       if (try_rhosts_rsa_authentication(local_user, own_host_key))
 	return; /* Successful authentication. */
@@ -951,7 +959,7 @@ void ssh_login(RandomState *state, int host_key_valid,
 
   /* Try RSA authentication if the server supports it. */
   if ((supported_authentications & (1 << SSH_AUTH_RSA)) &&
-      rsa_authentication)
+      options->rsa_authentication)
     {
       /* Try RSA authentication using the authentication agent.  The agent
          is tried first because no passphrase is needed for it, whereas
@@ -960,18 +968,18 @@ void ssh_login(RandomState *state, int host_key_valid,
 	return; /* Successful connection. */
 
       /* Try RSA authentication for each identity. */
-      for (i = 0; i < num_identity_files; i++)
-	if (try_rsa_authentication(pw, identity_files[i]))
+      for (i = 0; i < options->num_identity_files; i++)
+	if (try_rsa_authentication(pw, options->identity_files[i]))
 	  return; /* Successful connection. */
     }
   
   /* Try password authentication if the server supports it. */
   if ((supported_authentications & (1 << SSH_AUTH_PASSWORD)) &&
-      password_authentication)
+      options->password_authentication)
     {
       debug("Doing password authentication.");
-      if (cipher_type == SSH_CIPHER_NONE)
-	log("WARNING: Encryption is disabled! Password will be transmitted in plain text.");
+      if (options->cipher == SSH_CIPHER_NONE)
+	log("WARNING: Encryption is disabled! Password will be transmitted in clear text.");
       password = read_passphrase("Password: ", 0);
       packet_start(SSH_CMSG_AUTH_PASSWORD);
       packet_put_string(password, strlen(password));

@@ -14,8 +14,11 @@ Functions for returning the canonical host name of the remote site.
 */
 
 /*
- * $Id: canohost.c,v 1.1.1.1 1996/02/18 21:38:12 ylo Exp $
+ * $Id: canohost.c,v 1.2 1996/10/29 22:35:11 kivinen Exp $
  * $Log: canohost.c,v $
+ * Revision 1.2  1996/10/29 22:35:11  kivinen
+ * 	log -> log_msg.
+ *
  * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
  * 	Imported ssh-1.2.13.
  *
@@ -84,7 +87,7 @@ char *get_remote_hostname(int socket)
       hp = gethostbyname(name);
       if (!hp)
 	{
-	  log("reverse mapping checking gethostbyname for %.700s failed - POSSIBLE BREAKIN ATTEMPT!", name);
+	  log_msg("reverse mapping checking gethostbyname for %.700s failed - POSSIBLE BREAKIN ATTEMPT!", name);
 	  strcpy(name, inet_ntoa(from.sin_addr));
 	  goto check_ip_options;
 	}
@@ -97,7 +100,7 @@ char *get_remote_hostname(int socket)
       if (!hp->h_addr_list[i])
 	{
 	  /* Address not found for the host name. */
-	  log("Address %.100s maps to %.600s, but this does not map back to the address - POSSIBLE BREAKIN ATTEMPT!",
+	  log_msg("Address %.100s maps to %.600s, but this does not map back to the address - POSSIBLE BREAKIN ATTEMPT!",
 	      inet_ntoa(from.sin_addr), name);
 	  strcpy(name, inet_ntoa(from.sin_addr));
 	  goto check_ip_options;
@@ -108,7 +111,7 @@ char *get_remote_hostname(int socket)
     {
       /* Host name not found.  Use ascii representation of the address. */
       strcpy(name, inet_ntoa(from.sin_addr));
-      log("Could not reverse map address %.100s.", name);
+      log_msg("Could not reverse map address %.100s.", name);
     }
 
  check_ip_options:
@@ -140,7 +143,7 @@ char *get_remote_hostname(int socket)
 	/* Note: "text" buffer must be at least 3x as big as options. */
 	for (ucp = options; option_size > 0; ucp++, option_size--, cp += 3)
 	  sprintf(cp, " %2.2x", *ucp);
-	log("Connection from %.100s with IP options:%.800s",
+	log_msg("Connection from %.100s with IP options:%.800s",
 	    inet_ntoa(from.sin_addr), text);
 	packet_disconnect("Connection from %.100s with IP options:%.800s", 
 			  inet_ntoa(from.sin_addr), text);

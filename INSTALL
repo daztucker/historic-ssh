@@ -30,8 +30,10 @@ script accepts several options
   --srcdir=DIR		find sources in DIR (default: where configure is)
  Specific options:
   --with-rsh=PATH	Use rsh specified by PATH when needed
+  --with-path=PATH	Default path to pass to user shell.
   --with-rhosts		Enable .rhosts and hosts.equiv authentication in server
   --with-rsaref		Usa rsaref2 from rsaref2 subdirectory
+  --enable-warnings	Adds -Wall to CFLAGS if using gcc.
 
 You may also want to configure the following variables:
   CC=compiler		specify name of the C compiler (default: gcc or cc)
@@ -58,25 +60,30 @@ the following targets:
 
 PORTABILITY
 
-This software has been used in the following environments.
+This software has been used at least in the following environments.
 
-	AIX 3.2.5, RS6000
-	FreeBSD 1.x, Pentium
-	FreeBSD 2.0, Pentium
+	AIX 3.2.5, 4.1; RS6000, PowerPC
+	BSD/OS 1.1; i486
+	FreeBSD 1.x, 2.0; Pentium
 	HPUX 9.x, PA
 	IRIX 5.x, SGI Indy
 	Linux 1.2.8 Slackware 2.1.0, i486
 	Mach3, Mips
 	Mach3/Lites, i386
 	NetBSD 1.0A, Pentium
-	OSF/1 3.0, Alpha
-	Solaris 2.3, Sparc
-	Sony BSD 4.2, m68k (client side only; problems in server pty code)
-	SunOS 4.1.3, Sparc
+	OSF/1 3.0, 3.2, 3.2a; Alpha
+	Solaris 2.3, 2.4; Sparc
+	Sony NEWS-OS 3.3 (BSD 4.3), m68k
+	SunOS 4.1.2, 4.1.3, 4.1.4; Sparc
+	Ultrix x.x; Mips
 
 Please report back any other environments where you have used this,
 and send back any patches you had to do so that they can be integrated
 to the distribution.  The proper address is ssh-bugs@cs.hut.fi.
+
+Not all compilers work in all environments.  If you have problems, try
+compiling with gcc-2.7.  *** SPARC NOTE: I have had problems with
+gcc-2.7.0 on sparc (Solaris 2.3).  Try gcc-2.6.3. ***
 
 
 COMPILING WITH RSAREF2
@@ -88,9 +95,18 @@ countries.  RSAREF2 is not included in the distribution; however, it
 is available on any major ftp site around the world (e.g.,
 ftp://ftp.dsi.unimi.it/pub/security/crypt/math/rsaref2.tar.gz).  The
 rsaref2 distribution should be unpacked into rsaref2 subdirectory in
-the ssh distribution directory, and configure should be given the
---with-rsaref option.  Using RSAREF in countries where RSA is not
-patented only causes legal complications and is not recommended.
+the ssh distribution directory (a symbolic link to rsaref is not
+sufficient).  Configure should be given the --with-rsaref
+option.  
+
+Using RSAREF outside the United States is not recommended and only
+causes legal complications.
+
+RSAREF2 does not work for large key sizes (> 1024).  This may be the
+problem if you get "RSAPrivateDecrypt failed".
+
+On alpha, one should edit rsaref2/source/global.h, and make UINT4
+"unsigned int" instead of "unsigned long int".
 
 
 STARTING THE SERVER
@@ -196,10 +212,11 @@ login.c does not compile, or logging of logins does not work properly
 
 Sshd does not start or dies immediately
 
-  The easiest thing to do is to give the -d option to sshd.  It will then
-  send debugging output to stderr (and syslog).  The -d option also has other
-  side effects, e.g. the daemon will not fork and will only serve a single
-  connection before exiting.  However, it is very useful for debugging problems.
+  The easiest thing to do is to give the -d option to sshd.  It will
+  then send debugging output to stderr (and syslog).  The -d option
+  also has other side effects, e.g. the daemon will not fork and will
+  only serve a single connection before exiting.  However, it is very
+  useful for debugging problems.
 
   Sshd sends debugging output to the system log.  Check your system
   log (and syslogd configuration) to see why it dies.  One possible
@@ -248,19 +265,6 @@ The program complains "Could not set controlling tty" or something similar
   adding new code in pty.c and configure.in.  You are encouraged to
   write the needed code and send a patch to the author, or at least
   report the problem.
-
-Ssh does not exit even when the shell on the remote side is exited (HPUX only)
-
-  HPUX ptys has a serious bug (documented on the manual page as a feature):
-  it does not give EOF on the master side when all descriptors on the
-  client side are closed.  This means that the daemon, waiting for
-  something to happen on the master side descriptor, never gets to
-  know the client has exited.  HP has devised proprietary ioctls that
-  could be used to get around the problem, but they would require a
-  substantial amount of HP-specific code in the server do_session
-  function.  So far this code has not been implemented, and when
-  logging into a HPUX machine, the session must be explicitly
-  terminated with "~.".
 
 General problem solving
 

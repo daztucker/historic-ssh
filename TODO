@@ -1,10 +1,9 @@
-Snabbin dokumentaatiomuutokset.
+Having sshd show in ps information about the connection.
 
-www-sivu.
+uid-swapping when reading .rhosts, authorized_keys etc.
 
-Suggestion from kivinen: being able to add/remove forwardings during
-the session.  The user interface could be with a special escape
-character.  The protocol does not currently support this, but it would
-not be too difficult to do.  XXX Do I want to do this?
+Remove frequent select kludge from sshd.c and really fix TCP forwarding.
 
-write sdist.  (rdist -P, may need more patching) XXX Not important for now.
+Merge improved file descriptor code (ssh-agent-fd-patch from David Mazieres).
+
+ssh-add -d does not seem to fully work (agent dies sometimes).

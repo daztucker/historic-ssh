@@ -4,10 +4,10 @@
  * TRI's Simple Stream encryption system implementation
  * ----------------------------------------------------------------------
  * Created      : Fri Apr 14 14:20:00 1995 tri
- * Last modified: Wed Jul  5 01:35:18 1995 ylo
+ * Last modified: Wed Jul 12 21:59:05 1995 ylo
  * ----------------------------------------------------------------------
  * Copyright (c) 1995
- * Timo J. Rinne <tri@cirion.fi> and Cirion oy.
+ * Timo J. Rinne <tri@iki.fi> and Cirion oy.
  * 
  * Address: Cirion oy, PO-BOX 250, 00121 HELSINKI, Finland
  * 

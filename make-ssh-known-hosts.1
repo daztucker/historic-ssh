@@ -19,21 +19,27 @@
 .\" must be preserved on all copies.
 .\" ----------------------------------------------------------------------
 .\"       Program: make-ssh-known-hosts.1
-.\"	  $Source: make-ssh-knwon-hosts.1,v $
-.\"	  Author : $Author: kivinen $
+.\"	  $Source: /p/shadows/CVS/ssh/make-ssh-known-hosts.1,v $
+.\"	  Author : $Author: ylo $
 .\"
 .\"	  (C) Tero Kivinen 1995 <Tero.Kivinen@hut.fi>
 .\"
 .\"	  Creation          : 03:51 Jun 28 1995 kivinen
 .\"	  Last Modification : 03:44 Jun 28 1995 kivinen
-.\"	  Last check in     : $Date: 1994/05/26 08:29:52 $
-.\"	  Revision number   : $Revision: 1.1 $
+.\"	  Last check in     : $Date: 1995/07/15 13:26:11 $
+.\"	  Revision number   : $Revision: 1.2 $
 .\"	  State             : $State: Exp $
 .\"	  Version	    : 1.1
 .\"
 .\"	  Description       : Manual page for make-ssh-known-hosts.pl
 .\"
-.\"	  $Log: make-ssh-known-hosts,v $
+.\"	  $Log: make-ssh-known-hosts.1,v $
+.\" Revision 1.2  1995/07/15  13:26:11  ylo
+.\" 	Changes from kivinen.
+.\"
+.\" Revision 1.1.1.1  1995/07/12  22:41:05  ylo
+.\" Imported ssh-1.0.0.
+.\"
 .\"
 .\"
 .\" If you have any useful modifications or extensions please send them to
@@ -228,8 +234,8 @@ commands. Default is 60 seconds.
 .BI "\-\-passwordtimeout " "timeout_when_asking_password"\c
 .TP
 .BI "\-pa " "timeout_when_asking_password"\c
-\&Timeout when asking password for ssh command. Default is 600
-seconds, use value 0 to timeout password queries immediately. 
+\&Timeout when asking password for ssh command. Default is that no
+passwords are queried. Use value 0 to have no timeout password queries.
 
 .TP
 .BI "\-\-trustdaemon"\c
@@ -275,7 +281,7 @@ program.
 .TP
 .BI "\-\-ping " "path_to_ping_program"\c
 .TP
-.BI "\-pi " "path_to_ping_program"\c
+.BI "\-ping " "path_to_ping_program"\c
 \&Path to the
 .B ping
 program. The full command line is: "\|\c

@@ -16,6 +16,9 @@ maximum core dump size.
 
 /*
  * $Log: signals.c,v $
+ * Revision 1.6  1997/04/21 01:07:28  kivinen
+ * 	Added HAVE_INCOMPATIBLE_SIGINFO support.
+ *
  * Revision 1.5  1997/03/26 07:16:44  kivinen
  * 	Change sig <= NSIG to sig < NSIG.
  *
@@ -79,7 +82,7 @@ void signals_prevent_core()
 #ifdef SIGWINCH
       case SIGWINCH:
 #endif
-#ifdef SIGINFO
+#if defined(SIGINFO) && !defined(HAVE_INCOMPATIBLE_SIGINFO)
       case SIGINFO:
 #endif
 #if defined(SIGFREEZE)

@@ -14,8 +14,12 @@ Cryptographically strong random number generation.
 */
 
 /*
- * $Id: randoms.c,v 1.5 1995/09/21 17:12:23 ylo Exp $
+ * $Id: randoms.c,v 1.6 1995/10/02 01:25:24 ylo Exp $
  * $Log: randoms.c,v $
+ * Revision 1.6  1995/10/02  01:25:24  ylo
+ * 	Added a cast to avoid compiler warning; also minor change in
+ * 	noise collection.
+ *
  * Revision 1.5  1995/09/21  17:12:23  ylo
  * 	Don't use the second argument of gettimeofday.
  *
@@ -135,7 +139,29 @@ void random_acquire_environmental_noise(RandomState *state)
 
 void random_acquire_light_environmental_noise(RandomState *state)
 {
-  random_xor_noise(state, 
+  int f;
+  char buf[32];
+  int len;
+
+  /* If /dev/random is available, read some data from there in non-blocking
+     mode and mix it into the pool. */
+  f = open("/dev/random", O_RDONLY);
+  if (f >= 0)
+    {
+      /* Set the descriptor into non-blocking mode. */
+#if defined(O_NONBLOCK) && !defined(O_NONBLOCK_BROKEN)
+      fcntl(f, F_SETFL, O_NONBLOCK);
+#else /* O_NONBLOCK */  
+      fcntl(f, F_SETFL, O_NDELAY);
+#endif /* O_NONBLOCK */
+      len = read(f, buf, sizeof(buf));
+      close(f);
+      if (len > 0)
+	random_add_noise(state, buf, len);
+    }
+
+  /* Get miscellaneous noise from various system parameters and statistics. */
+  random_xor_noise(state,
 		   (unsigned int)(state->state[0] + 256*state->state[1]) % 
 		     (RANDOM_STATE_BYTES / 4),
 		   (word32)time(NULL));

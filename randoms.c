@@ -8,9 +8,20 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Sat Mar  4 14:55:57 1995 ylo
-Last modified: Mon Jun 26 00:28:58 1995 ylo
+
+Cryptographically strong random number generation.
 
 */
+
+/*
+ * $Id: randoms.c,v 1.2 1995/07/13 01:29:20 ylo Exp $
+ * $Log: randoms.c,v $
+ * Revision 1.2  1995/07/13  01:29:20  ylo
+ * 	Removed "Last modified" header.
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
 
 #include "includes.h"
 #include "randoms.h"

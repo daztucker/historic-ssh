@@ -16,10 +16,13 @@ with the other side.  This same code is used both on client and server side.
 */
 
 /*
- * $Id: packet.c,v 1.13 1999/11/17 17:04:49 tri Exp $
+ * $Id: packet.c,v 1.14 2001/01/17 14:40:04 tri Exp $
  * $Log: packet.c,v $
+ * Revision 1.14  2001/01/17 14:40:04  tri
+ * 	No debug packets from server if debug is not on or quiet is on.
+ *
  * Revision 1.13  1999/11/17 17:04:49  tri
- * 	Fixed copyright notices.
+ *      Fixed copyright notices.
  *
  * Revision 1.12  1999/02/21 19:52:30  ylo
  *      Intermediate commit of ssh1.2.27 stuff.
@@ -148,6 +151,9 @@ static int interactive_mode = 0;
 
 /* Maximum size of a packet. */
 static unsigned int max_packet_size = (sizeof(int) < 4) ? 32000 : 256000;
+
+/* Do we send debug packets to the opposite side. */
+static int packet_debug_on = 0;
 
 /* Sets the descriptors used for communication.  Disables encryption until
    packet_set_encryption_key is called. */
@@ -292,7 +298,7 @@ void packet_decrypt(CipherContext *cc, void *dest, void *src,
   
   assert((bytes % 8) == 0);
   
-  /* $Id: packet.c,v 1.13 1999/11/17 17:04:49 tri Exp $
+  /* $Id: packet.c,v 1.14 2001/01/17 14:40:04 tri Exp $
    * Cryptographic attack detector for ssh - Modifications for packet.c 
    * (C)1998 CORE-SDI, Buenos Aires Argentina
    * Ariel Futoransky(futo@core-sdi.com)
@@ -688,6 +694,15 @@ void packet_get_all(void)
   buffer_clear(&incoming_packet);
 }
 
+/* Initialize debbugging packet sender.  No debug packets are sent, if
+   debug is zero or quiet is nonzero. */
+
+void packet_init_debug(int debug, int quiet)
+{
+  packet_debug_on = debug && (!quiet);
+  return;
+}
+
 /* Sends a diagnostic message from the server to the client.  This message
    can be sent at any time (but not while constructing another message).
    The message is printed immediately, but only if the client is being
@@ -701,6 +716,9 @@ void packet_send_debug(const char *fmt, ...)
   char buf[1024];
   va_list args;
   
+  if (!packet_debug_on)
+    return;
+
   va_start(args, fmt);
   vsnprintf(buf, sizeof(buf), fmt, args);
   va_end(args);

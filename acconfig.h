@@ -10,6 +10,15 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 /*
  * $Log: acconfig.h,v $
+ * Revision 1.6  1996/09/28 17:43:53  ttsalo
+ * 	Socks5-defines corrected
+ *
+ * Revision 1.5  1996/09/05 19:07:41  ttsalo
+ * 	Added checking of setpgid()
+ *
+ * Revision 1.4  1996/07/12 07:34:14  ttsalo
+ * 	Added defines SCO5, HAVE_GETPSEUDOTTY, HAVE_DEV_PTYP10
+ *
  * Revision 1.3  1996/04/26 00:37:21  ylo
  * 	Added HPSUX7_KLUDGES.
  * 	Removed SOCKS defines for socket functions.
@@ -225,3 +234,41 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 #undef HAVE_SCO_ETC_SHADOW
 #undef SCO
 
+/* Additionally define this if on SCO 3.2v5 Unix */
+#undef SCO5
+
+/* Define this if you have getpseudotty() (DYNIX/ptx 2.1) */
+#undef HAVE_GETPSEUDOTTY
+
+/* Define this if you have sco-style pty:s (ptyp0, ..., ptyp9, ptyp10...) */
+#undef HAVE_DEV_PTYP10
+
+/* Define this if you have setpgid() (replaces setpgrp) */
+#undef HAVE_SETPGID
+
+/* Define this for HP-UX 10.x shadow passwords */
+#undef HAVE_HPUX_TCB_AUTH
+
+/* The code in sshconnect.c is written for SOCKS4. If SOCKS5 should be used
+   these needs redefining */
+#undef Rconnect
+#undef Rgetsockname
+#undef Rgetpeername
+#undef Rbind
+#undef Raccept
+#undef Rlisten
+#undef Rselect
+#undef Rrecvfrom
+#undef Rsendto
+#undef Rrecv
+#undef Rsend
+#undef Rread
+#undef Rwrite
+#undef Rrresvport
+#undef Rshutdown
+#undef Rlisten
+#undef Rclose
+#undef Rdup
+#undef Rdup2
+#undef Rfclose
+#undef Rgethostbyname

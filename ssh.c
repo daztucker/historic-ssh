@@ -2,10 +2,11 @@
 
 ssh.c
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Sat Mar 18 16:36:11 1995 ylo
 
@@ -16,10 +17,13 @@ of X11, TCP/IP, and authentication connections.
 */
 
 /*
- * $Id: ssh.c,v 1.33 1999/02/22 08:14:06 tri Exp $
+ * $Id: ssh.c,v 1.34 1999/11/17 17:04:57 tri Exp $
  * $Log: ssh.c,v $
+ * Revision 1.34  1999/11/17 17:04:57  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.33  1999/02/22 08:14:06  tri
- * 	Final fixes for 1.2.27.
+ *      Final fixes for 1.2.27.
  *
  * Revision 1.32  1999/02/21 19:52:46  ylo
  *      Intermediate commit of ssh1.2.27 stuff.

@@ -2,10 +2,11 @@
 
 auth-passwd.c
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Sat Mar 18 05:11:38 1995 ylo
 
@@ -15,10 +16,20 @@ the password is valid for the user.
 */
 
 /*
- * $Id: auth-passwd.c,v 1.23 1999/04/29 07:52:02 tri Exp $
+ * $Id: auth-passwd.c,v 1.26 1999/11/17 17:04:38 tri Exp $
  * $Log: auth-passwd.c,v $
+ * Revision 1.26  1999/11/17 17:04:38  tri
+ * 	Fixed copyright notices.
+ *
+ * Revision 1.25  1999/11/17 15:54:44  tri
+ *      Streamlined local SIA interface names.
+ *
+ * Revision 1.24  1999/05/25 11:34:06  sjl
+ *      fg_pw_admin_num is not defined in SCO systems, so conditioned
+ *      that out.
+ *
  * Revision 1.23  1999/04/29 07:52:02  tri
- * 	Replaced OSF1/C2 security support with more complete SIA
+ *      Replaced OSF1/C2 security support with more complete SIA
  *         (Security Integration Architecture) support by Tom Woodburn.
  *
  * Revision 1.22  1999/02/23 07:06:14  tri
@@ -744,7 +755,9 @@ int auth_password(const char *server_user, const char *password)
         strncpy(correct_passwd, pr->ufld.fd_encrypt, sizeof(correct_passwd));
         endprpwent();
         if ( (!pr->uflg.fg_nullpw || !pr->ufld.fd_nullpw)
+#ifndef HAVE_SCO_ETC_SHADOW
              && !pr->uflg.fg_pw_admin_num
+#endif /* HAVE_SCO_ETC_SHADOW */
              && strcmp(correct_passwd,"")==0 )
           {
             debug("User %.100s not permitted to login with null passwd",
@@ -828,7 +841,7 @@ int auth_password(const char *server_user, const char *password)
 
   /* Check for users with no password. */
 #ifdef HAVE_SIA
-  if (strcmp(password, "") == 0 && sia_no_password(server_user))
+  if (strcmp(password, "") == 0 && ssh_sia_no_password(server_user))
 #else /* HAVE_SIA */
   if (strcmp(password, "") == 0 && strcmp(correct_passwd, "") == 0)
 #endif /* HAVE_SIA */
@@ -859,7 +872,7 @@ int auth_password(const char *server_user, const char *password)
     char **argv;
     const char *hostname = get_canonical_hostname();
 
-    /* Passing a collection routine to my_sia_validate_user() here would
+    /* Passing a collection routine to ssh_sia_validate_user() here would
        be useless and could be harmful.
 
        It would be useless because at this point, stdin/stdout/stderr
@@ -875,8 +888,8 @@ int auth_password(const char *server_user, const char *password)
        and the mail notice, the user wouldn't see them because they'd
        be stuck in the stdout buffer. */
 
-    get_sia_args(&argc, &argv);
-    if (my_sia_validate_user(NULL, argc, argv,
+    ssh_sia_get_args(&argc, &argv);
+    if (ssh_sia_validate_user(NULL, argc, argv,
                              (char *)hostname, (char *)server_user,
                              NULL, 0, NULL, (char *)password) == SIASUCCESS)
       return 1;

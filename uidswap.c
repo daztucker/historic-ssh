@@ -14,8 +14,13 @@ Code for uid-swapping.
 */
 
 /*
- * $Id: uidswap.c,v 1.4 1995/09/21 17:17:05 ylo Exp $
+ * $Id: uidswap.c,v 1.5 1995/10/02 01:30:17 ylo Exp $
  * $Log: uidswap.c,v $
+ * Revision 1.5  1995/10/02  01:30:17  ylo
+ * 	Made uid-swap errors debugging messages because they happen
+ * 	every time on AIX (uid-swapping does not currently work on
+ * 	AIX).
+ *
  * Revision 1.4  1995/09/21  17:17:05  ylo
  * 	Added include ssh.h.
  *

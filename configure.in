@@ -434,6 +434,7 @@ AC_CHECK_FUNCS(strchr memcpy setlogin openpty _getpty clock fchmod ulimit)
 AC_CHECK_FUNCS(gethostname getdtablesize umask innetgr initgroups setpgrp)
 AC_CHECK_FUNCS(setpgid daemon waitpid ttyslot authenticate getpt isastream)
 AC_CHECK_FUNCS(chflags)
+AC_CHECK_FUNCS(key_secretkey_is_set)
 
 AC_REPLACE_FUNCS(strerror memmove remove random putenv crypt socketpair snprintf)
 

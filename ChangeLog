@@ -1,3 +1,18 @@
+2001-10-19  Sami J. Lehtinen  <sjl@ssh.com>
+
+	* Fixed a bug in scp, which sent uninitialized memory in case of
+	  an I/O error in read().
+
+	* Previous: fixed bug in deattack.c .
+
+2001-03-15  Sami J. Lehtinen  <sjl@ssh.com>
+
+	* Fixed sigchld bug when compiled with libwrap in newchannels.c.
+
+2001-02-20  Sami J. Lehtinen  <sjl@ssh.com>
+
+	* Applied Secure-RPC patch.
+
 2000-10-17  Sami J. Lehtinen  <sjl@ssh.com>
 
 	* Fixed an attack against the initial key exchange with server

@@ -79,7 +79,7 @@ int
 detect_attack(unsigned char *buf, word32 len, unsigned char *IV)
 {
   static word16  *h = (word16 *) NULL;
-  static word16   n = HASH_MINSIZE / HASH_ENTRYSIZE;
+  static word32   n = HASH_MINSIZE / HASH_ENTRYSIZE;
   register word32 i, j;
   word32          l;
   register unsigned char *c;

@@ -15,8 +15,19 @@ with the other side.  This same code is used both on client and server side.
 */
 
 /*
- * $Id: packet.c,v 1.4 1996/10/07 11:53:24 ttsalo Exp $
+ * $Id: packet.c,v 1.6 1997/03/19 19:26:58 kivinen Exp $
  * $Log: packet.c,v $
+ * Revision 1.6  1997/03/19 19:26:58  kivinen
+ * 	Added packet_get_all function. Added checks to
+ * 	packet_read_poll that previous packet buffer must be empty
+ * 	before starting to put new packet in.
+ *
+ * Revision 1.5  1996/11/24 08:23:46  kivinen
+ * 	Changed all code that checked EAGAIN to check EWOULDBLOCK too.
+ * 	Added support for debug messages that are printed always (if
+ * 	the first character of debug message is * it is printed with
+ * 	error function instead of debug).
+ *
  * Revision 1.4  1996/10/07 11:53:24  ttsalo
  * 	From "Charles M. Hannum" <mycroft@gnu.ai.mit.edu>:
  * 	Made the use of TCP_NODELAY conditional.
@@ -427,7 +438,7 @@ int packet_read()
 		       "Connection closed by remote host.");
       if (len < 0)
 	{
-	  if (errno == EAGAIN)
+	  if (errno == EAGAIN || errno == EWOULDBLOCK)
 	    continue;
 	  fatal_severity(SYSLOG_SEVERITY_INFO,
 			 "Read from socket failed: %.100s", strerror(errno));
@@ -487,6 +498,11 @@ int packet_read_poll()
   /* Consume packet length. */
   buffer_consume(&input, 4);
 
+/* Confirm that packet is empty after all data is processed from it. Calls
+   fatal buffer is not empty. */
+  if (buffer_len(&incoming_packet) != 0)
+    packet_disconnect("Junk data left to incoming packet buffer after all data processed");
+  
   /* Copy data to incoming_packet. */
   buffer_clear(&incoming_packet);
   buffer_append_space(&incoming_packet, &cp, padded_len);
@@ -536,7 +552,20 @@ int packet_read_poll()
   /* Send debug messages as debugging output. */
   if ((unsigned char)buf[0] == SSH_MSG_DEBUG)
     {
-      debug("Remote: %.900s", packet_get_string(NULL));
+      char *str;
+
+      str = packet_get_string(NULL);
+      if (*str == '*')		/* Magical kludge to force displaying
+				   debug messages with '*' anyway, even
+				   if not in verbose mode. */
+	{
+	  error("Remote: %.900s", str);
+	}
+      else
+	{
+	  debug("Remote: %.900s", str);
+	}
+      xfree(str);
       goto restart;
     }
 
@@ -584,6 +613,13 @@ void packet_get_mp_int(MP_INT *value)
 char *packet_get_string(unsigned int *length_ptr)
 {
   return buffer_get_string(&incoming_packet, length_ptr);
+}
+
+/* Clears incoming data buffer */
+
+void packet_get_all()
+{
+  buffer_clear(&incoming_packet);
 }
 
 /* Sends a diagnostic message from the server to the client.  This message
@@ -656,7 +692,7 @@ void packet_write_poll()
     {
       len = write(connection_out, buffer_ptr(&output), len);
       if (len <= 0)
-	if (errno == EAGAIN)
+	if (errno == EAGAIN || errno == EWOULDBLOCK)
 	  return;
         else
 	  fatal_severity(SYSLOG_SEVERITY_INFO,

@@ -14,8 +14,11 @@ Functions for computing 32-bit CRC.
 */
 
 /*
- * $Id: crc32.h,v 1.2 1995/07/13 01:21:45 ylo Exp $
+ * $Id: crc32.h,v 1.1.1.1 1996/02/18 21:38:11 ylo Exp $
  * $Log: crc32.h,v $
+ * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.2  1995/07/13  01:21:45  ylo
  * 	Removed "Last modified" header.
  * 	Added cvs log.

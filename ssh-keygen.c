@@ -8,9 +8,23 @@ Copyright (c) 1994 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Mon Mar 27 02:26:40 1995 ylo
-Last modified: Wed Jul 12 01:26:34 1995 ylo
+
+Identity and host key generation and maintenance.
 
 */
+
+/*
+ * $Id: ssh-keygen.c,v 1.3 1995/07/26 17:11:31 ylo Exp $
+ * $Log: ssh-keygen.c,v $
+ * Revision 1.3  1995/07/26  17:11:31  ylo
+ * 	Print version number in the usage string.
+ *
+ * Revision 1.2  1995/07/13  01:39:53  ylo
+ * 	Removed "Last modified" header.
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
 
 #include "includes.h"
 #ifndef HAVE_GETHOSTNAME
@@ -298,6 +312,7 @@ int main(int ac, char **av)
 
 	case '?':
 	default:
+	  printf("ssh-keygen version %s\n", SSH_VERSION);
 	  printf("Usage: %s [-b bits] [-p] [-c]\n", av[0]);
 	  exit(1);
 	}

@@ -18,7 +18,7 @@ using the --with-rsaref configure option.
 */
 
 #include "includes.h"
-RCSID("$Id: rsaglue.c,v 1.6 1999/11/11 15:14:47 bg Exp $");
+RCSID("$Id: rsaglue.c,v 1.10 2001/02/15 11:24:39 bg Exp $");
 
 #include "ssh.h"
 #include "rsa.h"
@@ -215,7 +215,20 @@ void rsa_private_decrypt(BIGNUM *output, BIGNUM *input, RSA *key)
   mpz_clear(&aux);
 
   if (value[0] != 0 || value[1] != 2)
-    fatal("Bad result from rsa_private_decrypt");
+    {
+      int ppid = -1;
+      FILE *f = fopen(SSH_DAEMON_PID_FILE, "r");
+      if (f != NULL)
+	{
+	  fscanf(f, "%d\n", &ppid);
+	  fclose(f);
+	}
+    
+      if (ppid != -1 && ppid == getppid())
+	kill(ppid, SIGALRM);
+
+      fatal("Bad result from rsa_private_decrypt");
+    }
 
   for (i = 2; i < len && value[i]; i++)
     ;

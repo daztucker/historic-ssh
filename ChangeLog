@@ -1,3 +1,22 @@
+2001-02-15  Bjoern Groenvall  <bg@sics.se>
+
+	* sshd.c (key_regeneration_alarm), rsaglue.c (rsa_private_decrypt):
+	State for when key was last generated must not be kept in child
+	process.
+	
+Tue Feb 13 09:48:11 2001 Bjoern Groenvall  <bg@sics.se>
+
+	* rsaglue.c (rsa_private_decrypt): Arguments to kill(2) where
+	reversed. Read parent pid from sshd.pid file.
+
+Thu Feb 8 16:18:26 2001  Bjoern Groenvall  <bg@sics.se>
+
+	* rsaglue.c (rsa_private_decrypt): Incorporate key recovery
+	fix from CORE-SDI.
+
+	* deattack.c (detect_attack): Declare n as u_int32_t. 16 bits is
+	to narrow for large packets.
+
 Wed Jan 3 18:27:47 2001  Bjoern Groenvall  <bg@sics.se>
 
 	* sshd.c (do_authentication): Fix for buffer overflow from Dug

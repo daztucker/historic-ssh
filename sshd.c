@@ -18,7 +18,7 @@ agent connections.
 */
 
 #include "includes.h"
-RCSID("$Id: sshd.c,v 1.40 2000/02/28 18:36:00 bg Exp $");
+RCSID("$Id: sshd.c,v 1.42 2001/02/15 10:10:15 bg Exp $");
 
 #include "xmalloc.h"
 #include "rsa.h"
@@ -223,9 +223,11 @@ RETSIGTYPE grace_alarm_handler(int sig)
 
 RETSIGTYPE key_regeneration_alarm(int sig)
 {
+  static time_t last_keygen_time = 0;
   /* Check if we should generate a new key. */
-  if (key_used)
+  if (key_used && (time(NULL) - last_keygen_time > 60))
     {
+      last_keygen_time = time(NULL);
       /* This should really be done in the background. */
       log("Generating new %d bit RSA key.", options.server_key_bits);
       random_acquire_light_environmental_noise(&sensitive_data.random_state);

@@ -17,7 +17,7 @@
  * <http://www.core-sdi.com> */
 
 #include "includes.h"
-RCSID("$Id: deattack.c,v 1.1 1999/10/18 12:01:17 bg Exp $");
+RCSID("$Id: deattack.c,v 1.2 2001/02/08 15:17:16 bg Exp $");
 
 #include "deattack.h"
 #include "ssh.h"
@@ -91,7 +91,7 @@ int
 detect_attack(const unsigned char *buf, word32 len)
 {
   static u_int16_t *h = (u_int16_t *) NULL;
-  static u_int16_t n = HASH_MINSIZE / HASH_ENTRYSIZE;
+  static u_int32_t n = HASH_MINSIZE / HASH_ENTRYSIZE;
   register word32 i, j;
   word32 l;
   const unsigned char *c, *d;

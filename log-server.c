@@ -15,8 +15,11 @@ output to the system log.
 */
 
 /*
- * $Id: log-server.c,v 1.2 1996/10/29 22:38:23 kivinen Exp $
+ * $Id: log-server.c,v 1.3 1997/03/27 03:09:58 kivinen Exp $
  * $Log: log-server.c,v $
+ * Revision 1.3  1997/03/27 03:09:58  kivinen
+ * 	Added kerberos patches from Glenn Machin.
+ *
  * Revision 1.2  1996/10/29 22:38:23  kivinen
  * 	log -> log_msg.
  *
@@ -246,6 +249,9 @@ static void do_fatal_cleanups()
 {
   struct fatal_cleanup *cu, *next_cu;
   static int fatal_called = 0;
+#ifdef KERBEROS
+  extern char *ticket;
+#endif
 
   if (!fatal_called)
     {
@@ -259,6 +265,18 @@ static void do_fatal_cleanups()
 		(unsigned long)cu->proc, (unsigned long)cu->context);
 	  (*cu->proc)(cu->context);
 	}
+#ifdef KERBEROS
+      /* If you forwarded a ticket you get one shot for proper
+	 authentication. */
+      /* If tgt was passed unlink file */
+      if (ticket)
+	{
+	  if (strcmp(ticket,"none"))
+	    unlink(ticket);
+	  else
+	    ticket = NULL;
+	}
+#endif /* KERBEROS */
     }
 }
 

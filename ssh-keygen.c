@@ -14,8 +14,11 @@ Identity and host key generation and maintenance.
 */
 
 /*
- * $Id: ssh-keygen.c,v 1.10 1997/04/17 04:17:35 kivinen Exp $
+ * $Id: ssh-keygen.c,v 1.11 1997/04/27 21:54:52 kivinen Exp $
  * $Log: ssh-keygen.c,v $
+ * Revision 1.11  1997/04/27 21:54:52  kivinen
+ * 	Added F-SECURE stuff.
+ *
  * Revision 1.10  1997/04/17 04:17:35  kivinen
  * 	Removed extra variables.
  *
@@ -586,6 +589,9 @@ int main(int ac, char **av)
 
 	case '?':
 	default:
+#ifdef F_SECURE_COMMERCIAL
+
+#endif /* F_SECURE_COMMERCIAL */
 	  printf("ssh-keygen version %s\n", SSH_VERSION);
 	  printf("Usage: %s [-b bits] [-p] [-c] [-u] [-f file] [-P pass]\n"
 		 "          [-N new-pass] [-C comment]\n", av[0]);

@@ -15,8 +15,11 @@ Buffers.
 */
 
 /*
- * $Id: bufaux.c,v 1.3 1995/08/29 22:19:52 ylo Exp $
+ * $Id: bufaux.c,v 1.1.1.1 1996/02/18 21:38:11 ylo Exp $
  * $Log: bufaux.c,v $
+ * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.3  1995/08/29  22:19:52  ylo
  * 	Removed extra '&'.
  *

@@ -20,8 +20,11 @@ following patents: PCT/CH91/00117, EP 0 482 154 B1, US Pat. 5,214,703.
 */
 
 /*
- * $Id: idea.c,v 1.2 1995/07/13 01:24:44 ylo Exp $
+ * $Id: idea.c,v 1.3 1995/09/13 11:55:48 ylo Exp $
  * $Log: idea.c,v $
+ * Revision 1.3  1995/09/13  11:55:48  ylo
+ * 	Minor changes to make it work on Cray.
+ *
  * Revision 1.2  1995/07/13  01:24:44  ylo
  * 	Removed "Last modified" header.
  * 	Added cvs log.
@@ -54,8 +57,8 @@ void idea_set_key(IDEAContext *c, const unsigned char key[16])
     {
       if ((i & 7) == 0)
 	keys += 8;
-      keys[i & 7] = 
-	(keys[((i + 1) & 7) - 8] << 9) | (keys[((i + 2) & 7) - 8] >> 7);
+      keys[i & 7] = ((keys[((i + 1) & 7) - 8] << 9) | 
+		     (keys[((i + 2) & 7) - 8] >> 7)) & 0xffff;
     }
 }
 
@@ -120,7 +123,7 @@ void idea_transform(IDEAContext *c, word32 l, word32 r, word32 *output)
     }
   
   x1 = mulop(x1 & 0xffff, keys[0]);
-  x3 = x2 + keys[2];
+  x3 = (x2 + keys[2]) & 0xffff;
   x2 = t1 + keys[1]; /* t1 == old x3 */
   x4 = mulop(x4 & 0xffff, keys[3]);
   output[0] = (x1 << 16) | (x2 & 0xffff);

@@ -238,8 +238,9 @@ int encrypt;
 	tin[0]=tin[1]=0;
 	}
 
-#ifdef WITH_BF_PCBC
-void BF_pcbc_encrypt(in, out, length, ks, iv, encrypt)
+#define ADDC(carry, sum, addend) { sum += addend; if (sum < addend) carry++; }
+
+void BF_iapcbc_encrypt(in, out, length, ks, iv, encrypt)
 const unsigned char *in;
 unsigned char *out;
 long length;
@@ -254,46 +255,42 @@ int encrypt;
 
 	if (encrypt)
 		{
-		n2l(iv,tout0);
-		n2l(iv,tout1);
+		n2l(iv,xor0);
+		n2l(iv,xor1);
 		iv-=8;
 		for (l-=8; l>=0; l-=8)
 			{
 			n2l(in,tin0);
 			n2l(in,tin1);
-			xor0=tin0;
-			xor1=tin1;
-			tin0^=tout0;
-			tin1^=tout1;
-			tin[0]=tin0;
-			tin[1]=tin1;
+			tin[0]=tin0^xor0;
+			tin[1]=tin1^xor1;
 			BF_encrypt(tin,ks);
 			tout0=tin[0];
 			tout1=tin[1];
 			l2n(tout0,out);
 			l2n(tout1,out);
-			tout0=tout0+xor0;
-			tout1=tout1+xor1;
+			ADDC(xor1, xor0, tout0);
+			ADDC(xor1, xor0, tin0);
+			/* xor0+=tout0+tin0; */
+			xor1+=tout1+tin1;
 			}
 		if (l != -8)
 			{
 			n2ln(in,tin0,tin1,l+8);
-			xor0=tin0;
-			xor1=tin1;
-			tin0^=tout0;
-			tin1^=tout1;
-			tin[0]=tin0;
-			tin[1]=tin1;
+			tin[0]=tin0^xor0;
+			tin[1]=tin1^xor1;
 			BF_encrypt(tin,ks);
 			tout0=tin[0];
 			tout1=tin[1];
 			l2n(tout0,out);
 			l2n(tout1,out);
-			tout0=tout0+xor0;
-			tout1=tout1+xor1;
+			ADDC(xor1, xor0, tout0);
+			ADDC(xor1, xor0, tin0);
+			/* xor0+=tout0+tin0; */
+			xor1+=tout1+tin1;
 			}
-		l2n(tout0,iv);
-		l2n(tout1,iv);
+		l2n(xor0,iv);
+		l2n(xor1,iv);
 		}
 	else
 		{
@@ -311,8 +308,10 @@ int encrypt;
 			tout1=tin[1]^xor1;
 			l2n(tout0,out);
 			l2n(tout1,out);
-			xor0=tout0+tin0;
-			xor1=tout1+tin1;
+			ADDC(xor1, xor0, tout0);
+			ADDC(xor1, xor0, tin0);
+			/* xor0+=tout0+tin0; */
+			xor1+=tout1+tin1;
 			}
 		if (l != -8)
 			{
@@ -324,8 +323,10 @@ int encrypt;
 			tout0=tin[0]^xor0;
 			tout1=tin[1]^xor1;
 			l2nn(tout0,tout1,out,l+8);
-			xor0=tout0+tin0;
-			xor1=tout1+tin1;
+			ADDC(xor1, xor0, tout0);
+			ADDC(xor1, xor0, tin0);
+			/* xor0+=tout0+tin0; */
+			xor1+=tout1+tin1;
 			}
 		l2n(xor0,iv);
 		l2n(xor1,iv);
@@ -333,6 +334,5 @@ int encrypt;
 	tin0=tin1=tout0=tout1=xor0=xor1=0;
 	tin[0]=tin[1]=0;
 	}
-#endif /* WITH_BF_PCBC */
 
 #endif

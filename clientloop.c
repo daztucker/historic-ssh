@@ -15,7 +15,7 @@ The main loop for the interactive session (client side).
 */
 
 #include "includes.h"
-RCSID("$Id: clientloop.c,v 1.4 1999/05/04 11:58:37 bg Exp $");
+RCSID("$Id: clientloop.c,v 1.5 1999/11/29 13:35:45 bg Exp $");
 
 #include "xmalloc.h"
 #include "randoms.h"
@@ -362,8 +362,8 @@ void client_make_packets_from_stdin_data()
 	 packet_not_very_much_data_to_write())
     {
       len = buffer_len(&stdin_buffer);
-      if (len > 32768)
-	len = 32768;  /* Keep the packets at reasonable size. */
+      if (len > packet_get_maxsize())
+	len = packet_get_maxsize(); /* Keep the packets at reasonable size. */
       packet_start(SSH_CMSG_STDIN_DATA);
       packet_put_string(buffer_ptr(&stdin_buffer), len);
       packet_send();

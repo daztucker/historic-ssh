@@ -11,13 +11,13 @@ Created: Wed Apr 19 16:50:42 1995 ylo
 
 */
 
-/* RCSID("$Id: cipher.h,v 1.11 1999/11/11 22:58:34 bg Exp $"); */
+/* RCSID("$Id: cipher.h,v 1.12 1999/11/29 13:35:05 bg Exp $"); */
 
 #ifndef CIPHER_H
 #define CIPHER_H
 
 #include "des.h"
-#if defined(WITH_BLOWFISH) || defined(WITH_BF_PCBC)
+#if defined(WITH_BLOWFISH) || defined(WITH_BF_IAPCBC)
 #include "blowfish.h"
 #endif
 
@@ -32,7 +32,7 @@ Created: Wed Apr 19 16:50:42 1995 ylo
 #define SSH_CIPHER_RC4		5 /* Alleged RC4 */
 #define SSH_CIPHER_BLOWFISH	6 /* Blowfish CBC with bswap */
 #define SSH_CIPHER_RESERVED	7
-#define SSH_CIPHER_BF_PCBC	8 /* Blowfish PCBC */
+#define SSH_CIPHER_BF_IAPCBC	8 /* Blowfish iaPCBC */
 
 #define SSH_CIPHER_MAX		8
 
@@ -46,12 +46,12 @@ typedef struct {
       des_key_schedule key3;
       des_cblock iv3;
     } des3;
-#if defined(WITH_BLOWFISH) || defined(WITH_BF_PCBC)
+#if defined(WITH_BLOWFISH) || defined(WITH_BF_IAPCBC)
     struct {
       struct bf_key_st key;
       unsigned char iv[8];
     } bf;
-#endif /* defined(WITH_BLOWFISH) || defined(WITH_BF_PCBC) */
+#endif /* defined(WITH_BLOWFISH) || defined(WITH_BF_IAPCBC) */
   } u;
 } CipherContext;
 

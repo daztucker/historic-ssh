@@ -12,15 +12,15 @@ Created: Wed Apr 19 17:41:39 1995 ylo
 */
 
 #include "includes.h"
-RCSID("$Id: cipher.c,v 1.16 1999/11/15 13:30:28 bg Exp $");
+RCSID("$Id: cipher.c,v 1.17 1999/11/29 13:34:56 bg Exp $");
 
 #include "ssh.h"
 #include "cipher.h"
 #include "deattack.h"
 
 #ifdef  WITH_BLOWFISH
-/* Non standard plaintext-ciphertext block chaining (PCBC) */
-/* #define WITH_BF_PCBC */
+/* Integrity aware plaintext-ciphertext block chaining (iaPCBC) */
+#define WITH_BF_IAPCBC
 #endif
 
 /*
@@ -143,8 +143,8 @@ static char *cipher_names[] =
   ,"reserved"			/* 6 */
 #endif
   ,"reserved"			/* 7 */
-#ifdef WITH_BF_PCBC
-  ,"bfp"			/* 8 */
+#ifdef WITH_BF_IAPCBC
+  ,"bfx"			/* 8 */
 #else
   ,"reserved"			/* 8 */
 #endif
@@ -164,8 +164,8 @@ unsigned int cipher_mask()
 #ifdef WITH_BLOWFISH
   mask |= 1 << SSH_CIPHER_BLOWFISH;
 #endif
-#ifdef WITH_BF_PCBC
-  mask |= 1 << SSH_CIPHER_BF_PCBC;
+#ifdef WITH_BF_IAPCBC
+  mask |= 1 << SSH_CIPHER_BF_IAPCBC;
 #endif
   return mask;
 }
@@ -225,6 +225,11 @@ void cipher_set_key(CipherContext *context, int cipher,
   memset(padded, 0, sizeof(padded));
   memcpy(padded, key, keylen < sizeof(padded) ? keylen : sizeof(padded));
 
+#ifdef WITH_BF_IAPCBC
+  if (sizeof(BF_LONG) != 4)
+    fatal("sizeof(BF_LONG) != 4.");
+#endif
+
   /* Initialize the initialization vector. */
   switch (cipher)
     {
@@ -250,17 +255,26 @@ void cipher_set_key(CipherContext *context, int cipher,
 
 #ifdef WITH_BLOWFISH
     case SSH_CIPHER_BLOWFISH:
+      if (keylen < 16)
+	error("Key length %d is insufficient for Blowfish.", keylen);
       BF_set_key(&context->u.bf.key, keylen, padded);
       memset(context->u.bf.iv, 0, 8);
       break;
 #endif /* WITH_BLOWFISH */
 
-#ifdef WITH_BF_PCBC
-    case SSH_CIPHER_BF_PCBC:
-      BF_set_key(&context->u.bf.key, keylen, padded);
+#ifdef WITH_BF_IAPCBC
+    case SSH_CIPHER_BF_IAPCBC:
+      if (keylen < 24)
+	error("Key length %d is insufficient for Blowfish iaPCBC.", keylen);
+      BF_set_key(&context->u.bf.key, keylen - 8, padded);
+      {
+	int i;
+	for (i = 8; i < keylen; i++)
+	  padded[i % 8] ^= padded[i];
+      }
       memcpy(context->u.bf.iv, padded, 8);
       break;
-#endif /* WITH_BF_PCBC */
+#endif /* WITH_BF_IAPCBC */
 
     default:
       fatal("cipher_set_key: unknown cipher: %d", cipher);
@@ -297,12 +311,12 @@ void cipher_encrypt(CipherContext *context, unsigned char *dest,
       break;
 #endif /* WITH_BLOWFISH */
 
-#ifdef WITH_BF_PCBC
-    case SSH_CIPHER_BF_PCBC:
-      BF_pcbc_encrypt(src, dest, len,
-		     &context->u.bf.key, context->u.bf.iv, BF_ENCRYPT);
+#ifdef WITH_BF_IAPCBC
+    case SSH_CIPHER_BF_IAPCBC:
+      BF_iapcbc_encrypt(src, dest, len,
+			&context->u.bf.key, context->u.bf.iv, BF_ENCRYPT);
       break;
-#endif /* WITH_BF_PCBC */
+#endif /* WITH_BF_IAPCBC */
 
     default:
       fatal("cipher_encrypt: unknown cipher: %d", context->type);
@@ -339,12 +353,12 @@ void cipher_decrypt(CipherContext *context, unsigned char *dest,
       break;
 #endif /* WITH_BLOWFISH */
 
-#ifdef WITH_BF_PCBC
-    case SSH_CIPHER_BF_PCBC:
-      BF_pcbc_encrypt(src, dest, len,
-		     &context->u.bf.key, context->u.bf.iv, BF_DECRYPT);
+#ifdef WITH_BF_IAPCBC
+    case SSH_CIPHER_BF_IAPCBC:
+      BF_iapcbc_encrypt(src, dest, len,
+			&context->u.bf.key, context->u.bf.iv, BF_DECRYPT);
       break;
-#endif /* WITH_BF_PCBC */
+#endif /* WITH_BF_IAPCBC */
 
     default:
       fatal("cipher_decrypt: unknown cipher: %d", context->type);

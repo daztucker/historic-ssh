@@ -70,7 +70,13 @@ extern "C" {
  * the Alpha, otherwise they will not.  Strangly using the '8 byte'
  * BF_LONG and the default 'non-pointer' inner loop is the best configuration
  * for the Alpha */
+#ifndef BF_LONG
+#if defined(__alpha) || defined(__sparcv9) || _MIPS_SZLONG == 64
+#define BF_LONG unsigned int
+#else /* Not a 64 bit machine */
 #define BF_LONG unsigned long
+#endif
+#endif
 
 #define BF_ROUNDS	16
 #define BF_BLOCK	8
@@ -90,8 +96,8 @@ void BF_encrypt(BF_LONG *data,BF_KEY *key);
 void BF_decrypt(BF_LONG *data,BF_KEY *key);
 void BF_cbc_encrypt(const unsigned char *in, unsigned char *out, long length,
 	BF_KEY *ks, unsigned char *iv, int enc);
-void BF_pcbc_encrypt(const unsigned char *in, unsigned char *out, long length,
-	BF_KEY *ks, unsigned char *iv, int enc);
+void BF_iapcbc_encrypt(const unsigned char *in, unsigned char *out,
+		       long length, BF_KEY *ks, unsigned char *iv, int enc);
 void BF_cfb64_encrypt(unsigned char *in, unsigned char *out, long length,
 	BF_KEY *schedule, unsigned char *ivec, int *num, int enc);
 void BF_ofb64_encrypt(unsigned char *in, unsigned char *out, long length,

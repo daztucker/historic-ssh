@@ -13,7 +13,7 @@ Interface for the packet protocol functions.
 
 */
 
-/* RCSID("$Id: packet.h,v 1.10 1999/10/31 12:31:31 bg Exp $"); */
+/* RCSID("$Id: packet.h,v 1.11 1999/11/29 13:37:18 bg Exp $"); */
 
 #ifndef PACKET_H
 #define PACKET_H
@@ -150,6 +150,11 @@ int packet_not_very_much_data_to_write(void);
 
 /* Stores tty modes from the fd into current packet. */
 void tty_make_modes(int fd);
+
+/* maximum packet size, requested by client with SSH_CMSG_MAX_PACKET_SIZE */
+extern int max_packet_size;
+int packet_set_maxsize(int s);
+#define packet_get_maxsize() max_packet_size
 
 /* Parses tty modes for the fd from the current packet. */
 void tty_parse_modes(int fd, int *n_bytes_ptr);

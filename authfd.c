@@ -14,7 +14,7 @@ Functions for connecting the local authentication agent.
 */
 
 #include "includes.h"
-RCSID("$Id: authfd.c,v 1.5 1999/10/31 12:49:47 bg Exp $");
+RCSID("$Id: authfd.c,v 1.6 1999/11/29 13:14:46 bg Exp $");
 
 #include "ssh.h"
 #include "rsa.h"
@@ -43,6 +43,13 @@ int ssh_get_authentication_socket()
   if (sock < 0)
     return -1;
   
+  /* close on exec */
+  if (fcntl(sock, F_SETFD, 1) == -1)
+    {
+      close(sock);
+      return -1;
+    }
+
   if (connect(sock, (struct sockaddr *)&sunaddr, AF_UNIX_SIZE(sunaddr)) < 0)
     {
       close(sock);

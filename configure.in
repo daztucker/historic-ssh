@@ -8,7 +8,7 @@
 #
 # Created: Wed Mar 22 18:02:48 1995 ylo
 #
-# $Id: configure.in,v 1.25 1999/11/02 23:25:13 bg Exp $
+# $Id: configure.in,v 1.26 1999/11/29 13:36:15 bg Exp $
 #
 
 AC_INIT(sshd.c)
@@ -94,11 +94,7 @@ case "$host" in
     ;;
   *-*-linux*)
     # Linux shadow password support (Andrew.Macpherson.1248566@bnr.co.uk)
-    if test -f /etc/shadow && test -f /etc/login.defs; then
-      AC_MSG_RESULT(Using linux John Haugh shadow passwords and pw_encrypt for password encryption)
-      AC_DEFINE(crypt,pw_encrypt)
-      LIBS="$LIBS -lshadow"
-    fi
+    AC_CHECK_LIB(shadow, pw_crypt, AC_DEFINE(crypt, pw_encrypt))
     ;;
   i*86-*-bsdi*)
     no_pipe=yes

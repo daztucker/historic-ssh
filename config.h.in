@@ -179,10 +179,6 @@ static /**/const char *const rcsid[] = { (char *)rcsid, "\100(#)" msg }
 /* If defines, this overrides "tty" as the terminal group. */
 #undef TTY_GROUP
 
-/* Define this if you want to support Security Dynammics SecurID
-   cards. */
-#undef HAVE_SECURID
-
 /* Define this if you are using HPSUX.  HPUX uses non-standard shared
    memory communication for X, which seems to be enabled by the display name
    matching that of the local host.  This circumvents it by using the IP

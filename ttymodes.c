@@ -2,10 +2,11 @@
 
 ttymodes.c
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Tue Mar 21 15:59:15 1995 ylo
 
@@ -17,37 +18,40 @@ suitable code.
 */
 
 /*
- * $Id: ttymodes.c,v 1.4 1998/04/17 00:42:50 kivinen Exp $
+ * $Id: ttymodes.c,v 1.5 1999/11/17 17:05:00 tri Exp $
  * $Log: ttymodes.c,v $
+ * Revision 1.5  1999/11/17 17:05:00  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.4  1998/04/17 00:42:50  kivinen
- * 	Fixed previous fix.
+ *      Fixed previous fix.
  *
  * Revision 1.3  1998/03/27 17:05:47  kivinen
- * 	Combine ECHOE and LCRTBS/LCRTERA flags.
+ *      Combine ECHOE and LCRTBS/LCRTERA flags.
  *
  * Revision 1.2  1996/10/29 22:47:53  kivinen
- * 	log -> log_msg.
+ *      log -> log_msg.
  *
  * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
- * 	Imported ssh-1.2.13.
+ *      Imported ssh-1.2.13.
  *
  * Revision 1.6  1995/10/02  01:29:44  ylo
- * 	Changed warning message to make it less likely people will
- * 	report it as a bug because it is not.
+ *      Changed warning message to make it less likely people will
+ *      report it as a bug because it is not.
  *
  * Revision 1.5  1995/09/27  02:19:11  ylo
- * 	Use SPEED_T_IN_STDTYPES_H.
+ *      Use SPEED_T_IN_STDTYPES_H.
  *
  * Revision 1.4  1995/09/09  21:26:48  ylo
  * /m/shadows/u2/users/ylo/ssh/README
  *
  * Revision 1.3  1995/08/18  22:58:34  ylo
- * 	Added support for NextStep.
- * 	Fixed typos with EXTB.
+ *      Added support for NextStep.
+ *      Fixed typos with EXTB.
  *
  * Revision 1.2  1995/07/13  01:41:15  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
+ *      Removed "Last modified" header.
+ *      Added cvs log.
  *
  * $Endlog$
  */
@@ -56,17 +60,17 @@ suitable code.
 #include "packet.h"
 #include "ssh.h"
 
-#define TTY_OP_END	0
-#define TTY_OP_ISPEED	192 /* int follows */
-#define TTY_OP_OSPEED	193 /* int follows */
+#define TTY_OP_END      0
+#define TTY_OP_ISPEED   192 /* int follows */
+#define TTY_OP_OSPEED   193 /* int follows */
 
 /* Speed extraction & setting macros for sgtty. */
 
 #ifdef USING_SGTTY
-#define cfgetospeed(tio)	((tio)->sg_ospeed)
-#define cfgetispeed(tio)	((tio)->sg_ispeed)
-#define cfsetospeed(tio, spd)	((tio)->sg_ospeed = (spd), 0)
-#define cfsetispeed(tio, spd)	((tio)->sg_ispeed = (spd), 0)
+#define cfgetospeed(tio)        ((tio)->sg_ospeed)
+#define cfgetispeed(tio)        ((tio)->sg_ispeed)
+#define cfsetospeed(tio, spd)   ((tio)->sg_ospeed = (spd), 0)
+#define cfsetispeed(tio, spd)   ((tio)->sg_ispeed = (spd), 0)
 #ifndef SPEED_T_IN_STDTYPES_H
 typedef char speed_t;
 #endif
@@ -402,34 +406,34 @@ void tty_parse_modes(int fd)
   for (;;)
     {
       switch (opcode = packet_get_char())
-	{
-	case TTY_OP_END:
-	  goto set;
+        {
+        case TTY_OP_END:
+          goto set;
 
-	case TTY_OP_ISPEED:
-	  baud = packet_get_int();
-	  if (cfsetispeed(&tio, baud_to_speed(baud)) < 0)
-	    error("cfsetispeed failed for %d", baud);
-	  break;
+        case TTY_OP_ISPEED:
+          baud = packet_get_int();
+          if (cfsetispeed(&tio, baud_to_speed(baud)) < 0)
+            error("cfsetispeed failed for %d", baud);
+          break;
 
-	case TTY_OP_OSPEED:
-	  baud = packet_get_int();
-	  if (cfsetospeed(&tio, baud_to_speed(baud)) < 0)
-	    error("cfsetospeed failed for %d", baud);
-	  break;
+        case TTY_OP_OSPEED:
+          baud = packet_get_int();
+          if (cfsetospeed(&tio, baud_to_speed(baud)) < 0)
+            error("cfsetospeed failed for %d", baud);
+          break;
 
 #ifdef USING_TERMIOS
-#define TTYCHAR(NAME, OP) 				\
-	case OP:					\
-	  tio.c_cc[NAME] = packet_get_char();		\
-	  break;
-#define TTYMODE(NAME, FIELD, OP)		       	\
-	case OP:					\
-	  if (packet_get_char())			\
-	    tio.FIELD |= NAME;				\
-	  else						\
-	    tio.FIELD &= ~NAME;				\
-	  break;
+#define TTYCHAR(NAME, OP)                               \
+        case OP:                                        \
+          tio.c_cc[NAME] = packet_get_char();           \
+          break;
+#define TTYMODE(NAME, FIELD, OP)                        \
+        case OP:                                        \
+          if (packet_get_char())                        \
+            tio.FIELD |= NAME;                          \
+          else                                          \
+            tio.FIELD &= ~NAME;                         \
+          break;
 #define SGTTYCHAR(NAME, OP)
 #define SGTTYMODE(NAME, FIELD, OP)
 #define SGTTYMODEN(NAME, FIELD, OP)
@@ -438,24 +442,24 @@ void tty_parse_modes(int fd)
 #ifdef USING_SGTTY
 #define TTYCHAR(NAME, OP)
 #define TTYMODE(NAME, FIELD, OP)
-#define SGTTYCHAR(NAME, OP) 				\
-	case OP:					\
-	  NAME = packet_get_char();			\
-	  break;
-#define SGTTYMODE(NAME, FIELD, OP)		       	\
-	case OP:					\
-	  if (packet_get_char())			\
-	    FIELD |= NAME;				\
-	  else						\
-	    FIELD &= ~NAME;				\
-	  break;
-#define SGTTYMODEN(NAME, FIELD, OP)		       	\
-	case OP:					\
-	  if (packet_get_char())			\
-	    FIELD &= ~NAME;				\
-	  else						\
-	    FIELD |= NAME;				\
-	  break;
+#define SGTTYCHAR(NAME, OP)                             \
+        case OP:                                        \
+          NAME = packet_get_char();                     \
+          break;
+#define SGTTYMODE(NAME, FIELD, OP)                      \
+        case OP:                                        \
+          if (packet_get_char())                        \
+            FIELD |= NAME;                              \
+          else                                          \
+            FIELD &= ~NAME;                             \
+          break;
+#define SGTTYMODEN(NAME, FIELD, OP)                     \
+        case OP:                                        \
+          if (packet_get_char())                        \
+            FIELD &= ~NAME;                             \
+          else                                          \
+            FIELD |= NAME;                              \
+          break;
 #endif /* USING_SGTTY */
 
 #include "ttymodes.h"
@@ -466,31 +470,31 @@ void tty_parse_modes(int fd)
 #undef SGTTYMODE
 #undef SGTTYMODEN
 
-	default:
-	  debug("Ignoring unsupported tty mode opcode %d (0x%x)",
-		opcode, opcode);
-	  /* Opcodes 0 to 127 are defined to have a one-byte argument. */
-	  if (opcode >= 0 && opcode < 128)
-	    {
-	      (void)packet_get_char();
-	      break;
-	    }
-	  else
-	    {
-	      /* Opcodes 128 to 159 are defined to have an integer argument. */
-	      if (opcode >= 128 && opcode < 160)
-		{
-		  (void)packet_get_int();
-		  break;
-		}
-	    }
-	  /* It is a truly undefined opcode (160 to 255).  We have no idea
-	     about its arguments.  So we must stop parsing.  Note that some
-	     data may be left in the packet; hopefully there is nothing more
-	     coming after the mode data. */
-	  log_msg("parse_tty_modes: unknown opcode %d", opcode);
-	  goto set;
-	}
+        default:
+          debug("Ignoring unsupported tty mode opcode %d (0x%x)",
+                opcode, opcode);
+          /* Opcodes 0 to 127 are defined to have a one-byte argument. */
+          if (opcode >= 0 && opcode < 128)
+            {
+              (void)packet_get_char();
+              break;
+            }
+          else
+            {
+              /* Opcodes 128 to 159 are defined to have an integer argument. */
+              if (opcode >= 128 && opcode < 160)
+                {
+                  (void)packet_get_int();
+                  break;
+                }
+            }
+          /* It is a truly undefined opcode (160 to 255).  We have no idea
+             about its arguments.  So we must stop parsing.  Note that some
+             data may be left in the packet; hopefully there is nothing more
+             coming after the mode data. */
+          log_msg("parse_tty_modes: unknown opcode %d", opcode);
+          goto set;
+        }
     }
 
  set:

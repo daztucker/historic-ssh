@@ -8,7 +8,6 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Tue Mar 21 15:59:15 1995 ylo
-Last modified: Fri Jul  7 03:03:49 1995 ylo
 
 Encoding and decoding of terminal modes in a portable way.
 Much of the format is defined in ttymodes.h; it is included multiple times
@@ -16,6 +15,16 @@ into this file with the appropriate macro definitions to generate the
 suitable code.
 
 */
+
+/*
+ * $Id: ttymodes.c,v 1.2 1995/07/13 01:41:15 ylo Exp $
+ * $Log: ttymodes.c,v $
+ * Revision 1.2  1995/07/13  01:41:15  ylo
+ * 	Removed "Last modified" header.
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
 
 #include "includes.h"
 #include "packet.h"

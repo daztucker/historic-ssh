@@ -14,8 +14,17 @@ Allocating a pseudo-terminal, and making it the controlling tty.
 */
 
 /*
- * $Id: pty.c,v 1.8 1996/10/21 13:28:24 ttsalo Exp $
+ * $Id: pty.c,v 1.11 1997/03/26 07:09:31 kivinen Exp $
  * $Log: pty.c,v $
+ * Revision 1.11  1997/03/26 07:09:31  kivinen
+ * 	Changed uid 0 to UID_ROOT.
+ *
+ * Revision 1.10  1997/03/25 05:39:57  kivinen
+ * 	HPUX pty code.
+ *
+ * Revision 1.9  1996/11/12 15:51:39  ttsalo
+ *       FreeBSD pty allocation patch from Andrey Chernov merged.
+ *
  * Revision 1.8  1996/10/21 13:28:24  ttsalo
  *       Window resizing fix for ultrix & NeXT from Corey Satten
  *
@@ -64,6 +73,10 @@ Allocating a pseudo-terminal, and making it the controlling tty.
 #include "includes.h"
 #include "pty.h"
 #include "ssh.h"
+
+#ifdef __hpux
+#include <sys/sysmacros.h>
+#endif
 
 /* Pty allocated with _getpty gets broken if we do I_PUSH:es to it. */
 #if defined(HAVE__GETPTY) || defined(HAVE_OPENPTY)
@@ -235,6 +248,135 @@ int pty_allocate(int *ptyfd, int *ttyfd, char *namebuf)
   return 1;
 
 #else /* HAVE_DEV_PTS_AND_PTC */
+#ifdef __hpux
+  /* HP-UX pty cloning code. */
+
+  const char *name;
+  extern char * ptsname(int);
+  
+  *ptyfd = open("/dev/ptym/clone", O_RDWR|O_NOCTTY);
+  if (*ptyfd < 0)
+    {
+      /* Not all releases have ptym/clone, so we also support the other way */
+      
+      char buf[64];
+      register int loc;
+      const char oletters[]= "onmlkjihgfecbazyxwvutsrqp";
+      const char onumbers[]= "0123456789abcdef";
+      const char letters[] = "pqrstuvwxyzabcefghijklmno";
+      const char numbers[] = "0123456789";
+      /*	ptys are created in this order:
+      **              /dev/ptym/pty[p-z][0-f]
+      **              /dev/ptym/pty[a-ce-o][0-f]
+      **              /dev/ptym/pty[p-z][0-9][0-9]
+      **              /dev/ptym/pty[a-ce-o][0-9][0-9]
+      **              /dev/ptym/pty[a-ce-o][0-9][0-9][0-9]
+      **      with /dev/ptym/pty[p-r][0-f] linked into /dev.  Search the
+      **      ones in /dev last for old (unaware) applications
+      */
+      
+      static const char *ptymdirs[]={"/dev/ptym/","/dev/", (const char *)NULL};
+      
+      for (loc=0;ptymdirs[loc] != (const char *)NULL;loc++) {
+	register int ltr,num1,num2,num3,len;
+	struct stat stb,stb2;
+	if (stat(ptymdirs[loc],&stb))
+	  continue;
+	
+	/* first try ptyp000-ptyo999 */
+	strcpy(buf,ptymdirs[loc]);
+	strcat(buf,"ptyp000");
+	if (stat(buf,&stb) == 0) {
+	  len=strlen(buf);
+	  for (ltr=0;letters[ltr];ltr++) {
+	    buf[len - 4] = letters[ltr];
+	    for (num1=0;numbers[num1];num1++) {
+	      buf[len - 3] = numbers[num1];
+	      for (num2=0;numbers[num2];num2++) {
+		buf[len - 2] = numbers[num2];
+		for (num3=0;numbers[num3];num3++) {
+		  buf[len - 1] = numbers[num3];
+		  if ((*ptyfd=open(buf,O_RDWR|O_NOCTTY)) < 0)
+		    continue;
+		  name=ptsname(*ptyfd);
+		  if (fstat(*ptyfd,&stb)<0 || stat(name,&stb2)<0 ||
+		      minor(stb.st_rdev) != minor(stb2.st_rdev)) {
+		    close (*ptyfd);
+		    continue;
+		  }
+		  goto gotit;
+		} /* num 3 */
+	      } /* num 2 */
+	    } /* num 1 */
+	  } /* letter */
+	} /* p000 exists */
+	
+	/* next try ptyp00-ptyo99 */
+	strcpy(buf,ptymdirs[loc]);
+	strcat(buf,"ptyp00");
+	if (stat(buf,&stb) == 0) {
+	  len=strlen(buf);
+	  for (ltr=0;letters[ltr];ltr++) {
+	    buf[len - 3] = letters[ltr];
+	    for (num1=0;numbers[num1];num1++) {
+	      buf[len - 2] = numbers[num1];
+	      for (num2=0;numbers[num2];num2++) {
+		buf[len - 1] = numbers[num2];
+		if ((*ptyfd=open(buf,O_RDWR|O_NOCTTY)) < 0)
+		  continue;
+		name=ptsname(*ptyfd);
+		if (fstat(*ptyfd,&stb)<0 || stat(name,&stb2)<0 ||
+		    minor(stb.st_rdev) != minor(stb2.st_rdev)) {
+		  close (*ptyfd);
+		  continue;
+		}
+		goto gotit;
+	      } /* num 2 */
+	    } /* num 1 */
+	  } /* letter */
+	} /* p00 exists */
+
+	/* next try ptyp0-ptyof */
+	strcpy(buf,ptymdirs[loc]);
+	strcat(buf,"ptyp0");
+	len=strlen(buf);
+	for (ltr=0;oletters[ltr];ltr++) {
+	  buf[len - 2] = oletters[ltr];
+	  for (num1=0;onumbers[num1];num1++) {
+	    buf[len - 1] = onumbers[num1];
+	    if ((*ptyfd=open(buf,O_RDWR|O_NOCTTY)) < 0)
+	      continue;
+	    name=ptsname(*ptyfd);
+	    if (fstat(*ptyfd,&stb)<0 || stat(name,&stb2)<0 ||
+		minor(stb.st_rdev) != minor(stb2.st_rdev)) {
+	      close (*ptyfd);
+	      continue;
+	    }
+	    goto gotit;
+	  } /* num 1 */
+	} /* letter */
+      }	/* for directory */
+    } /* clone open failed */
+
+gotit:
+  name = ptsname(*ptyfd);
+  if (!name)
+    fatal("Open of /dev/ptym/clone returns device for which ptsname fails.");
+  *ttyfd = open(name, O_RDWR|O_NOCTTY);
+  if (*ttyfd < 0)
+    {
+      error("Could not open pty slave side %.100s: %.100s", 
+	    name, strerror(errno));
+      close(*ptyfd);
+      return 0;
+    }
+  /* Doing the ttyname again and then the strcpy makes us agree with other
+   * calls to ttyname.  (ptsname and ttyname may return different values...)
+   */
+  name = ttyname(*ttyfd);
+  strcpy(namebuf, name);
+  return 1;
+#else
 #ifdef CRAY
   char buf[64];
   int i;
@@ -305,9 +447,14 @@ int pty_allocate(int *ptyfd, int *ttyfd, char *namebuf)
 #else			/* not SCO UNIX */
   char buf[64];
   int i;
+#ifdef __FreeBSD__
+  const char *ptymajors = "pqrsPQRS";
+  const char *ptyminors = "0123456789abcdefghijklmnopqrstuv";
+#else
   const char *ptymajors = 
     "pqrstuvwxyzabcdefghijklmnoABCDEFGHIJKLMNOPQRSTUVWXYZ";
   const char *ptyminors = "0123456789abcdef";
+#endif
   int num_minors = strlen(ptyminors);
   int num_ptys = strlen(ptymajors) * num_minors;
 
@@ -344,6 +491,7 @@ int pty_allocate(int *ptyfd, int *ttyfd, char *namebuf)
 #endif /* SCO UNIX */
   return 0;
 #endif /* CRAY */
+#endif /* __hpux */
 #endif /* HAVE_DEV_PTS_AND_PTC */
 #endif /* HAVE_DEV_PTMX */
 #endif /* HAVE__GETPTY */
@@ -356,7 +504,7 @@ int pty_allocate(int *ptyfd, int *ttyfd, char *namebuf)
 
 void pty_release(const char *ttyname)
 {
-  if (chown(ttyname, (uid_t)0, (gid_t)0) < 0)
+  if (chown(ttyname, (uid_t)UID_ROOT, (gid_t)0) < 0)
     debug("chown %.100s 0 0 failed: %.100s", ttyname, strerror(errno));
   if (chmod(ttyname, (mode_t)0666) < 0)
     debug("chmod %.100s 0666 failed: %.100s", ttyname, strerror(errno));

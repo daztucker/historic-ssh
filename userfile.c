@@ -14,8 +14,11 @@ Created: Wed Jan 24 20:19:53 1996 ylo
 
 /*
  * $Log: userfile.c,v $
+ * Revision 1.22  2001/10/22 14:52:24  sjl
+ * 	Added check for function key_secretkey_is_set().
+ *
  * Revision 1.21  2001/02/20 12:10:27  sjl
- * 	Secure RPC patch.
+ *      Secure RPC patch.
  *
  * Revision 1.20  1999/11/17 17:05:01  tri
  *      Fixed copyright notices.

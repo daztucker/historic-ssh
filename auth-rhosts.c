@@ -2,10 +2,11 @@
 
 auth-rhosts.c
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Fri Mar 17 05:12:18 1995 ylo
 
@@ -16,12 +17,15 @@ the login based on rhosts authentication.  This file also processes
 */
 
 /*
- * $Id: auth-rhosts.c,v 1.11 1999/02/21 19:51:54 ylo Exp $
+ * $Id: auth-rhosts.c,v 1.12 1999/11/17 17:04:39 tri Exp $
  * $Log: auth-rhosts.c,v $
+ * Revision 1.12  1999/11/17 17:04:39  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.11  1999/02/21 19:51:54  ylo
- * 	Intermediate commit of ssh1.2.27 stuff.
- * 	Main change is sprintf -> snprintf; however, there are also
- * 	many other changes.
+ *      Intermediate commit of ssh1.2.27 stuff.
+ *      Main change is sprintf -> snprintf; however, there are also
+ *      many other changes.
  *
  * Revision 1.10  1998/07/08 00:38:32  kivinen
  *      Fixed typo (privileged).

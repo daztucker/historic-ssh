@@ -37,8 +37,11 @@ Description of the RSA algorithm can be found e.g. from the following sources:
 */
 
 /*
- * $Id: rsa.c,v 1.2 1995/07/13 01:31:25 ylo Exp $
+ * $Id: rsa.c,v 1.3 1995/09/06 16:00:12 ylo Exp $
  * $Log: rsa.c,v $
+ * Revision 1.3  1995/09/06  16:00:12  ylo
+ * 	Added missing xfree in rsa_free.
+ *
  * Revision 1.2  1995/07/13  01:31:25  ylo
  * 	Removed "Last modified" header.
  * 	Added cvs log.
@@ -664,6 +667,7 @@ static void *rsa_realloc(void *ptr, size_t old_size, size_t new_size)
     s = new_size;
   memcpy(p, ptr, s);
   memset(ptr, 0, old_size);
+  xfree(ptr);
   return p;
 }
 

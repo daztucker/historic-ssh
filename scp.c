@@ -11,8 +11,12 @@ and ssh has the necessary privileges.)
 */
 
 /*
- * $Id: scp.c,v 1.5 1995/07/27 00:40:02 ylo Exp $
+ * $Id: scp.c,v 1.6 1995/08/18 22:55:53 ylo Exp $
  * $Log: scp.c,v $
+ * Revision 1.6  1995/08/18  22:55:53  ylo
+ * 	Added utimbuf kludges for NextStep.
+ * 	Added "-P port" option.
+ *
  * Revision 1.5  1995/07/27  00:40:02  ylo
  * 	Include utime.h only if it exists.
  * 	Disable FallBackToRsh when running ssh from scp.
@@ -58,7 +62,7 @@ and ssh has the necessary privileges.)
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$Id: scp.c,v 1.5 1995/07/27 00:40:02 ylo Exp $
+ *	$Id: scp.c,v 1.6 1995/08/18 22:55:53 ylo Exp $
  */
 
 #ifndef lint
@@ -72,6 +76,12 @@ char scp_berkeley_copyright[] =
 #include "xmalloc.h"
 #ifdef HAVE_UTIME_H
 #include <utime.h>
+#ifdef _NEXT_SOURCE
+struct utimbuf {
+  time_t actime;
+  time_t modtime;
+};
+#endif /* _NEXT_SOURCE */
 #else
 struct utimbuf
 {
@@ -101,6 +111,9 @@ char *cipher = NULL;
 /* This is set to the RSA authentication identity file name if given on 
    the command line. */
 char *identity = NULL;
+
+/* This is the port to use in contacting the remote site (is non-NULL). */
+char *port = NULL;
 
 /* This function executes the given command as the specified user on the given
    host.  This returns < 0 if execution fails, and >= 0 otherwise.
@@ -149,6 +162,11 @@ int do_cmd(char *host, char *remuser, char *cmd, int *fdin, int *fdout)
 	{
 	  args[i++] = "-i";
 	  args[i++] = identity;
+	}
+      if (port != NULL)
+	{
+	  args[i++] = "-p";
+	  args[i++] = port;
 	}
       args[i++] = "-l";
       args[i++] = remuser;
@@ -226,11 +244,14 @@ main(argc, argv)
 	extern int optind;
 
 	fflag = tflag = 0;
-	while ((ch = getopt(argc, argv, "dfprtvc:i:")) != EOF)
+	while ((ch = getopt(argc, argv, "dfprtvc:i:P:")) != EOF)
 		switch(ch) {			/* User-visible flags. */
 		case 'p':
 			pflag = 1;
 			break;
+		case 'P':
+		  	port = optarg;
+		  	break;
 		case 'r':
 			iamrecursive = 1;
 			break;
@@ -925,7 +946,7 @@ run_err(const char *fmt, ...)
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$Id: scp.c,v 1.5 1995/07/27 00:40:02 ylo Exp $
+ *	$Id: scp.c,v 1.6 1995/08/18 22:55:53 ylo Exp $
  */
 
 char *

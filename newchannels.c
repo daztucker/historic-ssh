@@ -17,10 +17,13 @@ arbitrary tcp/ip connections, and the authentication agent connection.
 */
 
 /*
- * $Id: newchannels.c,v 1.52 2000/02/23 00:23:28 ylo Exp $
+ * $Id: newchannels.c,v 1.53 2001/03/15 01:49:26 sjl Exp $
  * $Log: newchannels.c,v $
+ * Revision 1.53  2001/03/15 01:49:26  sjl
+ * 	Fixed sigchld bug with libwrap.
+ *
  * Revision 1.52  2000/02/23 00:23:28  ylo
- * 	Merged X11 /var/X -> /var/X/.X11-unix fix from noel@cnet.com.
+ *      Merged X11 /var/X -> /var/X/.X11-unix fix from noel@cnet.com.
  *
  * Revision 1.51  1999/11/24 14:46:51  ttsalo
  *     Fixed a DOS hole in auth_input_request_forwarding()
@@ -948,6 +951,8 @@ void channel_after_select(fd_set *readset, fd_set *writeset)
               {
                 struct request_info req;
                 struct servent *serv;
+
+                signal(SIGCHLD, SIG_DFL);
                 
                 /* fill req struct with port name and fd number */
                 request_init(&req, RQ_DAEMON, "sshdfwd-X11",
@@ -1016,6 +1021,9 @@ void channel_after_select(fd_set *readset, fd_set *writeset)
                     snprintf(fwdportname, sizeof(fwdportname),
                              "sshdfwd-%.20s", serv->s_name);
                   }
+
+                signal(SIGCHLD, SIG_DFL);
+
                 /* fill req struct with port name and fd number */
                 request_init(&req, RQ_DAEMON, fwdportname,
                              RQ_FILE, newsock, NULL);

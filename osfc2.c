@@ -15,8 +15,11 @@ within ssh. See the file COPYING for full licensing informations.
 */
 
 /*
- * $Id: osfc2.c,v 1.1.1.1 1996/02/18 21:38:11 ylo Exp $
+ * $Id: osfc2.c,v 1.2 1996/10/29 22:43:02 kivinen Exp $
  * $Log: osfc2.c,v $
+ * Revision 1.2  1996/10/29 22:43:02  kivinen
+ * 	log -> log_msg.
+ *
  * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
  * 	Imported ssh-1.2.13.
  *
@@ -76,7 +79,7 @@ initialize_osf_security(int ac, char **av)
     fprintf(stderr, "C2 security initialization failed : could not determine security level.\n");
     exit(1);
   }
-  log("OSF/1: security level : %s", c2security == 0 ? "BSD" : "C2");
+  log_msg("OSF/1: security level : %s", c2security == 0 ? "BSD" : "C2");
   if (c2security == 1)
      set_auth_parameters(ac, av);
 }

@@ -16,8 +16,11 @@ the login based on rhosts authentication.  This file also processes
 */
 
 /*
- * $Id: auth-rhosts.c,v 1.2 1996/02/18 21:53:00 ylo Exp $
+ * $Id: auth-rhosts.c,v 1.3 1996/10/29 22:34:25 kivinen Exp $
  * $Log: auth-rhosts.c,v $
+ * Revision 1.3  1996/10/29 22:34:25  kivinen
+ * 	log -> log_msg.
+ *
  * Revision 1.2  1996/02/18 21:53:00  ylo
  * 	Eliminate warning for innetgr arguments.
  *
@@ -277,7 +280,7 @@ int auth_rhosts(struct passwd *pw, const char *client_user,
   if (port >= IPPORT_RESERVED ||
       port < IPPORT_RESERVED / 2)
     {
-      log("Connection from %.100s from nonpriviledged port %d",
+      log_msg("Connection from %.100s from nonpriviledged port %d",
 	  hostname, port);
       packet_send_debug("Your ssh client is not running as root.");
       return 0;
@@ -308,7 +311,7 @@ int auth_rhosts(struct passwd *pw, const char *client_user,
      group or world writable. */
   if (userfile_stat(pw->pw_uid, pw->pw_dir, &st) < 0)
     {
-      log("Rhosts authentication refused for %.100: no home directory %.200s",
+      log_msg("Rhosts authentication refused for %.100: no home directory %.200s",
 	  pw->pw_name, pw->pw_dir);
       packet_send_debug("Rhosts authentication refused for %.100: no home directory %.200s",
 			pw->pw_name, pw->pw_dir);
@@ -318,7 +321,7 @@ int auth_rhosts(struct passwd *pw, const char *client_user,
       ((st.st_uid != 0 && st.st_uid != pw->pw_uid) ||
        (st.st_mode & 022) != 0))
     {
-      log("Rhosts authentication refused for %.100s: bad ownership or modes for home directory.",
+      log_msg("Rhosts authentication refused for %.100s: bad ownership or modes for home directory.",
 	  pw->pw_name);
       packet_send_debug("Rhosts authentication refused for %.100s: bad ownership or modes for home directory.",
 			pw->pw_name);
@@ -343,7 +346,7 @@ int auth_rhosts(struct passwd *pw, const char *client_user,
 	  ((st.st_uid != 0 && st.st_uid != pw->pw_uid) ||
 	   (st.st_mode & 022) != 0))
 	{
-	  log("Rhosts authentication refused for %.100s: bad modes for %.200s",
+	  log_msg("Rhosts authentication refused for %.100s: bad modes for %.200s",
 	      pw->pw_name, buf);
 	  packet_send_debug("Bad file modes for %.200s", buf);
 	  continue;

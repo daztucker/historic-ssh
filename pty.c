@@ -14,8 +14,11 @@ Allocating a pseudo-terminal, and making it the controlling tty.
 */
 
 /*
- * $Id: pty.c,v 1.7 1996/09/27 17:19:47 ylo Exp $
+ * $Id: pty.c,v 1.8 1996/10/21 13:28:24 ttsalo Exp $
  * $Log: pty.c,v $
+ * Revision 1.8  1996/10/21 13:28:24  ttsalo
+ *       Window resizing fix for ultrix & NeXT from Corey Satten
+ *
  * Revision 1.7  1996/09/27 17:19:47  ylo
  * 	Merged ultrix and Next patches from Corey Satten.
  *
@@ -124,10 +127,6 @@ int pty_allocate(int *ptyfd, int *ttyfd, char *namebuf)
       close(*ptyfd);
       return 0;
     }
-
-#if defined(ultrix) || defined(NeXT)
-  (void) signal(SIGTTOU, SIG_IGN);  /* corey via nancy */
-#endif /* ultrix or NeXT */
 
   return 1;
   
@@ -335,6 +334,11 @@ int pty_allocate(int *ptyfd, int *ttyfd, char *namebuf)
 	  close(*ptyfd);
 	  return 0;
 	}
+
+#if defined(ultrix) || defined(NeXT)
+      (void) signal(SIGTTOU, SIG_IGN);  /* corey via nancy */
+#endif /* ultrix or NeXT */
+
       return 1;
     }
 #endif /* SCO UNIX */

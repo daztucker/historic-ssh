@@ -16,8 +16,12 @@ arbitrary tcp/ip connections, and the authentication agent connection.
 */
 
 /*
- * $Id: newchannels.c,v 1.35 1997/03/26 07:14:47 kivinen Exp $
+ * $Id: newchannels.c,v 1.36 1997/04/05 21:48:54 kivinen Exp $
  * $Log: newchannels.c,v $
+ * Revision 1.36  1997/04/05 21:48:54  kivinen
+ * 	Fixed some debug messages (removed extra newline at the end).
+ * 	Added clearing of input buffer after output have closed.
+ *
  * Revision 1.35  1997/03/26 07:14:47  kivinen
  * 	Added checks about failed read and write for open channel.
  *
@@ -392,12 +396,12 @@ int channel_allocate(int type, int sock, char *remote_name)
     {
       /* There are no free slots.  Must expand the array. */
       channels_alloc += 10;
-      debug("Expanding the array...\n");
+      debug("Expanding the array...");
       channels = xrealloc(channels, channels_alloc * sizeof(Channel));
       for (i = channels_used; i < channels_alloc; i++)
 	channels[i].type = SSH_CHANNEL_FREE;
       i = channels_used;
-      debug("Array now %d channels [first free at %d].\n",
+      debug("Array now %d channels [first free at %d].",
 	    channels_alloc, i);
     }
 
@@ -418,7 +422,7 @@ int channel_allocate(int type, int sock, char *remote_name)
 	  channels[i].local_id = i;
 	  channels[i].is_x_connection = 0;
 	  channels_used++;
-	  debug("Allocated channel %d of type %d.\n", i, type);
+	  debug("Allocated channel %d of type %d.", i, type);
 	  return i;
 	}
       i++;
@@ -605,6 +609,7 @@ void channel_receive_oclosed(Channel *ch)
 
   debug("Channel %d receives output closed.", ch->local_id);
   ch->status_flags |= STATUS_CLOSE_RECEIVED;
+  buffer_clear(&ch->input);
   channel_close_input(ch);
   channel_check_termination(ch);
 }
@@ -1165,7 +1170,7 @@ void channel_input_open_confirmation()
   remote_channel = packet_get_int();
 
   /* Record the remote channel number and mark that the channel is now open. */
-  debug("Channel now open, status bits %x\n", channels[channel].status_flags);
+  debug("Channel now open, status bits %x", channels[channel].status_flags);
   channels[channel].remote_id = remote_channel;
   channels[channel].type = SSH_CHANNEL_OPEN;
 }
@@ -2102,7 +2107,7 @@ int auth_input_request_forwarding(struct passwd *pw)
     {
       packet_send_debug("* Remote error: Agent socket creation: Directory \'%s/..\' is not sticky, mode is %o, should be 041777",
 	    channel_forwarded_auth_socket_dir_name, st.st_mode);
-      packet_send_debug("* Remote error: Authentication fowarding disabled.");
+      packet_send_debug("* Remote error: Authentication forwarding disabled.");
       return 0;
     }
   if (st.st_dev != parent_st.st_dev || st.st_ino != parent_st.st_ino)

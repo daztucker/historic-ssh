@@ -16,8 +16,12 @@ validity of the host key.
 */
 
 /*
- * $Id: auth-rsa.c,v 1.6 1996/10/29 22:34:38 kivinen Exp $
+ * $Id: auth-rsa.c,v 1.7 1997/03/26 05:31:01 kivinen Exp $
  * $Log: auth-rsa.c,v $
+ * Revision 1.7  1997/03/26 05:31:01  kivinen
+ * 	Added support for idle-timeout.
+ * 	Added better error message if .ssh directory is missing.
+ *
  * Revision 1.6  1996/10/29 22:34:38  kivinen
  * 	log -> log_msg.
  *
@@ -76,6 +80,7 @@ extern int no_port_forwarding_flag;
 extern int no_agent_forwarding_flag;
 extern int no_x11_forwarding_flag;
 extern int no_pty_flag;
+extern time_t idle_timeout;
 extern char *forced_command;
 extern struct envstring *custom_environment;
 
@@ -183,6 +188,16 @@ int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state,
       return 0;
     }
 
+  /* Check if user have .ssh directory */
+  if (userfile_stat(pw->pw_uid, line, &st) < 0)
+    {
+      log_msg("Rsa authentication refused for %.100s: no %.200s directory",
+	      pw->pw_name, line);
+      packet_send_debug("Rsa authentication refused, no %.200s directory",
+			line);
+      return 0;
+    }
+  
   if (strict_modes && !userfile_check_owner_permissions(pw, line))
     {
       log_msg("Rsa authentication refused for %.100s: bad modes for %.200s",
@@ -325,6 +340,48 @@ int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state,
 		  packet_send_debug("Pty allocation disabled.");
 		  no_pty_flag = 1;
 		  options += strlen(cp);
+		  goto next_option;
+		}
+	      cp = "idle-timeout=";
+	      if (strncmp(options, cp, strlen(cp)) == 0)
+		{
+		  int value;
+		  options += strlen(cp);
+		  value = 0;
+		  while(isdigit(*options))
+		    {
+		      value *= 10;
+		      value += *options - '0';
+		      options++;
+		    }
+		  *options = tolower(*options);
+		  if (*options == 'w') /* Weeks */
+		    {
+		      value *= 7 * 24 * 60 * 60;
+		      options++;
+		    }
+		  else if (*options == 'd') /* Days */
+		    {
+		      value *= 24 * 60 * 60;
+		      options++;
+		    }
+		  else if (*options == 'h') /* Hours */
+		    {
+		      value *= 60 * 60;
+		      options++;
+		    }
+		  else if (*options == 'm') /* Minutes */
+		    {
+		      value *= 60;
+		      options++;
+		    }
+		  else if (*options == 's')
+		    {
+		      options++;
+		    }
+		  packet_send_debug("Idle timeout set to %d seconds.",
+				    value);
+		  idle_timeout = value;
 		  goto next_option;
 		}
 	      cp = "command=\"";

@@ -16,10 +16,13 @@ the password is valid for the user.
 */
 
 /*
- * $Id: auth-passwd.c,v 1.26 1999/11/17 17:04:38 tri Exp $
+ * $Id: auth-passwd.c,v 1.27 2000/06/30 07:48:13 sjl Exp $
  * $Log: auth-passwd.c,v $
+ * Revision 1.27  2000/06/30 07:48:13  sjl
+ * 	Applied patch for the chown() fix.
+ *
  * Revision 1.26  1999/11/17 17:04:38  tri
- * 	Fixed copyright notices.
+ *      Fixed copyright notices.
  *
  * Revision 1.25  1999/11/17 15:54:44  tri
  *      Streamlined local SIA interface names.
@@ -624,7 +627,13 @@ int auth_password(const char *server_user, const char *password)
             /* get_name pulls out just the name not the
                type */
               strcpy(ccname + 5, krb5_cc_get_name(ssh_context, ccache));
-              (void) chown(ccname + 5, pw->pw_uid, pw->pw_gid);
+              if (chown(ccname + 5, pw->pw_uid, pw->pw_gid) < 0)
+                {
+                  log_msg("Kerberos: chown failed for %s, error: %s",
+                          ccname + 5, strerror(errno));
+                  packet_send_debug("Kerberos: chown failed for %s", ccname + 5);
+                  goto errout;
+                }
               
               /* If tgt was passed unlink file */
               if (ticket)

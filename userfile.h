@@ -8,7 +8,6 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Wed Jan 24 19:53:02 1996 ylo
-Last modified: Fri Jan 26 13:30:48 1996 ylo
 
 Functions for reading files as the real user from a program running as root.
 
@@ -17,7 +16,16 @@ This works by forking a separate process to do the reading.
 */
 
 /*
- * $Log$
+ * $Log: userfile.h,v $
+ * Revision 1.3  1996/05/29 07:42:02  ylo
+ * 	Updated prototype of userfile_init.
+ *
+ * Revision 1.2  1996/02/18 21:49:10  ylo
+ * 	Added userfile_close_pipes.
+ *
+ * Revision 1.1.1.1  1996/02/18 21:38:10  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * $EndLog$
  */
 
@@ -31,11 +39,16 @@ typedef struct UserFile *UserFile;
    effective uid).  SIGPIPE should be set to ignored before this call.
    The cleanup callback will be called in the child before switching to the
    user's uid.  The callback may be NULL. */
-void userfile_init(uid_t uid, void (*cleanup_callback)(void *), void *context);
+void userfile_init(const char *username, uid_t uid, gid_t gid,
+		   void (*cleanup_callback)(void *), void *context);
 
 /* Stops reading files as an ordinary user.  It is not an error to call this
    even if userfile_init has not been called. */
 void userfile_uninit();
+
+/* Closes any pipes the userfile might have open.  This should be called after
+   every fork. */
+void userfile_close_pipes();
 
 /* Opens a file using the given uid.  The uid must be either the current
    effective uid (in which case userfile_init need not have been called) or

@@ -14,8 +14,17 @@ Server main loop for handling the interactive session.
 */
 
 /*
- * $Id: serverloop.c,v 1.12 1997/04/05 21:52:54 kivinen Exp $
+ * $Id: serverloop.c,v 1.14 1997/04/21 01:04:46 kivinen Exp $
  * $Log: serverloop.c,v $
+ * Revision 1.14  1997/04/21 01:04:46  kivinen
+ * 	Changed server_loop to call pty_cleanup_proc instead of
+ * 	pty_release, so we can be sure it is never called twice.
+ *
+ * Revision 1.13  1997/04/17 04:19:28  kivinen
+ * 	Added ttyame argument to wait_until_can_do_something and
+ * 	server_loop functions.
+ * 	Release pty before closing it.
+ *
  * Revision 1.12  1997/04/05 21:52:54  kivinen
  * 	Fixed closing of pty, and changed it to use shutdown first and
  * 	close the pty only after pty have been released.
@@ -295,7 +304,8 @@ void make_packets_from_stdout_data()
    for the duration of the wait (0 = infinite). */
 
 void wait_until_can_do_something(fd_set *readset, fd_set *writeset,
-				 unsigned int max_time_milliseconds)
+				 unsigned int max_time_milliseconds,
+				 void *cleanup_context)
 {
   struct timeval tv, *tvp;
   int ret;
@@ -389,16 +399,20 @@ void wait_until_can_do_something(fd_set *readset, fd_set *writeset,
      descriptors to it. */
   if (ret <= 0 && child_terminated && !child_just_terminated)
     {
+      /* Released the pseudo-tty. */
+      if (cleanup_context)
+	pty_cleanup_proc(cleanup_context);
+      
       if (fdout != -1)
-	shutdown(fdout, 0);
+	close(fdout);
       fdout = -1;
       fdout_eof = 1;
       if (fderr != -1)
-	shutdown(fderr, 0);
+	close(fderr);
       fderr = -1;
       fderr_eof = 1;
       if (fdin != -1)
-	shutdown(fdin, 1);
+	close(fdin);
       fdin = -1;
     }
   else
@@ -494,8 +508,10 @@ void process_output(fd_set *writeset)
 	    {
 	      debug("Process_output: write to fdin failed, len = %d : %.50s",
 		    len, strerror(errno));
-	      if (fdin != -1)
+	      if (fdin == fdout)
 		shutdown(fdin, 1); /* We will no longer send. */
+	      else
+		close(fdin);
 	      fdin = -1;
 	    }
 	}
@@ -548,9 +564,12 @@ void drain_output()
    the client and the program.  Note that the notion of stdin, stdout, and
    stderr in this function is sort of reversed: this function writes to
    stdin (of the child program), and reads from stdout and stderr (of the
-   child program). */
+   child program).
+   This will close fdin, fdout and fderr after releasing pty (if ttyname is non
+   NULL) */
 
-void server_loop(int pid, int fdin_arg, int fdout_arg, int fderr_arg)
+void server_loop(int pid, int fdin_arg, int fdout_arg, int fderr_arg,
+		 void *cleanup_context)
 {
   int wait_status, wait_pid;	/* Status and pid returned by wait(). */
   int waiting_termination = 0;  /* Have displayed waiting close message. */
@@ -626,8 +645,10 @@ void server_loop(int pid, int fdin_arg, int fdout_arg, int fderr_arg)
 	 cause a real eof by closing fdin. */
       if (stdin_eof && fdin != -1 && buffer_len(&stdin_buffer) == 0)
 	{
-	  if (fdin != -1)
+	  if (fdin == fdout)
 	    shutdown(fdin, 1); /* We will no longer send. */
+	  else
+	    close(fdin);
 	  fdin = -1;
 	}
 
@@ -677,7 +698,7 @@ void server_loop(int pid, int fdin_arg, int fdout_arg, int fderr_arg)
 
       /* Sleep in select() until we can do something. */
       wait_until_can_do_something(&readset, &writeset,
-				  max_time_milliseconds);
+				  max_time_milliseconds, cleanup_context);
 
       /* Process any channel events. */
       channel_after_select(&readset, &writeset);
@@ -703,6 +724,18 @@ void server_loop(int pid, int fdin_arg, int fdout_arg, int fderr_arg)
   buffer_free(&stdout_buffer);
   buffer_free(&stderr_buffer);
 
+  /* Released the pseudo-tty. */
+  if (cleanup_context)
+    pty_cleanup_proc(cleanup_context);
+  
+  /* Close the file descriptors. */
+  if (fdout != -1)
+    close(fdout);
+  if (fdin != -1 && fdin != fdout)
+    close(fdin);
+  if (fderr != -1)
+    close(fderr);
+  
   /* Stop listening for channels; this removes unix domain sockets. */
   channel_stop_listening();
   

@@ -14,8 +14,11 @@ Functions for reading passphrases and passwords.
 */
 
 /*
- * $Id: readpass.c,v 1.5 1997/04/17 04:01:52 kivinen Exp $
+ * $Id: readpass.c,v 1.6 1997/05/13 22:30:18 kivinen Exp $
  * $Log: readpass.c,v $
+ * Revision 1.6  1997/05/13 22:30:18  kivinen
+ * 	Added some casts.
+ *
  * Revision 1.5  1997/04/17 04:01:52  kivinen
  * 	Added read_confirmation function.
  *
@@ -110,7 +113,7 @@ char *read_passphrase(uid_t uid, const char *prompt, int from_stdin)
 		      "Executing ssh-askpass to query the password...\n");
 	      fflush(stdout);
 	      fflush(stderr);
-	      for(p = prompt, i = 0;
+	      for(p = (unsigned const char *) prompt, i = 0;
 		  i < sizeof(quoted_prompt) - 5 && *p;
 		  i++, p++)
 		{
@@ -163,7 +166,8 @@ char *read_passphrase(uid_t uid, const char *prompt, int from_stdin)
 	}
     }
 
-  for(p = prompt, i = 0; i < sizeof(quoted_prompt) - 4 && *p; i++, p++)
+  for(p = (unsigned const char *) prompt, i = 0;
+      i < sizeof(quoted_prompt) - 4 && *p; i++, p++)
     {
       if (isprint(*p) || isspace(*p))
 	quoted_prompt[i] = *p;

@@ -14,8 +14,11 @@ Functions for connecting the local authentication agent.
 */
 
 /*
- * $Id: authfd.c,v 1.6 1995/09/09 21:26:38 ylo Exp $
+ * $Id: authfd.c,v 1.7 1995/09/21 17:08:11 ylo Exp $
  * $Log: authfd.c,v $
+ * Revision 1.7  1995/09/21  17:08:11  ylo
+ * 	Support AF_UNIX_SIZE.
+ *
  * Revision 1.6  1995/09/09  21:26:38  ylo
  * /m/shadows/u2/users/ylo/ssh/README
  *

@@ -8,12 +8,26 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Wed Jan 24 20:19:53 1996 ylo
-Last modified: Fri Feb  9 04:16:19 1996 ylo
 
 */
 
 /*
- * $Log$
+ * $Log: userfile.c,v $
+ * Revision 1.4  1996/05/29 07:37:31  ylo
+ * 	Do setgid and initgroups when initializing to read as user.
+ *
+ * Revision 1.3  1996/04/26 18:10:45  ylo
+ * 	Wrong file descriptors were closed in the forked child in
+ * 	do_popen.  This caused dup2 to fail on some machines, which in
+ * 	turn resulted in X11 authentication failing on some machines.
+ *
+ * Revision 1.2  1996/02/18 21:48:46  ylo
+ * 	Close pipes after popen fork.
+ * 	New function userfile_close_pipes.
+ *
+ * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * $EndLog$
  */
 
@@ -267,11 +281,18 @@ int do_popen(const char *command, const char *type)
   if (pid == 0)
     { /* Child */
 
+      /* Close pipes to the parent; we do not wish to disclose them to a
+	 random user program. */
+      close(userfile_fromparent);
+      close(userfile_toparent);
+
       /* Set up file descriptors. */
       if (type[0] == 'r')
-	dup2(fds[1], 1);
+	if (dup2(fds[1], 1) < 0)
+	  perror("dup2 1");
       else
-	dup2(fds[0], 0);
+	if (dup2(fds[0], 0) < 0)
+	  perror("dup2 0");
       close(fds[0]);
       close(fds[1]);
 
@@ -480,14 +501,15 @@ static void userfile_child_server()
    The cleanup callback will be called in the child before switching to the
    user's uid.  The callback may be NULL. */
 
-void userfile_init(uid_t uid, void (*cleanup_callback)(void *), void *context)
+void userfile_init(const char *username, uid_t uid, gid_t gid,
+		   void (*cleanup_callback)(void *), void *context)
 {
   int fds[2], pid;
 
   if (userfile_initialized)
     fatal("userfile_init already called");
   
- userfile_uid = uid;
+  userfile_uid = uid;
   userfile_initialized = 1;
 
   if (pipe(fds) < 0)
@@ -528,11 +550,34 @@ void userfile_init(uid_t uid, void (*cleanup_callback)(void *), void *context)
   signals_reset();
 
   /* Child.  We will start serving request. */
-  if (setuid(uid) < 0)
-    fatal("setuid: %s", strerror(errno));
+  if (uid != geteuid() || uid != getuid())
+    {
+      if (setgid(gid) < 0)
+	fatal("setgid: %s", strerror(errno));
+
+#ifdef HAVE_INITGROUPS
+      if (initgroups(username, gid) < 0)
+	fatal("initgroups: %s", strerror(errno));
+#endif /* HAVE_INITGROUPS */
+
+      if (setuid(uid) < 0)
+	fatal("setuid: %s", strerror(errno));
+    }
 
   /* Enter the server main loop. */
   userfile_child_server();
+}
+
+/* Closes any open pipes held by userfile.  This should be called
+   after a fork while the userfile is open. */
+
+void userfile_close_pipes()
+{
+  if (!userfile_open)
+    return;
+  userfile_initialized = 0;
+  close(userfile_fromchild);
+  close(userfile_tochild);
 }
 
 /* Stops reading files as an ordinary user.  It is not an error to call
@@ -545,9 +590,8 @@ void userfile_uninit()
   if (!userfile_initialized)
     return;
   
-  userfile_initialized = 0;
-  close(userfile_fromchild);
-  close(userfile_tochild);
+  userfile_close_pipes();
+
   wait(&status);
 }
 
@@ -803,6 +847,7 @@ char *userfile_gets(char *buf, unsigned int size, UserFile uf)
     return NULL;
 
   buf[i] = '\0';
+  
   return buf;
 }
 

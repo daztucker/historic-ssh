@@ -11,8 +11,12 @@ and ssh has the necessary privileges.)
 */
 
 /*
- * $Id: scp.c,v 1.7 1997/04/23 00:03:04 kivinen Exp $
+ * $Id: scp.c,v 1.8 1997/06/04 13:52:52 kivinen Exp $
  * $Log: scp.c,v $
+ * Revision 1.8  1997/06/04 13:52:52  kivinen
+ * 	Moved ssh_options before other options so you can override
+ * 	options given by scp.
+ *
  * Revision 1.7  1997/04/23 00:03:04  kivinen
  * 	Added -S flag
  *
@@ -96,7 +100,7 @@ and ssh has the necessary privileges.)
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$Id: scp.c,v 1.7 1997/04/23 00:03:04 kivinen Exp $
+ *	$Id: scp.c,v 1.8 1997/06/04 13:52:52 kivinen Exp $
  */
 
 #ifndef lint
@@ -207,6 +211,13 @@ int do_cmd(char *host, char *remuser, char *cmd, int *fdin, int *fdout)
 
       i = 0;
       args[i++] = ssh_program;
+      for(j = 0; j < ssh_options_cnt; j++)
+	{
+	  args[i++] = "-o";
+	  args[i++] = ssh_options[j];
+	  if (i > 250)
+	    fatal("Too many -o options (total number of arguments is more than 256)");
+	}
       args[i++] = "-x";
       args[i++] = "-a";
       args[i++] = "-oFallBackToRsh no";
@@ -236,13 +247,6 @@ int do_cmd(char *host, char *remuser, char *cmd, int *fdin, int *fdout)
 	{
 	  args[i++] = "-l";
 	  args[i++] = remuser;
-	}
-      for(j = 0; j < ssh_options_cnt; j++)
-	{
-	  args[i++] = "-o";
-	  args[i++] = ssh_options[j];
-	  if (i > 250)
-	    fatal("Too many -o options (total number of arguments is more than 256)");
 	}
       args[i++] = host;
       args[i++] = cmd;
@@ -509,14 +513,14 @@ toremote(targ, argc, argv)
 				else if (!okname(suser))
 					continue;
 				(void)sprintf(bp, 
-				    "%s%s -x -o'FallBackToRsh no' -o'ClearAllForwardings yes' %s -n -l %s %s %s %s '%s%s%s:%s'",
+				    "%s%s %s -x -o'FallBackToRsh no' -o'ClearAllForwardings yes' -n -l %s %s %s %s '%s%s%s:%s'",
 				    ssh_program, verbose ? " -v" : "", options,
 				    suser, host, cmd, src,
 				    tuser ? tuser : "", tuser ? "@" : "",
 				    thost, targ);
 			} else
 				(void)sprintf(bp,
-				    "exec %s%s -x -o'FallBackToRsh no' -o'ClearAllForwardings yes' %s -n %s %s %s '%s%s%s:%s'",
+				    "exec %s%s %s -x -o'FallBackToRsh no' -o'ClearAllForwardings yes' -n %s %s %s '%s%s%s:%s'",
 				    ssh_program, verbose ? " -v" : "", options,
 				    argv[i], cmd, src,
 				    tuser ? tuser : "", tuser ? "@" : "",
@@ -1102,7 +1106,7 @@ run_err(const char *fmt, ...)
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$Id: scp.c,v 1.7 1997/04/23 00:03:04 kivinen Exp $
+ *	$Id: scp.c,v 1.8 1997/06/04 13:52:52 kivinen Exp $
  */
 
 char *

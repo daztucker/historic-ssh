@@ -14,8 +14,15 @@ Generic header file for ssh.
 */
 
 /*
- * $Id: ssh.h,v 1.8 1996/09/24 20:17:54 ylo Exp $
+ * $Id: ssh.h,v 1.10 1996/10/29 22:46:55 kivinen Exp $
  * $Log: ssh.h,v $
+ * Revision 1.10  1996/10/29 22:46:55  kivinen
+ * 	Changed PROTOCOL_MINOR from 4 to 5.
+ * 	log -> log_msg.
+ *
+ * Revision 1.9  1996/10/20 16:28:39  ttsalo
+ *      Added global variable original_real_uid
+ *
  * Revision 1.8  1996/09/24 20:17:54  ylo
  * 	Changed identity files to be always encrypted with 3DES (used
  * 	to be IDEA, when it is compiled in).  This is to make identity
@@ -132,7 +139,7 @@ Generic header file for ssh.
 
 /* Minor protocol version.  Different version indicates minor incompatibility
    that does not prevent interoperation. */
-#define PROTOCOL_MINOR		4
+#define PROTOCOL_MINOR		5
 
 /* Name for the service.  The port named by this service overrides the default
    port if present. */
@@ -490,7 +497,7 @@ void log_init(char *av0, int on_stderr, int debug, int quiet,
 /* Outputs a message to syslog or stderr, depending on the implementation. 
    The format must guarantee that the final message does not exceed 1024 
    characters.  The message should not contain newline. */
-void log(const char *fmt, ...);
+void log_msg(const char *fmt, ...);
 
 /* Outputs a message to syslog or stderr, depending on the implementation. 
    The format must guarantee that the final message does not exceed 1024 
@@ -656,6 +663,10 @@ int auth_get_fd(void);
    to a static buffer. */
 char *auth_get_socket_name(void);
 
+/* Tries to delete the authentication agent proxy socket and
+   directory */
+void auth_delete_socket(void *context);
+
 /* This if called to process SSH_CMSG_AGENT_REQUEST_FORWARDING on the server.
    This starts forwarding authentication requests. */
 void auth_input_request_forwarding(struct passwd *pw);
@@ -704,5 +715,8 @@ void signals_prevent_core();
    saved by prevent_core(). */
 void signals_reset();
 
+/* Global variable */
+
+extern uid_t original_real_uid;
 
 #endif /* SSH_H */

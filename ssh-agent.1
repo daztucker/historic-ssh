@@ -9,8 +9,11 @@
 .\"
 .\" Created: Sat Apr 23 20:10:43 1995 ylo
 .\"
-.\" $Id: ssh-agent.1,v 1.5 1997/03/25 05:42:01 kivinen Exp $
+.\" $Id: ssh-agent.1,v 1.6 1997/04/27 21:48:50 kivinen Exp $
 .\" $Log: ssh-agent.1,v $
+.\" Revision 1.6  1997/04/27 21:48:50  kivinen
+.\" 	Added F-SECURE stuff.
+.\"
 .\" Revision 1.5  1997/03/25 05:42:01  kivinen
 .\" 	Added comment about ALTSHELL from napo.
 .\" 	Changed ylo's email to @ssh.fi.
@@ -39,7 +42,9 @@
 .\"
 .\" $Endlog$
 .\"
-.TH SSH-AGENT 1 "November 8, 1995" "SSH" "SSH"
+.nr CO 0
+.ie \n(CO .TH SSH-AGENT 1 "November 8, 1995" "F-SECURE SSH" "F-SECURE SSH"
+.el .TH SSH-AGENT 1 "November 8, 1995" "SSH" "SSH"
 
 .SH NAME
 ssh-agent \- authentication agent

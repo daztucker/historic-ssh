@@ -8,8 +8,15 @@
 #
 # Created: Wed Mar 22 18:02:48 1995 ylo
 #
-# $Id: configure.in,v 1.46 1997/04/22 23:59:59 kivinen Exp $
+# $Id: configure.in,v 1.48 1997/05/13 22:31:34 kivinen Exp $
 # $Log: configure.in,v $
+# Revision 1.48  1997/05/13 22:31:34  kivinen
+# 	Fixed RSAREF code.
+#
+# Revision 1.47  1997/05/08 02:57:26  kivinen
+# 	Fixed AC_MSG_RESULT messages when disabling idea in commercial
+# 	version.
+#
 # Revision 1.46  1997/04/22 23:59:59  kivinen
 # 	Fixed SIGINFO check.
 # 	Added check that getpseudotty function exists before using.
@@ -951,9 +958,14 @@ AC_ARG_WITH(idea,
     CONFOBJS="$CONFOBJS idea.o"
     ;;
   esac ],
+#ifndef F_SECURE_COMMERCIAL
   AC_MSG_RESULT(yes)
   AC_DEFINE(WITH_IDEA)
   CONFOBJS="$CONFOBJS idea.o"
+#endif F_SECURE_COMMERCIAL
+#ifdef F_SECURE_COMMERCIAL
+#
+#endif F_SECURE_COMMERCIAL
 )
 
 AC_MSG_CHECKING(whether to include the Blowfish encryption algorithm)
@@ -1390,15 +1402,15 @@ AC_ARG_WITH(rsaref,
        AC_MSG_RESULT(yes)
        if test "x$withval" = "xyes"; then
 	  withval="-lrsaref"
+          RSAREFDEP="rsaref2/source/librsaref.a"
+          LDFLAGS="-Lrsaref2/source $LDFLAGS"
        else
 	  if test -d "$withval"; then
 	     withval="-L$withval -lrsaref"
 	  fi
        fi
        AC_DEFINE(RSAREF)
-       RSAREFDEP="rsaref2/source/librsaref.a"
        LIBS="$withval $LIBS"
-       LDFLAGS="-Lrsaref2/source $LDFLAGS"
        ;;
   esac ],
   AC_MSG_RESULT(no)

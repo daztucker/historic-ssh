@@ -21,20 +21,23 @@
 .\" ----------------------------------------------------------------------
 .\"       Program: make-ssh-known-hosts.1
 .\"	  $Source: /ssh/CVS/ssh/make-ssh-known-hosts.1.in,v $
-.\"	  Author : $Author: ylo $
+.\"	  Author : $Author: kivinen $
 .\"
 .\"	  (C) Tero Kivinen 1995 <Tero.Kivinen@hut.fi>
 .\"
 .\"	  Creation          : 03:51 Jun 28 1995 kivinen
 .\"	  Last Modification : 03:44 Jun 28 1995 kivinen
-.\"	  Last check in     : $Date: 1996/02/18 21:38:13 $
-.\"	  Revision number   : $Revision: 1.1.1.1 $
+.\"	  Last check in     : $Date: 1997/04/27 21:48:28 $
+.\"	  Revision number   : $Revision: 1.2 $
 .\"	  State             : $State: Exp $
 .\"	  Version	    : 1.1
 .\"
 .\"	  Description       : Manual page for make-ssh-known-hosts.pl
 .\"
 .\"	  $Log: make-ssh-known-hosts.1.in,v $
+.\"	  Revision 1.2  1997/04/27 21:48:28  kivinen
+.\"	  	Added F-SECURE stuff.
+.\"
 .\"	  Revision 1.1.1.1  1996/02/18 21:38:13  ylo
 .\"	  	Imported ssh-1.2.13.
 .\"
@@ -59,7 +62,9 @@
 .\" Tero.Kivinen@hut.fi
 .\"
 .\"
-.TH MAKE-SSH-KNOWN-HOSTS 1 "November 8, 1995" "ssh tools" "ssh tools"
+.nr CO 0
+.ie \n(CO .TH MAKE-SSH-KNOWN-HOSTS 1 "November 8, 1995" "F-SECURE SSH TOOLS"" F-SECURE SSH TOOLS"
+.el .TH MAKE-SSH-KNOWN-HOSTS 1 "November 8, 1995" "SSH TOOLS" "SSH TOOLS"
 .SH NAME
 make-ssh-known-hosts \- make ssh_known_hosts file from DNS data
 .SH SYNOPSIS

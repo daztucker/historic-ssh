@@ -1,7 +1,10 @@
 .\" -*- nroff -*-
 .\"
-.\" $Id: RFC.nroff,v 1.8 1997/03/27 03:39:12 kivinen Exp $
+.\" $Id: RFC.nroff,v 1.9 1997/08/21 22:35:33 ylo Exp $
 .\" $Log: RFC.nroff,v $
+.\" Revision 1.9  1997/08/21 22:35:33  ylo
+.\" 	Clarified session id computation, as reported by Ian Goldberg.
+.\"
 .\" Revision 1.8  1997/03/27 03:39:12  kivinen
 .\" 	Fixed typo.
 .\"
@@ -426,14 +429,17 @@ for protocol extensions.  It also contains a 64-bit random number
 (cookie) that must be returned in the client's reply (to make IP
 spoofing more difficult).  No encryption is used for this message.
 
-Both sides compute a session id as follows.  The modulus of the server
+Both sides compute a session id as follows.  The modulus of the host
 key is interpreted as a byte string (without explicit length field,
 with minimum length able to hold the whole value), most significant
-byte first.  This string is concatenated with the server host key
+byte first.  This string is concatenated with the server key
 interpreted the same way.  Additionally, the cookie is concatenated
 with this.  Both sides compute MD5 of the resulting string.  The
 resulting 16 bytes (128 bits) are stored by both parties and are
 called the session id.
+
+In other words,
+     session_id = MD5(hostkey->n || servkey->n || cookie)
 
 The client responds with a SSH_CMSG_SESSION_KEY message, which
 contains the selected cipher type, a copy of the 64-bit cookie sent by

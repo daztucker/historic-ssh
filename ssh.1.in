@@ -9,8 +9,15 @@
 .\"
 .\" Created: Sat Apr 22 21:55:14 1995 ylo
 .\"
-.\" $Id: ssh.1.in,v 1.10 1997/04/23 00:04:36 kivinen Exp $
+.\" $Id: ssh.1.in,v 1.12 1997/05/08 03:05:39 kivinen Exp $
 .\" $Log: ssh.1.in,v $
+.\" Revision 1.12  1997/05/08 03:05:39  kivinen
+.\" 	Added \ before all '-characters (it is troff command if it is
+.\" 	in the beginning of line).
+.\"
+.\" Revision 1.11  1997/04/27 21:50:30  kivinen
+.\" 	Added F-SECURE stuff.
+.\"
 .\" Revision 1.10  1997/04/23 00:04:36  kivinen
 .\" 	Documented ClearAllForwardings and NumberOfPasswordPrompts
 .\" 	options. Sorted options.
@@ -71,7 +78,9 @@
 .\" 
 .\" $Endlog$
 .\"
-.TH SSH 1 "November 8, 1995" "SSH" "SSH"
+.nr CO 0
+.ie \n(CO .TH SSH 1 "November 8, 1995" "F-SECURE SSH" "F-SECURE SSH"
+.el .TH SSH 1 "November 8, 1995" "SSH" "SSH"
 
 .SH NAME
 ssh \- secure shell client (remote login program)
@@ -410,7 +419,7 @@ Sets the escape character for sessions with a pty (default: ~).  The
 escape character is only recognized at the beginning of a line.  The
 escape character followed by a dot (.) closes the connection, followed
 by control-Z suspends the connection, and followed by itself sends the
-escape character once.  Setting the character to 'none' disables any
+escape character once.  Setting the character to \'none\' disables any
 escapes and makes the session fully transparent.
 .ne 3
 .TP
@@ -564,7 +573,7 @@ file, and general defaults at the end.
 .LP
 The configuration file has the following format:
 .IP
-Empty lines and lines starting with '#' are comments.
+Empty lines and lines starting with \'#\' are comments.
 .IP
 Otherwise a line is of the format "keyword arguments" or "keyword =
 arguments".  The possible keywords and their meanings are as follows
@@ -580,8 +589,8 @@ are case-insensitive):
 Restricts the following declarations (up to the next
 .B Host
 keyword) to be only for those hosts that match one of the patterns
-given after the keyword.  '*' and '?' can be as wildcards in the
-patterns.  A single '*' as a pattern can be used to provide global
+given after the keyword.  \'*\' and \'?\' can be as wildcards in the
+patterns.  A single \'*\' as a pattern can be used to provide global
 defaults for all hosts.  The host is the
 .IR hostname
 argument given on the command line (i.e., the name is not converted to
@@ -639,7 +648,7 @@ useful in scripts if the connection sometimes fails.
 .B EscapeChar
 Sets the escape character (default: ~).  The escape character can also
 be set on the command line.  The argument should be a single
-character, '^' followed by a letter, or ``none'' to disable the escape
+character, \'^\' followed by a letter, or ``none'' to disable the escape
 character entirely (making the connection transparent for binary
 data).
 .ne 3

@@ -9,8 +9,23 @@
 .\"
 .\" Created: Sat Apr 22 21:55:14 1995 ylo
 .\"
-.\" $Id: sshd.8.in,v 1.9 1997/03/27 03:16:41 kivinen Exp $
+.\" $Id: sshd.8.in,v 1.13 1997/06/04 13:53:07 kivinen Exp $
 .\" $Log: sshd.8.in,v $
+.\" Revision 1.13  1997/06/04 13:53:07  kivinen
+.\" 	Added .TP before DenyUsers.
+.\"
+.\" Revision 1.12  1997/05/13 22:30:47  kivinen
+.\" 	Fixed default value of AllowTcpForwarding.
+.\"
+.\" Revision 1.11  1997/05/08 03:06:01  kivinen
+.\" 	Added \ before all '-characters (it is troff command if it is
+.\" 	in the beginning of line).
+.\"
+.\" Revision 1.10  1997/04/27 21:50:16  kivinen
+.\" 	Added F-SECURE stuff. Added {Allow,Deny}Forwarding{To,Port}
+.\" 	documentation, added {Allow,Deny}Users documentation from
+.\" 	Steve Kann <stevek@SteveK.COM>.
+.\"
 .\" Revision 1.9  1997/03/27 03:16:41  kivinen
 .\" 	Added kerberos patches from Glenn Machin.
 .\" 	Added USELOGIN patches from Brian Cully.
@@ -73,7 +88,9 @@
 .\"
 .\" $Endlog$
 .\"
-.TH SSHD 8 "November 8, 1995" "SSH" "SSH"
+.nr CO 0
+.ie \n(CO .TH SSHD 8 "November 8, 1995" "F-SECURE SSH" "F-SECURE SSH"
+.el  .TH SSHD 8 "November 8, 1995" "SSH" "SSH"
 
 .SH NAME
 sshd \- secure shell daemon
@@ -255,7 +272,7 @@ authentication, and termination of each connection is logged.
 reads configuration data from 
 .I @ETCDIR@/sshd_config
 (or the file specified with -f on the command line).  The file
-contains keyword-value pairs, one per line.  Lines starting with '#'
+contains keyword-value pairs, one per line.  Lines starting with \'#\'
 and empty lines are interpreted as comments.
 
 The following keywords are possible. Keywords are case insensitive. 
@@ -263,7 +280,7 @@ The following keywords are possible. Keywords are case insensitive.
 .B AllowHosts
 This keyword can be followed by any number of host name patterns,
 separated by spaces.  If specified, login is allowed only from hosts
-whose name matches one of the patterns.  '*' and '?' can be used as
+whose name matches one of the patterns.  \'*\' and \'?\' can be used as
 wildcards in the patterns.  Normal name servers are used to map the
 client's host into a canonical host name.  If the name cannot be
 mapped, its IP-address is used as the host name.  By default all hosts
@@ -273,10 +290,71 @@ Note that
 .B sshd
 can also be configured to use tcp_wrappers using the --with-libwrap
 compile-time configuration option.
+.if \n(CO \{
+.TP
+.B AllowForwardingPort
+This keyword can be followed by any number of port numbers, separated
+by spaces.  If specified remote forwardings are only allowed to for
+those ports whose number matches one of the patterns.  \'*\' can be used
+as wildcard entry for all ports.  \'>x\', \'<x\', and \'x..x\' formats can
+be used to specify greater than, less than or inclusive port range. By
+default, all port forwardings are allowed.
+.TP
+.B AllowForwardingTo
+This keyword can be followed by any number of hostname and port number
+patterns, separated by spaces. Port number pattern is separated from
+hostname by colon. If specified forwardings from client are only
+allowed to those hosts and port pairs whose name and port number
+matches one of the patterns. \'*\' and \'?\' can be used as
+wildcards in the patterns for host names.  Normal name servers are
+used to map the client's host into a canonical host name.  If the name
+cannot be mapped, its IP-address is used as the host name. 
+\'*\' can be used as wildcard entry for all ports. \'>x\', \'<x\', and
+\'x..x\' formats can be used to specify greater than, less than or
+inclusive port range. By default, all port forwardings are allowed.
+\}
+.TP
+.B AllowUsers
+This keyword can be followed by any number of user name patterns,
+separated by spaces.  If specified, login is allowed only as users whose
+name matches one of the patterns.  \'*\' and \'?\' can be used as wildcards
+in the patterns.  By default, logins as all users are allowed.  
+
+Note that the all other login authentication steps must still be
+sucessfully completed.  AllowUsers and DenyUsers are additional
+restrictions.
 .TP
 .B DenyHosts
 This keyword can be followed by any number of host name patterns,
 separated by spaces.  If specified, login is disallowed from the hosts
+whose name matches any of the patterns.
+.TP
+.if \n(CO \{
+.TP
+.B DenyForwardingPort
+This keyword can be followed by any number of port numbers, separated
+by spaces. If specified remote forwardings are disallowed for those
+ports whose number matches one of the patterns. \'*\' can be used as
+wildcard entry for all ports. \'>x\', \'<x\', and \'x..x\' formats can be
+used to specify greater than, less than or inclusive port range. 
+.TP
+.B DenyForwardingTo
+This keyword can be followed by any number of hostname and port number
+patterns, separated by spaces. Port number pattern is separated from
+hostname by colon. If specified forwardings from client are disallowed
+to those hosts and port pairs whose name and port number 
+matches one of the patterns. \'*\' and \'?\' can be used as
+wildcards in the patterns for host names.  Normal name servers are
+used to map the client's host into a canonical host name.  If the name
+cannot be mapped, its IP-address is used as the host name. 
+\'*\' can be used as wildcard entry for all ports. \'>x\', \'<x\', and
+\'x..x\' formats can be used to specify greater than, less than or
+inclusive port range. 
+\}
+.TP
+.B DenyUsers
+This keyword can be followed by any number of user name patterns,
+separated by spaces.  If specified, login is disallowed as users
 whose name matches any of the patterns.
 .TP
 .B FascistLogging
@@ -445,7 +523,7 @@ forwarding. This prevents sshd from interfering with real X11
 servers.
 .TP
 .B AllowTcpForwarding
-Specifies whether tcp forwarding is permitted.  The default is "no".
+Specifies whether tcp forwarding is permitted.  The default is "yes".
 Note that disabling tcp forwarding does not improve security in any
 way, as users can always install their own forwarders.
 .TP
@@ -507,7 +585,7 @@ The
 .I \&$HOME/\s+2.\s0ssh/authorized_keys
 file lists the RSA keys that are
 permitted for RSA authentication.  Each line of the file contains one
-key (empty lines and lines starting with a '#' are ignored as
+key (empty lines and lines starting with a \'#\' are ignored as
 comments).  Each line consists of the following fields, separated by
 spaces: options, bits, exponent, modulus, comment.  The options field
 is optional; its presence is determined by whether the line starts
@@ -531,8 +609,8 @@ The following option specifications are supported:
 .br
 Specifies that in addition to RSA authentication, the canonical name
 of the remote host must be present in the comma-separated list of
-patterns ('*' and '?' serve as wildcards).  The list may also contain
-patterns negated by prefixing them with '!'; if the canonical host
+patterns (\'*\' and \'?\' serve as wildcards).  The list may also contain
+patterns negated by prefixing them with \'!\'; if the canonical host
 name matches a negated pattern, the key is not accepted.  The purpose
 of this option is to optionally increase security: RSA authentication
 by itself does not trust the network or name servers or anything (but
@@ -615,11 +693,11 @@ command.
 Each line in these files contains the following fields: hostnames,
 bits, exponent, modulus, comment.  The fields are separated by spaces.
 .LP
-Hostnames is a comma-separated list of patterns ('*' and '?' act as
+Hostnames is a comma-separated list of patterns (\'*\' and \'?\' act as
 wildcards); each pattern in turn is matched against the canonical host
 name (when authenticating a client) or against the user-supplied
 name (when authenticating a server).  A pattern may also be preceded
-by '!' to indicate negation: if the host name matches a negated
+by \'!\' to indicate negation: if the host name matches a negated
 pattern, it is not accepted (by that line) even if it matched another
 pattern on the line.
 .LP
@@ -628,7 +706,7 @@ can be obtained e.g.  from
 .IR @ETCDIR@/ssh_host_key.pub ".
 The optional comment field continues to the end of the line, and is not used.
 .LP
-Lines starting with '#' and empty lines are ignored as comments.
+Lines starting with \'#\' and empty lines are ignored as comments.
 .LP
 When performing host authentication, authentication is accepted if any
 matching line has the proper key.  It is thus permissible (but not
@@ -742,7 +820,7 @@ have the same user name on both machines.  The host name may also be
 followed by a user name; such users are permitted to log in as
 .B any
 user on this machine (except root).  Additionally, the syntax +@group
-can be used to specify netgroups.  Negated entries start with '-'.
+can be used to specify netgroups.  Negated entries start with \'-\'.
 
 If the client host/user is successfully matched in this file, login is
 automatically permitted provided the client and server user names are the
@@ -769,7 +847,7 @@ rsh/rlogin and
 .TP
 .I /etc/environment
 This file is read into the environment at login (if it exists).  It
-can only contain empty lines, comment lines (that start with '#'), and
+can only contain empty lines, comment lines (that start with \'#\'), and
 assignment lines of the form name=value.  This file is processed in
 all environments (normal rsh/rlogin only process it on AIX and
 potentially some other systems).  The file should be writable only by

@@ -1,7 +1,11 @@
-Wed Apr 23 02:56:20 1997  Tero Kivinen  <kivinen@ssh.fi>
+Mon Apr 28 00:53:04 1997  Tero Kivinen  <kivinen@ssh.fi>
 
-	* scp: added -S flag. It can be used to specify path to ssh
-	program.
+	* (F-SECURE): Added {Allow,Deny}Forwarding{To,Port} feature. 
+	
+	* Added {Allow,Deny}Users feature from Steve Kann
+ 	<stevek@SteveK.COM>.
+
+Wed Apr 23 02:56:20 1997  Tero Kivinen  <kivinen@ssh.fi>
 
 	* scp: Added -oClearAllForwardings yes to ssh command line, so if
 	you have forwardings in config file you can still use scp without

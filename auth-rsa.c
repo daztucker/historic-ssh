@@ -16,66 +16,71 @@ validity of the host key.
 */
 
 /*
- * $Id: auth-rsa.c,v 1.11 1998/07/08 00:38:52 kivinen Exp $
+ * $Id: auth-rsa.c,v 1.12 1999/02/21 19:51:55 ylo Exp $
  * $Log: auth-rsa.c,v $
+ * Revision 1.12  1999/02/21 19:51:55  ylo
+ * 	Intermediate commit of ssh1.2.27 stuff.
+ * 	Main change is sprintf -> snprintf; however, there are also
+ * 	many other changes.
+ *
  * Revision 1.11  1998/07/08 00:38:52  kivinen
- * 	Added ip address to match_hostname function.
+ *      Added ip address to match_hostname function.
  *
  * Revision 1.10  1998/01/15  13:08:30  kivinen
- * 	Fixed no-X11-forwarding to no-x11-forwarding.
+ *      Fixed no-X11-forwarding to no-x11-forwarding.
  *
  * Revision 1.9  1998/01/03 06:39:47  kivinen
- * 	Fixed bug in option_compare. Added code that will insert also
- * 	the last allow/deny forwarding port/to to the table. Fixed
- * 	count incrementation.
+ *      Fixed bug in option_compare. Added code that will insert also
+ *      the last allow/deny forwarding port/to to the table. Fixed
+ *      count incrementation.
  *
  * Revision 1.8  1998/01/02 06:15:25  kivinen
- * 	Changed option names to be case insensitive. Added
- * 	{allow,deny}forwarding{port,to} options (commercial version only).
+ *      Changed option names to be case insensitive. Added
+ *      {allow,deny}forwarding{port,to} options (commercial version only).
  *
  * Revision 1.7  1997/03/26 05:31:01  kivinen
- * 	Added support for idle-timeout.
- * 	Added better error message if .ssh directory is missing.
+ *      Added support for idle-timeout.
+ *      Added better error message if .ssh directory is missing.
  *
  * Revision 1.6  1996/10/29 22:34:38  kivinen
- * 	log -> log_msg.
+ *      log -> log_msg.
  *
  * Revision 1.5  1996/10/11 13:01:56  ttsalo
- * 	Fixed the checking of existence of authorized_keys.
+ *      Fixed the checking of existence of authorized_keys.
  *
  * Revision 1.4  1996/10/04 12:51:26  ylo
- * 	Fixed a bug in the last fix in RSA authentication.
+ *      Fixed a bug in the last fix in RSA authentication.
  *
  * Revision 1.3  1996/10/04 00:51:36  ylo
- * 	Check existence of authorized_keys BEFORE checking its
- * 	permissions to avoid bogus warnings.
+ *      Check existence of authorized_keys BEFORE checking its
+ *      permissions to avoid bogus warnings.
  *
  * Revision 1.2  1996/08/13 09:04:25  ttsalo
- * 	Home directory, .ssh and .ssh/authorized_keys are now
- * 	checked for wrong owner and group & world writeability.
+ *      Home directory, .ssh and .ssh/authorized_keys are now
+ *      checked for wrong owner and group & world writeability.
  *
  * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
- * 	Imported ssh-1.2.13.
+ *      Imported ssh-1.2.13.
  *
  * Revision 1.8  1995/09/21  17:08:00  ylo
- * 	Added uidswap.h.
+ *      Added uidswap.h.
  *
  * Revision 1.7  1995/09/09  21:26:38  ylo
  * /m/shadows/u2/users/ylo/ssh/README
  *
  * Revision 1.6  1995/08/29  22:18:40  ylo
- * 	Permit using ip addresses in RSA authentication "from" option.
+ *      Permit using ip addresses in RSA authentication "from" option.
  *
  * Revision 1.5  1995/08/22  14:05:28  ylo
- * 	Added uid-swapping.
+ *      Added uid-swapping.
  *
  * Revision 1.4  1995/07/26  23:30:49  ylo
- * 	Added code to support protocol version 1.1.  The md hash of
- * 	RSA response must now include the session id.  Compatibility
- * 	code still handles older versions.
+ *      Added code to support protocol version 1.1.  The md hash of
+ *      RSA response must now include the session id.  Compatibility
+ *      code still handles older versions.
  *
  * Revision 1.3  1995/07/13  01:13:35  ylo
- * 	Removed the "Last modified" header.
+ *      Removed the "Last modified" header.
  *
  * $Endlog$
  */
@@ -119,7 +124,7 @@ extern unsigned char session_id[16];
    our challenge; returns zero if the client gives a wrong answer. */
 
 int auth_rsa_challenge_dialog(RandomState *state, unsigned int bits,
-			      MP_INT *e, MP_INT *n)
+                              MP_INT *e, MP_INT *n)
 {
   MP_INT challenge, encrypted_challenge, aux;
   RSAPublicKey pk;
@@ -206,7 +211,7 @@ int option_compare(const char *options_line, const char *option_name)
    successful.  This may exit if there is a serious protocol violation. */
 
 int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state,
-	     int strict_modes)
+             int strict_modes)
 {
   char line[8192];
   int authenticated;
@@ -217,13 +222,13 @@ int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state,
   struct stat st;
 
   /* Check permissions & owner of user's .ssh directory */
-  sprintf(line, "%.500s/%.100s", pw->pw_dir, SSH_USER_DIR);
+  snprintf(line, sizeof(line), "%.500s/%.100s", pw->pw_dir, SSH_USER_DIR);
 
   /* Check permissions & owner of user's home directory */
   if (strict_modes && !userfile_check_owner_permissions(pw, pw->pw_dir))
     {
       log_msg("Rsa authentication refused for %.100s: bad modes for %.200s",
-	  pw->pw_name, pw->pw_dir);
+          pw->pw_name, pw->pw_dir);
       packet_send_debug("Bad file modes for %.200s", pw->pw_dir);
       return 0;
     }
@@ -232,22 +237,23 @@ int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state,
   if (userfile_stat(pw->pw_uid, line, &st) < 0)
     {
       log_msg("Rsa authentication refused for %.100s: no %.200s directory",
-	      pw->pw_name, line);
+              pw->pw_name, line);
       packet_send_debug("Rsa authentication refused, no %.200s directory",
-			line);
+                        line);
       return 0;
     }
   
   if (strict_modes && !userfile_check_owner_permissions(pw, line))
     {
       log_msg("Rsa authentication refused for %.100s: bad modes for %.200s",
-	  pw->pw_name, line);
+          pw->pw_name, line);
       packet_send_debug("Bad file modes for %.200s", line);
       return 0;
     }
   
   /* Check permissions & owner of user's authorized keys file */
-  sprintf(line, "%.500s/%.100s", pw->pw_dir, SSH_USER_PERMITTED_KEYS);
+  snprintf(line, sizeof(line),
+           "%.500s/%.100s", pw->pw_dir, SSH_USER_PERMITTED_KEYS);
 
   /* Open the file containing the authorized keys. */
   if (userfile_stat(pw->pw_uid, line, &st) < 0)
@@ -256,7 +262,7 @@ int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state,
   if (strict_modes && !userfile_check_owner_permissions(pw, line))
     {
       log_msg("Rsa authentication refused for %.100s: bad modes for %.200s",
-	  pw->pw_name, line);
+          pw->pw_name, line);
       packet_send_debug("Bad file modes for %.200s", line);
       return 0;
     }
@@ -291,142 +297,142 @@ int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state,
 
       /* Skip leading whitespace. */
       for (cp = line; *cp == ' ' || *cp == '\t'; cp++)
-	;
+        ;
 
       /* Skip empty and comment lines. */
       if (!*cp || *cp == '\n' || *cp == '#')
-	continue;
+        continue;
 
       /* Check if there are options for this key, and if so, save their 
-	 starting address and skip the option part for now.  If there are no 
-	 options, set the starting address to NULL. */
+         starting address and skip the option part for now.  If there are no 
+         options, set the starting address to NULL. */
       if (*cp < '0' || *cp > '9')
-	{
-	  int quoted = 0;
-	  opts = cp;
-	  for (; *cp && (quoted || (*cp != ' ' && *cp != '\t')); cp++)
-	    {
-	      if (*cp == '\\' && cp[1] == '"')
-		cp++; /* Skip both */
-	      else
-		if (*cp == '"')
-		  quoted = !quoted;
-	    }
-	}
+        {
+          int quoted = 0;
+          opts = cp;
+          for (; *cp && (quoted || (*cp != ' ' && *cp != '\t')); cp++)
+            {
+              if (*cp == '\\' && cp[1] == '"')
+                cp++; /* Skip both */
+              else
+                if (*cp == '"')
+                  quoted = !quoted;
+            }
+        }
       else
-	opts = NULL;
+        opts = NULL;
       
       /* Parse the key from the line. */
       if (!auth_rsa_read_key(&cp, &bits, &e, &n))
-	{
-	  debug("%.100s, line %lu: bad key syntax", 
-		SSH_USER_PERMITTED_KEYS, linenum);
-	  packet_send_debug("%.100s, line %lu: bad key syntax", 
-			    SSH_USER_PERMITTED_KEYS, linenum);
-	  continue;
-	}
+        {
+          debug("%.100s, line %lu: bad key syntax", 
+                SSH_USER_PERMITTED_KEYS, linenum);
+          packet_send_debug("%.100s, line %lu: bad key syntax", 
+                            SSH_USER_PERMITTED_KEYS, linenum);
+          continue;
+        }
       /* cp now points to the comment part. */
 
       /* Check if the we have found the desired key (identified by its
-	 modulus). */
+         modulus). */
       if (mpz_cmp(&n, client_n) != 0)
-	continue; /* Wrong key. */
+        continue; /* Wrong key. */
 
       /* We have found the desired key. */
 
       /* Perform the challenge-response dialog for this key. */
       if (!auth_rsa_challenge_dialog(state, bits, &e, &n))
-	{
-	  /* Wrong response. */
-	  log_msg("Wrong response to RSA authentication challenge.");
-	  packet_send_debug("Wrong response to RSA authentication challenge.");
-	  continue;
-	}
+        {
+          /* Wrong response. */
+          log_msg("Wrong response to RSA authentication challenge.");
+          packet_send_debug("Wrong response to RSA authentication challenge.");
+          continue;
+        }
 
       /* Correct response.  The client has been successfully authenticated.
-	 Note that we have not yet processed the options; this will be reset
-	 if the options cause the authentication to be rejected. */
+         Note that we have not yet processed the options; this will be reset
+         if the options cause the authentication to be rejected. */
       authenticated = 1;
 
       /* RSA part of authentication was accepted.  Now process the options. */
       if (opts)
-	{
-	  while (*opts && *opts != ' ' && *opts != '\t')
-	    {
-	      cp = "no-port-forwarding";
-	      if (option_compare(opts, cp))
-		{
-		  packet_send_debug("Port forwarding disabled.");
-		  no_port_forwarding_flag = 1;
-		  opts += strlen(cp);
-		  goto next_option;
-		}
-	      cp = "no-agent-forwarding";
-	      if (option_compare(opts, cp))
-		{
-		  packet_send_debug("Agent forwarding disabled.");
-		  no_agent_forwarding_flag = 1;
-		  opts += strlen(cp);
-		  goto next_option;
-		}
-	      cp = "no-x11-forwarding";
-	      if (option_compare(opts, cp))
-		{
-		  packet_send_debug("X11 forwarding disabled.");
-		  no_x11_forwarding_flag = 1;
-		  opts += strlen(cp);
-		  goto next_option;
-		}
-	      cp = "no-pty";
-	      if (option_compare(opts, cp))
-		{
-		  packet_send_debug("Pty allocation disabled.");
-		  no_pty_flag = 1;
-		  opts += strlen(cp);
-		  goto next_option;
-		}
-	      cp = "idle-timeout=";
-	      if (option_compare(opts, cp))
-		{
-		  int value;
-		  opts += strlen(cp);
-		  value = 0;
-		  while(isdigit(*opts))
-		    {
-		      value *= 10;
-		      value += *opts - '0';
-		      opts++;
-		    }
-		  *opts = tolower(*opts);
-		  if (*opts == 'w') /* Weeks */
-		    {
-		      value *= 7 * 24 * 60 * 60;
-		      opts++;
-		    }
-		  else if (*opts == 'd') /* Days */
-		    {
-		      value *= 24 * 60 * 60;
-		      opts++;
-		    }
-		  else if (*opts == 'h') /* Hours */
-		    {
-		      value *= 60 * 60;
-		      opts++;
-		    }
-		  else if (*opts == 'm') /* Minutes */
-		    {
-		      value *= 60;
-		      opts++;
-		    }
-		  else if (*opts == 's')
-		    {
-		      opts++;
-		    }
-		  packet_send_debug("Idle timeout set to %d seconds.",
-				    value);
-		  idle_timeout = value;
-		  goto next_option;
-		}
+        {
+          while (*opts && *opts != ' ' && *opts != '\t')
+            {
+              cp = "no-port-forwarding";
+              if (option_compare(opts, cp))
+                {
+                  packet_send_debug("Port forwarding disabled.");
+                  no_port_forwarding_flag = 1;
+                  opts += strlen(cp);
+                  goto next_option;
+                }
+              cp = "no-agent-forwarding";
+              if (option_compare(opts, cp))
+                {
+                  packet_send_debug("Agent forwarding disabled.");
+                  no_agent_forwarding_flag = 1;
+                  opts += strlen(cp);
+                  goto next_option;
+                }
+              cp = "no-x11-forwarding";
+              if (option_compare(opts, cp))
+                {
+                  packet_send_debug("X11 forwarding disabled.");
+                  no_x11_forwarding_flag = 1;
+                  opts += strlen(cp);
+                  goto next_option;
+                }
+              cp = "no-pty";
+              if (option_compare(opts, cp))
+                {
+                  packet_send_debug("Pty allocation disabled.");
+                  no_pty_flag = 1;
+                  opts += strlen(cp);
+                  goto next_option;
+                }
+              cp = "idle-timeout=";
+              if (option_compare(opts, cp))
+                {
+                  int value;
+                  opts += strlen(cp);
+                  value = 0;
+                  while(isdigit(*opts))
+                    {
+                      value *= 10;
+                      value += *opts - '0';
+                      opts++;
+                    }
+                  *opts = tolower(*opts);
+                  if (*opts == 'w') /* Weeks */
+                    {
+                      value *= 7 * 24 * 60 * 60;
+                      opts++;
+                    }
+                  else if (*opts == 'd') /* Days */
+                    {
+                      value *= 24 * 60 * 60;
+                      opts++;
+                    }
+                  else if (*opts == 'h') /* Hours */
+                    {
+                      value *= 60 * 60;
+                      opts++;
+                    }
+                  else if (*opts == 'm') /* Minutes */
+                    {
+                      value *= 60;
+                      opts++;
+                    }
+                  else if (*opts == 's')
+                    {
+                      opts++;
+                    }
+                  packet_send_debug("Idle timeout set to %d seconds.",
+                                    value);
+                  idle_timeout = value;
+                  goto next_option;
+                }
 #ifdef F_SECURE_COMMERCIAL
 
 
@@ -558,151 +564,151 @@ int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state,
 
 
 #endif /* F_SECURE_COMMERCIAL */
-	      cp = "command=\"";
-	      if (option_compare(opts, cp))
-		{
-		  int i;
-		  opts += strlen(cp);
-		  forced_command = xmalloc(strlen(opts) + 1);
-		  i = 0;
-		  while (*opts)
-		    {
-		      if (*opts == '"')
-			break;
-		      if (*opts == '\\' && opts[1] == '"')
-			{
-			  opts += 2;
-			  forced_command[i++] = '"';
-			  continue;
-			}
-		      forced_command[i++] = *opts++;
-		    }
-		  if (!*opts)
-		    {
-		      debug("%.100s, line %lu: missing end quote",
-			    SSH_USER_PERMITTED_KEYS, linenum);
-		      packet_send_debug("%.100s, line %lu: missing end quote",
-					SSH_USER_PERMITTED_KEYS, linenum);
-		      continue;
-		    }
-		  forced_command[i] = 0;
-		  packet_send_debug("Forced command: %.900s", forced_command);
-		  opts++;
-		  goto next_option;
-		}
-	      cp = "environment=\"";
-	      if (option_compare(opts, cp))
-		{
-		  int i;
-		  char *s;
-		  struct envstring *new_envstring;
-		  opts += strlen(cp);
-		  s = xmalloc(strlen(opts) + 1);
-		  i = 0;
-		  while (*opts)
-		    {
-		      if (*opts == '"')
-			break;
-		      if (*opts == '\\' && opts[1] == '"')
-			{
-			  opts += 2;
-			  s[i++] = '"';
-			  continue;
-			}
-		      s[i++] = *opts++;
-		    }
-		  if (!*opts)
-		    {
-		      debug("%.100s, line %lu: missing end quote",
-			    SSH_USER_PERMITTED_KEYS, linenum);
-		      packet_send_debug("%.100s, line %lu: missing end quote",
-					SSH_USER_PERMITTED_KEYS, linenum);
-		      continue;
-		    }
-		  s[i] = 0;
-		  packet_send_debug("Adding to environment: %.900s", s);
-		  debug("Adding to environment: %.900s", s);
-		  opts++;
-		  new_envstring = xmalloc(sizeof(struct envstring));
-		  new_envstring->s = s;
-		  new_envstring->next = custom_environment;
-		  custom_environment = new_envstring;
-		  goto next_option;
-		}
-	      cp = "from=\"";
-	      if (option_compare(opts, cp))
-		{
-		  char *patterns = xmalloc(strlen(opts) + 1);
-		  int i;
-		  opts += strlen(cp);
-		  i = 0;
-		  while (*opts)
-		    {
-		      if (*opts == '"')
-			break;
-		      if (*opts == '\\' && opts[1] == '"')
-			{
-			  opts += 2;
-			  patterns[i++] = '"';
-			  continue;
-			}
-		      patterns[i++] = *opts++;
-		    }
-		  if (!*opts)
-		    {
-		      debug("%.100s, line %lu: missing end quote",
-			    SSH_USER_PERMITTED_KEYS, linenum);
-		      packet_send_debug("%.100s, line %lu: missing end quote",
-					SSH_USER_PERMITTED_KEYS, linenum);
-		      continue;
-		    }
-		  patterns[i] = 0;
-		  opts++;
-		  if (!match_hostname(get_canonical_hostname(),
-				      get_remote_ipaddr(), patterns,
-				      strlen(patterns)))
-		    {
-		      log_msg("RSA authentication tried for %.100s with correct key but not from a permitted host (host=%.200s, ip=%.200s).",
-			  pw->pw_name, get_canonical_hostname(),
-			  get_remote_ipaddr());
-		      packet_send_debug("Your host '%.200s' is not permitted to use this key for login.",
-					get_canonical_hostname());
-		      xfree(patterns);
-		      authenticated = 0;
-		      break;
-		    }
-		  xfree(patterns);
-		  /* Host name matches. */
-		  goto next_option;
-		}
-	    bad_option:
-	      /* Unknown option. */
-	      log_msg("Bad options in %.100s file, line %lu: %.50s",
-		  SSH_USER_PERMITTED_KEYS, linenum, opts);
-	      packet_send_debug("Bad options in %.100s file, line %lu: %.50s",
-				SSH_USER_PERMITTED_KEYS, linenum, opts);
-	      authenticated = 0;
-	      break;
+              cp = "command=\"";
+              if (option_compare(opts, cp))
+                {
+                  int i;
+                  opts += strlen(cp);
+                  forced_command = xmalloc(strlen(opts) + 1);
+                  i = 0;
+                  while (*opts)
+                    {
+                      if (*opts == '"')
+                        break;
+                      if (*opts == '\\' && opts[1] == '"')
+                        {
+                          opts += 2;
+                          forced_command[i++] = '"';
+                          continue;
+                        }
+                      forced_command[i++] = *opts++;
+                    }
+                  if (!*opts)
+                    {
+                      debug("%.100s, line %lu: missing end quote",
+                            SSH_USER_PERMITTED_KEYS, linenum);
+                      packet_send_debug("%.100s, line %lu: missing end quote",
+                                        SSH_USER_PERMITTED_KEYS, linenum);
+                      continue;
+                    }
+                  forced_command[i] = 0;
+                  packet_send_debug("Forced command: %.900s", forced_command);
+                  opts++;
+                  goto next_option;
+                }
+              cp = "environment=\"";
+              if (option_compare(opts, cp))
+                {
+                  int i;
+                  char *s;
+                  struct envstring *new_envstring;
+                  opts += strlen(cp);
+                  s = xmalloc(strlen(opts) + 1);
+                  i = 0;
+                  while (*opts)
+                    {
+                      if (*opts == '"')
+                        break;
+                      if (*opts == '\\' && opts[1] == '"')
+                        {
+                          opts += 2;
+                          s[i++] = '"';
+                          continue;
+                        }
+                      s[i++] = *opts++;
+                    }
+                  if (!*opts)
+                    {
+                      debug("%.100s, line %lu: missing end quote",
+                            SSH_USER_PERMITTED_KEYS, linenum);
+                      packet_send_debug("%.100s, line %lu: missing end quote",
+                                        SSH_USER_PERMITTED_KEYS, linenum);
+                      continue;
+                    }
+                  s[i] = 0;
+                  packet_send_debug("Adding to environment: %.900s", s);
+                  debug("Adding to environment: %.900s", s);
+                  opts++;
+                  new_envstring = xmalloc(sizeof(struct envstring));
+                  new_envstring->s = s;
+                  new_envstring->next = custom_environment;
+                  custom_environment = new_envstring;
+                  goto next_option;
+                }
+              cp = "from=\"";
+              if (option_compare(opts, cp))
+                {
+                  char *patterns = xmalloc(strlen(opts) + 1);
+                  int i;
+                  opts += strlen(cp);
+                  i = 0;
+                  while (*opts)
+                    {
+                      if (*opts == '"')
+                        break;
+                      if (*opts == '\\' && opts[1] == '"')
+                        {
+                          opts += 2;
+                          patterns[i++] = '"';
+                          continue;
+                        }
+                      patterns[i++] = *opts++;
+                    }
+                  if (!*opts)
+                    {
+                      debug("%.100s, line %lu: missing end quote",
+                            SSH_USER_PERMITTED_KEYS, linenum);
+                      packet_send_debug("%.100s, line %lu: missing end quote",
+                                        SSH_USER_PERMITTED_KEYS, linenum);
+                      continue;
+                    }
+                  patterns[i] = 0;
+                  opts++;
+                  if (!match_hostname(get_canonical_hostname(),
+                                      get_remote_ipaddr(), patterns,
+                                      strlen(patterns)))
+                    {
+                      log_msg("RSA authentication tried for %.100s with correct key but not from a permitted host (host=%.200s, ip=%.200s).",
+                          pw->pw_name, get_canonical_hostname(),
+                          get_remote_ipaddr());
+                      packet_send_debug("Your host '%.200s' is not permitted to use this key for login.",
+                                        get_canonical_hostname());
+                      xfree(patterns);
+                      authenticated = 0;
+                      break;
+                    }
+                  xfree(patterns);
+                  /* Host name matches. */
+                  goto next_option;
+                }
+            bad_option:
+              /* Unknown option. */
+              log_msg("Bad options in %.100s file, line %lu: %.50s",
+                  SSH_USER_PERMITTED_KEYS, linenum, opts);
+              packet_send_debug("Bad options in %.100s file, line %lu: %.50s",
+                                SSH_USER_PERMITTED_KEYS, linenum, opts);
+              authenticated = 0;
+              break;
 
-	    next_option:
-	      /* Skip the comma, and move to the next option (or break out
-		 if there are no more). */
-	      if (!*opts)
-		fatal("Bugs in auth-rsa.c option processing.");
-	      if (*opts == ' ' || *opts == '\t')
-		break; /* End of options. */
-	      if (*opts != ',')
-		goto bad_option;
-	      opts++;
-	      /* Process the next option. */
-	      continue;
-	    }
-	}
+            next_option:
+              /* Skip the comma, and move to the next option (or break out
+                 if there are no more). */
+              if (!*opts)
+                fatal("Bugs in auth-rsa.c option processing.");
+              if (*opts == ' ' || *opts == '\t')
+                break; /* End of options. */
+              if (*opts != ',')
+                goto bad_option;
+              opts++;
+              /* Process the next option. */
+              continue;
+            }
+        }
 
       /* Break out of the loop if authentication was successful; otherwise
-	 continue searching. */
+         continue searching. */
       if (authenticated)
-	break;
+        break;
     }
 
   /* Close the file. */

@@ -14,8 +14,14 @@ Identity and host key generation and maintenance.
 */
 
 /*
- * $Id: ssh-keygen.c,v 1.5 1995/08/31 09:22:50 ylo Exp $
+ * $Id: ssh-keygen.c,v 1.2 1996/05/30 16:39:07 ylo Exp $
  * $Log: ssh-keygen.c,v $
+ * Revision 1.2  1996/05/30 16:39:07  ylo
+ * 	Don't loop forever if -f given, and saving fails.
+ *
+ * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.5  1995/08/31  09:22:50  ylo
  * 	Use either passphrase when only one needed.
  *
@@ -536,6 +542,8 @@ int main(int ac, char **av)
 	     buf, strerror(errno));
       memset(passphrase1, 0, strlen(passphrase1));
       xfree(passphrase1);
+      if (identity_file) /* Supplied on the command line. */
+	exit(1);
       goto ask_file_again;
     }
   /* Clear the passphrase. */

@@ -13,7 +13,7 @@ Generic header file for ssh.
 
 */
 
-/* RCSID("$Id: ssh.h,v 1.20 1999/11/11 21:28:10 bg Exp $"); */
+/* RCSID("$Id: ssh.h,v 1.21 2000/02/16 17:13:55 bg Exp $"); */
 
 #ifndef SSH_H
 #define SSH_H
@@ -541,7 +541,8 @@ void x11_request_forwarding_with_spoofing(RandomState *state,
 					  const char *proto, const char *data);
 
 /* Local Xauthority file (server only). */
-extern char *xauthfile;
+extern char *xauth_dir;
+extern char *xauth_file;
 
 /* Sends a message to the server to request authentication fd forwarding. */
 void auth_request_forwarding(void);

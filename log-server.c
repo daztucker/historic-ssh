@@ -15,7 +15,7 @@ to the system log.
 */
 
 #include "includes.h"
-RCSID("$Id: log-server.c,v 1.11 1999/11/11 21:28:11 bg Exp $");
+RCSID("$Id: log-server.c,v 1.12 2000/02/16 17:13:54 bg Exp $");
 
 #include <syslog.h>
 #ifdef NEED_SYS_SYSLOG_H
@@ -248,7 +248,8 @@ void fatal(const char *fmt, ...)
 #endif /* KRB4 */
 
   /* If local XAUTHORITY was created, remove it. */
-  if (xauthfile) unlink(xauthfile);
+  if (xauth_file) unlink(xauth_file);
+  if (xauth_dir) rmdir(xauth_dir);
 
   exit(1);
 }

@@ -18,7 +18,7 @@ agent connections.
 */
 
 #include "includes.h"
-RCSID("$Id: sshd.c,v 1.38 1999/12/30 16:23:25 bg Exp $");
+RCSID("$Id: sshd.c,v 1.39 2000/02/16 17:13:56 bg Exp $");
 
 #include "xmalloc.h"
 #include "rsa.h"
@@ -77,7 +77,8 @@ char *ticket = NULL;
 #endif /* KRB4 */
 
 /* Local Xauthority file. */
-char *xauthfile = NULL;
+char *xauth_dir = NULL;
+char *xauth_file = NULL;
 
 /* Server configuration options. */
 ServerOptions options;
@@ -772,7 +773,8 @@ int main(int ac, char **av)
 #endif /* KRB4 */
 
   /* Cleanup user's local Xauthority file. */
-  if (xauthfile) unlink(xauthfile);
+  if (xauth_file) unlink(xauth_file);
+  if (xauth_dir) rmdir(xauth_dir);
 
   /* The connection has been terminated. */
   debug("Closing connection to %.100s", inet_ntoa(sin.sin_addr));
@@ -1496,9 +1498,10 @@ void do_authenticated(struct passwd *pw)
 	    goto fail;
 
 	  /* Setup to always have a local .Xauthority. */
-	  xauthfile = xmalloc(1024);
-	  sprintf(xauthfile, "/tmp/Xauth%d_%d", pw->pw_uid, getpid());
-
+	  xauth_dir = xmalloc(128);
+	  sprintf(xauth_dir, "/tmp/Xauth%d_%d", pw->pw_uid, getpid());
+	  xauth_file = xmalloc(128);
+	  sprintf(xauth_file, "%s/Xauthority", xauth_dir);
 	  break;
 #else /* XAUTH_PATH */
 	  /* No xauth program; we won't accept forwarding with spoofing. */
@@ -2245,8 +2248,8 @@ void do_child(const char *command, struct passwd *pw, const char *term,
 #endif /* KRB4 */
 
   /* Set XAUTHORITY to always be a local file. */
-  if (xauthfile)
-      child_set_env(&env, &envsize, "XAUTHORITY", xauthfile);
+  if (xauth_file)
+      child_set_env(&env, &envsize, "XAUTHORITY", xauth_file);
 
   /* Set variable for forwarded authentication connection, if we have one. */
   if (auth_get_socket_name() != NULL)
@@ -2345,8 +2348,24 @@ void do_child(const char *command, struct passwd *pw, const char *term,
 #ifdef XAUTH_PATH
     else
       {
-	/* Add authority data to .Xauthority if appropriate. */
-	if (auth_proto != NULL && auth_data != NULL)
+	struct stat st;
+
+	/*
+	 * Add authority data to .Xauthority if appropriate,
+	 * but first make a protected directory.
+	 */
+	if (mkdir(xauth_dir, 0700) != 0
+	    || lstat(xauth_dir, &st) != 0
+	    || (st.st_mode & S_IFMT) != S_IFDIR
+	    || st.st_uid != getuid()
+	    || (st.st_mode & 0777) != 0700)
+	  {
+	    fprintf(stderr, "failure to mkdir ``%s'': %s\n",
+		    xauth_dir, strerror(errno));
+	    free(xauth_dir); xauth_dir = 0;
+	    free(xauth_file); xauth_file = 0;
+	  }
+	else if (auth_proto != NULL && auth_data != NULL)
 	  {
 	    if (debug_flag)
 	      fprintf(stderr, "Running %.100s add %.100s %.100s %.100s\n",

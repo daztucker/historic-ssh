@@ -1,3 +1,7 @@
+Wed Feb 16 18:14:09 2000  Bjoern Groenvall  <bg@mummel.sics.se>
+
+	* sshd.c (do_child): Xauthority file moved into protected subdir.
+
 Thu Dec 30 14:59:12 1999  Bjoern Groenvall  <bg@sics.se>
 
 	* auth-passwd.c (auth_krb4_pass): Only exists when KRB4 is

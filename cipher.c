@@ -12,7 +12,7 @@ Created: Wed Apr 19 17:41:39 1995 ylo
 */
 
 #include "includes.h"
-RCSID("$Id: cipher.c,v 1.18 2000/01/05 16:36:40 bg Exp $");
+RCSID("$Id: cipher.c,v 1.19 2000/02/16 17:20:15 bg Exp $");
 
 #include "ssh.h"
 #include "cipher.h"
@@ -123,9 +123,11 @@ void
 SSH_3CBC_ENCRYPT(des_key_schedule ks1,
 		 des_key_schedule ks2, des_cblock *iv2,
 		 des_key_schedule ks3, des_cblock *iv3, 
-		 void *dest, void *src,
+		 void *_dest, void *_src,
 		 unsigned int len)
 {
+  char *dest = _dest;
+  char *src = _src;
   des_cblock iv1;
 
   memcpy(&iv1, iv2, 8);
@@ -145,9 +147,11 @@ void
 SSH_3CBC_DECRYPT(des_key_schedule ks1,
 		 des_key_schedule ks2, des_cblock *iv2,
 		 des_key_schedule ks3, des_cblock *iv3,
-		 void *dest, void *src,
+		 void *_dest, void *_src,
 		 unsigned int len)
 {
+  char *dest = _dest;
+  char *src = _src;
   des_cblock iv1;
 
   memcpy(&iv1, iv2, 8);

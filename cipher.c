@@ -12,9 +12,12 @@ Created: Wed Apr 19 17:41:39 1995 ylo
 */
 
 /*
- * $Id: cipher.c,v 1.11 1998/04/30 01:51:32 kivinen Exp $
+ * $Id: cipher.c,v 1.12 1998/05/23 20:21:09 kivinen Exp $
  * $Log: cipher.c,v $
- * Revision 1.11  1998/04/30 01:51:32  kivinen
+ * Revision 1.12  1998/05/23  20:21:09  kivinen
+ * 	Changed () -> (void).
+ *
+ * Revision 1.11  1998/04/30  01:51:32  kivinen
  * 	Reserved cipher number 7 to Bernard Perrot
  * 	<perrot@lal.in2p3.fr> for some weak 40 bit encryption method.
  *
@@ -76,7 +79,7 @@ static char *cipher_names[] =
    implementation.  The bit mask has the corresponding bit set of each
    supported cipher. */
 
-unsigned int cipher_mask()
+unsigned int cipher_mask(void)
 {
   unsigned int mask = 0;
   

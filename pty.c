@@ -14,8 +14,22 @@ Allocating a pseudo-terminal, and making it the controlling tty.
 */
 
 /*
- * $Id: pty.c,v 1.3 1996/05/30 22:08:21 ylo Exp $
+ * $Id: pty.c,v 1.7 1996/09/27 17:19:47 ylo Exp $
  * $Log: pty.c,v $
+ * Revision 1.7  1996/09/27 17:19:47  ylo
+ * 	Merged ultrix and Next patches from Corey Satten.
+ *
+ * Revision 1.6  1996/09/05 19:06:09  ttsalo
+ * 	Replaced setpgrp() with setpgid(), setpgrp() is not a portable
+ * 	function.
+ *
+ * Revision 1.5  1996/08/11 22:28:55  ylo
+ * 	Changed the way controlling tty is set on NeXT.
+ *
+ * Revision 1.4  1996/07/12 07:26:04  ttsalo
+ * 	2 new ways to allocate pty:s: sco-style numbered (/dev/ptyp...)
+ * 	ptys and dynix/ptx getpseudotty(). 8 ways in total. (!)
+ *
  * Revision 1.3  1996/05/30 22:08:21  ylo
  * 	Don't print errors about I_PUSH ttcompat failing.
  *
@@ -87,6 +101,37 @@ int pty_allocate(int *ptyfd, int *ttyfd, char *namebuf)
   return 1;
 
 #else /* HAVE_OPENPTY */
+#ifdef HAVE_GETPSEUDOTTY
+  
+  /* getpseudotty(3SEQ) exists in DYNIX/ptx 2.1 */
+  char *slave, *master;
+  
+  int i;
+  
+  i = getpseudotty(&slave, &master);
+  
+  if (i < 0) 
+    {
+      error("openpty: %.100s", strerror(errno));
+      return 0;
+    }
+  *ptyfd = i;
+  strcpy(namebuf, slave);
+  *ttyfd = open(namebuf, O_RDWR|O_NOCTTY);
+  if (*ttyfd < 0)
+    {
+      error("%.200s: %.100s", namebuf, strerror(errno));
+      close(*ptyfd);
+      return 0;
+    }
+
+#if defined(ultrix) || defined(NeXT)
+  (void) signal(SIGTTOU, SIG_IGN);  /* corey via nancy */
+#endif /* ultrix or NeXT */
+
+  return 1;
+  
+#else /* HAVE_GETPSEUDOTTY */
 #ifdef HAVE__GETPTY
 
   /* _getpty(3) exists in SGI Irix 4.x, 5.x & 6.x -- it generates more
@@ -226,6 +271,39 @@ int pty_allocate(int *ptyfd, int *ttyfd, char *namebuf)
 
   /* BSD-style pty code. */
 
+#ifdef HAVE_DEV_PTYP10	/* SCO UNIX: similar to BSD, but different naming */
+  char buf[64];
+  int i;
+  
+  for (i=0; i<256; i++)	/* max 256 pty's possible */
+    {
+      sprintf(buf, "/dev/ptyp%d", i);
+      *ptyfd = open(buf, O_RDWR|O_NOCTTY);
+      if (*ptyfd < 0)
+	{
+          if (errno == ENODEV)	    /* all used up */
+	    {
+	      error("pty_allocate: all allocated ptys (%d) used", i);
+	      return 0;
+	    }
+	  continue;
+	}
+      
+      sprintf(namebuf, "/dev/ttyp%d", i);
+      
+      /* Open the slave side. */
+
+      *ttyfd = open(namebuf, O_RDWR|O_NOCTTY);
+      if (*ttyfd < 0)
+	{
+	  error("%.100s: %.100s", namebuf, strerror(errno));
+	  close(*ptyfd);
+	  return 0;
+	}
+      return 1;
+    }
+  
+#else			/* not SCO UNIX */
   char buf[64];
   int i;
   const char *ptymajors = 
@@ -259,11 +337,13 @@ int pty_allocate(int *ptyfd, int *ttyfd, char *namebuf)
 	}
       return 1;
     }
+#endif /* SCO UNIX */
   return 0;
 #endif /* CRAY */
 #endif /* HAVE_DEV_PTS_AND_PTC */
 #endif /* HAVE_DEV_PTMX */
 #endif /* HAVE__GETPTY */
+#endif /* HAVE_GETPSEUDOTTY */
 #endif /* HAVE_OPENPTY */
 }
 
@@ -315,11 +395,9 @@ void pty_make_controlling_tty(int *ttyfd, const char *ttyname)
   ioctl(*ttyfd, TCSETCTTY, NULL);
 #endif
 
-#ifdef NeXT
-  {
-    int arg = getpid();
-    ioctl(*ttyfd, TIOCSPGRP, &arg);
-  }
+#ifdef HAVE_SETPGID
+  /* This appears to be necessary on some machines...  */
+  setpgid(0, 0);
 #endif
 
   fd = open(ttyname, O_RDWR);

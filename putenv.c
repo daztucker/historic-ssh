@@ -1,5 +1,5 @@
 /*******************************************************************************
- *  The Elm Mail System  -  $Revision: 1.1 $   $State: Exp $
+ *  The Elm Mail System  -  $Revision: 1.1.1.1 $   $State: Exp $
  *
  *			Copyright (c) 1992 USENET Community Trust
  *******************************************************************************
@@ -10,6 +10,9 @@
  *
  *******************************************************************************
  * $Log: putenv.c,v $
+ * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.1  1995/07/13  22:17:30  ylo
  * 	Added putenv.c (this file was missing from the original distribution).
  *

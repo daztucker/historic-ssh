@@ -18,8 +18,15 @@ on a tty.
 */
 
 /*
- * $Id: login.c,v 1.7 1997/03/26 07:09:49 kivinen Exp $
+ * $Id: login.c,v 1.9 1998/04/30 01:52:43 kivinen Exp $
  * $Log: login.c,v $
+ * Revision 1.9  1998/04/30 01:52:43  kivinen
+ * 	Moved copying of user name to utmp structure to be done only
+ * 	in login.
+ *
+ * Revision 1.8  1998/04/17 00:38:38  kivinen
+ * 	Fixed ttyslot code.
+ *
  * Revision 1.7  1997/03/26 07:09:49  kivinen
  * 	Added HAVE_NO_TZ_IN_GETTIMEOFDAY support.
  *
@@ -304,7 +311,18 @@ void record_login(int pid, const char *ttyname, const char *user, uid_t uid,
     {
 #ifdef HAVE_TTYSLOT
       int n = ttyslot();
+#if defined(ultrix) || defined(NeXT)
+/*
+ * the problem is that Berkeley unix uses ttyslot() to determine where in
+ * the utmp file to write and it is correct at login time because the
+ * controlling tty is correct.  At logout time, I think a different process
+ * runs this code and may have a different (or no) controlling tty so
+ * we must search for the right record to clobber.  -- corey 5/7/97
+ */
+      if (n > 0 && *user) {
+#else
       if (n > 0) {
+#endif
         lseek(fd, (off_t)(n*sizeof(u)), 0);
         if (write(fd, &u, sizeof(u)) != sizeof(u))
 	  log_msg("Could not write to %.100s: %.100s", 
@@ -322,7 +340,11 @@ void record_login(int pid, const char *ttyname, const char *user, uid_t uid,
 		    utmp, strerror(errno));
 	      break;
 	    }
+#if defined(ultrix) || defined(NeXT)            /* corey */
+	  if (strcmp(u2.ut_line, ttyname + 5) == 0 && *u2.ut_name)
+#else   /* ultrix || NeXT */
 	  if (strncmp(u2.ut_line, ttyname + 5, sizeof(u2.ut_line)) == 0)
+#endif  /* ultrix || NeXT */
 	    {
 	      lseek(fd, offset, 0);
 	      if (write(fd, &u, sizeof(u)) != sizeof(u))
@@ -357,8 +379,8 @@ void record_login(int pid, const char *ttyname, const char *user, uid_t uid,
 	uxp = getutxline(&ux);
 	if (uxp)
 	  ux = *uxp;
+	strncpy(ux.ut_user, user, sizeof(ux.ut_user));
     }
-    strncpy(ux.ut_user, user, sizeof(ux.ut_user));
 #if defined(__sgi) || defined(SCO)
     strncpy(ux.ut_id, ttyname + 8, sizeof(ux.ut_id)); /* /dev/ttyq99 -> q99 */
 #else /* __sgi */

@@ -16,8 +16,11 @@ validity of the host key.
 */
 
 /*
- * $Id: auth-rsa.c,v 1.7 1995/09/09 21:26:38 ylo Exp $
+ * $Id: auth-rsa.c,v 1.8 1995/09/21 17:08:00 ylo Exp $
  * $Log: auth-rsa.c,v $
+ * Revision 1.8  1995/09/21  17:08:00  ylo
+ * 	Added uidswap.h.
+ *
  * Revision 1.7  1995/09/09  21:26:38  ylo
  * /m/shadows/u2/users/ylo/ssh/README
  *

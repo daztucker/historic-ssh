@@ -14,8 +14,11 @@ Generic header file for ssh.
 */
 
 /*
- * $Id: ssh.h,v 1.16 1997/03/27 03:11:13 kivinen Exp $
+ * $Id: ssh.h,v 1.17 1997/04/05 22:01:10 kivinen Exp $
  * $Log: ssh.h,v $
+ * Revision 1.17  1997/04/05 22:01:10  kivinen
+ * 	Fixed typo in SSH_AUTH_KERBEROS.
+ *
  * Revision 1.16  1997/03/27 03:11:13  kivinen
  * 	Added kerberos patches from Glenn Machin.
  *
@@ -278,7 +281,7 @@ only by root, whereas ssh_config should be world-readable. */
 #define SSH_AUTH_PASSWORD	3
 #define SSH_AUTH_RHOSTS_RSA	4
 #define SSH_AUTH_TIS		5
-#define SSH_AUTH_KREBEROS	6
+#define SSH_AUTH_KERBEROS	6
 #define SSH_PASS_KERBEROS_TGT	7
 
 /* These are reserved for official patches, do not use them */

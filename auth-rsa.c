@@ -16,8 +16,11 @@ validity of the host key.
 */
 
 /*
- * $Id: auth-rsa.c,v 1.6 1995/08/29 22:18:40 ylo Exp $
+ * $Id: auth-rsa.c,v 1.7 1995/09/09 21:26:38 ylo Exp $
  * $Log: auth-rsa.c,v $
+ * Revision 1.7  1995/09/09  21:26:38  ylo
+ * /m/shadows/u2/users/ylo/ssh/README
+ *
  * Revision 1.6  1995/08/29  22:18:40  ylo
  * 	Permit using ip addresses in RSA authentication "from" option.
  *
@@ -43,6 +46,7 @@ validity of the host key.
 #include "ssh.h"
 #include "md5.h"
 #include "mpaux.h"
+#include "uidswap.h"
 
 /* Flags that may be set in authorized_keys options. */
 extern int no_port_forwarding_flag;
@@ -164,30 +168,23 @@ int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state)
   FILE *f;
   unsigned long linenum = 0;
   struct stat st;
-#ifdef HAVE_SETEUID
-  uid_t saveduid;
-#endif /* HAVE_SETEUID */
 
   /* Open the file containing the authorized keys. */
-  sprintf(line, "%s/%s", pw->pw_dir, SSH_USER_PERMITTED_KEYS);
+  sprintf(line, "%.500s/%.100s", pw->pw_dir, SSH_USER_PERMITTED_KEYS);
   
-#ifdef HAVE_SETEUID
-  saveduid = geteuid();
-  seteuid(pw->pw_uid);
-#endif /* HAVE_SETEUID */
+  /* Temporarily use the user's uid. */
+  temporarily_use_uid(pw->pw_uid);
   if (stat(line, &st) < 0)
     {
-#ifdef HAVE_SETEUID
-      seteuid(saveduid);
-#endif /* HAVE_SETEUID */
+      /* Restore the privileged uid. */
+      restore_uid();
       return 0;
     }
   f = fopen(line, "r");
   if (!f)
     {
-#ifdef HAVE_SETEUID
-      seteuid(saveduid);
-#endif /* HAVE_SETEUID */
+      /* Restore the privileged uid. */
+      restore_uid();
       packet_send_debug("Could not open %.900s for reading.", line);
       packet_send_debug("If your home is on an NFS volume, it may need to be world-readable.");
       return 0;
@@ -240,9 +237,9 @@ int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state)
       /* Parse the key from the line. */
       if (!auth_rsa_read_key(&cp, &bits, &e, &n))
 	{
-	  debug("%s, line %lu: bad key syntax", 
+	  debug("%.100s, line %lu: bad key syntax", 
 		SSH_USER_PERMITTED_KEYS, linenum);
-	  packet_send_debug("%s, line %lu: bad key syntax", 
+	  packet_send_debug("%.100s, line %lu: bad key syntax", 
 			    SSH_USER_PERMITTED_KEYS, linenum);
 	  continue;
 	}
@@ -327,9 +324,9 @@ int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state)
 		    }
 		  if (!*options)
 		    {
-		      debug("%s, line %lu: missing end quote",
+		      debug("%.100s, line %lu: missing end quote",
 			    SSH_USER_PERMITTED_KEYS, linenum);
-		      packet_send_debug("%s, line %lu: missing end quote",
+		      packet_send_debug("%.100s, line %lu: missing end quote",
 					SSH_USER_PERMITTED_KEYS, linenum);
 		      continue;
 		    }
@@ -359,9 +356,9 @@ int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state)
 		    }
 		  if (!*options)
 		    {
-		      debug("%s, line %lu: missing end quote",
+		      debug("%.100s, line %lu: missing end quote",
 			    SSH_USER_PERMITTED_KEYS, linenum);
-		      packet_send_debug("%s, line %lu: missing end quote",
+		      packet_send_debug("%.100s, line %lu: missing end quote",
 					SSH_USER_PERMITTED_KEYS, linenum);
 		      continue;
 		    }
@@ -415,9 +412,8 @@ int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state)
 	break;
     }
 
-#ifdef HAVE_SETEUID
-  seteuid(saveduid);
-#endif /* HAVE_SETEUID */
+  /* Restore the privileged uid. */
+  restore_uid();
 
   /* Close the file. */
   fclose(f);

@@ -18,8 +18,31 @@ agent connections.
 */
 
 /*
- * $Id: sshd.c,v 1.18 1995/09/06 19:53:19 ylo Exp $
+ * $Id: sshd.c,v 1.24 1995/09/11 17:35:53 ylo Exp $
  * $Log: sshd.c,v $
+ * Revision 1.24  1995/09/11  17:35:53  ylo
+ * 	Added libwrap support.
+ * 	Log daemon name without path.
+ *
+ * Revision 1.23  1995/09/10  23:43:32  ylo
+ * 	Added a newline in xauth message.
+ *
+ * Revision 1.22  1995/09/10  23:29:43  ylo
+ * 	Renamed sigchld_handler main_sigchld_handler to avoid
+ * 	conflict.
+ *
+ * Revision 1.21  1995/09/10  23:26:53  ylo
+ * 	Child xauth line printed with fprintf instead of debug().
+ *
+ * Revision 1.20  1995/09/10  22:43:17  ylo
+ * 	Added uid-swapping stuff.
+ * 	Moved do_session to serverloop.c and renamed it server_loop.
+ * 	Changed SIGCHLD handling.
+ * 	Merged OSF/1 C2 security stuff.
+ *
+ * Revision 1.19  1995/09/09  21:26:47  ylo
+ * /m/shadows/u2/users/ylo/ssh/README
+ *
  * Revision 1.18  1995/09/06  19:53:19  ylo
  * 	Fixed spelling of fascist.
  *
@@ -121,9 +144,16 @@ agent connections.
 #include "cipher.h"
 #include "mpaux.h"
 #include "servconf.h"
+#include "uidswap.h"
 #ifdef HAVE_USERSEC_H
 #include <usersec.h>
 #endif /* HAVE_USERSEC_H */
+
+#ifdef LIBWRAP
+#include <tcpd.h>
+int allow_severity = LOG_INFO;
+int deny_severity = LOG_WARNING;
+#endif /* LIBWRAP */
 
 #ifdef _PATH_BSHELL
 #define DEFAULT_SHELL		_PATH_BSHELL
@@ -161,7 +191,7 @@ int inetd_flag = 0;
 /* This flag is set to true if the remote protocol version is 1.1 or higher. */
 int remote_protocol_1_1 = 0;
 
-/* Saved value of argv[0]. */
+/* argv[0] without path. */
 char *av0;
 
 /* Saved arguments to main(). */
@@ -204,6 +234,9 @@ struct
    is set whenever the key is used, and cleared when the key is regenerated. */
 int key_used = 0;
 
+/* This is set to true when SIGHUP is received. */
+int received_sighup = 0;
+
 /* Public side of the server key.  This value is regenerated regularly with
    the private key. */
 RSAPublicKey public_key;
@@ -222,7 +255,6 @@ void do_exec_no_pty(const char *command, struct passwd *pw,
 void do_child(const char *command, struct passwd *pw, const char *term,
 	      const char *display, const char *auth_proto,
 	      const char *auth_data);
-void do_session(int pid, int fdin, int fdout, int fderr);
 
 
 /* Signal handler for SIGHUP.  Sshd execs itself when it receives SIGHUP;
@@ -231,10 +263,20 @@ void do_session(int pid, int fdin, int fdout, int fderr);
 
 RETSIGTYPE sighup_handler(int sig)
 {
+  received_sighup = 1;
+  signal(SIGHUP, sighup_handler);
+}
+
+/* Called from the main program after receiving SIGHUP.  Restarts the 
+   server. */
+
+void sighup_restart()
+{
   log("Received SIGHUP; restarting.");
   close(listen_sock);
-  execv(av0, saved_argv);
+  execv(saved_argv[0], saved_argv);
   log("RESTART FAILED: av0='%s', error: %s.", av0, strerror(errno));
+  exit(1);
 }
 
 /* Generic signal handler for terminating signals in the master daemon. 
@@ -246,6 +288,16 @@ RETSIGTYPE sigterm_handler(int sig)
   log("Received signal %d; terminating.", sig);
   close(listen_sock);
   exit(255);
+}
+
+/* SIGCHLD handler.  This is called whenever a child dies.  This will then 
+   reap any zombies left by exited c. */
+
+RETSIGTYPE main_sigchld_handler(int sig)
+{
+  int status;
+  wait(&status);
+  signal(SIGCHLD, main_sigchld_handler);
 }
 
 /* Signal handler for the alarm after the login grace period has expired. */
@@ -271,7 +323,7 @@ RETSIGTYPE key_regeneration_alarm(int sig)
     {
       /* This should really be done in the background. */
       log("Generating new %d bit RSA key.", options.server_key_bits);
-      random_acquire_environmental_noise(&sensitive_data.random_state);
+      random_acquire_light_environmental_noise(&sensitive_data.random_state);
       rsa_generate_key(&sensitive_data.private_key, &public_key, 
 		       &sensitive_data.random_state, options.server_key_bits);
       random_stir(&sensitive_data.random_state);
@@ -291,7 +343,7 @@ int main(int ac, char **av)
 {
   extern char *optarg;
   extern int optind;
-  int opt, aux, sock, newsock, i, client_port, wait_status, pid, on = 1;
+  int opt, aux, sock, newsock, i, client_port, pid, on = 1;
   int remote_major, remote_minor;
   struct sockaddr_in sin;
   char buf[100]; /* Must not be larger than remote_version. */
@@ -303,8 +355,11 @@ int main(int ac, char **av)
 #endif /* SO_LINGER */
   
   /* Save argv[0]. */
-  av0 = av[0];
   saved_argv = av;
+  if (strchr(av[0], '/'))
+    av0 = strrchr(av[0], '/') + 1;
+  else
+    av0 = av[0];
 
   /* Initialize configuration options to their default values. */
   initialize_server_options(&options);
@@ -391,7 +446,7 @@ int main(int ac, char **av)
 	   debug_flag || options.fascist_logging, 
 	   options.quiet_mode, options.log_facility);
 
-  debug("sshd version %s", SSH_VERSION);
+  debug("sshd version %.100s", SSH_VERSION);
 
   /* Load the host key.  It must have empty passphrase. */
   if (!load_private_key(options.host_key_file, "", 
@@ -404,12 +459,16 @@ int main(int ac, char **av)
 	{
 	  int err = errno;
 	  log_init(av0, !inetd_flag, 1, 0, options.log_facility);
-	  error("Could not load host key: %.200s: %s", 
+	  error("Could not load host key: %.200s: %.100s", 
 		options.host_key_file, strerror(err));
 	}
       exit(1);
     }
   xfree(comment);
+
+#ifdef HAVE_OSF1_C2_SECURITY
+  initialize_osf_security(ac, av);
+#endif /* HAVE_OSF1_C2_SECURITY */
 
   /* If not in debugging mode, and not started from inetd, disconnect from
      the controlling terminal, and fork.  The original process exits. */
@@ -469,7 +528,8 @@ int main(int ac, char **av)
   rsa_set_verbose(0);
 
   /* Initialize the random number generator. */
-  debug("Initializing random number generator; seed %s", SSH_DAEMON_SEED_FILE);
+  debug("Initializing random number generator; seed file %.200s", 
+	SSH_DAEMON_SEED_FILE);
   random_initialize(&sensitive_data.random_state, SSH_DAEMON_SEED_FILE);
 
   /* Generate an rsa key. */
@@ -500,7 +560,7 @@ int main(int ac, char **av)
       /* Create socket for listening. */
       sock = socket(AF_INET, SOCK_STREAM, 0);
       if (sock < 0)
-	fatal("socket: %s", strerror(errno));
+	fatal("socket: %.100s", strerror(errno));
 
       /* Set socket options.  We try to make the port reusable and have it
 	 close as fast as possible without waiting in unnecessary wait states
@@ -521,7 +581,7 @@ int main(int ac, char **av)
       /* Bind the socket to the desired port. */
       if (bind(sock, (struct sockaddr *)&sin, sizeof(sin)) < 0)
 	{
-	  error("bind: %s", strerror(errno));
+	  error("bind: %.100s", strerror(errno));
 	  shutdown(sock, 2);
 	  close(sock);
 	  fatal("Bind to port %d failed.", options.port);
@@ -544,7 +604,7 @@ int main(int ac, char **av)
       /* Start listening on the port. */
       log("Server listening on port %d.", options.port);
       if (listen(sock, 5) < 0)
-	fatal("listen: %s", strerror(errno));
+	fatal("listen: %.100s", strerror(errno));
 
       /* Schedule server key regeneration alarm. */
       signal(SIGALRM, key_regeneration_alarm);
@@ -556,23 +616,45 @@ int main(int ac, char **av)
       signal(SIGTERM, sigterm_handler);
       signal(SIGQUIT, sigterm_handler);
       
+      /* Arrange SIGCHLD to be caught. */
+      signal(SIGCHLD, main_sigchld_handler);
+
       /* Stay listening for connections until the system crashes or the
 	 daemon is killed with a signal. */
       for (;;)
 	{
+	  if (received_sighup)
+	    sighup_restart();
 	  /* Wait in accept until there is a connection. */
 	  aux = sizeof(sin);
 	  newsock = accept(sock, (struct sockaddr *)&sin, &aux);
+	  if (received_sighup)
+	    sighup_restart();
 	  if (newsock < 0)
 	    {
-	      /* Accept returned an error.  This can happen due to a signal
-		 (EINTR), but it appears that we can sometimes get spurious
-		 errors due to network problems as well. */
 	      if (errno == EINTR)
 		continue;
-	      error("accept: %s", strerror(errno));
+	      error("accept: %.100s", strerror(errno));
 	      continue;
 	    }
+
+#ifdef LIBWRAP
+	  {
+	    struct request_info req;
+	    request_init(&req, RQ_DAEMON, av0, RQ_FILE, newsock, NULL);
+	    fromhost(&req);
+	    if (!hosts_access(&req)) 
+	      {
+		error("Connection from %.500s refused by tcp_wrappers.",
+		      eval_client(&req));
+		shutdown(newsock, 2);
+		close(newsock);
+		continue;
+	      }
+	    /* if from inet: refuse(&req); */
+	    log("connect from %.500s", eval_client(&req));
+	  }
+#endif /* LIBWRAP */
 
 	  /* Got connection.  Fork a child to handle it, unless we are in
 	     debugging mode. */
@@ -607,7 +689,7 @@ int main(int ac, char **av)
 
 	  /* Parent.  Stay in the loop. */
 	  if (pid < 0)
-	    error("fork: %s", strerror(errno));
+	    error("fork: %.100s", strerror(errno));
 	  else
 	    debug("Forked child %d.", pid);
 
@@ -616,24 +698,6 @@ int main(int ac, char **av)
 
 	  /* Close the new socket (the child is now taking care of it). */
 	  close(newsock);
-
-	  /* Wait any exited children.  How can this be so difficult? */
-#ifdef HAVE_WAITPID
-	  while (waitpid(-1, &wait_status, WNOHANG) > 0)
-	    ;
-#else /* HAVE_WAITPID */
-#ifdef HAVE_WAIT3
-	  while (wait3(&wait_status, WNOHANG, NULL) > 0)
-	    ;
-#else /* HAVE_WAIT3 */
-#ifdef HAVE_WAIT4
-	  while (wait4(-1, &wait_status, WNOHANG, NULL) > 0)
-	    ;
-#else /* HAVE_WAIT4 */
-	  ERROR_NO_WAIT3_OR_WAIT4_OR_WAITPID;
-#endif /* HAVE_WAIT4 */
-#endif /* HAVE_WAIT3 */	  
-#endif /* HAVE_WAITPID */
 	}
     }
   
@@ -647,6 +711,7 @@ int main(int ac, char **av)
   signal(SIGHUP, SIG_DFL);
   signal(SIGTERM, SIG_DFL);
   signal(SIGQUIT, SIG_DFL);
+  signal(SIGCHLD, SIG_DFL);
 
   /* Set socket options for the connection.  We want the socket to close
      as fast as possible without waiting for anything. */
@@ -656,13 +721,13 @@ int main(int ac, char **av)
   linger.l_linger = 0;
   if (setsockopt(sock, SOL_SOCKET, SO_LINGER, (void *)&linger, 
 		 sizeof(linger)) < 0)
-    error("setsockopt SO_LINGER sock: %s", strerror(errno));
+    error("setsockopt SO_LINGER sock: %.100s", strerror(errno));
 #endif /* SO_LINGER */
 
   /* Find out who is in the other end. */
   aux = sizeof(sin);
   if (getpeername(sock, (struct sockaddr *)&sin, &aux) < 0)
-    fatal("getpeername: %s", strerror(errno));
+    fatal("getpeername: %.100s", strerror(errno));
   client_port = ntohs(sin.sin_port);
 
   /* Log the connection. */
@@ -701,7 +766,8 @@ int main(int ac, char **av)
     alarm(options.login_grace_time);
 
   /* Send our protocol version identification. */
-  sprintf(buf, "SSH-%d.%d-%s\n", PROTOCOL_MAJOR, PROTOCOL_MINOR, SSH_VERSION);
+  sprintf(buf, "SSH-%d.%d-%.100s\n", 
+	  PROTOCOL_MAJOR, PROTOCOL_MINOR, SSH_VERSION);
   if (write(sock, buf, strlen(buf)) != strlen(buf))
     fatal("Could not write ident string.");
 
@@ -776,10 +842,10 @@ int main(int ac, char **av)
   /* Set the socket into non-blocking mode. */
 #if defined(O_NONBLOCK) && !defined(O_NONBLOCK_BROKEN)
   if (fcntl(sock, F_SETFL, O_NONBLOCK) < 0)
-    log("fcntl O_NONBLOCK: %s", strerror(errno));
+    log("fcntl O_NONBLOCK: %.100s", strerror(errno));
 #else /* O_NONBLOCK */  
   if (fcntl(sock, F_SETFL, O_NDELAY) < 0)
-    log("fcntl O_NDELAY: %s", strerror(errno));
+    log("fcntl O_NDELAY: %.100s", strerror(errno));
 #endif /* O_NONBLOCK */
   
   /* Handle the connection.   We pass as argument whether the connection
@@ -1074,7 +1140,7 @@ void do_authentication(char *user, int privileged_port)
 	  client_user = packet_get_string(NULL);
 
 	  /* Try to authenticate using /etc/hosts.equiv and .rhosts. */
-	  if (auth_rhosts(pw, client_user))
+	  if (auth_rhosts(pw, client_user, options.ignore_rhosts))
 	    {
 	      /* Authentication accepted. */
 	      log("Rhosts authentication accepted for %.100s, remote %.100s on %.700s.",
@@ -1118,7 +1184,7 @@ void do_authentication(char *user, int privileged_port)
 	  if (auth_rhosts_rsa(&sensitive_data.random_state,
 			      pw, client_user,
 			      client_host_key_bits, &client_host_key_e,
-			      &client_host_key_n))
+			      &client_host_key_n, options.ignore_rhosts))
 	    {
 	      /* Authentication accepted. */
 	      authenticated = 1;
@@ -1432,7 +1498,7 @@ void do_authenticated(struct passwd *pw)
 }
 
 /* This is called to fork and execute a command when we have no tty.  This
-   will call do_child from the child, and do_session from the parent after
+   will call do_child from the child, and server_loop from the parent after
    setting up file descriptors and such. */
 
 void do_exec_no_pty(const char *command, struct passwd *pw,
@@ -1445,14 +1511,14 @@ void do_exec_no_pty(const char *command, struct passwd *pw,
   int pin[2], pout[2], perr[2];
   /* Allocate pipes for communicating with the program. */
   if (pipe(pin) < 0 || pipe(pout) < 0 || pipe(perr) < 0)
-    packet_disconnect("Could not create pipes to communicate with program: %s",
+    packet_disconnect("Could not create pipes: %.100s",
 		      strerror(errno));
 #else /* USE_PIPES */
   int inout[2], err[2];
   /* Uses socket pairs to communicate with the program. */
   if (socketpair(AF_UNIX, SOCK_STREAM, 0, inout) < 0 ||
       socketpair(AF_UNIX, SOCK_STREAM, 0, err) < 0)
-    packet_disconnect("Could not create socket pairs to communicate with program: %s",
+    packet_disconnect("Could not create socket pairs: %.100s",
 		      strerror(errno));
 #endif /* USE_PIPES */
   
@@ -1509,22 +1575,22 @@ void do_exec_no_pty(const char *command, struct passwd *pw,
   close(perr[1]);
 
   /* Enter the interactive session. */
-  do_session(pid, pin[1], pout[0], perr[0]);
-  /* do_session has closed pin[1], pout[1], and perr[1]. */
+  server_loop(pid, pin[1], pout[0], perr[0]);
+  /* server_loop has closed pin[1], pout[1], and perr[1]. */
 #else /* USE_PIPES */
   /* We are the parent.  Close the child sides of the socket pairs. */
   close(inout[0]);
   close(err[0]);
   
-  /* Enter the interactive session.  Note: do_session must be able to handle
+  /* Enter the interactive session.  Note: server_loop must be able to handle
      the case that fdin and fdout are the same. */
-  do_session(pid, inout[1], inout[1], err[1]);
-  /* do_session has closed inout[1] and err[1]. */
+  server_loop(pid, inout[1], inout[1], err[1]);
+  /* server_loop has closed inout[1] and err[1]. */
 #endif /* USE_PIPES */
 }
 
 /* This is called to fork and execute a command when we have a tty.  This
-   will call do_child from the child, and do_session from the parent after
+   will call do_child from the child, and server_loop from the parent after
    setting up file descriptors, controlling tty, updating wtmp, utmp,
    lastlog, and other such operations. */
 
@@ -1548,7 +1614,7 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
   fromlen = sizeof(from);
   if (getpeername(packet_get_connection(),
 		  (struct sockaddr *)&from, &fromlen) < 0)
-    fatal("getpeername: %s", strerror(errno));
+    fatal("getpeername: %.100s", strerror(errno));
   
   /* Map the IP address to a host name. */
   hp = gethostbyaddr((char *)&from.sin_addr,
@@ -1579,15 +1645,15 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
 
       /* Redirect stdin from the pseudo tty. */
       if (dup2(ttyfd, fileno(stdin)) < 0)
-	error("dup2 stdin failed: %s", strerror(errno));
+	error("dup2 stdin failed: %.100s", strerror(errno));
 
       /* Redirect stdout to the pseudo tty. */
       if (dup2(ttyfd, fileno(stdout)) < 0)
-	error("dup2 stdin failed: %s", strerror(errno));
+	error("dup2 stdin failed: %.100s", strerror(errno));
 
       /* Redirect stderr to the pseudo tty. */
       if (dup2(ttyfd, fileno(stderr)) < 0)
-	error("dup2 stdin failed: %s", strerror(errno));
+	error("dup2 stdin failed: %.100s", strerror(errno));
 
       /* Close the extra descriptor for the pseudo tty. */
       close(ttyfd);
@@ -1624,23 +1690,23 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
       /*NOTREACHED*/
     }
   if (pid < 0)
-    packet_disconnect("fork failed: %s", strerror(errno));
+    packet_disconnect("fork failed: %.100s", strerror(errno));
   /* Parent.  Close the slave side of the pseudo tty. */
   close(ttyfd);
   
   /* Create another descriptor of the pty master side for use as the standard
      input.  We could use the original descriptor, but this simplifies code
-     in do_session.  The descriptor is bidirectional. */
+     in server_loop.  The descriptor is bidirectional. */
   fdout = dup(ptyfd);
   if (fdout < 0)
-    packet_disconnect("dup failed: %s", strerror(errno));
+    packet_disconnect("dup failed: %.100s", strerror(errno));
 
   /* Record that there was a login on that terminal. */
-  record_login(pid, ttyname, pw->pw_name, pw->pw_uid, hostname);
+  record_login(pid, ttyname, pw->pw_name, pw->pw_uid, hostname, &from);
 
   /* Enter interactive session. */
-  do_session(pid, ptyfd, fdout, -1);
-  /* do_session has closed ptyfd and fdout. */
+  server_loop(pid, ptyfd, fdout, -1);
+  /* server_loop has closed ptyfd and fdout. */
 
   /* Record that the user has logged out. */
   record_logout(pid, ttyname);
@@ -1676,14 +1742,49 @@ void do_child(const char *command, struct passwd *pw, const char *term,
       if (pw->pw_uid != 0)
 	{
 	  channel_stop_listening();
-	  packet_close();
+	  close(packet_get_connection());
 	  exit(254);
 	}
     }
 
+#ifdef HAVE_SETLOGIN
+  /* Set login name in the kernel. */
+  setlogin(pw->pw_name);
+#endif /* HAVE_SETLOGIN */
+
+#ifdef HAVE_USERSEC_H
+  /* On AIX, this "sets process credentials".  I am not sure what this
+     includes, but it seems to be important.  This also does setuid
+     (but we do it below as well just in case). */
+  if (setpcred((char *)pw->pw_name, NULL))
+    log("setpcred %.100s: %.100s", strerror(errno));
+#endif /* HAVE_USERSEC_H */
+
+  /* Set uid, gid, and groups. */
+  if (getuid() == 0 || geteuid() == 0)
+    { 
+      if (setgid(pw->pw_gid) < 0)
+	{
+	  perror("setgid");
+	  exit(1);
+	}
+      if (initgroups(pw->pw_name, pw->pw_gid) < 0)
+	{
+	  perror("initgroups");
+	  exit(1);
+	}
+      endgrent();
+
+      /* Permanently switch to the desired uid. */
+      permanently_set_uid(pw->pw_uid);
+    }
+
+  if (getuid() != pw->pw_uid || geteuid() != pw->pw_uid)
+    fatal("Failed to set uids to %d.", (int)pw->pw_uid);
+
   /* Get the shell from the password data.  An empty shell field is legal,
      and means /bin/sh. */
-  shell = pw->pw_shell[0] == '\0' ? DEFAULT_SHELL : pw->pw_shell;
+  shell = (pw->pw_shell[0] == '\0') ? DEFAULT_SHELL : pw->pw_shell;
 
   /* Initialize the environment.  In the first part we allocate space for
      all environment variables. */
@@ -1773,10 +1874,13 @@ void do_child(const char *command, struct passwd *pw, const char *term,
     env[i++] = etz;
   env[i++] = NULL;
 
-  /* Display the environment for debugging purposes. */
-  debug("Environment:");
-  for (i = 0; env[i]; i++)
-    debug("  %.200s", env[i]);
+  if (debug_flag)
+    {
+      /* Display the environment for debugging purposes. */
+      fprintf(stderr, "Environment:\n");
+      for (i = 0; env[i]; i++)
+	fprintf(stderr, "  %.200s\n", env[i]);
+    }
 
   /* Close any extra file descriptors.  Note that there may still be
      descriptors left by system functions.  They will be closed later. */
@@ -1784,41 +1888,6 @@ void do_child(const char *command, struct passwd *pw, const char *term,
   channel_close_all();
   endpwent();
   endhostent();
-
-#ifdef HAVE_SETLOGIN
-  /* Set login name in the kernel. */
-  setlogin(pw->pw_name);
-#endif /* HAVE_SETLOGIN */
-
-#ifdef HAVE_USERSEC_H
-  /* On AIX, this "sets process credentials".  I am not sure what this
-     includes, but it seems to be important.  This also does setuid
-     (but we do it below as well just in case). */
-  if (setpcred((const char *)pw->pw_name, NULL))
-    log("setpcred %.100s: %s", strerror(errno));
-#endif /* HAVE_USERSEC_H */
-
-  /* Set uid, gid, and groups. */
-  if (getuid() == 0)
-    { 
-      /* Only change uid if running as root. */
-      if (setgid(pw->pw_gid) < 0)
-	{
-	  perror("setgid");
-	  exit(1);
-	}
-      if (initgroups(pw->pw_name, pw->pw_gid) < 0)
-	{
-	  perror("initgroups");
-	  exit(1);
-	}
-      endgrent();
-      if (setuid(pw->pw_uid) < 0)
-	{
-	  perror("setuid");
-	  exit(1);
-	}
-    }
 
   /* Close any extra open file descriptors so that we don\'t have them
      hanging around in clients.  Note that we want to do this after
@@ -1833,14 +1902,16 @@ void do_child(const char *command, struct passwd *pw, const char *term,
 
   /* Change current directory to the user\'s home directory. */
   if (chdir(pw->pw_dir) < 0)
-    fprintf(stderr, "Could not chdir to home directory %.200s: %s\n",
+    fprintf(stderr, "Could not chdir to home directory %s: %s\n",
 	    pw->pw_dir, strerror(errno));
 
   /* Add authority data to .Xauthority if appropriate. */
   if (auth_proto != NULL && auth_data != NULL)
     {
-      debug("Running %.100s add %.100s %.100s %.100s",
-	    XAUTH_PATH, display, auth_proto, auth_data);
+      if (debug_flag)
+	fprintf(stderr, "Running %.100s add %.100s %.100s %.100s\n",
+		XAUTH_PATH, display, auth_proto, auth_data);
+
       if (fork() == 0)
 	{ /* Child */
 	  execle(XAUTH_PATH, XAUTH_PATH, "add", display, auth_proto, auth_data,
@@ -1881,557 +1952,4 @@ void do_child(const char *command, struct passwd *pw, const char *term,
   execle(shell, cp, "-c", command, NULL, env);
   perror(shell);
   exit(1);
-}
-
-#ifdef HPSUX_BROKEN_PTYS
-
-/* This SIGCHLD kludge is for HPSUX, because its pty code is broken.
-   It does not pass EOF from the slave side to the master side.  */
-
-int do_session_pid;  				/* Pid of the child. */
-volatile int do_session_child_terminated;	/* The child has terminated. */
-volatile int do_session_wait_status;		/* Status from wait(). */
-
-RETSIGTYPE sigchld_handler(int sig)
-{
-  int wait_pid;
-  debug("Received SIGCHLD.");
-  wait_pid = wait((int *)&do_session_wait_status);
-  if (wait_pid == -1)
-    error("Strange, wait inside SIGCHLD handler returned -1.");
-  if (wait_pid != do_session_pid)
-    error("Strange, got SIGCHLD and wait returned pid %d but child is %d",
-	  wait_pid, do_session_pid);
-  if (WIFEXITED(do_session_wait_status) ||
-      WIFSIGNALED(do_session_wait_status))
-    {
-      debug("Child has terminated; wait status 0x%x.", 
-	    (unsigned int)do_session_wait_status);
-      do_session_child_terminated = 1;
-    }
-  signal(SIGCHLD, sigchld_handler);
-}
-
-#endif /* HPSUX_BROKEN_PTYS */
-
-/* Performs the interactive session.  This handles data transmission between
-   the client and the program.  Note that the notion of stdin, stdout, and
-   stderr in this function is sort of reversed: this function writes to
-   stdin (of the child program), and reads from stdout and stderr (of the
-   child program). */
-
-void do_session(int pid, int fdin, int fdout, int fderr)
-{
-  int max_fd;			/* Max file descriptor number for select(). */
-  long stdin_bytes = 0;		/* Number of bytes written to stdin. */
-  long stdout_bytes = 0;	/* Number of stdout bytes sent to client. */
-  long stderr_bytes = 0;	/* Number of stderr bytes sent to client. */
-  long fdout_bytes = 0;		/* Number of stdout bytes read from program. */
-  int stdin_eof = 0;		/* EOF message received from client. */
-  int fdout_eof = 0;		/* EOF encountered reading from fdout. */
-  int fderr_eof = 0;		/* EOF encountered readung from fderr. */
-  unsigned int buffer_high;	/* "Soft" max buffer size. */
-  Buffer stdin_buffer;		/* Buffer for stdin data. */
-  Buffer stdout_buffer;		/* Buffer for stdout data. */
-  Buffer stderr_buffer;		/* Buffer for stderr data. */
-  int wait_status, wait_pid;	/* Status and pid returned by wait(). */
-  int connection = packet_get_connection(); /* Connection to client. */
-  int waiting_termination = 0;  /* Have displayed waiting close message. */
-  int row, col, xpixel, ypixel;
-  int type, len, ret;
-  char *data;
-  unsigned int data_len;
-  char buf[16384];
-
-#ifdef HPSUX_BROKEN_PTYS
-  struct timeval tv;
-
-  /* Kludge for HPSUX. */
-  do_session_pid = pid;
-  do_session_child_terminated = 0;
-  signal(SIGCHLD, sigchld_handler);
-
-#endif /* HPSUX_BROKEN_PTYS */
-
-  debug("Entering interactive session.");
-
-  /* Set approximate I/O buffer size. */
-  if (packet_is_interactive())
-    buffer_high = 4096;
-  else
-    buffer_high = 64 * 1024;
-
-  /* Initialize max_fd to the maximum of the known file descriptors. */
-  max_fd = fdin;
-  if (fdout > max_fd)
-    max_fd = fdout;
-  if (fderr != -1 && fderr > max_fd)
-    max_fd = fderr;
-  if (connection > max_fd)
-    max_fd = connection;
-
-  /* Initialize Initialize buffers. */
-  buffer_init(&stdin_buffer);
-  buffer_init(&stdout_buffer);
-  buffer_init(&stderr_buffer);
-
-  /* If we have no separate fderr (which is the case when we have a pty - there
-     we cannot make difference between data sent to stdout and stderr),
-     indicate that we have seen an EOF from stderr.  This way we don\'t
-     need to check the descriptor everywhere. */
-  if (fderr == -1)
-    fderr_eof = 1;
-
-  /* We stay in this loop until one of the following happens:
-       - We have received EOFs from the program, and all buffered data has
-         drained, and has been sent to the client, and there are no active open
-         channels. 
-       - The client closes the connection.
-       - An error is reported via fatal()
-       - Select fails.
-
-     The loop is organized as follows:
-       1. Process buffered packets from the client.
-       2. Process pending EOF from the client.
-       3. Send buffered stderr data to client.
-       4. Send buffered stdout data to client.
-       5. Send channel data to client.
-       6. Bail out of loop if all closed, no pending data and no open channels.
-       7. Initialize select() masks.
-       8. Wait for something to happen in select().
-       9. Process channel events.
-       10. Input any available data from the client, and buffer for processing.
-       11. Read and buffer any available stdout data from the program.
-       12. Read and buffer any available stderr data from the program.
-       13. Write any buffered stdin data to the program.
-       14. Send any buffered packet data to the client.
-     After the loop there is cleanup and termination code. */
-
-  for (;;)
-    {
-      fd_set readset, writeset;
-      
-      /* Process buffered packets from the client. */
-      while ((type = packet_read_poll()) != SSH_MSG_NONE)
-	{
-	  switch (type)
-	    {
-	    case SSH_CMSG_STDIN_DATA:
-	      /* Stdin data from the client.  Append it to the buffer. */
-	      if (fdin == -1)
-		break; /* Ignore any data if the client has closed stdin. */
-	      data = packet_get_string(&data_len);
-	      buffer_append(&stdin_buffer, data, data_len);
-	      memset(data, 0, data_len);
-	      xfree(data);
-	      break;
-
-	    case SSH_CMSG_EOF:
-	      /* Eof from the client.  The stdin descriptor to the program
-		 will be closed when all buffered data has drained. */
-	      debug("EOF received for stdin.");
-	      stdin_eof = 1;
-	      break;
-
-	    case SSH_CMSG_WINDOW_SIZE:
-	      debug("Window change received.");
-	      row = packet_get_int();
-	      col = packet_get_int();
-	      xpixel = packet_get_int();
-	      ypixel = packet_get_int();
-	      if (fdin != -1)
-		pty_change_window_size(fdin, row, col, xpixel, ypixel);
-	      break;
-
-	    case SSH_MSG_PORT_OPEN:
-	      debug("Received port open request.");
-	      channel_input_port_open();
-	      break;
-
-	    case SSH_MSG_CHANNEL_OPEN_CONFIRMATION:
-	      debug("Received channel open confirmation.");
-	      channel_input_open_confirmation();
-	      break;
-
-	    case SSH_MSG_CHANNEL_OPEN_FAILURE:
-	      debug("Received channel open failure.");
-	      channel_input_open_failure();
-	      break;
-
-	    case SSH_MSG_CHANNEL_DATA:
-	      channel_input_data();
-	      break;
-
-	    case SSH_MSG_CHANNEL_CLOSE:
-	      debug("Received channel close.");
-	      channel_input_close();
-	      break;
-
-	    case SSH_MSG_CHANNEL_CLOSE_CONFIRMATION:
-	      debug("Received channel close confirmation.");
-	      channel_input_close_confirmation();
-	      break;
-
-	    default:
-	      /* In this phase, any unexpected messages cause a protocol
-		 error.  This is to ease debugging; also, since no 
-		 confirmations are sent messages, unprocessed unknown 
-		 messages could cause strange problems.  Any compatible 
-		 protocol extensions must be negotiated before entering the 
-		 interactive session. */
-	      packet_disconnect("Protocol error during session: type %d", 
-				type);
-	    }
-	}
-
-      /* If we have received eof, and there is no more pending input data,
-	 cause a real eof by closing fdin. */
-      if (stdin_eof && fdin != -1 && buffer_len(&stdin_buffer) == 0)
-	{
-	  if (fdin == fdout)
-	    shutdown(fdin, 1); /* We will no longer send. */
-	  else
-	    close(fdin);
-	  fdin = -1;
-	}
-
-      /* Send buffered stderr data to the client. */
-      while (buffer_len(&stderr_buffer) > 0 && 
-	     packet_not_very_much_data_to_write())
-	{
-	  len = buffer_len(&stderr_buffer);
-	  if (packet_is_interactive())
-	    {
-	      if (len > 512)
-		len = 512;
-	    }
-	  else
-	    {
-	      if (len > 32768)
-		len = 32768;  /* Keep the packets at reasonable size. */
-	    }
-	  packet_start(SSH_SMSG_STDERR_DATA);
-	  packet_put_string(buffer_ptr(&stderr_buffer), len);
-	  packet_send();
-	  buffer_consume(&stderr_buffer, len);
-	  stderr_bytes += len;
-	}
-
-      /* Send buffered stdout data to the client. */
-      while (buffer_len(&stdout_buffer) > 0 && 
-	     packet_not_very_much_data_to_write())
-	{
-	  len = buffer_len(&stdout_buffer);
-	  if (packet_is_interactive())
-	    {
-	      if (len > 512)
-		len = 512;
-	    }
-	  else
-	    {
-	      if (len > 32768)
-		len = 32768;  /* Keep the packets at reasonable size. */
-	    }
-	  packet_start(SSH_SMSG_STDOUT_DATA);
-	  packet_put_string(buffer_ptr(&stdout_buffer), len);
-	  packet_send();
-	  buffer_consume(&stdout_buffer, len);
-	  stdout_bytes += len;
-	}
-
-      /* Send channel data to the client. */
-      if (packet_not_very_much_data_to_write())
-	channel_output_poll();
-
-      /* Bail out of the loop if the program has closed its output descriptors,
-	 and we have no more data to send to the client, and there is no
-	 pending buffered data. */
-      if (fdout_eof && fderr_eof && !packet_have_data_to_write() &&
-	  buffer_len(&stdout_buffer) == 0 && buffer_len(&stderr_buffer) == 0)
-	{
-	  if (!channel_still_open())
-	    goto quit;
-	  if (!waiting_termination)
-	    {
-	      const char *s = 
-		"Waiting for forwarded connections to terminate...\r\n";
-	      waiting_termination = 1;
-	      buffer_append(&stderr_buffer, s, strlen(s));
-	    }
-	}
-
-      /* Initialize select() masks. */
-      FD_ZERO(&readset);
-
-      /* Read packets from the client unless we have too much buffered stdin
-	 or channel data. */
-      if (buffer_len(&stdin_buffer) < buffer_high &&
-	  channel_not_very_much_buffered_data())
-	FD_SET(connection, &readset);
-
-      /* If there is not too much data already buffered going to the client,
-	 try to get some more data from the program. */
-      if (packet_not_very_much_data_to_write())
-	{
-	  if (!fdout_eof)
-	    FD_SET(fdout, &readset);
-	  if (!fderr_eof)
-	    FD_SET(fderr, &readset);
-	}
-
-      FD_ZERO(&writeset);
-
-      /* If we have buffered packet data going to the client, mark that
-	 descriptor. */
-      if (packet_have_data_to_write())
-	FD_SET(connection, &writeset);
-
-      /* If we have buffered data, try to write some of that data to the
-	 program. */
-      if (fdin != -1 && buffer_len(&stdin_buffer) > 0)
-	FD_SET(fdin, &writeset);
-
-      /* Set masks for channel descriptors. */
-      channel_prepare_select(&readset, &writeset);
-
-      /* Update the maximum descriptor number if appropriate. */
-      if (channel_max_fd() > max_fd)
-	max_fd = channel_max_fd();
-
-#ifdef HPSUX_BROKEN_PTYS
-
-      /* Kludge for HPSUX: if the child has terminated, read as much
-         is available, and then terminate. */
-      if (do_session_child_terminated)
-	{
-	  tv.tv_usec = 100000;
-	  tv.tv_sec = 0;
-	}
-      else
-	{
-	  tv.tv_usec = 0;
-	  tv.tv_sec = 1000000;
-	}
-
-      /* Wait for something to happen.  If you want to implement support
-         for SSH_MSG_IGNORE messages being automatically sent, this is
-	 a good place to send them (with a random timeout from select). */
-      ret = select(max_fd + 1, &readset, &writeset, NULL, &tv);
-
-#else /* HPSUX_BROKEN_PTYS */
-
-      /* Wait for something to happen.  If you want to implement support
-         for SSH_MSG_IGNORE messages being automatically sent, this is
-	 a good place to send them (with a random timeout from select). */
-      ret = select(max_fd + 1, &readset, &writeset, NULL, NULL);
-
-#endif /* HPSUX_BROKEN_PTYS */
-
-      if (ret < 0)
-	{
-	  if (errno == EINTR)
-	    continue;
-	  error("select: %s", strerror(errno));
-	  goto quit;
-	}
-
-#ifdef HPSUX_BROKEN_PTYS
-
-      /* Kludge for HPSUX continues. */
-      if (ret == 0 && do_session_child_terminated)
-	{
-	  if (fdout != -1)
-	    close(fdout);
-	  if (fderr != -1)
-	    close(fderr);
-	  if (fdin != -1 && fdin != fdout)
-	    close(fdin);
-	  fdout = -1;
-	  fdout_eof = 1;
-	  fderr = -1;
-	  fderr_eof = 1;
-	  fdin = -1;
-	  /* We will keep looping here as long as there is data to send in
-	     some direction. */
-	}
-
-#endif /* HPSUX_BROKEN_PTYS */
-
-      /* Process any channel events. */
-      channel_after_select(&readset, &writeset);
-
-      /* Read and buffer any input data from the client. */
-      if (FD_ISSET(connection, &readset))
-	{
-	  len = read(connection, buf, sizeof(buf));
-	  if (len == 0)
-	    {
-	      /* EOF reading from connection. */
-	      log("Connection closed by remote host.");
-	      goto quit;
-	    }
-	  if (len < 0)
-	    {
-	      /* Error reading from connection. */
-	      error("Read error from remote host: %s", strerror(errno));
-	      goto quit;
-	    }
-	  /* Buffer any received data. */
-	  packet_process_incoming(buf, len);
-	}
-
-      /* Read and buffer any available stdout data from the program. */
-      if (!fdout_eof && FD_ISSET(fdout, &readset))
-	{
-	  len = read(fdout, buf, sizeof(buf));
-	  if (len <= 0)
-	    fdout_eof = 1;
-	  else
-	    {
-	      buffer_append(&stdout_buffer, buf, len);
-	      fdout_bytes += len;
-	    }
-	}
-
-      /* Read and buffer any available stderr data from the program. */
-      if (!fderr_eof && FD_ISSET(fderr, &readset))
-	{
-	  len = read(fderr, buf, sizeof(buf));
-	  if (len <= 0)
-	    fderr_eof = 1;
-	  else
-	    buffer_append(&stderr_buffer, buf, len);
-	}
-
-      /* Write buffered data to program stdin. */
-      if (fdin != -1 && FD_ISSET(fdin, &writeset))
-	{
-	  len = write(fdin, buffer_ptr(&stdin_buffer),
-		      buffer_len(&stdin_buffer));
-	  if (len <= 0)
-	    {
-	      if (fdin == fdout)
-		shutdown(fdin, 1); /* We will no longer send. */
-	      else
-		close(fdin);
-	      fdin = -1;
-	    }
-	  else
-	    {
-	      /* Successful write.  Consume the data from the buffer. */
-	      buffer_consume(&stdin_buffer, len);
-	      /* Update the count of bytes written to the program. */
-	      stdin_bytes += len;
-	    }
-	}
-	
-      /* Send any buffered packet data to the client. */
-      if (FD_ISSET(connection, &writeset))
-	packet_write_poll();
-    }
-
- quit:
-  /* Cleanup and termination code. */
-  /* Send any buffered stdout data to the client. */
-  if (buffer_len(&stdout_buffer) > 0)
-    {
-      packet_start(SSH_SMSG_STDOUT_DATA);
-      packet_put_string(buffer_ptr(&stdout_buffer), 
-			buffer_len(&stdout_buffer));
-      packet_send();
-      /* Update the count of sent bytes. */
-      stdout_bytes += buffer_len(&stdout_buffer);
-    }
-
-  /* Send any buffered stderr data to the client. */
-  if (buffer_len(&stderr_buffer) > 0)
-    {
-      packet_start(SSH_SMSG_STDERR_DATA);
-      packet_put_string(buffer_ptr(&stderr_buffer), 
-			buffer_len(&stderr_buffer));
-      packet_send();
-      /* Update the count of sent bytes. */
-      stderr_bytes += buffer_len(&stderr_buffer);
-    }
-  
-  /* Wait until all buffered data has been written to the client. */
-  packet_write_wait();
-
-  debug("End of interactive session; stdin %ld, stdout (read %ld, sent %ld), stderr %ld bytes.",
-	stdin_bytes, fdout_bytes, stdout_bytes, stderr_bytes);
-
-  /* Free and clear the buffers. */
-  memset(buf, 0, sizeof(buf));
-  buffer_free(&stdin_buffer);
-  buffer_free(&stdout_buffer);
-  buffer_free(&stderr_buffer);
-
-  /* Close the file descriptors. */
-  if (fdout != -1)
-    close(fdout);
-  if (fdin != -1 && fdin != fdout)
-    close(fdin);
-  if (fderr != -1)
-    close(fderr);
-
-  /* Stop listening for channels; this removes unix domain sockets. */
-  channel_stop_listening();
-  
-  /* Wait for the child to exit.  Get its exit status. */
-  wait_pid = wait(&wait_status);
-  if (wait_pid < 0)
-    {
-#ifdef HPSUX_BROKEN_PTYS
-      /* HPSUX kludge continues. */
-      /* It is possible that the wait was handled by SIGCHLD handler.  This
-	 may result in either: this call returning with EINTR, or: this
-	 call returning ECHILD. */
-      if (do_session_child_terminated)
-	wait_status = do_session_wait_status;
-      else
-	packet_disconnect("wait: %s", strerror(errno));
-#else /* HPSUX_BROKEN_PTYS */
-      /* Strange, wait for the child failed. */
-      packet_disconnect("wait: %s", strerror(errno));
-#endif /* HPSUX_BROKEN_PTYS */
-    }
-  else
-    {
-      /* Check if it matches the process we forked. */
-      if (wait_pid != pid)
-	error("Strange, wait returned pid %d, expected %d", wait_pid, pid);
-    }
-
-  /* Check if it exited normally. */
-  if (WIFEXITED(wait_status))
-    {
-      /* Yes, normal exit.  Get exit status and send it to the client. */
-      debug("Command exited with status %d.", WEXITSTATUS(wait_status));
-      packet_start(SSH_SMSG_EXITSTATUS);
-      packet_put_int(WEXITSTATUS(wait_status));
-      packet_send();
-      packet_write_wait();
-
-      /* Wait for exit confirmation.  Note that there might be other
-         packets coming before it; however, the program has already died
-	 so we just ignore them.  The client is supposed to respond with
-	 the confirmation when it receives the exit status. */
-      do
-	{
-	  type = packet_read();
-	}
-      while (type != SSH_CMSG_EXIT_CONFIRMATION);
-
-      debug("Received exit confirmation.");
-      return;
-    }
-
-  /* Check if the program terminated due to a signal. */
-  if (WIFSIGNALED(wait_status))
-    packet_disconnect("Session terminated on signal %d.", 
-		      WTERMSIG(wait_status));
-
-  /* Some weird exit cause.  Just exit. */
-  packet_disconnect("wait returned status %04x.", wait_status);
-  /*NOTREACHED*/
 }

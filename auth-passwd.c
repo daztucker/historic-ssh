@@ -15,8 +15,16 @@ the password is valid for the user.
 */
 
 /*
- * $Id: auth-passwd.c,v 1.8 1995/09/27 02:10:34 ylo Exp $
+ * $Id: auth-passwd.c,v 1.2 1996/02/18 21:53:45 ylo Exp $
  * $Log: auth-passwd.c,v $
+ * Revision 1.2  1996/02/18 21:53:45  ylo
+ * 	Test for HAVE_ULTRIX_SHADOW_PASSWORDS instead of ultrix
+ * 	(mips-dec-mach3 has ultrix defined, but does not support the
+ * 	shadow password stuff).
+ *
+ * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.8  1995/09/27  02:10:34  ylo
  * 	Added support for SCO unix shadow passwords.
  *
@@ -57,10 +65,10 @@ the password is valid for the user.
 #include <sys/audit.h>
 #include <pwdadj.h>
 #endif /* HAVE_ETC_SECURITY_PASSWD_ADJUNCT */
-#ifdef ultrix
+#ifdef HAVE_ULTRIX_SHADOW_PASSWORDS
 #include <auth.h>
 #include <sys/svcinfo.h>
-#endif /* ultrix */
+#endif /* HAVE_ULTRIX_SHADOW_PASSWORDS */
 #include "packet.h"
 #include "ssh.h"
 #include "servconf.h"
@@ -248,7 +256,7 @@ int auth_password(const char *server_user, const char *password)
   xfree(saved_pw_name);
   xfree(saved_pw_passwd);
 
-#ifdef ultrix
+#ifdef HAVE_ULTRIX_SHADOW_PASSWORDS
   {
     /* Note: we are assuming that pw from above is still valid. */
     struct svcinfo *svp;
@@ -263,7 +271,7 @@ int auth_password(const char *server_user, const char *password)
 	svp->svcauth.seclevel == SEC_ENHANCED)
       return authenticate_user(pw, password, "/dev/ttypXX") >= 0;
   }
-#endif /* ultrix */
+#endif /* HAVE_ULTRIX_SHADOW_PASSWORDS */
 
   /* Encrypt the candidate password using the proper salt. */
 #ifdef HAVE_OSF1_C2_SECURITY

@@ -14,9 +14,12 @@ Functions for connecting the local authentication agent.
 */
 
 /*
- * $Id: authfd.c,v 1.15 1998/03/27 16:56:30 kivinen Exp $
+ * $Id: authfd.c,v 1.16 1998/05/23 20:20:49 kivinen Exp $
  * $Log: authfd.c,v $
- * Revision 1.15  1998/03/27 16:56:30  kivinen
+ * Revision 1.16  1998/05/23  20:20:49  kivinen
+ * 	Changed () -> (void).
+ *
+ * Revision 1.15  1998/03/27  16:56:30  kivinen
  * 	Allow authentication socket to be symlink, if not suid. Fixed
  * 	authsocketdir freeing.
  *
@@ -103,7 +106,7 @@ Functions for connecting the local authentication agent.
    Socket directory privileges are checked to prevent anyone
    from connecting to other users' sockets with suid root ssh. */
 
-int ssh_get_authentication_fd()
+int ssh_get_authentication_fd(void)
 {
   char *authsocket, *authsocketdir, *newauthsockdir, *last_dir;
   char *origauthsocket;
@@ -386,7 +389,7 @@ int ssh_get_authentication_fd()
 /* Opens a socket to the authentication server.  Returns the number of
    that socket, or -1 if no connection could be made. */
 
-int ssh_get_authentication_connection_fd()
+int ssh_get_authentication_connection_fd(void)
 {
   int authfd;
 
@@ -408,7 +411,7 @@ int ssh_get_authentication_connection_fd()
    opened. */
 
 AuthenticationConnection *
-ssh_get_authentication_connection()
+ssh_get_authentication_connection(void)
 {
   AuthenticationConnection *auth;
   int sock;

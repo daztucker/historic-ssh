@@ -37,9 +37,13 @@ Description of the RSA algorithm can be found e.g. from the following sources:
 */
 
 /*
- * $Id: rsa.c,v 1.4 1998/05/23 20:23:56 kivinen Exp $
+ * $Id: rsa.c,v 1.5 1998/07/08 14:54:26 tri Exp $
  * $Log: rsa.c,v $
- * Revision 1.4  1998/05/23  20:23:56  kivinen
+ * Revision 1.5  1998/07/08 14:54:26  tri
+ * 	Print progress identification in rsa key generation
+ * 	to stderr instead of stdout.
+ *
+ * Revision 1.4  1998/05/23 20:23:56  kivinen
  * 	Changed () -> (void). Added #include "ssh.h".
  *
  * Revision 1.3  1997/08/21  22:26:55  ylo
@@ -301,8 +305,7 @@ void rsa_random_prime(MP_INT *ret, RandomState *state, unsigned int bits)
       /* It passed the small prime test (not divisible by any of them). */
       if (rsa_verbose)
 	{
-	  printf(".");
-	  fflush(stdout);
+	  fprintf(stderr, ".");
 	}
 
       /* Compute the number in question. */
@@ -317,8 +320,7 @@ void rsa_random_prime(MP_INT *ret, RandomState *state, unsigned int bits)
 	  /* Passed the fermat test for witness 2. */
 	  if (rsa_verbose)
 	    {
-	      printf("+");
-	      fflush(stdout);
+	      fprintf(stderr, "+");
 	    }
 	  /* Perform a more tests.  These are probably unnecessary. */
 	  if (mpz_probab_prime_p(ret, 20))
@@ -329,8 +331,7 @@ void rsa_random_prime(MP_INT *ret, RandomState *state, unsigned int bits)
   /* Found a (probable) prime.  It is in ret. */
   if (rsa_verbose)
     {
-      printf("+ (distance %ld)\n", difference);
-      fflush(stdout);
+      fprintf(stderr, "+ (distance %ld)\n", difference);
     }
 
   /* Free the small prime moduli; they are no longer needed. */
@@ -422,9 +423,9 @@ static void derive_rsa_keys(MP_INT *n, MP_INT *e, MP_INT *d, MP_INT *u,
     {
       if (mpz_cmp_ui(&G, 100) >= 0)
 	{
-	  printf("Warning: G="); 
+	  fprintf(stderr, "Warning: G="); 
 	  mpz_out_str(stdout, 10, &G);
-	  printf(" is large (many spare key sets); key may be bad!\n");
+	  fprintf(stderr, " is large (many spare key sets); key may be bad!\n");
 	}
     }
 
@@ -494,8 +495,7 @@ void rsa_generate_key(RSAPrivateKey *prv, RSAPublicKey *pub,
 
   if (rsa_verbose)
     {
-      printf("Generating p:  "); 
-      fflush(stdout);
+      fprintf(stderr, "Generating p:  "); 
     }
 
   /* Generate random number p. */
@@ -505,8 +505,7 @@ void rsa_generate_key(RSAPrivateKey *prv, RSAPublicKey *pub,
 
   if (rsa_verbose)
     {
-      printf("Generating q:  "); 
-      fflush(stdout);
+      fprintf(stderr, "Generating q:  "); 
     }
 
   /* Generate random number q. */
@@ -517,7 +516,7 @@ void rsa_generate_key(RSAPrivateKey *prv, RSAPublicKey *pub,
   if (ret == 0)
     {
       if (rsa_verbose)
-	printf("Generated the same prime twice!\n");
+	fprintf(stderr, "Generated the same prime twice!\n");
       goto retry;
     }
   if (ret > 0)
@@ -534,7 +533,7 @@ void rsa_generate_key(RSAPrivateKey *prv, RSAPublicKey *pub,
   if (mpz_cmp(&aux, &test) < 0)
     {
       if (rsa_verbose)
-	printf("The primes are too close together.\n");
+	fprintf(stderr, "The primes are too close together.\n");
       goto retry;
     }
 
@@ -544,13 +543,13 @@ void rsa_generate_key(RSAPrivateKey *prv, RSAPublicKey *pub,
   if (mpz_cmp_ui(&aux, 1) != 0)
     {
       if (rsa_verbose)
-	printf("The primes are not relatively prime!\n");
+	fprintf(stderr, "The primes are not relatively prime!\n");
       goto retry;
     }
   
   /* Derive the RSA private key from the primes. */
   if (rsa_verbose)
-    printf("Computing the keys...\n");
+    fprintf(stderr, "Computing the keys...\n");
   derive_rsa_keys(&prv->n, &prv->e, &prv->d, &prv->u, &prv->p, &prv->q, 5);
   prv->bits = bits;
 
@@ -562,7 +561,7 @@ void rsa_generate_key(RSAPrivateKey *prv, RSAPublicKey *pub,
 #ifndef RSAREF /* I don't want to kludge these to work with RSAREF. */
   /* Test that the key really works.  This should never fail (I think). */
   if (rsa_verbose)
-    printf("Testing the keys...\n");
+    fprintf(stderr, "Testing the keys...\n");
   rsa_random_integer(&test, state, bits);
   mpz_mod(&test, &test, &pub->n); /* must be less than n. */
   rsa_private(&aux, &test, prv);
@@ -570,7 +569,7 @@ void rsa_generate_key(RSAPrivateKey *prv, RSAPublicKey *pub,
   if (mpz_cmp(&aux, &test) != 0)
     {
       if (rsa_verbose)
-	printf("**** private+public failed to decrypt.\n");
+	fprintf(stderr, "**** private+public failed to decrypt.\n");
       goto retry0;
     }
 
@@ -579,7 +578,7 @@ void rsa_generate_key(RSAPrivateKey *prv, RSAPublicKey *pub,
   if (mpz_cmp(&aux, &test) != 0)
     {
       if (rsa_verbose)
-	printf("**** public+private failed to decrypt.\n");
+	fprintf(stderr, "**** public+private failed to decrypt.\n");
       goto retry0;
     }
 #endif /* !RSAREF */
@@ -588,7 +587,7 @@ void rsa_generate_key(RSAPrivateKey *prv, RSAPublicKey *pub,
   mpz_clear(&test);
   
   if (rsa_verbose)
-    printf("Key generation complete.\n");
+    fprintf(stderr, "Key generation complete.\n");
 }
 
 /* Frees any memory associated with the private key. */

@@ -12,14 +12,22 @@ Created: Wed Jul 12 01:07:36 1995 ylo
 */
 
 /*
- * $Id: tildexpand.c,v 1.1.1.1 1996/02/18 21:38:12 ylo Exp $
+ * $Id: tildexpand.c,v 1.3 1999/02/22 08:14:14 tri Exp $
  * $Log: tildexpand.c,v $
- * Revision 1.1.1.1  1996/02/18  21:38:12  ylo
- * 	Imported ssh-1.2.13.
+ * Revision 1.3  1999/02/22 08:14:14  tri
+ * 	Final fixes for 1.2.27.
+ *
+ * Revision 1.2  1999/02/21 19:52:59  ylo
+ *      Intermediate commit of ssh1.2.27 stuff.
+ *      Main change is sprintf -> snprintf; however, there are also
+ *      many other changes.
+ *
+ * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
+ *      Imported ssh-1.2.13.
  *
  * Revision 1.2  1995/07/13  01:41:03  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
+ *      Removed "Last modified" header.
+ *      Added cvs log.
  *
  * $Endlog$
  */
@@ -45,7 +53,7 @@ char *tilde_expand_filename(const char *filename, uid_t my_uid)
     return xstrdup(filename);
 
 
-  /* Skiop the tilde. */
+  /* Skip the tilde. */
   filename++;
 
   /* Find where the username ends. */
@@ -55,12 +63,15 @@ char *tilde_expand_filename(const char *filename, uid_t my_uid)
   else
     userlen = strlen(filename); /* Nothign after username. */
   if (userlen == 0)
-    pw = getpwuid(my_uid);  /* Own home directory. */
+    {
+      strcpy(user, "(self)");
+      pw = getpwuid(my_uid);  /* Own home directory. */
+    }
   else
     {
       /* Tilde refers to someone elses home directory. */
       if (userlen > sizeof(user) - 1)
-	fatal("User name after tilde too long.");
+        fatal("User name after tilde too long.");
       memcpy(user, filename, userlen);
       user[userlen] = 0;
       pw = getpwnam(user);
@@ -68,7 +79,7 @@ char *tilde_expand_filename(const char *filename, uid_t my_uid)
   
   /* Check that we found the user. */
   if (!pw)
-    fatal("Unknown user %100s.", user);
+    fatal("Unknown user %.100s.", user);
   
   homedir = pw->pw_dir;
 
@@ -80,6 +91,7 @@ char *tilde_expand_filename(const char *filename, uid_t my_uid)
   
   /* Build a path combining the specified directory and path. */
   expanded = xmalloc(strlen(homedir) + strlen(cp + 1) + 2);
-  sprintf(expanded, "%s/%s", homedir, cp + 1);
+  snprintf(expanded, strlen(homedir) + strlen(cp + 1) + 2,
+           "%s/%s", homedir, cp + 1);
   return expanded;
 }

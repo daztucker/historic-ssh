@@ -2,10 +2,11 @@
 
 packet.c
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Sat Mar 18 02:40:40 1995 ylo
 
@@ -15,12 +16,15 @@ with the other side.  This same code is used both on client and server side.
 */
 
 /*
- * $Id: packet.c,v 1.12 1999/02/21 19:52:30 ylo Exp $
+ * $Id: packet.c,v 1.13 1999/11/17 17:04:49 tri Exp $
  * $Log: packet.c,v $
+ * Revision 1.13  1999/11/17 17:04:49  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.12  1999/02/21 19:52:30  ylo
- * 	Intermediate commit of ssh1.2.27 stuff.
- * 	Main change is sprintf -> snprintf; however, there are also
- * 	many other changes.
+ *      Intermediate commit of ssh1.2.27 stuff.
+ *      Main change is sprintf -> snprintf; however, there are also
+ *      many other changes.
  *
  * Revision 1.11  1998/06/11 00:08:44  kivinen
  *      Crc fixing detection code.
@@ -288,7 +292,7 @@ void packet_decrypt(CipherContext *cc, void *dest, void *src,
   
   assert((bytes % 8) == 0);
   
-  /* $Id: packet.c,v 1.12 1999/02/21 19:52:30 ylo Exp $
+  /* $Id: packet.c,v 1.13 1999/11/17 17:04:49 tri Exp $
    * Cryptographic attack detector for ssh - Modifications for packet.c 
    * (C)1998 CORE-SDI, Buenos Aires Argentina
    * Ariel Futoransky(futo@core-sdi.com)

@@ -16,8 +16,18 @@ of X11, TCP/IP, and authentication connections.
 */
 
 /*
- * $Id: ssh.c,v 1.22 1997/04/05 22:00:11 kivinen Exp $
+ * $Id: ssh.c,v 1.25 1997/08/09 21:17:47 ylo Exp $
  * $Log: ssh.c,v $
+ * Revision 1.25  1997/08/09 21:17:47  ylo
+ * 	Fixed out-of-date comment about being back to user's
+ * 	permissions.
+ *
+ * Revision 1.24  1997/08/07 16:22:26  kivinen
+ * 	Moved privileged port check to add_local_forward function.
+ *
+ * Revision 1.23  1997/04/27 21:55:01  kivinen
+ * 	Added F-SECURE stuff.
+ *
  * Revision 1.22  1997/04/05 22:00:11  kivinen
  * 	Added LIBWRAP stuff at the beginning.
  *
@@ -510,6 +520,9 @@ int main(int ac, char **av)
 	  break;
 
 	case 'V':
+#ifdef F_SECURE_COMMERCIAL
+
+#endif /* F_SECURE_COMMERCIAL */
 	  fprintf(stderr, "SSH Version %s [%s], protocol version %d.%d.\n",
 		  SSH_VERSION, HOSTTYPE, PROTOCOL_MAJOR, PROTOCOL_MINOR);
 #ifdef RSAREF
@@ -521,6 +534,9 @@ int main(int ac, char **av)
 	  
 	case 'v':
 	  debug_flag = 1;
+#ifdef F_SECURE_COMMERCIAL
+
+#endif /* F_SECURE_COMMERCIAL */
 	  fprintf(stderr, "SSH Version %s [%s], protocol version %d.%d.\n",
 		  SSH_VERSION, HOSTTYPE, PROTOCOL_MAJOR, PROTOCOL_MINOR);
 #ifdef RSAREF
@@ -594,12 +610,6 @@ int main(int ac, char **av)
 	      fprintf(stderr, "Bad forwarding specification '%s'.\n", optarg);
 	      usage();
 	      /*NOTREACHED*/
-	    }
-	  if (fwd_port < 1024 && original_real_uid != UID_ROOT)
-	    {
-	      fprintf(stderr, 
-		      "Privileged ports can only be forwarded by root.\n");
-	      exit(1);
 	    }
 	  add_local_forward(&options, fwd_port, buf, fwd_host_port);
 #endif
@@ -783,8 +793,7 @@ int main(int ac, char **av)
 	host_private_key_loaded = 1;
     }
 
-  /* Now that we are back to our own permissions, create ~/.ssh directory
-     if it doesn\'t already exist. */
+  /* Create ~/.ssh directory if it doesn\'t already exist. */
   sprintf(buf, "%.100s/%s", pw->pw_dir, SSH_USER_DIR);
   if (userfile_stat(original_real_uid, buf, &st) < 0)
     if (userfile_mkdir(original_real_uid, buf, 0755) < 0)

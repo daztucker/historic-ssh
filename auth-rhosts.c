@@ -8,13 +8,24 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Fri Mar 17 05:12:18 1995 ylo
-Last modified: Wed Jul  5 19:21:17 1995 ylo
 
 Rhosts authentication.  This file contains code to check whether to admit
 the login based on rhosts authentication.  This file also processes
 /etc/hosts.equiv.
 
 */
+
+/*
+ * $Id: auth-rhosts.c,v 1.4 1995/07/27 00:37:00 ylo Exp $
+ * $Log: auth-rhosts.c,v $
+ * Revision 1.4  1995/07/27  00:37:00  ylo
+ * 	Added /etc/hosts.equiv in quick test.
+ *
+ * Revision 1.3  1995/07/13  01:13:20  ylo
+ * 	Removed the "Last modified" header.
+ *
+ * $Endlog$
+ */
 
 #include "includes.h"
 #include "packet.h"
@@ -66,7 +77,7 @@ int auth_rhosts(struct passwd *pw, const char *client_user)
       if (stat(buf, &st) >= 0)
 	break;
     }
-  if (!rhosts_files[rhosts_file_index])
+  if (!rhosts_files[rhosts_file_index] && stat("/etc/hosts.equiv", &st) < 0)
     return 0; /* The user has no .shosts or .rhosts file. */
 
   /* Check that the connection comes from a privileged port. */

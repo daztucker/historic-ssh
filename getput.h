@@ -8,9 +8,20 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Wed Jun 28 22:36:30 1995 ylo
-Last modified: Wed Jun 28 23:32:07 1995 ylo
+
+Macros for storing and retrieving data in msb first and lsb first order.
 
 */
+
+/*
+ * $Id: getput.h,v 1.2 1995/07/13 01:24:09 ylo Exp $
+ * $Log: getput.h,v $
+ * Revision 1.2  1995/07/13  01:24:09  ylo
+ * 	Removed "Last modified" header.
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
 
 #ifndef GETPUT_H
 #define GETPUT_H

@@ -14,8 +14,24 @@ The authentication agent program.
 */
 
 /*
- * $Id: ssh-agent.c,v 1.13 1996/10/29 22:43:55 kivinen Exp $
+ * $Id: ssh-agent.c,v 1.16 1997/03/19 17:39:36 kivinen Exp $
  * $Log: ssh-agent.c,v $
+ * Revision 1.16  1997/03/19 17:39:36  kivinen
+ * 	Added -c (csh style shell) and -s (/bin/sh style shell)
+ * 	options.
+ * 	Fixed /bin/sh command syntax so it will print FOO=1; export
+ * 	FOO; instead of export FOO=1, which some shells doesn't
+ * 	understand.
+ *
+ * Revision 1.15  1996/11/24 08:27:33  kivinen
+ * 	Added new mode for ssh-agent. If no command is given fork to
+ * 	background and print commands that can be executed in users
+ * 	shell that will set SSH_AUTHENTICATION_SOCKET and
+ * 	SSH_AGENT_PID.
+ *
+ * Revision 1.14  1996/11/19 12:09:00  kivinen
+ * 	Fixed check when directory needs to be created.
+ *
  * Revision 1.13  1996/10/29 22:43:55  kivinen
  * 	log -> log_msg. Removed unused sockaddr_in sin.
  * 	Do not define SSH_AUTHENTICATION_SOCKET environment variable
@@ -540,23 +556,45 @@ int main(int ac, char **av)
 {
   fd_set readset, writeset;
   char buf[1024];
-  int sock, creation_failed = 1;
+  int sock, creation_failed = 1, pid;
   struct sockaddr_un sunaddr;
   struct passwd *pw;
   struct stat st;
+  int binsh = 1, erflg = 0;
+  char *sh;
   
   int sockets[2], i;
   int *dups, ret;
 
-  original_real_uid = getuid();
+  sh = getenv("SHELL");
+  if (sh != NULL && strlen(sh) > 3 &&
+      sh[strlen(sh)-3] == 'c')
+    binsh = 0;
   
-  if (ac < 2)
+  while(ac > 1) {
+    if (av[1][0] == '-')
+      {
+	for(i = 1; av[1][i] != '\0'; i++)
+	  {
+	    switch (av[1][i])
+	      {
+	      case 's': binsh = 1; break;
+	      case 'c': binsh = 0; break;
+	      default: erflg++; break;
+	      }
+	  }
+	av++;
+	ac--;
+      }
+  }
+  if (erflg)
     {
-      fprintf(stderr, "ssh-agent version %s\n", SSH_VERSION);
-      fprintf(stderr, "Usage: %s command\n", av[0]);
-      exit(1);
+      fprintf(stderr, "Usage: ssh-agent [-cs] [command [args...]]\n");
+      exit(0);
     }
 
+  original_real_uid = getuid();
+  
   /* The agent uses SSH_AUTHENTICATION_SOCKET. */
   
   parent_pid = getpid();
@@ -583,7 +621,7 @@ int main(int ac, char **av)
       perror("stat");
       goto fail_socket_setup;
     }
-  if (errno == ENOENT && mkdir(socket_dir_name, S_IRWXU) != 0)
+  if (ret == -1 && errno == ENOENT && mkdir(socket_dir_name, S_IRWXU) != 0)
     {
       perror("mkdir");
       goto fail_socket_setup;
@@ -638,7 +676,7 @@ int main(int ac, char **av)
       close(sock);
       goto fail_socket_setup;
     }
-
+  
   /* Everything ok so far, so permit forking. */
   creation_failed = 0;
   
@@ -646,8 +684,36 @@ fail_socket_setup:
   /* If not creation_failed, fork, and have the parent execute the command.
      The child continues as the authentication agent. If creation failed,
      don't fork the child and forget the socket */
-  if (creation_failed || fork() != 0)
-    { /* Parent - execute the given command. */
+  if (!creation_failed)
+    pid = fork();
+  else
+    pid = 1;			/* Run only parent code */
+  if (pid != 0)
+    { /* Parent - execute the given command, if given command. */
+      if (ac == 1)
+	{			/* No command given print socket name */
+	  if (creation_failed)
+	    {
+	      printf("echo Agent creation failed, no agent started\n");
+	      exit(0);
+	    }
+
+	  if (!binsh)
+	    {			/* shell is *csh */
+	      printf("setenv SSH_AUTHENTICATION_SOCKET %s;\n",
+		     socket_name);
+	      printf("setenv SSH_AGENT_PID %d;\n", pid);
+	      printf("echo Agent pid %d;\n", pid);
+	    }
+	  else
+	    {
+	      printf("SSH_AUTHENTICATION_SOCKET=%s; export SSH_AUTHENTICATION_SOCKET;\n", socket_name);
+	      printf("SSH_AGENT_PID=%d; export SSH_AGENT_PID;\n", pid);
+	      printf("echo Agent pid %d;\n", pid);
+	    }
+	  exit(0);
+	}
+      /* Command given run it */
       if (!creation_failed)
 	{
 	  sprintf(buf, "SSH_AUTHENTICATION_SOCKET=%s", socket_name);
@@ -657,12 +723,41 @@ fail_socket_setup:
       perror(av[1]);
       exit(1);
     }
-
+  
+  close(0);
+  close(1);
+  close(2);
+  chdir("/");
+  
+  /* Disconnect from the controlling tty. */
+#ifdef TIOCNOTTY
+  {
+    int fd;
+    fd = open("/dev/tty", O_RDWR|O_NOCTTY);
+    if (fd >= 0)
+      {
+	(void)ioctl(fd, TIOCNOTTY, NULL);
+	close(fd);
+      }
+  }
+#endif /* TIOCNOTTY */
+#ifdef HAVE_SETSID
+#ifdef ultrix
+  setpgrp(0, 0);
+#else /* ultrix */
+  if (setsid() < 0)
+    error("setsid: %.100s", strerror(errno));
+#endif
+#endif /* HAVE_SETSID */
+  
   new_socket(AUTH_SOCKET, sock);
-  signal(SIGALRM, check_parent_exists);
+  if (ac != 1)
+    {
+      signal(SIGALRM, check_parent_exists);
+      alarm(10);
+    }
   signal(SIGHUP, remove_socket_on_signal);
   signal(SIGTERM, remove_socket_on_signal);
-  alarm(10);
 
   signal(SIGINT, SIG_IGN);
   while (1)

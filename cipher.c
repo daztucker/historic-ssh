@@ -8,9 +8,18 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Wed Apr 19 17:41:39 1995 ylo
-Last modified: Wed Jul 12 00:22:48 1995 ylo
 
 */
+
+/*
+ * $Id: cipher.c,v 1.2 1995/07/13 01:19:45 ylo Exp $
+ * $Log: cipher.c,v $
+ * Revision 1.2  1995/07/13  01:19:45  ylo
+ * 	Removed "Last modified" header.
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
 
 #include "includes.h"
 #include "ssh.h"

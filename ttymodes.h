@@ -13,8 +13,11 @@ Created: Tue Mar 21 15:42:09 1995 ylo
 */
 
 /*
- * $Id: ttymodes.h,v 1.3 1995/08/18 22:59:00 ylo Exp $
+ * $Id: ttymodes.h,v 1.1.1.1 1996/02/18 21:38:10 ylo Exp $
  * $Log: ttymodes.h,v $
+ * Revision 1.1.1.1  1996/02/18 21:38:10  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.3  1995/08/18  22:59:00  ylo
  * 	Added acknowledgement about Janne Snabb contributing the sgtty
  * 	code.

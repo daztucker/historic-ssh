@@ -16,8 +16,11 @@ arbitrary tcp/ip connections, and the authentication agent connection.
 */
 
 /*
- * $Id: channels.c,v 1.12 1995/09/24 23:58:49 ylo Exp $
+ * $Id: channels.c,v 1.13 1995/10/02 01:20:08 ylo Exp $
  * $Log: channels.c,v $
+ * Revision 1.13  1995/10/02  01:20:08  ylo
+ * 	Added a cast to avoid compiler warning.
+ *
  * Revision 1.12  1995/09/24  23:58:49  ylo
  * 	Added support for screen number in X11 forwarding.
  * 	Reduced max packet size in interactive mode from 1024 bytes to
@@ -111,6 +114,7 @@ typedef struct
   char path[200]; /* path for unix domain sockets, or host name for forwards */
   int host_port;  /* port to connect for forwards */
   int listening_port; /* port being listened for forwards */
+  char *remote_name;
 } Channel;
 
 /* Pointer to an array containing all allocated channels.  The array is
@@ -161,6 +165,16 @@ static int num_permitted_opens = 0;
    do anything after logging in anyway. */
 static int all_opens_permitted = 0;
 
+/* This is set to true if both sides support SSH_PROTOFLAG_HOST_IN_FWD_OPEN. */
+static int have_hostname_in_open = 0;
+
+/* Sets specific protocol options. */
+
+void channel_set_options(int hostname_in_open)
+{
+  have_hostname_in_open = hostname_in_open;
+}
+
 /* Permits opening to any host/port in SSH_MSG_PORT_OPEN.  This is usually
    called by the server, because the user could connect to any port anyway,
    and the server has no way to know but to trust the client anyway. */
@@ -170,9 +184,10 @@ void channel_permit_all_opens()
   all_opens_permitted = 1;
 }
 
-/* Allocate a new channel object and set its type and socket. */
+/* Allocate a new channel object and set its type and socket. 
+   This will cause remote_name to be freed. */
 
-int channel_allocate(int type, int sock)
+int channel_allocate(int type, int sock, char *remote_name)
 {
   int i, old_channels;
 
@@ -199,6 +214,7 @@ int channel_allocate(int type, int sock)
 	channels[i].type = type;
 	channels[i].sock = sock;
 	channels[i].remote_id = -1;
+	channels[i].remote_name = remote_name;
 	return i;
       }
 
@@ -216,6 +232,7 @@ int channel_allocate(int type, int sock)
   channels[old_channels].type = type;
   channels[old_channels].sock = sock;
   channels[old_channels].remote_id = -1;
+  channels[old_channels].remote_name = remote_name;
   return old_channels;
 }
 
@@ -230,6 +247,11 @@ void channel_free(int channel)
   buffer_free(&channels[channel].input);
   buffer_free(&channels[channel].output);
   channels[channel].type = SSH_CHANNEL_FREE;
+  if (channels[channel].remote_name)
+    {
+      xfree(channels[channel].remote_name);
+      channels[channel].remote_name = NULL;
+    }
 }
 
 /* This is called just before select() to add any bits relevant to
@@ -382,7 +404,7 @@ void channel_after_select(fd_set *readset, fd_set *writeset)
   struct sockaddr addr;
   int addrlen, newsock, i, newch, len, port;
   Channel *ch;
-  char buf[16384];
+  char buf[16384], *remote_hostname;
   
   /* Loop over all channels... */
   for (i = 0; i < channels_alloc; i++)
@@ -403,9 +425,15 @@ void channel_after_select(fd_set *readset, fd_set *writeset)
 		  error("accept: %.100s", strerror(errno));
 		  break;
 		}
-	      newch = channel_allocate(SSH_CHANNEL_OPENING, newsock);
+	      remote_hostname = get_remote_hostname(newsock);
+	      newch = channel_allocate(SSH_CHANNEL_OPENING, newsock,
+				       ch->type == SSH_CHANNEL_X11_LISTENER ?
+				       xstrdup("unix domain X11 connection") :
+				       remote_hostname);
 	      packet_start(SSH_SMSG_X11_OPEN);
 	      packet_put_int(newch);
+	      if (have_hostname_in_open)
+		packet_put_string(remote_hostname, strlen(remote_hostname));
 	      packet_send();
 	    }
 	  break;
@@ -424,11 +452,15 @@ void channel_after_select(fd_set *readset, fd_set *writeset)
 		  error("accept: %.100s", strerror(errno));
 		  break;
 		}
-	      newch = channel_allocate(SSH_CHANNEL_OPENING, newsock);
+	      remote_hostname = get_remote_hostname(newsock);
+	      newch = channel_allocate(SSH_CHANNEL_OPENING, newsock,
+				       remote_hostname);
 	      packet_start(SSH_MSG_PORT_OPEN);
 	      packet_put_int(newch);
 	      packet_put_string(ch->path, strlen(ch->path));
 	      packet_put_int(ch->host_port);
+	      if (have_hostname_in_open)
+		packet_put_string(remote_hostname, strlen(remote_hostname));
 	      packet_send();
 	    }
 	  break;
@@ -465,7 +497,8 @@ void channel_after_select(fd_set *readset, fd_set *writeset)
 	      newsock = accept(ch->sock, &addr, &len);
 	      if (newsock < 0)
 		error("Accept from authentication socket failed");
-	      (void)channel_allocate(SSH_CHANNEL_AUTH_SOCKET_FD, newsock);
+	      (void)channel_allocate(SSH_CHANNEL_AUTH_SOCKET_FD, newsock,
+				     xstrdup("accepted auth socket"));
 	    }
 	  break;
 
@@ -796,6 +829,49 @@ int channel_still_open()
   return 0;
 }
 
+/* Returns a message describing the currently open forwarded
+   connections, suitable for sending to the client.  The message
+   contains crlf pairs for newlines. */
+
+char *channel_open_message()
+{
+  Buffer buffer;
+  int i;
+  char buf[512], *cp;
+
+  buffer_init(&buffer);
+  sprintf(buf, "The following connections are open:\r\n");
+  buffer_append(&buffer, buf, strlen(buf));
+  for (i = 0; i < channels_alloc; i++)
+    switch (channels[i].type)
+      {
+      case SSH_CHANNEL_FREE:
+      case SSH_CHANNEL_X11_LISTENER:
+      case SSH_CHANNEL_X11_INET_LISTENER:
+      case SSH_CHANNEL_PORT_LISTENER:
+      case SSH_CHANNEL_CLOSED:
+      case SSH_CHANNEL_AUTH_FD:
+      case SSH_CHANNEL_AUTH_SOCKET:
+      case SSH_CHANNEL_AUTH_SOCKET_FD:
+	continue;
+      case SSH_CHANNEL_OPENING:
+      case SSH_CHANNEL_OPEN:
+      case SSH_CHANNEL_X11_OPEN:
+      case SSH_CHANNEL_INPUT_DRAINING:
+      case SSH_CHANNEL_OUTPUT_DRAINING:
+	sprintf(buf, "  %.300s\r\n", channels[i].remote_name);
+	buffer_append(&buffer, buf, strlen(buf));
+	continue;
+      default:
+	fatal("channel_still_open: bad channel type %d", channels[i].type);
+	/*NOTREACHED*/
+      }
+  buffer_append(&buffer, "\0", 1);
+  cp = xstrdup(buffer_ptr(&buffer));
+  buffer_free(&buffer);
+  return cp;
+}
+
 /* Initiate forwarding of connections to local port "port" through the secure
    channel to host:port from remote side. */
 
@@ -828,7 +904,8 @@ void channel_request_local_forwarding(int port, const char *host,
     packet_disconnect("listen: %.100s", strerror(errno));
 	    
   /* Allocate a channel number for the socket. */
-  ch = channel_allocate(SSH_CHANNEL_PORT_LISTENER, sock);
+  ch = channel_allocate(SSH_CHANNEL_PORT_LISTENER, sock,
+			xstrdup("port listener"));
   strcpy(channels[ch].path, host); /* note: host name stored here */
   channels[ch].host_port = host_port; /* port on host to connect to */
   channels[ch].listening_port = port; /* port being listened */
@@ -979,11 +1056,9 @@ void channel_input_port_open()
 
   /* Successful connection. */
 
-  /* Free the argument string. */
-  xfree(host);
-
   /* Allocate a channel for this connection. */
-  newch = channel_allocate(SSH_CHANNEL_OPEN, sock);
+  newch = channel_allocate(SSH_CHANNEL_OPEN, sock,
+			   xstrdup(host));
   channels[newch].remote_id = remote_channel;
   
   /* Send a confirmation to the remote host. */
@@ -991,6 +1066,9 @@ void channel_input_port_open()
   packet_put_int(remote_channel);
   packet_put_int(newch);
   packet_send();
+
+  /* Free the argument string. */
+  xfree(host);
   
   return;
 
@@ -1073,7 +1151,8 @@ char *x11_create_display(int screen_number)
     }
 
   /* Allocate a channel for the socket. */
-  i = channel_allocate(SSH_CHANNEL_X11_LISTENER, sock);
+  i = channel_allocate(SSH_CHANNEL_X11_LISTENER, sock,
+		       xstrdup("X11 unix domain listener"));
   /* Save the path of the socket.  The socket will be removed in
      channel_stop_listening. */
   strcpy(channels[i].path, ssun.sun_path);
@@ -1175,7 +1254,8 @@ char *x11_create_display_inet(int screen_number)
 #endif /* HPSUX_NONSTANDARD_X11_KLUDGE */
 	    
   /* Allocate a channel for the socket. */
-  (void)channel_allocate(SSH_CHANNEL_X11_INET_LISTENER, sock);
+  (void)channel_allocate(SSH_CHANNEL_X11_INET_LISTENER, sock,
+			 xstrdup("X11 inet listener"));
 
   /* Return a suitable value for the DISPLAY environment variable. */
   return xstrdup(buf);
@@ -1191,11 +1271,17 @@ void x11_input_open()
   const char *display;
   struct sockaddr_un ssun;
   struct sockaddr_in sin;
-  char buf[1024], *cp;
+  char buf[1024], *cp, *remote_host;
   struct hostent *hp;
 
   /* Get remote channel number. */
   remote_channel = packet_get_int();
+
+  /* Get remote originator name. */
+  if (have_hostname_in_open)
+    remote_host = packet_get_string(NULL);
+  else
+    remote_host = xstrdup("unknown (remote did not supply name)");
 
   debug("Received X11 open request.");
 
@@ -1317,9 +1403,9 @@ void x11_input_open()
   
   /* Allocate a channel for this connection. */
   if (x11_saved_proto == NULL)
-    newch = channel_allocate(SSH_CHANNEL_OPEN, sock);
+    newch = channel_allocate(SSH_CHANNEL_OPEN, sock, remote_host);
   else
-    newch = channel_allocate(SSH_CHANNEL_X11_OPEN, sock);
+    newch = channel_allocate(SSH_CHANNEL_X11_OPEN, sock, remote_host);
   channels[newch].remote_id = remote_channel;
   
   /* Send a confirmation to the remote host. */
@@ -1500,7 +1586,8 @@ void auth_input_request_forwarding(struct passwd *pw)
 	packet_disconnect("listen: %.100s", strerror(errno));
 
       /* Allocate a channel for the authentication agent socket. */
-      newch = channel_allocate(SSH_CHANNEL_AUTH_SOCKET, sock);
+      newch = channel_allocate(SSH_CHANNEL_AUTH_SOCKET, sock,
+			       xstrdup("auth socket"));
       strcpy(channels[newch].path, channel_forwarded_auth_socket_name);
     }
   else 
@@ -1520,7 +1607,7 @@ void auth_input_request_forwarding(struct passwd *pw)
 	 Don't use dup2 because maybe some systems don't have it?? */
       for (cnt = 0;; cnt++) 
 	{
-	  if ((dups[cnt] = dup(packet_get_connection())) < 0)
+	  if ((dups[cnt] = dup(packet_get_connection_in())) < 0)
 	    fatal("auth_input_request_forwarding: dup failed");
 	  if (dups[cnt] == pfd)
 	    break;
@@ -1543,7 +1630,8 @@ void auth_input_request_forwarding(struct passwd *pw)
       channel_forwarded_auth_fd = sockets[1];
     
       /* Allcate a channel for the authentication fd. */
-      (void)channel_allocate(SSH_CHANNEL_AUTH_FD, sockets[0]);
+      (void)channel_allocate(SSH_CHANNEL_AUTH_FD, sockets[0],
+			     xstrdup("auth fd"));
     }
 }
 
@@ -1552,6 +1640,7 @@ void auth_input_request_forwarding(struct passwd *pw)
 void auth_input_open_request()
 {
   int port, sock, newch;
+  char *dummyname;
 
   /* Read the port number from the message. */
   port = packet_get_int();
@@ -1569,13 +1658,20 @@ void auth_input_open_request()
 
   debug("Forwarding authentication connection.");
 
+  /* Dummy host name.  This will be freed when the channel is freed; it will
+     still be valid in the packet_put_string below since the channel cannot
+     yet be freed at that point. */
+  dummyname = xstrdup("authentication agent connection");
+  
   /* Allocate a channel for the new connection. */
-  newch = channel_allocate(SSH_CHANNEL_OPENING, sock);
+  newch = channel_allocate(SSH_CHANNEL_OPENING, sock, dummyname);
 
   /* Fake a forwarding request. */
   packet_start(SSH_MSG_PORT_OPEN);
   packet_put_int(newch);
   packet_put_string("localhost", strlen("localhost"));
   packet_put_int(port);
+  if (have_hostname_in_open)
+    packet_put_string(dummyname, strlen(dummyname));
   packet_send();
 }

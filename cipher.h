@@ -11,19 +11,13 @@ Created: Wed Apr 19 16:50:42 1995 ylo
 
 */
 
-/* RCSID("$Id: cipher.h,v 1.9 1999/05/28 15:21:52 bg Exp $"); */
+/* RCSID("$Id: cipher.h,v 1.11 1999/11/11 22:58:34 bg Exp $"); */
 
 #ifndef CIPHER_H
 #define CIPHER_H
 
-#ifdef WITH_IDEA
-#include "idea.h"
-#endif /* WITH_IDEA */
 #include "des.h"
-#ifdef WITH_RC4
-#include "rc4.h"
-#endif
-#ifdef WITH_BLOWFISH
+#if defined(WITH_BLOWFISH) || defined(WITH_BF_PCBC)
 #include "blowfish.h"
 #endif
 
@@ -36,23 +30,15 @@ Created: Wed Apr 19 16:50:42 1995 ylo
 #define SSH_CIPHER_3DES		3 /* 3DES CBC */
 #define SSH_CIPHER_TSS		4 /* TRI's Simple Stream encryption CBC */
 #define SSH_CIPHER_RC4		5 /* Alleged RC4 */
-#define SSH_CIPHER_BLOWFISH	6
+#define SSH_CIPHER_BLOWFISH	6 /* Blowfish CBC with bswap */
+#define SSH_CIPHER_RESERVED	7
+#define SSH_CIPHER_BF_PCBC	8 /* Blowfish PCBC */
+
+#define SSH_CIPHER_MAX		8
 
 typedef struct {
   unsigned int type;
   union {
-#ifdef WITH_IDEA
-    struct {
-      IDEAContext key;
-      unsigned char iv[8];
-    } idea;
-#endif /* WITH_IDEA */
-#ifdef WITH_DES
-    struct {
-      des_key_schedule key;
-      des_cblock iv;
-    } des;
-#endif /* WITH_DES */
     struct {
       des_key_schedule key1;
       des_key_schedule key2;
@@ -60,15 +46,12 @@ typedef struct {
       des_key_schedule key3;
       des_cblock iv3;
     } des3;
-#ifdef WITH_RC4
-    RC4Context rc4;
-#endif
-#ifdef WITH_BLOWFISH
+#if defined(WITH_BLOWFISH) || defined(WITH_BF_PCBC)
     struct {
       struct bf_key_st key;
       unsigned char iv[8];
     } bf;
-#endif /* WITH_BLOWFISH */
+#endif /* defined(WITH_BLOWFISH) || defined(WITH_BF_PCBC) */
   } u;
 } CipherContext;
 

@@ -15,18 +15,18 @@ Buffers.
 */
 
 #include "includes.h"
-RCSID("$Id: bufaux.c,v 1.3 1999/06/14 14:41:36 bg Exp $");
+RCSID("$Id: bufaux.c,v 1.4 1999/10/31 12:31:27 bg Exp $");
 
 #include "ssh.h"
-#include "gmp.h"
+#include "rsa.h"
 #include "bufaux.h"
 #include "xmalloc.h"
 #include "getput.h"
 
-/* Stores an MP_INT in the buffer with a 2-byte msb first bit count, followed
+/* Stores an BIGNUM in the buffer with a 2-byte msb first bit count, followed
    by (bits+7)/8 bytes of binary data, msb first. */
 
-void buffer_put_mp_int(Buffer *buffer, MP_INT *value)
+void buffer_put_mp_int(Buffer *buffer, BIGNUM *value)
 {
   int bits = mpz_sizeinbase(value, 2);
   int hex_size = mpz_sizeinbase(value, 16);
@@ -69,9 +69,9 @@ void buffer_put_mp_int(Buffer *buffer, MP_INT *value)
   xfree(buf);
 }
 
-/* Retrieves an MP_INT from the buffer. */
+/* Retrieves an BIGNUM from the buffer. */
 
-int buffer_get_mp_int(Buffer *buffer, MP_INT *value)
+int buffer_get_mp_int(Buffer *buffer, BIGNUM *value)
 {
   int i, bits, bytes;
   char *hex;

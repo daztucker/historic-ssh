@@ -12,7 +12,7 @@ Created: Mon Aug 21 15:48:58 1995 ylo
 */
 
 #include "includes.h"
-RCSID("$Id: servconf.c,v 1.8 1999/06/12 09:22:04 bg Exp $");
+RCSID("$Id: servconf.c,v 1.9 1999/10/22 10:19:13 bg Exp $");
 
 #include "ssh.h"
 #include "servconf.h"
@@ -140,18 +140,10 @@ typedef enum
   sPort, sHostKeyFile, sServerKeyBits, sLoginGraceTime, sKeyRegenerationTime,
   sPermitRootLogin, sQuietMode, sFascistLogging, sLogFacility,
   sRhostsAuthentication, sRhostsRSAAuthentication, sRSAAuthentication,
-#ifdef KRB4
   sKerberosAuthentication, sKerberosOrLocalPasswd,
-#endif
-#if defined(KRB4) || defined(AFS)
   sKerberosTicketCleanup,
-#endif
-#ifdef KERBEROS_TGT_PASSING
   sKerberosTgtPassing,
-#endif
-#ifdef AFS
   sAFSTokenPassing,
-#endif
   sPasswordAuthentication, sAllowHosts, sDenyHosts, sListenAddress,
   sPrintMotd, sIgnoreRhosts, sX11Forwarding,
   sStrictModes, sEmptyPasswd, sRandomSeedFile, sKeepAlives
@@ -176,19 +168,11 @@ static struct
   { "rhostsauthentication", sRhostsAuthentication },
   { "rhostsrsaauthentication", sRhostsRSAAuthentication },
   { "rsaauthentication", sRSAAuthentication },
-#ifdef KRB4
   { "kerberosauthentication", sKerberosAuthentication },
   { "kerberosorlocalpasswd", sKerberosOrLocalPasswd },
-#endif
-#if defined(KRB4) || defined(AFS)
   { "kerberosticketcleanup", sKerberosTicketCleanup },
-#endif
-#ifdef KERBEROS_TGT_PASSING
   { "kerberostgtpassing", sKerberosTgtPassing },
-#endif
-#ifdef AFS
   { "afstokenpassing", sAFSTokenPassing },
-#endif
   { "passwordauthentication", sPasswordAuthentication },
   { "allowhosts", sAllowHosts },
   { "denyhosts", sDenyHosts },
@@ -486,7 +470,7 @@ void read_server_config(ServerOptions *options, const char *filename)
 	default:
 	  fprintf(stderr, "%s line %d: Missing handler for opcode %s (%d)\n",
 		  filename, linenum, cp, opcode);
-	  exit(1);
+	  continue;		/* Next line */
 	}
       if (strtok(NULL, WHITESPACE) != NULL)
 	{

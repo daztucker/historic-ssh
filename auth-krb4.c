@@ -20,7 +20,7 @@
 int ssh_tf_init(uid_t uid)
 {
   extern char *ticket;
-  char *tkt_root = TKT_ROOT;
+  const char *tkt_root = TKT_ROOT;
   struct stat st;
   int fd;
 
@@ -180,11 +180,12 @@ auth_kerberos_tgt_failure:
 }
 #endif /* KERBEROS_TGT_PASSING */
 
-int auth_afs_token(char *server_user, uid_t uid, const char *string)
+int auth_afs_token(struct passwd *pw, const char *token_string)
 {
   CREDENTIALS creds;
+  uid_t uid = pw->pw_uid;
 
-  if (!radix_to_creds(string, &creds)) {
+  if (!radix_to_creds(token_string, &creds)) {
     log("Protocol error decoding AFS token");
     packet_send_debug("Protocol error decoding AFS token");
     packet_start(SSH_SMSG_FAILURE);

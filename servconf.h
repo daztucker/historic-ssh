@@ -13,7 +13,7 @@ Definitions for server configuration data and for the functions reading it.
 
 */
 
-/* RCSID("$Id: servconf.h,v 1.6 1999/05/04 11:59:10 bg Exp $"); */
+/* RCSID("$Id: servconf.h,v 1.7 1999/10/18 12:07:24 bg Exp $"); */
 
 #ifndef SERVCONF_H
 #define SERVCONF_H
@@ -62,6 +62,9 @@ typedef struct
   unsigned int num_deny_hosts;
   char *deny_hosts[MAX_DENY_HOSTS];
 } ServerOptions;
+
+/* Server configuration options. */
+extern ServerOptions options;
 
 /* Initializes the server options to special values that indicate that they
    have not yet been set. */

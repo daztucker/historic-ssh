@@ -15,11 +15,10 @@ for reading the passphrase from the user.
 */
 
 #include "includes.h"
-RCSID("$Id: authfile.c,v 1.2 1999/05/04 11:58:28 bg Exp $");
+RCSID("$Id: authfile.c,v 1.6 1999/10/31 12:49:49 bg Exp $");
 
-#include <gmp.h>
+#include "rsa.h"
 #include "xmalloc.h"
-#include "idea.h"
 #include "buffer.h"
 #include "bufaux.h"
 #include "cipher.h"
@@ -34,7 +33,7 @@ RCSID("$Id: authfile.c,v 1.2 1999/05/04 11:58:28 bg Exp $");
    needing a passphrase. */
 
 int save_private_key(const char *filename, const char *passphrase,
-		     RSAPrivateKey *key, const char *comment, 
+		     RSA *key, const char *comment, 
 		     RandomState *state)
 {
   Buffer buffer, encrypted;
@@ -199,7 +198,7 @@ int load_public_key(const char *filename, RSAPublicKey *pub,
    This initializes the private key. */
 
 int load_private_key(const char *filename, const char *passphrase,
-		     RSAPrivateKey *prv, char **comment_return)
+		     RSA *prv, char **comment_return)
 {
   int f, i, check1, check2, cipher_type;
   unsigned long len;
@@ -262,7 +261,8 @@ int load_private_key(const char *filename, const char *passphrase,
     xfree(buffer_get_string(&buffer, NULL));
 
   /* Check that it is a supported cipher. */
-  if ((cipher_mask() & (1 << cipher_type)) == 0)
+  if (((cipher_mask() | SSH_CIPHER_NONE | SSH_AUTHFILE_CIPHER)
+       & (1 << cipher_type)) == 0)
     {
       debug("Unsupported cipher %.100s used in key file %.200s.",
 	    cipher_name(cipher_type), filename);

@@ -88,7 +88,9 @@ void BF_ecb_encrypt(unsigned char *in,unsigned char *out,BF_KEY *key,
 	int enc);
 void BF_encrypt(BF_LONG *data,BF_KEY *key);
 void BF_decrypt(BF_LONG *data,BF_KEY *key);
-void BF_cbc_encrypt(unsigned char *in, unsigned char *out, long length,
+void BF_cbc_encrypt(const unsigned char *in, unsigned char *out, long length,
+	BF_KEY *ks, unsigned char *iv, int enc);
+void BF_pcbc_encrypt(const unsigned char *in, unsigned char *out, long length,
 	BF_KEY *ks, unsigned char *iv, int enc);
 void BF_cfb64_encrypt(unsigned char *in, unsigned char *out, long length,
 	BF_KEY *schedule, unsigned char *ivec, int *num, int enc);

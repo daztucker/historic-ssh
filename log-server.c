@@ -15,7 +15,7 @@ to the system log.
 */
 
 #include "includes.h"
-RCSID("$Id: log-server.c,v 1.7 1999/05/04 11:58:48 bg Exp $");
+RCSID("$Id: log-server.c,v 1.11 1999/11/11 21:28:11 bg Exp $");
 
 #include <syslog.h>
 #ifdef NEED_SYS_SYSLOG_H
@@ -98,6 +98,20 @@ static char msgbuf[MSGBUFSIZE];
 #define DECL_MSGBUF
 #endif
 
+/* Security related log messages. */
+
+void log_auth(const char *fmt, ...)
+{
+  va_list args;
+  DECL_MSGBUF;
+  va_start(args, fmt);
+  vsnprintf(msgbuf, MSGBUFSIZE, fmt, args);
+  va_end(args);
+  syslog(LOG_AUTH|LOG_NOTICE, "%.500s", msgbuf);
+  if (log_on_stderr && !log_quiet)
+    fprintf(stderr, "log: %s\n", msgbuf);
+}
+
 /* Log this message (information that usually should go to the log). */
 
 void log(const char *fmt, ...)
@@ -111,7 +125,7 @@ void log(const char *fmt, ...)
   va_end(args);
   if (log_on_stderr)
     fprintf(stderr, "log: %s\n", msgbuf);
-  syslog(LOG_INFO, "log: %.500s", msgbuf);
+  syslog(LOG_INFO, "%.500s", msgbuf);
 }
 
 /* Debugging messages that should not be logged during normal operation. */
@@ -127,7 +141,7 @@ void debug(const char *fmt, ...)
   va_end(args);
   if (log_on_stderr)
     fprintf(stderr, "debug: %s\n", msgbuf);
-  syslog(LOG_DEBUG, "debug: %.500s", msgbuf);
+  syslog(LOG_DEBUG, "%.500s", msgbuf);
 }
 
 /* Error messages that should be logged. */
@@ -143,7 +157,7 @@ void error(const char *fmt, ...)
   va_end(args);
   if (log_on_stderr)
     fprintf(stderr, "error: %s\n", msgbuf);
-  syslog(LOG_ERR, "error: %.500s", msgbuf);
+  syslog(LOG_ERR, "%.500s", msgbuf);
 }
 
 struct fatal_cleanup
@@ -195,9 +209,6 @@ void fatal(const char *fmt, ...)
   va_list args;
   struct fatal_cleanup *cu, *next_cu;
   static int fatal_called = 0;
-#if defined(KRB4)
-  extern char *ticket;
-#endif /* KRB4 */
   DECL_MSGBUF;
 
   if (log_quiet)
@@ -207,7 +218,7 @@ void fatal(const char *fmt, ...)
   va_end(args);
   if (log_on_stderr)
     fprintf(stderr, "fatal: %s\n", msgbuf);
-  syslog(LOG_ERR, "fatal: %.500s", msgbuf);
+  syslog(LOG_ERR, "%.500s", msgbuf);
 
   if (fatal_called)
     exit(1);
@@ -225,14 +236,15 @@ void fatal(const char *fmt, ...)
   /* If you forwarded a ticket you get one shot for proper
      authentication. */
   /* If tgt was passed unlink file */
-  if (ticket)
-    {
-      if (strcmp(ticket,"none"))
-	/* ticket -> FILE:path */
-	unlink(ticket + 5);
-      else
-	ticket = NULL;
-    }
+  {
+    extern char *ticket;
+    if (ticket == NULL)
+      ;
+    else if (strcmp(ticket,"none") != 0)
+      unlink(ticket);
+    else
+      ticket = NULL;
+  }
 #endif /* KRB4 */
 
   /* If local XAUTHORITY was created, remove it. */

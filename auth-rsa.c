@@ -16,7 +16,7 @@ validity of the host key.
 */
 
 #include "includes.h"
-RCSID("$Id: auth-rsa.c,v 1.4 1999/06/14 14:41:35 bg Exp $");
+RCSID("$Id: auth-rsa.c,v 1.6 1999/10/31 12:31:25 bg Exp $");
 
 #include "rsa.h"
 #include "randoms.h"
@@ -53,9 +53,9 @@ extern unsigned char session_id[16];
    our challenge; returns zero if the client gives a wrong answer. */
 
 int auth_rsa_challenge_dialog(RandomState *state, unsigned int bits,
-			      MP_INT *e, MP_INT *n)
+			      BIGNUM *e, BIGNUM *n)
 {
-  MP_INT challenge, encrypted_challenge, aux;
+  BIGNUM challenge, encrypted_challenge, aux;
   RSAPublicKey pk;
   unsigned char buf[32], mdbuf[16], response[16];
   struct MD5Context md;
@@ -118,27 +118,56 @@ int auth_rsa_challenge_dialog(RandomState *state, unsigned int bits,
    0 if the client could not be authenticated, and 1 if authentication was
    successful.  This may exit if there is a serious protocol violation. */
 
-int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state)
+int auth_rsa(struct passwd *pw, BIGNUM *client_n, RandomState *state, int strict_modes)
 {
   char line[8192];
   int authenticated;
   unsigned int bits;
-  MP_INT e, n;
+  BIGNUM e, n;
   FILE *f;
   unsigned long linenum = 0;
   struct stat st;
 
-  /* Open the file containing the authorized keys. */
+  /* The authorized keys. */
   sprintf(line, "%.500s/%.100s", pw->pw_dir, SSH_USER_PERMITTED_KEYS);
-  
+
   /* Temporarily use the user's uid. */
   temporarily_use_uid(pw->pw_uid);
-  if (stat(line, &st) < 0)
+  if (strict_modes)
+    {
+      int i;
+      char buf[1024];
+      char name[1024];
+      static const char *check[] = {
+	"", SSH_USER_DIR, SSH_USER_PERMITTED_KEYS, NULL
+      };
+      for (i=0; check[i]; i++)
+	{
+	  sprintf(name, "%.500s/%.100s", pw->pw_dir, check[i]);
+	  if (stat(name, &st) < 0
+	      || (st.st_uid != 0 && st.st_uid != pw->pw_uid)
+	      || (st.st_mode & 022) != 0)
+	    {
+	      sprintf(buf, "RSA authentication refused for %.100s: "
+		      "bad ownership or modes for %s.", pw->pw_name, name);
+	      log(buf);
+	      packet_send_debug(buf);
+	      /* Restore the privileged uid. */
+	      restore_uid();
+	      return 0;
+	    }
+	}
+    }
+  else if (stat(line, &st) < 0)
     {
       /* Restore the privileged uid. */
       restore_uid();
+      packet_send_debug("Could not stat %.900s.", line);
+      packet_send_debug("If your home is on an NFS volume, it may need to be world-readable.");
       return 0;
     }
+
+  /* Open the file containing the authorized keys. */
   f = fopen(line, "r");
   if (!f)
     {

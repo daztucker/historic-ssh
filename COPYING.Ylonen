@@ -29,7 +29,11 @@ containing cryptographic materials.  Using RSAREF is not recommended
 outside the United States.  See "http://www.cs.hut.fi/crypto" if you
 have trouble finding the RSAREF library.
 
-[ IDEA is now *only* included if configured with --with-idea. ]
+The 32-bit CRC compensation attack detector in deattack.c was
+contributed by CORE SDI S.A. under a BSD-style license. See
+http://www.core-sdi.com/english/ssh/ for details.
+
+[ IDEA is no longer included. ]
 The IDEA algorithm is claimed to be patented in the United States and
 several other countries.  I have been told by Ascom-Tech (the patent
 holder) that IDEA can be used freely for non-commercial use.  A copy

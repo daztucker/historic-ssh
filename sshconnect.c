@@ -15,9 +15,8 @@ login (authentication) dialog.
 */
 
 #include "includes.h"
-RCSID("$Id: sshconnect.c,v 1.19 1999/06/14 14:41:41 bg Exp $");
+RCSID("$Id: sshconnect.c,v 1.26 1999/11/07 14:33:31 bg Exp $");
 
-#include <gmp.h>
 #include "xmalloc.h"
 #include "randoms.h"
 #include "rsa.h"
@@ -28,6 +27,7 @@ RCSID("$Id: sshconnect.c,v 1.19 1999/06/14 14:41:41 bg Exp $");
 #include "ssh_md5.h"
 #include "mpaux.h"
 #include "uidswap.h"
+#include "compat.h"
 
 #ifdef KRB4
 #include <krb.h>
@@ -285,7 +285,7 @@ int ssh_connect(const char *host, int port, int connection_attempts,
 	  restore_uid();
 
 	  /* Destroy the failed socket. */
-	  shutdown(sock, 2);
+	  shutdown(sock, SHUT_RDWR);
 	  close(sock);
 	}
       else
@@ -333,7 +333,7 @@ int ssh_connect(const char *host, int port, int connection_attempts,
 	      /* Close the failed socket; there appear to be some problems 
 		 when reusing a socket for which connect() has already 
 		 returned an error. */
-	      shutdown(sock, 2);
+	      shutdown(sock, SHUT_RDWR);
 	      close(sock);
 	    }
 	  if (hp->h_addr_list[i])
@@ -373,7 +373,7 @@ int ssh_connect(const char *host, int port, int connection_attempts,
 int try_agent_authentication()
 {
   int status, type, bits;
-  MP_INT e, n, challenge;
+  BIGNUM e, n, challenge;
   char *comment;
   AuthenticationConnection *auth;
   unsigned char response[16];
@@ -476,7 +476,7 @@ int try_agent_authentication()
 /* Computes the proper response to a RSA challenge, and sends the response to
    the server. */
 
-void respond_to_rsa_challenge(MP_INT *challenge, RSAPrivateKey *prv)
+void respond_to_rsa_challenge(BIGNUM *challenge, RSA *prv)
 {
   unsigned char buf[32], response[16];
   struct MD5Context md;
@@ -513,8 +513,8 @@ void respond_to_rsa_challenge(MP_INT *challenge, RSAPrivateKey *prv)
 int try_rsa_authentication(struct passwd *pw, const char *authfile,
 			   int may_ask_passphrase)
 {
-  MP_INT challenge;
-  RSAPrivateKey private_key;
+  BIGNUM challenge;
+  RSA private_key;
   RSAPublicKey public_key;
   char *passphrase, *comment;
   int type, i;
@@ -632,10 +632,10 @@ int try_rsa_authentication(struct passwd *pw, const char *authfile,
    authentication and RSA host authentication. */
 
 int try_rhosts_rsa_authentication(const char *local_user, 
-				  RSAPrivateKey *host_key)
+				  RSA *host_key)
 {
   int type;
-  MP_INT challenge;
+  BIGNUM challenge;
   int plen, clen;
 
   debug("Trying rhosts or /etc/hosts.equiv with RSA host authentication.");
@@ -951,6 +951,14 @@ void ssh_exchange_identification()
     fatal("Bad remote protocol version identification: '%.100s'", buf);
   debug("Remote protocol version %d.%d, remote software version %.100s",
 	remote_major, remote_minor, remote_version);
+
+  /* Check if the remote protocol version is too old. */
+  if (remote_major == 1 && remote_minor < 3)
+    fatal("Remote machine has too old SSH software version.");
+
+  /* We speak 1.3, too. */
+  if (remote_major == 1 && remote_minor == 3)
+    enable_compat13();
 #if 0
   /* Removed for now, to permit compatibility with latter versions.  The server
      will reject our version and disconnect if it doesn't support it. */
@@ -958,10 +966,6 @@ void ssh_exchange_identification()
     fatal("Protocol major versions differ: %d vs. %d",
 	  PROTOCOL_MAJOR, remote_major);
 #endif
-
-  /* Check if the remote protocol version is too old. */
-  if (remote_major == 1 && remote_minor == 0)
-    fatal("Remote machine has too old SSH software version.");
 
   /* Send our own protocol version identification. */
   sprintf(buf, "SSH-%d.%d-%.100s\n", 
@@ -1026,7 +1030,7 @@ int read_yes_or_no(const char *prompt, int defval)
    This function does not require super-user privileges. */
 
 void ssh_login(RandomState *state, int host_key_valid, 
-	       RSAPrivateKey *own_host_key,
+	       RSA *own_host_key,
 	       const char *orighost, 
 	       Options *options, uid_t original_real_uid)
 {
@@ -1034,7 +1038,7 @@ void ssh_login(RandomState *state, int host_key_valid,
   char buf[1024];
   char *password;
   struct passwd *pw;
-  MP_INT key;
+  BIGNUM key;
   RSAPublicKey host_key;
   RSAPublicKey public_key;
   unsigned char session_key[SSH_SESSION_KEY_LENGTH];
@@ -1076,22 +1080,24 @@ void ssh_login(RandomState *state, int host_key_valid,
     check_bytes[i] = packet_get_char();
 
   /* Get the public key. */
-  public_key.bits = packet_get_int();
+  packet_get_int();		/* Bits, redundant at best! */
   mpz_init(&public_key.e);
   packet_get_mp_int(&public_key.e, &clen);
   sum_len += clen;
   mpz_init(&public_key.n);
   packet_get_mp_int(&public_key.n, &clen);
   sum_len += clen;
+  public_key.bits = mpz_sizeinbase(&public_key.n, 2); /* True value. */
 
   /* Get the host key. */
-  host_key.bits = packet_get_int();
+  packet_get_int();		/* Bits, redundant at best! */
   mpz_init(&host_key.e);
   packet_get_mp_int(&host_key.e, &clen);
   sum_len += clen;
   mpz_init(&host_key.n);
   packet_get_mp_int(&host_key.n, &clen);
   sum_len += clen;
+  host_key.bits = mpz_sizeinbase(&host_key.n, 2); /* True value. */
 
   /* Get protocol flags. */
   protocol_flags = packet_get_int();
@@ -1154,10 +1160,12 @@ void ssh_login(RandomState *state, int host_key_valid,
       else if (options->strict_host_key_checking == 2) /* The default */
 	{
 	  char prompt[1024];
+	  char *fp = fingerprint(&host_key);
 	  sprintf(prompt,
 		  "The authenticity of host '%.200s' can't be established.\n"
+		  "\nKey fingerprint is %s %d.\n\n"
 		  "Are you sure you want to continue connecting (yes/no)? ",
-		  host);
+		  host, fp, host_key.bits);
 	  if (!read_yes_or_no(prompt, -1))
 	    fatal("Aborted by user!\n");
 	}

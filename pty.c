@@ -14,7 +14,7 @@ Allocating a pseudo-terminal, and making it the controlling tty.
 */
 
 #include "includes.h"
-RCSID("$Id: pty.c,v 1.2 1999/05/04 11:58:56 bg Exp $");
+RCSID("$Id: pty.c,v 1.4 1999/10/29 15:21:35 bg Exp $");
 
 #include "pty.h"
 #include "ssh.h"
@@ -25,9 +25,13 @@ RCSID("$Id: pty.c,v 1.2 1999/05/04 11:58:56 bg Exp $");
 #endif
 
 #ifdef HAVE_DEV_PTMX
+#ifdef HAVE_SYS_STREAM
 #include <sys/stream.h>
+#endif
 #include <stropts.h>
+#ifdef HAVE_SYS_CONF
 #include <sys/conf.h>
+#endif
 #endif /* HAVE_DEV_PTMX */
 
 #ifndef O_NOCTTY
@@ -121,11 +125,11 @@ int pty_allocate(int *ptyfd, int *ttyfd, char *namebuf)
       return 0;
     }
   /* Push the appropriate streams modules, as described in Solaris pts(7). */
-  if (ioctl(*ttyfd, I_PUSH, "ptem") < 0)
+  if (ioctl(*ttyfd, I_PUSH, "ptem") < 0 && errno != EINVAL)
     error("ioctl I_PUSH ptem: %.100s", strerror(errno));
-  if (ioctl(*ttyfd, I_PUSH, "ldterm") < 0)
+  if (ioctl(*ttyfd, I_PUSH, "ldterm") < 0 && errno != EINVAL)
     error("ioctl I_PUSH ldterm: %.100s", strerror(errno));
-  if (ioctl(*ttyfd, I_PUSH, "ttcompat") < 0)
+  if (ioctl(*ttyfd, I_PUSH, "ttcompat") < 0 && errno != EINVAL)
     error("ioctl I_PUSH ttcompat: %.100s", strerror(errno));
   return 1;
 

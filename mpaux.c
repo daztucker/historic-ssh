@@ -15,9 +15,9 @@ precision integers.
 */
 
 #include "includes.h"
-RCSID("$Id: mpaux.c,v 1.3 1999/05/04 11:58:51 bg Exp $");
+RCSID("$Id: mpaux.c,v 1.4 1999/10/31 12:31:29 bg Exp $");
 
-#include <gmp.h>
+#include "rsa.h"
 #include "getput.h"
 #include "xmalloc.h"
 #include "ssh_md5.h"
@@ -26,10 +26,10 @@ RCSID("$Id: mpaux.c,v 1.3 1999/05/04 11:58:51 bg Exp $");
    The buffer will contain the value of the integer, msb first. */
 
 void mp_linearize_msb_first(unsigned char *buf, unsigned int len, 
-			    MP_INT *value)
+			    BIGNUM *value)
 {
   unsigned int i;
-  MP_INT aux;
+  BIGNUM aux;
   mpz_init_set(&aux, value);
   for (i = len; i >= 4; i -= 4)
     {
@@ -48,7 +48,7 @@ void mp_linearize_msb_first(unsigned char *buf, unsigned int len,
 /* Extract a multiple-precision integer from buffer.  The value is stored
    in the buffer msb first. */
 
-void mp_unlinearize_msb_first(MP_INT *value, const unsigned char *buf,
+void mp_unlinearize_msb_first(BIGNUM *value, const unsigned char *buf,
 			      unsigned int len)
 {
   unsigned int i;
@@ -73,9 +73,9 @@ void mp_unlinearize_msb_first(MP_INT *value, const unsigned char *buf,
 void compute_session_id(unsigned char session_id[16],
 			unsigned char cookie[8],
 			unsigned int host_key_bits,
-			MP_INT *host_key_n,
+			BIGNUM *host_key_n,
 			unsigned int session_key_bits,
-			MP_INT *session_key_n)
+			BIGNUM *session_key_n)
 {
   unsigned int bytes = (host_key_bits + 7) / 8 + (session_key_bits + 7) / 8 + 8;
   unsigned char *buf = xmalloc(bytes);

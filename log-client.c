@@ -14,7 +14,7 @@ Client-side versions of debug(), log(), etc.  These print to stderr.
 */
 
 #include "includes.h"
-RCSID("$Id: log-client.c,v 1.2 1999/05/04 11:58:47 bg Exp $");
+RCSID("$Id: log-client.c,v 1.3 1999/10/20 18:13:04 bg Exp $");
 
 #include "xmalloc.h"
 #include "ssh.h"
@@ -37,7 +37,7 @@ void log(const char *fmt, ...)
     return;
   va_start(args, fmt);
   vfprintf(stderr, fmt, args);
-  fprintf(stderr, "\n");
+  fprintf(stderr, "\r\n");
   va_end(args);
 }
 
@@ -48,7 +48,7 @@ void debug(const char *fmt, ...)
     return;
   va_start(args, fmt);
   vfprintf(stderr, fmt, args);
-  fprintf(stderr, "\n");
+  fprintf(stderr, "\r\n");
   va_end(args);
 }
 
@@ -59,7 +59,7 @@ void error(const char *fmt, ...)
     return;
   va_start(args, fmt);
   vfprintf(stderr, fmt, args);
-  fprintf(stderr, "\n");
+  fprintf(stderr, "\r\n");
   va_end(args);
 }
 
@@ -129,7 +129,7 @@ void fatal(const char *fmt, ...)
 
   va_start(args, fmt);
   vfprintf(stderr, fmt, args);
-  fprintf(stderr, "\n");
+  fprintf(stderr, "\r\n");
   va_end(args);
   exit(255);
 }

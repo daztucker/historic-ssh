@@ -18,9 +18,8 @@ using the --with-rsaref configure option.
 */
 
 #include "includes.h"
-RCSID("$Id: rsaglue.c,v 1.2 1999/05/04 11:59:07 bg Exp $");
+RCSID("$Id: rsaglue.c,v 1.6 1999/11/11 15:14:47 bg Exp $");
 
-#include <gmp.h>
 #include "ssh.h"
 #include "rsa.h"
 #include "getput.h"
@@ -43,14 +42,14 @@ RCSID("$Id: rsaglue.c,v 1.2 1999/05/04 11:59:07 bg Exp $");
 
 /* Convert an integer from gmp to rsaref representation. */
 
-void gmp_to_rsaref(unsigned char *buf, unsigned int len, MP_INT *value)
+void gmp_to_rsaref(unsigned char *buf, unsigned int len, BIGNUM *value)
 {
   mp_linearize_msb_first(buf, len, value);
 }
 
 /* Convert an integer from rsaref to gmp representation. */
 
-void rsaref_to_gmp(MP_INT *value, const unsigned char *buf, unsigned int len)
+void rsaref_to_gmp(BIGNUM *value, const unsigned char *buf, unsigned int len)
 {
   mp_unlinearize_msb_first(value, buf, len);
 }
@@ -68,9 +67,9 @@ void rsaref_public_key(R_RSA_PUBLIC_KEY *rsa, RSAPublicKey *key)
    Note that some fo the constants are computed a little dfifferently
    in rsaref. */
 
-void rsaref_private_key(R_RSA_PRIVATE_KEY *rsa, RSAPrivateKey *key)
+void rsaref_private_key(R_RSA_PRIVATE_KEY *rsa, RSA *key)
 {
-  MP_INT aux;
+  BIGNUM aux;
   rsa->bits = key->bits;
   gmp_to_rsaref(rsa->modulus, MAX_RSA_MODULUS_LEN, &key->n);
   gmp_to_rsaref(rsa->publicExponent, MAX_RSA_MODULUS_LEN, &key->e);
@@ -90,7 +89,7 @@ void rsaref_private_key(R_RSA_PRIVATE_KEY *rsa, RSAPrivateKey *key)
 
 /* Performs a public key encrypt operation. */
 
-void rsa_public_encrypt(MP_INT *output, MP_INT *input, RSAPublicKey *key,
+void rsa_public_encrypt(BIGNUM *output, BIGNUM *input, RSAPublicKey *key,
 			RandomState *random_state)
 {
   unsigned char input_data[MAX_RSA_MODULUS_LEN];
@@ -106,6 +105,9 @@ void rsa_public_encrypt(MP_INT *output, MP_INT *input, RSAPublicKey *key,
 
   input_bits = mpz_sizeinbase(input, 2);
   input_len = (input_bits + 7) / 8;
+  /* If input is larger than what RSAREF can handle you loose! */
+  if (input_len > sizeof(input_data))
+    fatal("rsa_public_encrypt failed");
   gmp_to_rsaref(input_data, input_len, input);
 
   rsaref_public_key(&public_key, key);
@@ -126,7 +128,7 @@ void rsa_public_encrypt(MP_INT *output, MP_INT *input, RSAPublicKey *key,
 
 /* Performs a private key decrypt operation. */
 
-void rsa_private_decrypt(MP_INT *output, MP_INT *input, RSAPrivateKey *key)
+void rsa_private_decrypt(BIGNUM *output, BIGNUM *input, RSA *key)
 {
   unsigned char input_data[MAX_RSA_MODULUS_LEN];
   unsigned char output_data[MAX_RSA_MODULUS_LEN];
@@ -139,6 +141,9 @@ void rsa_private_decrypt(MP_INT *output, MP_INT *input, RSAPrivateKey *key)
   
   input_bits = mpz_sizeinbase(input, 2);
   input_len = (input_bits + 7) / 8;
+  /* If input is larger than what RSAREF can handle you loose! */
+  if (input_len > sizeof(input_data))
+    fatal("rsa_private_decrypt failed");
   gmp_to_rsaref(input_data, input_len, input);
 
   rsaref_private_key(&private_key, key);
@@ -154,10 +159,10 @@ void rsa_private_decrypt(MP_INT *output, MP_INT *input, RSAPrivateKey *key)
 
 /* Encrypt input using the public key.  Input should be a 256 bit value. */
 
-void rsa_public_encrypt(MP_INT *output, MP_INT *input, RSAPublicKey *key,
+void rsa_public_encrypt(BIGNUM *output, BIGNUM *input, RSAPublicKey *key,
 			RandomState *state)
 {
-  MP_INT aux;
+  BIGNUM aux;
   unsigned int i, input_bits, input_len, len;
 
   input_bits = mpz_sizeinbase(input, 2);
@@ -185,9 +190,9 @@ void rsa_public_encrypt(MP_INT *output, MP_INT *input, RSAPublicKey *key,
 
 /* Decrypt input using the private key.  Output will become a 256 bit value. */
 
-void rsa_private_decrypt(MP_INT *output, MP_INT *input, RSAPrivateKey *key)
+void rsa_private_decrypt(BIGNUM *output, BIGNUM *input, RSA *key)
 {
-  MP_INT aux;
+  BIGNUM aux;
   unsigned int len, i;
   unsigned char value[1024];
 

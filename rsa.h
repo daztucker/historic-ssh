@@ -13,7 +13,7 @@ RSA key generation, encryption and decryption.
 
 */
 
-/* RCSID("$Id: rsa.h,v 1.2 1999/05/04 11:59:06 bg Exp $"); */
+/* RCSID("$Id: rsa.h,v 1.6 1999/11/09 19:55:53 bg Exp $"); */
 
 #ifndef RSA_H
 #define RSA_H
@@ -21,26 +21,30 @@ RSA key generation, encryption and decryption.
 #include "gmp.h"
 #include "randoms.h"
 
+typedef MP_INT BIGNUM;
+
 typedef struct
 {
   unsigned int bits;		/* Modulus size in bits. */
-  MP_INT e;			/* Public exponent. */
-  MP_INT n;			/* Modulus. */
+  BIGNUM n;			/* Modulus. */
+  BIGNUM e;			/* Public exponent. */
 } RSAPublicKey;
 
 typedef struct
 {
   unsigned int bits;		/* Modulus size in bits. */
-  MP_INT n;			/* Modulus. */
-  MP_INT e;			/* Public exponent. */
-  MP_INT d;			/* Private exponent. */
-  MP_INT u;			/* Multiplicative inverse of p mod q. */
-  MP_INT p;			/* Prime number p. */
-  MP_INT q;			/* Prime number q. */
+  BIGNUM n;			/* Modulus. */
+  BIGNUM e;			/* Public exponent. */
+  BIGNUM d;			/* Private exponent. */
+  BIGNUM u;			/* Multiplicative inverse of p mod q. */
+  BIGNUM p;			/* Prime number p. */
+  BIGNUM q;			/* Prime number q. */
 } RSAPrivateKey;
 
+typedef RSAPrivateKey RSA;
+
 /* Generates a random integer of the desired number of bits. */
-void rsa_random_integer(MP_INT *ret, RandomState *state, unsigned int bits);
+void rsa_random_integer(BIGNUM *ret, RandomState *state, unsigned int bits);
 
 /* Makes and returns a random prime of the desired number of bits.
    Note that the random number generator must be initialized properly
@@ -48,27 +52,27 @@ void rsa_random_integer(MP_INT *ret, RandomState *state, unsigned int bits);
 
    The generated prime will have the highest bit set, and will have
    the two lowest bits set. */
-void rsa_random_prime(MP_INT *ret, RandomState *state, unsigned int bits);
+void rsa_random_prime(BIGNUM *ret, RandomState *state, unsigned int bits);
 
 /* Generates RSA public and private keys.  This initializes the data
    structures; they should be freed with rsa_clear_private_key and
    rsa_clear_public_key. */
-void rsa_generate_key(RSAPrivateKey *prv, RSAPublicKey *pub, 
+void rsa_generate_key(RSA *prv, RSAPublicKey *pub, 
 		      RandomState *state, unsigned int bits);
 
 /* Frees any memory associated with the private key. */
-void rsa_clear_private_key(RSAPrivateKey *prv);
+void rsa_clear_private_key(RSA *prv);
 
 /* Frees any memory associated with the public key. */
 void rsa_clear_public_key(RSAPublicKey *pub);
 
 /* Performs a private-key RSA operation (encrypt/decrypt). */
-void rsa_private(MP_INT *output, MP_INT *input, RSAPrivateKey *prv);
+void rsa_private(BIGNUM *output, BIGNUM *input, RSA *prv);
 
 /* Performs a public-key RSA operation (encrypt/decrypt). */
-void rsa_public(MP_INT *output, MP_INT *input, RSAPublicKey *pub);
+void rsa_public(BIGNUM *output, BIGNUM *input, RSAPublicKey *pub);
 
-/* Sets MP_INT memory allocation routines to ones that clear any memory
+/* Sets BIGNUM memory allocation routines to ones that clear any memory
    when freed. */
 void rsa_set_mp_memory_allocation();
 
@@ -82,11 +86,14 @@ void rsa_set_verbose(int verbose);
 
 /* Encrypt input using the public key.  The 24 least significant bits of
    input must contain the value 0x000200. */
-void rsa_public_encrypt(MP_INT *output, MP_INT *input, RSAPublicKey *key,
+void rsa_public_encrypt(BIGNUM *output, BIGNUM *input, RSAPublicKey *key,
 			RandomState *state);
 
 /* Decrypt input using the private key.  The 24 least significant bits of
    the result must contain the value 0x000200. */
-void rsa_private_decrypt(MP_INT *output, MP_INT *input, RSAPrivateKey *key);
+void rsa_private_decrypt(BIGNUM *output, BIGNUM *input, RSA *key);
+
+/* Generate key fingerprint in ascii format. */
+char *fingerprint(RSAPublicKey *key);
 
 #endif /* RSA_H */

@@ -11,19 +11,20 @@ Created: Wed Mar 29 02:18:23 1995 ylo
 
 */
 
-/* RCSID("$Id: bufaux.h,v 1.3 1999/06/14 14:41:37 bg Exp $"); */
+/* RCSID("$Id: bufaux.h,v 1.4 1999/10/31 12:31:28 bg Exp $"); */
 
 #ifndef BUFAUX_H
 #define BUFAUX_H
 
+#include "rsa.h"
 #include "buffer.h"
 
-/* Stores an MP_INT in the buffer with a 2-byte msb first bit count, followed
+/* Stores an BIGNUM in the buffer with a 2-byte msb first bit count, followed
    by (bits+7)/8 bytes of binary data, msb first. */
-void buffer_put_mp_int(Buffer *buffer, MP_INT *value);
+void buffer_put_mp_int(Buffer *buffer, BIGNUM *value);
 
-/* Retrieves an MP_INT from the buffer. */
-int buffer_get_mp_int(Buffer *buffer, MP_INT *value);
+/* Retrieves an BIGNUM from the buffer. */
+int buffer_get_mp_int(Buffer *buffer, BIGNUM *value);
 
 /* Returns an integer from the buffer (4 bytes, msb first). */
 unsigned int buffer_get_int(Buffer *buffer);

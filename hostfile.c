@@ -14,7 +14,7 @@ Functions for manipulating the known hosts files.
 */
 
 #include "includes.h"
-RCSID("$Id: hostfile.c,v 1.2 1999/05/04 11:58:44 bg Exp $");
+RCSID("$Id: hostfile.c,v 1.4 1999/11/07 14:36:41 bg Exp $");
 
 #include "packet.h"
 #include "ssh.h"
@@ -25,7 +25,7 @@ RCSID("$Id: hostfile.c,v 1.2 1999/05/04 11:58:44 bg Exp $");
    the last processed (and maybe modified) character.  Note that this may
    modify the buffer containing the number. */
 
-int auth_rsa_read_mp_int(char **cpp, MP_INT *value)
+int auth_rsa_read_mp_int(char **cpp, BIGNUM *value)
 {
   char *cp = *cpp;
   int len, old;
@@ -67,7 +67,7 @@ int auth_rsa_read_mp_int(char **cpp, MP_INT *value)
 /* Parses an RSA key (number of bits, e, n) from a string.  Moves the pointer
    over the key.  Skips any whitespace at the beginning and at end. */
 
-int auth_rsa_read_key(char **cpp, unsigned int *bitsp, MP_INT *e, MP_INT *n)
+int auth_rsa_read_key(char **cpp, unsigned int *bitsp, BIGNUM *e, BIGNUM *n)
 {
   unsigned int bits;
   char *cp;
@@ -96,7 +96,7 @@ int auth_rsa_read_key(char **cpp, unsigned int *bitsp, MP_INT *e, MP_INT *n)
   
   /* Return results. */
   *cpp = cp;
-  *bitsp = bits;
+  *bitsp = mpz_sizeinbase(n, 2);
   return 1;
 }
 
@@ -162,11 +162,11 @@ int match_hostname(const char *host, const char *pattern, unsigned int len)
 
 HostStatus check_host_in_hostfile(const char *filename, 
 				  const char *host, unsigned int bits,
-				  MP_INT *e, MP_INT *n)
+				  BIGNUM *e, BIGNUM *n)
 {
   FILE *f;
   char line[8192];
-  MP_INT ke, kn;
+  BIGNUM ke, kn;
   unsigned int kbits, hostlen;
   char *cp, *cp2;
   HostStatus end_return;
@@ -253,7 +253,7 @@ HostStatus check_host_in_hostfile(const char *filename,
    could not be appended. */
 
 int add_host_to_hostfile(const char *filename, const char *host,
-			 unsigned int bits, MP_INT *e, MP_INT *n)
+			 unsigned int bits, BIGNUM *e, BIGNUM *n)
 {
   FILE *f;
  

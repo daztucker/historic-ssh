@@ -15,7 +15,7 @@ with the other side.  This same code is used both on client and server side.
 */
 
 #include "includes.h"
-RCSID("$Id: packet.c,v 1.7 1999/06/14 14:41:39 bg Exp $");
+RCSID("$Id: packet.c,v 1.10 1999/10/31 12:31:30 bg Exp $");
 
 #include "xmalloc.h"
 #include "randoms.h"
@@ -151,7 +151,7 @@ void packet_close()
   initialized = 0;
   if (connection_in == connection_out)
     {
-      shutdown(connection_out, 2);
+      shutdown(connection_out, SHUT_RDWR);
       close(connection_out);
     }
   else
@@ -230,26 +230,11 @@ void packet_set_encryption_key(const unsigned char *key, unsigned int keylen,
 {
   cipher_type = cipher;
   if (cipher == SSH_CIPHER_RC4)
-    {
-      if (is_client)
-	{ /* In client: use first half for receiving, second for sending. */
-	  cipher_set_key(&receive_context, cipher, key, keylen / 2, 0);
-	  cipher_set_key(&send_context, cipher, key + keylen / 2, 
-			 keylen / 2, 1);
-	}
-      else
-	{ /* In server: use first half for sending, second for receiving. */
-	  cipher_set_key(&receive_context, cipher, key + keylen / 2, 
-			 keylen / 2, 0);
-	  cipher_set_key(&send_context, cipher, key, keylen / 2, 1);
-	}
-    }
-  else
-    {
-      /* All other ciphers use the same key in both directions for now. */
-      cipher_set_key(&receive_context, cipher, key, keylen, 0);
-      cipher_set_key(&send_context, cipher, key, keylen, 1);
-    }
+    fatal("Unsupported cipher RC4");
+
+  /* All other ciphers use the same key in both directions for now. */
+  cipher_set_key(&receive_context, cipher, key, keylen, 0);
+  cipher_set_key(&send_context, cipher, key, keylen, 1);
 }
 
 /* Starts constructing a packet to send. */
@@ -288,7 +273,7 @@ void packet_put_string(const char *buf, unsigned int len)
 
 /* Appends an arbitrary precision integer to packet data. */
 
-void packet_put_mp_int(MP_INT *value)
+void packet_put_mp_int(BIGNUM *value)
 {
   buffer_put_mp_int(&outgoing_packet, value);
 }
@@ -549,7 +534,7 @@ unsigned int packet_get_int()
 /* Returns an arbitrary precision integer from the packet data.  The integer
    must have been initialized before this call. */
 
-void packet_get_mp_int(MP_INT *value, int *length_ptr)
+void packet_get_mp_int(BIGNUM *value, int *length_ptr)
 {
   *length_ptr = buffer_get_mp_int(&incoming_packet, value);
 }

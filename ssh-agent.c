@@ -14,7 +14,7 @@ The authentication agent program.
 */
 
 #include "includes.h"
-RCSID("$Id: ssh-agent.c,v 1.3 1999/05/04 11:59:14 bg Exp $");
+RCSID("$Id: ssh-agent.c,v 1.10 1999/10/31 12:49:52 bg Exp $");
 
 #include "ssh.h"
 #include "rsa.h"
@@ -31,8 +31,7 @@ RCSID("$Id: ssh-agent.c,v 1.3 1999/05/04 11:59:14 bg Exp $");
 typedef struct
 {
   int fd;
-  enum { AUTH_UNUSED, AUTH_FD, AUTH_SOCKET, AUTH_SOCKET_FD, 
-    AUTH_CONNECTION } type;
+  enum { AUTH_UNUSED, AUTH_SOCKET, AUTH_CONNECTION } type;
   Buffer input;
   Buffer output;
 } SocketEntry;
@@ -42,7 +41,7 @@ SocketEntry *sockets = NULL;
 
 typedef struct
 {
-  RSAPrivateKey key;
+  RSA key;
   char *comment;
 } Identity;
 
@@ -75,7 +74,7 @@ void process_request_identity(SocketEntry *e)
 void process_authentication_challenge(SocketEntry *e)
 {
   int i, pub_bits;
-  MP_INT pub_e, pub_n, challenge;
+  BIGNUM pub_e, pub_n, challenge;
   Buffer msg;
   struct MD5Context md;
   unsigned char buf[32], mdbuf[16], session_id[16];
@@ -155,7 +154,7 @@ void process_authentication_challenge(SocketEntry *e)
 void process_remove_identity(SocketEntry *e)
 {
   unsigned int bits;
-  MP_INT dummy, n;
+  BIGNUM dummy, n;
   unsigned int i;
   
   mpz_init(&dummy);
@@ -221,7 +220,7 @@ void process_remove_all_identities(SocketEntry *e)
 
 void process_add_identity(SocketEntry *e)
 {
-  RSAPrivateKey *k;
+  RSA *k;
   int i;
 
   if (num_identities == 0)
@@ -278,7 +277,7 @@ void process_message(SocketEntry *e)
   msg_len = GET_32BIT(cp);
   if (msg_len > 256 * 1024)
     {
-      shutdown(e->fd, 2);
+      shutdown(e->fd, SHUT_RDWR);
       close(e->fd);
       e->type = AUTH_UNUSED;
       return;
@@ -287,6 +286,7 @@ void process_message(SocketEntry *e)
     return;
   buffer_consume(&e->input, 4);
   type = buffer_get_char(&e->input);
+
   switch (type)
     {
     case SSH_AGENTC_REQUEST_RSA_IDENTITIES:
@@ -357,10 +357,8 @@ void prepare_select(fd_set *readset, fd_set *writeset)
   for (i = 0; i < sockets_alloc; i++)
     switch (sockets[i].type)
       {
-      case AUTH_FD:
-      case AUTH_CONNECTION:
       case AUTH_SOCKET:
-      case AUTH_SOCKET_FD:
+      case AUTH_CONNECTION:
 	FD_SET(sockets[i].fd, readset);
 	if (buffer_len(&sockets[i].output) > 0)
 	  FD_SET(sockets[i].fd, writeset);
@@ -376,48 +374,14 @@ void prepare_select(fd_set *readset, fd_set *writeset)
 void after_select(fd_set *readset, fd_set *writeset)
 {
   unsigned int i;
-  int len, sock, port;
+  int len, sock;
   char buf[1024];
-  struct sockaddr_in sin;
   struct sockaddr_un sunaddr;
 
   for (i = 0; i < sockets_alloc; i++)
     switch (sockets[i].type)
       {
       case AUTH_UNUSED:
-	break;
-      case AUTH_FD:
-	if (FD_ISSET(sockets[i].fd, readset))
-	  {
-	    len = recv(sockets[i].fd, buf, sizeof(buf), 0);
-	    if (len <= 0)
-	      { /* All instances of the other side have been closed. */
-		log("Authentication agent exiting.");
-		exit(0);
-	      }
-	  process_auth_fd_input:
-	    if (len != 3 || (unsigned char)buf[0] != SSH_AUTHFD_CONNECT)
-	      break; /* Incorrect message; ignore it. */
-	    /* It is a connection request message. */
-	    port = (unsigned char)buf[1] * 256 + (unsigned char)buf[2];
-	    memset(&sin, 0, sizeof(sin));
-	    sin.sin_family = AF_INET;
-	    sin.sin_addr.s_addr = htonl(0x7f000001); /* localhost */
-	    sin.sin_port = htons(port);
-	    sock = socket(AF_INET, SOCK_STREAM, 0);
-	    if (sock < 0)
-	      {
-		perror("socket");
-		break;
-	      }
-	    if (connect(sock, (struct sockaddr *)&sin, sizeof(sin)) < 0)
-	      {
-		perror("connecting to port requested in authfd message");
-		close(sock);
-		break;
-	      }
-	    new_socket(AUTH_CONNECTION, sock);
-	  }
 	break;
       case AUTH_SOCKET:
 	if (FD_ISSET(sockets[i].fd, readset))
@@ -429,21 +393,7 @@ void after_select(fd_set *readset, fd_set *writeset)
 		perror("accept from AUTH_SOCKET");
 		break;
 	      }
-	    new_socket(AUTH_SOCKET_FD, sock);
-	  }
-	break;
-      case AUTH_SOCKET_FD:
-	if (FD_ISSET(sockets[i].fd, readset))
-	  {
-	    len = recv(sockets[i].fd, buf, sizeof(buf), 0);
-	    if (len <= 0)
-	      { /* The other side has closed the socket. */
-		shutdown(sockets[i].fd, 2);
-		close(sockets[i].fd);
-		sockets[i].type = AUTH_UNUSED;
-		break;
-	      }
-	    goto process_auth_fd_input;
+	    new_socket(AUTH_CONNECTION, sock);
 	  }
 	break;
       case AUTH_CONNECTION:
@@ -454,7 +404,7 @@ void after_select(fd_set *readset, fd_set *writeset)
 			buffer_len(&sockets[i].output));
 	    if (len <= 0)
 	      {
-		shutdown(sockets[i].fd, 2);
+		shutdown(sockets[i].fd, SHUT_RDWR);
 		close(sockets[i].fd);
 		sockets[i].type = AUTH_UNUSED;
 		break;
@@ -466,7 +416,7 @@ void after_select(fd_set *readset, fd_set *writeset)
 	    len = read(sockets[i].fd, buf, sizeof(buf));
 	    if (len <= 0)
 	      {
-		shutdown(sockets[i].fd, 2);
+		shutdown(sockets[i].fd, SHUT_RDWR);
 		close(sockets[i].fd);
 		sockets[i].type = AUTH_UNUSED;
 		break;
@@ -488,6 +438,8 @@ RETSIGTYPE check_parent_exists(int sig)
   if (kill(parent_pid, 0) < 0)
     {
       remove(socket_name);
+      *strrchr(socket_name, '/') = 0;
+      rmdir(socket_name);
       /* printf("Parent has died - Authentication agent exiting.\n"); */
       exit(1);
     }
@@ -499,12 +451,13 @@ int main(int ac, char **av)
 {
   fd_set readset, writeset;
   char buf[1024];
-  int pfd;
   int sock;
   struct sockaddr_un sunaddr;
-
-  int sockets[2], i;
-  int *dups;
+  struct stat st;
+#ifdef HAVE_UMASK
+  mode_t savedumask;
+#endif /* HAVE_UMASK */
+      
 
   if (ac < 2)
     {
@@ -513,102 +466,85 @@ int main(int ac, char **av)
       exit(1);
     }
 
-  pfd = get_permanent_fd(NULL);
-  if (pfd < 0) 
+  parent_pid = getpid();
+      
+  /* First mkdir SSH_AGENT_SOCKET. */
+  sprintf(socket_name, SSH_AGENT_SOCKET, parent_pid);
+  if (mkdir(socket_name, 0700) != 0)
     {
-      /* The agent uses SSH_AUTHENTICATION_SOCKET. */
-      
-      parent_pid = getpid();
-      
-      sprintf(socket_name, SSH_AGENT_SOCKET, parent_pid);
-      
-      /* Fork, and have the parent execute the command.  The child continues as
-	 the authentication agent. */
-      if (fork() != 0)
-	{ /* Parent - execute the given command. */
-	  sprintf(buf, "SSH_AUTHENTICATION_SOCKET=%s", socket_name);
-	  putenv(buf);
-	  execvp(av[1], av + 1);
-	  perror(av[1]);
-	  exit(1);
-	}
-      
-      sock = socket(AF_UNIX, SOCK_STREAM, 0);
-      if (sock < 0)
-	{
-	  perror("socket");
-	  exit(1);
-	}
-      memset(&sunaddr, 0, sizeof(sunaddr));
-      sunaddr.sun_family = AF_UNIX;
-      strncpy(sunaddr.sun_path, socket_name, sizeof(sunaddr.sun_path));
-      if (bind(sock, (struct sockaddr *)&sunaddr, AF_UNIX_SIZE(sunaddr)) < 0)
-	{
-	  perror("bind");
-	  exit(1);
-	}
-      if (chmod(socket_name, 0700) < 0)
-	{
-	  perror("chmod");
-	  exit(1);
-	}
-      if (listen(sock, 5) < 0)
-	{
-	  perror("listen");
-	  exit(1);
-	}
-      new_socket(AUTH_SOCKET, sock);
-      signal(SIGALRM, check_parent_exists);
-      alarm(10);
+      fprintf(stderr, "mkdir %s: %s\n", socket_name, strerror(errno));
+      exit(1);
     }
-  else 
+  if (lstat(socket_name, &st) != 0)
     {
-      /* The agent uses SSH_AUTHENTICATION_FD. */
-      int cnt, newfd;
-      
-      dups = xmalloc(sizeof (int) * (1 + pfd));
-      
-      if (socketpair(AF_UNIX, SOCK_STREAM, 0, sockets) < 0)
-	{
-	  perror("socketpair");
-	  exit(1);
-	}
+      fprintf(stderr, "lstat %s: %s\n", socket_name, strerror(errno));
+      exit(1);
+    }
+  if ((st.st_mode & S_IFMT) != S_IFDIR)
+    {
+      fprintf(stderr, "%s: not directory\n", socket_name);
+      exit(1);
+    }
+  if (st.st_uid != getuid())
+    {
+      fprintf(stderr, "%s: not owner\n", socket_name);
+    }
+  if ((st.st_mode & 0777) != 0700)
+    {
+      fprintf(stderr, "%s: bad protection\n", socket_name);
+      exit(1);
+    }
 
-      /* Dup some descriptors to get the authentication fd to pfd,
-	 because some shells arbitrarily close descriptors below that.
-	 Don't use dup2 because maybe some systems don't have it?? */
-      for (cnt = 0;; cnt++) {
-	if ((dups[cnt] = dup(0)) < 0)
-	  fatal("auth_input_request_forwarding: dup failed");
-	if (dups[cnt] == pfd)
-	  break;
-      }
-      close(dups[cnt]);
+  /* Now put socket in dir SSH_AGENT_SOCKET. */
+  strcat(socket_name, "/socket");
       
-      /* Move the file descriptor we pass to children up high where
-	 the shell won't close it. */
-      newfd = dup(sockets[1]);
-      if (newfd != pfd)
-	fatal("auth_input_request_forwarding: dup didn't return %d.", pfd);
-      close(sockets[1]);
-      sockets[1] = newfd;
-      /* Close duped descriptors. */
-      for (i = 0; i < cnt; i++)
-	close(dups[i]);
-      free(dups);
-      
-      if (fork() != 0)
-	{ /* Parent - execute the given command. */
-	  close(sockets[0]);
-	  sprintf(buf, "SSH_AUTHENTICATION_FD=%d", sockets[1]);
-	  putenv(buf);
-	  execvp(av[1], av + 1);
-	  perror(av[1]);
-	  exit(1);
-	}
-      close(sockets[1]);
-      new_socket(AUTH_FD, sockets[0]);
+  /* Fork, and have the parent execute the command.  The child continues as
+     the authentication agent. */
+  if (fork() != 0)
+    { /* Parent - execute the given command. */
+      sprintf(buf, SSH_AUTHSOCKET_ENV_NAME"=%s", socket_name);
+      putenv(buf);
+      execvp(av[1], av + 1);
+      perror(av[1]);
+      exit(1);
     }
+      
+  sock = socket(AF_UNIX, SOCK_STREAM, 0);
+  if (sock < 0)
+    {
+      perror("socket");
+      exit(1);
+    }
+  memset(&sunaddr, 0, sizeof(sunaddr));
+  sunaddr.sun_family = AF_UNIX;
+  strncpy(sunaddr.sun_path, socket_name, sizeof(sunaddr.sun_path));
+
+#ifdef HAVE_UMASK
+  savedumask = umask(0177);
+#endif /* HAVE_UMASK */
+  if (bind(sock, (struct sockaddr *)&sunaddr, AF_UNIX_SIZE(sunaddr)) < 0)
+    {
+      perror("bind");
+      exit(1);
+    }
+#ifdef HAVE_UMASK
+  umask(savedumask);
+#endif /* HAVE_UMASK */
+
+  /* umask 0177 is not enough under HP-UX. */
+  if (chmod(socket_name, 0600) < 0)
+    {
+      perror("chmod");
+      exit(1);
+    }
+  if (listen(sock, 5) < 0)
+    {
+      perror("listen");
+      exit(1);
+    }
+  new_socket(AUTH_SOCKET, sock);
+  signal(SIGALRM, check_parent_exists);
+  alarm(10);
 
   signal(SIGINT, SIG_IGN);
   while (1)
@@ -627,3 +563,4 @@ int main(int ac, char **av)
     }
   /*NOTREACHED*/
 }
+

@@ -14,7 +14,7 @@ Functions for connecting the local authentication agent.
 */
 
 #include "includes.h"
-RCSID("$Id: authfd.c,v 1.2 1999/05/04 11:58:26 bg Exp $");
+RCSID("$Id: authfd.c,v 1.5 1999/10/31 12:49:47 bg Exp $");
 
 #include "ssh.h"
 #include "rsa.h"
@@ -26,18 +26,11 @@ RCSID("$Id: authfd.c,v 1.2 1999/05/04 11:58:26 bg Exp $");
 
 /* Returns the number of the authentication fd, or -1 if there is none. */
 
-int ssh_get_authentication_fd()
+int ssh_get_authentication_socket()
 {
-  const char *authfd, *authsocket;
+  const char *authsocket;
   int sock;
   struct sockaddr_un sunaddr;
-
-  /* Get the file descriptor number from environment. */
-  authfd = getenv(SSH_AUTHFD_ENV_NAME);
-
-  /* Convert the value to an integer and return it if we got a value. */
-  if (authfd)
-    return atoi(authfd);
 
   authsocket = getenv(SSH_AUTHSOCKET_ENV_NAME);
   if (!authsocket)
@@ -61,102 +54,13 @@ int ssh_get_authentication_fd()
 
 /* Closes the agent socket if it should be closed (depends on how it was
    obtained).  The argument must have been returned by 
-   ssh_get_authentication_fd(). */
+   ssh_get_authentication_socket(). */
 
 void ssh_close_authentication_socket(int sock)
 {
   if (getenv(SSH_AUTHSOCKET_ENV_NAME))
     close(sock);
 }
-
-/* Dummy alarm used to prevent waiting for connection from the
-   authentication agent indefinitely. */
-
-static RETSIGTYPE dummy_alarm_handler(int sig)
-{
-  /* Do nothing; a cought signal will just cause accept to return. */
-}
-
-/* Opens a socket to the authentication server.  Returns the number of
-   that socket, or -1 if no connection could be made. */
-
-int ssh_get_authentication_connection_fd()
-{
-  int authfd;
-  int listen_sock, sock, port, addrlen;
-  int old_timeout;
-  RETSIGTYPE (*old_handler)();
-  struct sockaddr_in sin;
-  char msg[3];
-
-  /* Get the the socket number from the environment.  This is the socket
-     used to obtain the real authentication socket. */
-  authfd = ssh_get_authentication_fd();
-  if (authfd == -1)
-    return -1;
-
-  /* Create a local socket for listening. */
-  listen_sock = socket(AF_INET, SOCK_STREAM, 0);
-  if (listen_sock == -1)
-    {
-      ssh_close_authentication_socket(authfd);
-      return -1;
-    }
-
-  /* Bind the socket to random unprivileged port. */
-  memset(&sin, 0, sizeof(sin));
-  sin.sin_family = AF_INET;
-  do
-    {
-      port = 32768 + (rand() % 30000);
-      sin.sin_port = htons(port);
-    }
-  while (bind(listen_sock, (struct sockaddr *)&sin, sizeof(sin)) < 0 &&
-	 errno == EADDRINUSE);
-  
-  /* Start listening for connections on the socket. */
-  if (listen(listen_sock, 1) < 0)
-    {
-      error("listen: %.100s", strerror(errno));
-      close(listen_sock);
-      ssh_close_authentication_socket(authfd);
-      return -1;
-    }
-
-  /* Send a message to the authentication fd requesting the agent or its
-     local representative to connect to the given socket.  Note that
-     we use send() to get the packet sent atomically (there can be several
-     clients trying to use the same authentication fd simultaneously). */
-  msg[0] = (char)SSH_AUTHFD_CONNECT;
-  PUT_16BIT(msg + 1, port);
-  if (send(authfd, msg, 3, 0) < 0)
-    {
-      shutdown(listen_sock, 2);
-      close(listen_sock);
-      ssh_close_authentication_socket(authfd);
-      return -1;
-    }
-
-  /* Setup a timeout so we won't wait for the connection indefinitely. */
-  old_timeout = alarm(120);
-  old_handler = signal(SIGALRM, dummy_alarm_handler);
-  
-  /* Wait for the connection from the agent or its representative. */
-  addrlen = sizeof(sin);
-  sock = accept(listen_sock, (struct sockaddr *)&sin, &addrlen);
-
-  /* Remove the alarm (restore its old values). */
-  alarm(old_timeout);
-  signal(SIGALRM, old_handler);
-
-  /* Close the socket we used for listening.  It is no longer needed.
-     (The authentication fd and the new connection still remain open.) */
-  shutdown(listen_sock, 2);
-  close(listen_sock);
-  ssh_close_authentication_socket(authfd);
-
-  return sock;
-}  
 
 /* Opens and connects a private socket for communication with the
    authentication agent.  Returns the file descriptor (which must be
@@ -169,8 +73,7 @@ AuthenticationConnection *ssh_get_authentication_connection()
   AuthenticationConnection *auth;
   int sock;
   
-  /* Get a connection to the authentication agent. */
-  sock = ssh_get_authentication_connection_fd();
+  sock = ssh_get_authentication_socket();
 
   /* Fail if we couldn't obtain a connection.  This happens if we exited
      due to a timeout. */
@@ -195,6 +98,8 @@ void ssh_close_authentication_connection(AuthenticationConnection *ac)
   buffer_free(&ac->packet);
   buffer_free(&ac->identities);
   close(ac->fd);
+  /* Free the connection data structure. */
+  xfree(ac);
 }
 
 /* Returns the first authentication identity held by the agent.
@@ -203,7 +108,7 @@ void ssh_close_authentication_connection(AuthenticationConnection *ac)
    comment after a successful call (before calling ssh_get_next_identity). */
 
 int ssh_get_first_identity(AuthenticationConnection *auth,
-			   int *bitsp, MP_INT *e, MP_INT *n, char **comment)
+			   int *bitsp, BIGNUM *e, BIGNUM *n, char **comment)
 {
   unsigned char msg[8192];
   int len, l;
@@ -274,7 +179,7 @@ int ssh_get_first_identity(AuthenticationConnection *auth,
    must free comment after a successful return. */
 
 int ssh_get_next_identity(AuthenticationConnection *auth,
-			  int *bitsp, MP_INT *e, MP_INT *n, char **comment)
+			  int *bitsp, BIGNUM *e, BIGNUM *n, char **comment)
 {
   /* Return failure if no more entries. */
   if (auth->howmany <= 0)
@@ -300,7 +205,7 @@ int ssh_get_next_identity(AuthenticationConnection *auth,
    and 1 corresponding to protocol version 1.1. */
 
 int ssh_decrypt_challenge(AuthenticationConnection *auth,
-			  int bits, MP_INT *e, MP_INT *n, MP_INT *challenge,
+			  int bits, BIGNUM *e, BIGNUM *n, BIGNUM *challenge,
 			  unsigned char session_id[16],
 			  unsigned int response_type,
 			  unsigned char response[16])
@@ -405,7 +310,7 @@ int ssh_decrypt_challenge(AuthenticationConnection *auth,
    be used by normal applications. */
 
 int ssh_add_identity(AuthenticationConnection *auth,
-		     RSAPrivateKey *key, const char *comment)
+		     RSA *key, const char *comment)
 {
   Buffer buffer;
   unsigned char buf[8192];
@@ -651,19 +556,3 @@ int ssh_remove_all_identities(AuthenticationConnection *auth)
   /*NOTREACHED*/
   return 0;
 }  
-
-/* Closes the connection to the authentication agent. */
-
-void ssh_close_authentication(AuthenticationConnection *auth)
-{
-  /* Close the connection. */
-  shutdown(auth->fd, 2);
-  close(auth->fd);
-
-  /* Free the buffers. */
-  buffer_free(&auth->packet);
-  buffer_free(&auth->identities);
-
-  /* Free the connection data structure. */
-  xfree(auth);
-}

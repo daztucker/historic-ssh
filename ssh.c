@@ -16,7 +16,7 @@ of X11, TCP/IP, and authentication connections.
 */
 
 #include "includes.h"
-RCSID("$Id: ssh.c,v 1.13 1999/05/11 19:27:16 bg Exp $");
+RCSID("$Id: ssh.c,v 1.18 1999/11/11 22:57:08 bg Exp $");
 
 #include "xmalloc.h"
 #include "randoms.h"
@@ -77,7 +77,7 @@ char *av0;
 int host_private_key_loaded = 0;
 
 /* Host private key. */
-RSAPrivateKey host_private_key;
+RSA host_private_key;
 
 
 /* Prints a help message to the user.  This function never returns. */
@@ -103,10 +103,10 @@ void usage()
   fprintf(stderr, "  -e char     Set escape character; ``none'' = disable (default: ~).\n");
 
   fprintf(stderr, "  -c cipher   Select encryption algorithm: ");
-  for (i = 1; i <= 6; i++)
+  for (i = 1; i <= SSH_CIPHER_MAX; i++)
     {
       const char *t = cipher_name(i);
-      if (t[0] == 'n' && t[1] == 'o' && t[2] == ' ')
+      if (strcmp(t, "reserved") == 0)
 	continue;
       fprintf(stderr, "%s, ", t);
     }
@@ -197,6 +197,10 @@ int main(int ac, char **av)
 	fatal("setrlimit failed: %.100s", strerror(errno));
 #else
       fatal("ssh is installed setuid root.\n");
+#endif
+#if defined(KRB4)
+      /* If we are setuid, initialize kerberos before uid swap. */
+      tkt_string();
 #endif
     }
 
@@ -554,11 +558,7 @@ int main(int ac, char **av)
 	host_private_key_loaded = 1;
     }
 
-  /* Get rid of any extra privileges that we may have.  We will no longer need
-     them.  Also, extra privileges could make it very hard to read identity
-     files and other non-world-readable files from the user's home directory
-     if it happens to be on a NFS volume where root is mapped to nobody. */
-  permanently_set_uid(original_real_uid);
+  temporarily_use_uid(original_real_uid);
 
   /* Now that we are back to our own permissions, create ~/.ssh directory
      if it doesn\'t already exist. */
@@ -580,6 +580,13 @@ int main(int ac, char **av)
 
       if (options.fallback_to_rsh)
 	{
+	  /* Restore our superuser privileges.  This must be done
+	     before permanently setting the uid. */
+	  restore_uid();
+
+	  /* Switch to the original uid permanently. */
+	  permanently_set_uid(original_real_uid);
+
 	  rsh_connect(host, options.user, &command);
 	  fatal("rsh_connect returned");
 	}
@@ -605,6 +612,11 @@ int main(int ac, char **av)
   /* We no longer need the host private key.  Clear it now. */
   if (host_private_key_loaded)
     rsa_clear_private_key(&host_private_key);
+
+  /* Get rid of any extra privileges that we may have.
+     We will no longer need them! */
+  restore_uid();
+  permanently_set_uid(original_real_uid);
 
   /* Close connection cleanly after attack. */
   cipher_attack_detected = packet_disconnect;
@@ -738,7 +750,7 @@ int main(int ac, char **av)
   packet_set_interactive(interactive, options.keepalives);
 
   /* Clear agent forwarding if we don\'t have an agent. */
-  authfd = ssh_get_authentication_fd();
+  authfd = ssh_get_authentication_socket();
   if (authfd < 0)
     options.forward_agent = 0;
   else

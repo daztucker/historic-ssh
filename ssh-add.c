@@ -14,7 +14,7 @@ Adds an identity to the authentication server, or removes an identity.
 */
 
 #include "includes.h"
-RCSID("$Id: ssh-add.c,v 1.2 1999/05/04 11:59:12 bg Exp $");
+RCSID("$Id: ssh-add.c,v 1.4 1999/10/31 12:49:51 bg Exp $");
 
 #include "randoms.h"
 #include "rsa.h"
@@ -78,7 +78,7 @@ void delete_all()
 
 void add_file(const char *filename)
 {
-  RSAPrivateKey key;
+  RSA key;
   RSAPublicKey public_key;
   AuthenticationConnection *ac;
   char *saved_comment, *comment, *pass;
@@ -163,7 +163,7 @@ void add_file(const char *filename)
 void list_identities()
 {
   AuthenticationConnection *ac;
-  MP_INT e, n;
+  BIGNUM e, n;
   int bits, status;
   char *comment;
   int had_identities;

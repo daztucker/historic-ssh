@@ -1,3 +1,204 @@
+Thu Nov 11 14:03:30 1999  Bjoern Groenvall  <bg@sics.se>
+
+	* bf_enc.c cipher.{c,h}: Add experimental Blowfish PCBC cipher.
+
+	* sshd.c (do_connection): Check length of session key.
+
+	* rsaglue.c (rsa_public_encrypt): Prevent buffer overflow that can
+ 	happen if you use RSAREF.
+
+Sun Nov  7 15:29:32 1999  Bjoern Groenvall  <bg@bg.sics.se>
+
+	* auth-passwd.c (auth_password): Move password authentication
+ 	using krb4 to auth-krb4.c (auth_krb4_pass).
+
+	* rsa.c (rsa_generate_key): Check that the generated RSA key does
+ 	really have the desired modulus.
+	
+	* hostfile.c (auth_rsa_read_key): Derive bits from n rather than
+	using redundant field bits.
+ 
+	* sshconnect.c (ssh_login): Key fingerprint support.
+
+	* auth-krb4.c (ssh_tf_init): Constness.
+
+Sun Nov  7 10:22:14 1999  Bjoern Groenvall  <bg@sics.se>
+
+	* sshconnect.c (ssh_login): Don't trust server announcement
+ 	regarding the number of bits in keys. From Niels and Markus.
+
+Thu Nov  4 11:19:19 1999  Bjoern Groenvall  <bg@sics.se>
+
+	* sshd.c (do_authentication): Don't send fail-msg but disconnect
+ 	if too many authentication failures, from OpenBSD.
+
+Sun Oct 31 10:26:01 1999  Bjoern Groenvall  <bg@sics.se>
+
+	* rsa.h: typedef BIGNUM.
+
+	* ssh.c (main): If we are setuid, initialize kerberos before uid
+ 	swap.
+
+	* uidswap.c (permanently_set_uid): Use setresuid(uid, uid, -1) so
+ 	that the saved-user-ID is not replaced.
+
+	* channels.c (channel_after_select): Merge in changes from OpenBSD
+ 	done by Markus Friedl.
+
+	* configure.in packet.c acconfig.h authfile.c cipher.h cipher.c
+ 	(cipher_set_key): Remove optional support for IDEA, RC4 and
+ 	(single) DES.
+
+Fri Oct 29 17:05:30 1999  Bjoern Groenvall  <bg@mummel.sics.se>
+
+	* sshd.c (main): Log login failures/successes using log_auth().
+
+	* log-server.c (log_auth): Like log() put also log to LOG_AUTH.
+	(fatal): unlink(ticket) had a bug.
+
+Thu Oct 28 23:36:57 1999  Bjoern Groenvall  <bg@mummel.sics.se>
+
+	* ssh.c (main): Call permanently_set_uid(original_real_uid) a bit
+ 	later to prevent ptrace() attacks.
+
+Wed Oct 27 14:23:48 1999  Bjoern Groenvall  <bg@mummel.sics.se>
+
+	* pty.c: Compile under Red Hat 6.1.
+
+Fri Oct 22 15:09:45 1999  Bjoern Groenvall  <bg@sics.se>
+
+	* serverloop.c (sigchld_handler): Save and restore errno.
+
+	* readconf.c (enum): Better resilience to unimplemented options.
+
+	* servconf.c (read_server_config): Resilience to unimplemented
+ 	options.
+
+	* uidswap.c (setreuid): Work with HP-UX setresuid().
+	Use of setreuid() is prefered in favor of seteuid().
+
+	* readconf.c (process_config_line): Unimplemented options are not
+ 	fatal.
+
+Wed Oct 20 21:41:29 1999  Bjoern Groenvall  <bg@bg.sics.se>
+
+	* channels.c ssh.h sshconnect.c sshd.c: Upgrade to protocol
+ 	version 1.5. Patch originally made for OpenBSD by Markus Friedl.
+	
+	* nchan.c nchan.h nchan.ms compat.c compat.h channels.h: New files
+ 	for upgrade to protocol 1.5.
+
+Wed Oct 20 18:26:07 1999  Bjoern Groenvall  <bg@sics.se>
+
+	* sshd.c (do_authentication): Log login failures.
+
+	* sshd.c sshconnect.c ssh-agent.c serverloop.c packet.c
+ 	channels.c: Use SHUT_(RD|WR|RDWR)) argument for shutdown(2).
+
+	* includes.h (SHUT_RD): Define SHUT_(RD|WR|RDWR) if not defined.
+	(RLIMIT_CORE): Define for HP-UX.
+
+Mon Oct 18 12:22:24 1999  Bjoern Groenvall  <bg@bg.sics.se>
+
+	* sshd.c (do_authentication): Limit number of password attempts to
+ 	5. From OpenBSD.
+
+	* auth-rsa.c (auth_rsa): Stricter check of file permissions.
+	From OpenBSD.
+	
+	* auth-passwd.c (auth_password): Use struct passwd as argument for
+ 	uniformity. From OpenBSD.
+
+Sun Oct 17 15:41:35 1999  Bjoern Groenvall  <bg@bg.sics.se>
+
+	* cipher.c (detect_cbc_attack): Fill in hook with call to
+ 	Futoranskys CRC-32 attack detector. New files deattack.{c,h}.
+
+Fri Oct 15 19:43:24 1999  Bjoern Groenvall  <bg@bg.sics.se>
+
+	* Integrate fix from OpenBSD concerning using unix-domain-sockets
+ 	in favour of agent-filedescriptors.
+	
+	* ssh-agent.c (after_select), authfd.c
+ 	(ssh_get_authentication_socket), channels.c
+ 	(channel_after_select): ssh-agent.c (after_select): Always use a
+ 	AF_UNIX socket for the authentication agent. Nuke lots of code.
+
+	* authfd.h, ssh.c (main): ssh_get_authentication_fd() renamed to
+ 	ssh_get_authentication_socket().
+
+	* ssh.h (SSH_AUTHSOCKET_ENV_NAME): Renamed to "SSH_AUTH_SOCK".
+
+	* Makefile.in, ssh.h, sshd.c (do_child): Nuke get_permanent_fd().
+
+Wed Oct 13 12:05:31 1999  Bjoern Groenvall  <bg@sics.se>
+
+	* sshd.c (do_child): Check return value from setlogin.
+	(do_exec_no_pty): Setsid for 4.4BSD. Patches from OpenBSD.
+
+Thu Oct  7 14:08:55 1999  Bjoern Groenvall  <bg@sics.se>
+
+	* ssh-agent.c (main): Protection bits 0600 for agent socket.
+
+	* channels.c (auth_input_request_forwarding): As above.
+
+Wed Oct  6 20:15:53 1999  Bjoern Groenvall  <bg@sics.se>
+
+	* Released 1.2.17.
+
+	* Make compression optional and use external zlib, zlib has been
+ 	removed from the distribution.
+
+	* Always use external GMP library.
+
+	* Add Blowfish cipher. Make IDEA optional. Remove TSS, RC4, and
+ 	DES ciphers. Make 3DES the default cipher. Use external DES
+ 	library for 3DES.
+
+	* Eliminate redundant iv1 in what they call 3DES.
+
+	* Stubs for detecting CRC-32 CBC and CFB integrity attacks. As far
+ 	as I can see, the CRC-32 attack is ineffective with 3DES (tripple
+ 	DES with outer CBC is not used).
+
+	* Verify that packet length match packet payload to make CRC-32
+ 	attacks less effective. CRC-32 detectors are still desirable.
+	
+	* Rename MD5 routines to avoid collisions.
+
+	* Merge in AFS and krb4 support from Dug Song.
+	  - KerberosTgtPassing is only included together with AFS support.
+	  - KerberosTgtPassing is by default disabled in sshd!
+ 	  - Don't accept SSH_AUTH_KERBEROS if we don't have a keyfile.
+	  - Don't accept SSH_PASS_AFS_TOKEN if we don't	run AFS.
+
+	* Always put Xauthority file in /tmp.
+
+	* If we don't have seteuid(2), use setreuid(2) to swap real and
+ 	effective uids.
+
+	* By default ssh is not installed setuid root. If ssh is manually
+ 	made setuid root, limit core dump size to 0 bytes.
+
+	* Check exit status from chown(2) and chmod(2) when giving away
+ 	tty.
+	
+	* Close master pty before showning back slave.
+
+	* Merge in OSF/1 C2 patches.
+
+	* Parse options in lowercase.
+
+	* Use canonic host names in known_hosts file.
+
+	* channels.c (auth_input_request_forwarding): Move agent sockets
+ 	into subdirectory of /tmp.
+
+	* auth-rh-rsa.c (auth_rhosts_rsa): Don't trust RSA keys from users
+ 	known_hosts to authenticate hosts.
+
+	* Use ssh-1.12 as a base for OSSH development.
+	
 Fri Nov 17 16:19:20 1995  Tatu Ylonen  <ylo@trance.olari.clinet.fi>
 
 	* Released 1.2.12.

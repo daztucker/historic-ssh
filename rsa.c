@@ -37,9 +37,8 @@ Description of the RSA algorithm can be found e.g. from the following sources:
 */
 
 #include "includes.h"
-RCSID("$Id: rsa.c,v 1.2 1999/05/04 11:59:05 bg Exp $");
+RCSID("$Id: rsa.c,v 1.6 1999/11/11 13:06:53 bg Exp $");
 
-#include <gmp.h>
 #include "xmalloc.h"
 #include "rsa.h"
 
@@ -182,7 +181,7 @@ static const unsigned int small_primes[MAX_PRIMES_IN_TABLE + 1] =
 
 /* Generate a random number of the desired number of bits.  */
 
-void rsa_random_integer(MP_INT *ret, RandomState *state, unsigned int bits)
+void rsa_random_integer(BIGNUM *ret, RandomState *state, unsigned int bits)
 {
   unsigned int bytes = (bits + 7) / 8;
   char *str = xmalloc(bytes * 2 + 1);
@@ -207,9 +206,9 @@ void rsa_random_integer(MP_INT *ret, RandomState *state, unsigned int bits)
 /* Returns a prime number of the specified number of bits.  The number
    will have the highest bit set and two lowest bits set. */
 
-void rsa_random_prime(MP_INT *ret, RandomState *state, unsigned int bits)
+void rsa_random_prime(BIGNUM *ret, RandomState *state, unsigned int bits)
 {
-  MP_INT start, aux;
+  BIGNUM start, aux;
   unsigned int num_primes;
   int *moduli;
   long difference;
@@ -326,9 +325,9 @@ void rsa_random_prime(MP_INT *ret, RandomState *state, unsigned int bits)
 /* Computes the multiplicative inverse of a number using Euclids algorithm.
    Computes x such that a * x mod n = 1, where 0 < a < n. */
 
-static void mpz_mod_inverse(MP_INT *x, MP_INT *a, MP_INT *n)
+static void mpz_mod_inverse(BIGNUM *x, BIGNUM *a, BIGNUM *n)
 {
-  MP_INT g0, g1, v0, v1, div, mod, aux;
+  BIGNUM g0, g1, v0, v1, div, mod, aux;
   mpz_init_set(&g0, n);
   mpz_init_set(&g1, a);
   mpz_init_set_ui(&v0, 0);
@@ -364,11 +363,11 @@ static void mpz_mod_inverse(MP_INT *x, MP_INT *a, MP_INT *n)
    The exponent e will be at least ebits bits in size.
    p must be smaller than q. */
 
-static void derive_rsa_keys(MP_INT *n, MP_INT *e, MP_INT *d, MP_INT *u,
-			    MP_INT *p, MP_INT *q,
+static void derive_rsa_keys(BIGNUM *n, BIGNUM *e, BIGNUM *d, BIGNUM *u,
+			    BIGNUM *p, BIGNUM *q,
 			    unsigned int ebits)
 {
-  MP_INT p_minus_1, q_minus_1, aux, phi, G, F;
+  BIGNUM p_minus_1, q_minus_1, aux, phi, G, F;
 
   assert(mpz_cmp(p, q) < 0);
 
@@ -441,10 +440,10 @@ static void derive_rsa_keys(MP_INT *n, MP_INT *e, MP_INT *d, MP_INT *u,
    structures; they should be freed with rsa_clear_private_key and
    rsa_clear_public_key. */
 
-void rsa_generate_key(RSAPrivateKey *prv, RSAPublicKey *pub, 
+void rsa_generate_key(RSA *prv, RSAPublicKey *pub, 
 		      RandomState *state, unsigned int bits)
 {
-  MP_INT test, aux;
+  BIGNUM test, aux;
   unsigned int pbits, qbits;
   int ret;
 
@@ -461,9 +460,7 @@ void rsa_generate_key(RSAPrivateKey *prv, RSAPublicKey *pub,
   pbits = bits / 2;
   qbits = bits - pbits;
 
-#ifndef RSAREF
  retry0:
-#endif /* !RSAREF */
 
   if (rsa_verbose)
     {
@@ -484,6 +481,14 @@ void rsa_generate_key(RSAPrivateKey *prv, RSAPublicKey *pub,
 
   /* Generate random number q. */
   rsa_random_prime(&prv->q, state, qbits);
+
+  /* n = p * q (the public modulus). */
+  mpz_mul(&prv->n, &prv->p, &prv->q);
+  if (mpz_sizeinbase(&prv->n, 2) != bits)
+    {
+      printf("Resulting modulus is to small!\n");
+      goto retry0;
+    }
 
   /* Sort them so that p < q. */
   ret = mpz_cmp(&prv->p, &prv->q);
@@ -566,7 +571,7 @@ void rsa_generate_key(RSAPrivateKey *prv, RSAPublicKey *pub,
 
 /* Frees any memory associated with the private key. */
 
-void rsa_clear_private_key(RSAPrivateKey *prv)
+void rsa_clear_private_key(RSA *prv)
 {
   prv->bits = 0;
   mpz_clear(&prv->n);
@@ -592,9 +597,9 @@ void rsa_clear_public_key(RSAPublicKey *pub)
    is done using the Chinese Remainder Theorem, which is faster than
    direct modular exponentiation. */
 
-void rsa_private(MP_INT *output, MP_INT *input, RSAPrivateKey *prv)
+void rsa_private(BIGNUM *output, BIGNUM *input, RSA *prv)
 {
-  MP_INT dp, dq, p2, q2, k;
+  BIGNUM dp, dq, p2, q2, k;
 
   /* Initialize temporary variables. */
   mpz_init(&dp);
@@ -638,7 +643,7 @@ void rsa_private(MP_INT *output, MP_INT *input, RSAPrivateKey *prv)
 
 /* Performs a public-key RSA operation (encrypt/decrypt). */
 
-void rsa_public(MP_INT *output, MP_INT *input, RSAPublicKey *pub)
+void rsa_public(BIGNUM *output, BIGNUM *input, RSAPublicKey *pub)
 {
   mpz_powm(output, input, &pub->e, &pub->n);
 }
@@ -668,7 +673,7 @@ static void rsa_free(void *ptr, size_t size)
   xfree(ptr);
 }
 
-/* Sets MP_INT memory allocation routines to ones that clear any memory
+/* Sets BIGNUM memory allocation routines to ones that clear any memory
    when freed. */
 
 void rsa_set_mp_memory_allocation()

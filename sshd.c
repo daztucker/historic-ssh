@@ -18,9 +18,8 @@ agent connections.
 */
 
 #include "includes.h"
-RCSID("$Id: sshd.c,v 1.20 1999/08/18 15:33:10 bg Exp $");
+RCSID("$Id: sshd.c,v 1.37 1999/11/15 13:29:22 bg Exp $");
 
-#include <gmp.h>
 #include "xmalloc.h"
 #include "rsa.h"
 #include "ssh.h"
@@ -31,6 +30,8 @@ RCSID("$Id: sshd.c,v 1.20 1999/08/18 15:33:10 bg Exp $");
 #include "mpaux.h"
 #include "servconf.h"
 #include "uidswap.h"
+#include "compat.h"
+
 #ifdef HAVE_USERSEC_H
 #include <usersec.h>
 #endif /* HAVE_USERSEC_H */
@@ -119,7 +120,7 @@ unsigned char session_id[16];
 /* Any really sensitive data in the application is contained in this structure.
    The idea is that this structure could be locked into memory so that the
    pages do not get written into swap.  However, there are some problems.
-   The private key contains MP_INTs, and we do not (in principle) have
+   The private key contains BIGNUMs, and we do not (in principle) have
    access to the internals of them, and locking just the structure is not
    very useful.  Currently, memory locking is not implemented. */
 struct
@@ -128,10 +129,10 @@ struct
   RandomState random_state;
   
   /* Private part of server key. */
-  RSAPrivateKey private_key;
+  RSA private_key;
 
   /* Private part of host key. */
-  RSAPrivateKey host_key;
+  RSA host_key;
 } sensitive_data;
 
 /* Flag indicating whether the current session key has been used.  This flag
@@ -427,7 +428,7 @@ int main(int ac, char **av)
 	    options.server_key_bits);
     }
 
-  /* Initialize memory allocation so that any freed MP_INT data will be
+  /* Initialize memory allocation so that any freed BIGNUM data will be
      zeroed. */
   rsa_set_mp_memory_allocation();
 
@@ -497,7 +498,7 @@ int main(int ac, char **av)
       if (bind(listen_sock, (struct sockaddr *)&sin, sizeof(sin)) < 0)
 	{
 	  error("bind: %.100s", strerror(errno));
-	  shutdown(listen_sock, 2);
+	  shutdown(listen_sock, SHUT_RDWR);
 	  close(listen_sock);
 	  fatal("Bind to port %d failed.", options.port);
 	}
@@ -570,7 +571,7 @@ int main(int ac, char **av)
 	      {
 		error("Connection from %.500s refused by tcp_wrappers.",
 		      eval_client(&req));
-		shutdown(newsock, 2);
+		shutdown(newsock, SHUT_RDWR);
 		close(newsock);
 		continue;
 	      }
@@ -653,7 +654,7 @@ int main(int ac, char **av)
   packet_set_connection(sock_in, sock_out, &sensitive_data.random_state);
 
   /* Log the connection. */
-  log("Connection from %.100s port %d", 
+  debug("Connection from %.100s port %d", 
       get_remote_ipaddr(), get_remote_port());
 
   /* Check whether logins are denied from this host. */
@@ -666,7 +667,7 @@ int main(int ac, char **av)
 	if (match_pattern(hostname, options.deny_hosts[i]) ||
 	    match_pattern(ipaddr, options.deny_hosts[i]))
 	  {
-	    log("Connection from %.200s denied.\n", hostname);
+	    log_auth("Connection from %.200s denied.\n", hostname);
 	    hostname = "You are not allowed to connect.  Go away!\r\n";
 	    write(sock_out, hostname, strlen(hostname));
 	    close(sock_in);
@@ -734,8 +735,11 @@ int main(int ac, char **av)
     }
 
   /* Check that the client has sufficiently high software version. */
-  if (remote_major == 1 && remote_minor == 0)
+  if (remote_major == 1 && remote_minor < 3)
     packet_disconnect("Your ssh version is too old and is no longer supported.  Please install a newer version.");
+
+  if (remote_major == 1 && remote_minor == 3)
+    enable_compat13();
 
   /* Check whether logins are permitted from this host. */
   if (options.num_allow_hosts > 0)
@@ -749,7 +753,7 @@ int main(int ac, char **av)
 	  break;
       if (i >= options.num_allow_hosts)
 	{
-	  log("Connection from %.200s not allowed.\n", hostname);
+	  log_auth("Connection from %.200s not allowed.\n", hostname);
 	  packet_disconnect("Sorry, you are not allowed to connect.");
 	  /*NOTREACHED*/
 	}
@@ -771,7 +775,7 @@ int main(int ac, char **av)
   if (xauthfile) unlink(xauthfile);
 
   /* The connection has been terminated. */
-  log("Closing connection to %.100s", inet_ntoa(sin.sin_addr));
+  debug("Closing connection to %.100s", inet_ntoa(sin.sin_addr));
   packet_close();
   exit(0);
 }
@@ -783,7 +787,7 @@ int main(int ac, char **av)
 void do_connection(int privileged_port)
 {
   int i;
-  MP_INT session_key_int;
+  BIGNUM session_key_int;
   unsigned char session_key[SSH_SESSION_KEY_LENGTH];
   unsigned char check_bytes[8];
   char *user;
@@ -906,6 +910,11 @@ void do_connection(int privileged_port)
 		     sensitive_data.private_key.bits,
 		     &sensitive_data.private_key.n);
 
+  {
+    int len = (mpz_sizeinbase(&session_key_int, 2) + 7)/8;
+    if (len < 0 || len > sizeof(session_key))
+      fatal("do_connection: session is to long, %d bytes", len);
+  }
   /* Extract session key from the decrypted integer.  The key is in the 
      least significant 256 bits of the integer; the first byte of the 
      key is in the highest bits. */
@@ -959,15 +968,18 @@ void do_connection(int privileged_port)
    in as (received from the clinet).  Privileged_port is true if the
    connection comes from a privileged port (used for .rhosts authentication).*/
 
+#define MAX_AUTH_FAILURES 5
+
 void do_authentication(char *user, int privileged_port)
 {
   int type;
   int authenticated = 0;
+  int authentication_failures = 0;
   char *password;
   struct passwd *pw, pwcopy;
   char *client_user;
   unsigned int client_host_key_bits;
-  MP_INT client_host_key_e, client_host_key_n;
+  BIGNUM client_host_key_e, client_host_key_n;
 			 
 #ifdef AFS
   /* If machine has AFS, set process authentication group. */
@@ -994,6 +1006,10 @@ void do_authentication(char *user, int privileged_port)
 	  int plen;
 	  (void) packet_read(&plen);
 
+          if (++authentication_failures >= MAX_AUTH_FAILURES) {
+	    packet_disconnect("Too many authentication failures for %.100s from %.200s", 
+			      user, get_canonical_hostname());
+          }
 	  /* Send failure.  This should be indistinguishable from a failed
 	     authentication. */
 	  packet_start(SSH_SMSG_FAILURE);
@@ -1022,14 +1038,10 @@ void do_authentication(char *user, int privileged_port)
   debug("Attempting authentication for %.100s.", user);
 
   /* If the user has no password, accept authentication immediately. */
-  if (options.password_authentication &&
-#ifdef KRB4
-      options.kerberos_or_local_passwd &&
-#endif /* KRB4 */
-      auth_password(user, ""))
+  if (options.password_authentication && auth_password(pw, ""))
     {
       /* Authentication with empty password succeeded. */
-      debug("Login for user %.100s accepted without authentication.", user);
+      log_auth("Login for user %.100s accepted without authentication.", user);
       /* authentication_type = SSH_AUTH_PASSWORD; */
       authenticated = 1;
       /* Success packet will be sent after loop below. */
@@ -1066,7 +1078,7 @@ void do_authentication(char *user, int privileged_port)
 	    char *data = packet_get_string(&dlen);
 	    packet_integrity_check(plen, 4 + dlen, type);
 	    if (!auth_kerberos_tgt(pw, data))
-	      debug("Kerberos tgt REFUSED for %.100s", user);
+	      log("Kerberos tgt REFUSED for %.100s", user);
 	  }
 	  continue;
 #endif /* KERBEROS_TGT_PASSING */
@@ -1083,8 +1095,8 @@ void do_authentication(char *user, int privileged_port)
 	    int dlen;
 	    char *token_string = packet_get_string(&dlen);
 	    packet_integrity_check(plen, 4 + dlen, type);
-	    if (!auth_afs_token(user, pw->pw_uid, token_string))
-	      debug("AFS token REFUSED for %.100s", user);
+	    if (!auth_afs_token(pw, token_string))
+	      log("AFS token REFUSED for %.100s", user);
 	    xfree(token_string);
 	    continue;
 	  }
@@ -1109,16 +1121,16 @@ void do_authentication(char *user, int privileged_port)
 
 	    if (auth_krb4(user, &auth, &tkt_user)) {
 	      /* Client has successfully authenticated to us. */
-	      log("Kerberos authentication accepted %.100s for account "
-		  "%.100s from %.200s", tkt_user, user,
-		  get_canonical_hostname());
+	      log_auth("Kerberos authentication accepted %.100s for account "
+		       "%.100s from %.200s", tkt_user, user,
+		       get_canonical_hostname());
 	      /* authentication_type = SSH_AUTH_KERBEROS; */
 	      authenticated = 1;
 	      xfree(tkt_user);
 	      break;
 	    }
-	    log("Kerberos authentication failed for account "
-		"%.100s from %.200s", user, get_canonical_hostname());
+	    log_auth("Kerberos authentication failed for account "
+		     "%.100s from %.200s", user, get_canonical_hostname());
 	  }
 	  break;
 #endif /* KRB4 */
@@ -1151,14 +1163,14 @@ void do_authentication(char *user, int privileged_port)
 			  options.strict_modes))
 	    {
 	      /* Authentication accepted. */
-	      log("Rhosts authentication accepted for %.100s, remote %.100s on %.700s.",
-		  user, client_user, get_canonical_hostname());
+	      log_auth("Rhosts authentication accepted for %.100s, remote %.100s on %.700s.",
+		       user, client_user, get_canonical_hostname());
 	      authenticated = 1;
 	      xfree(client_user);
 	      break;
 	    }
-	  debug("Rhosts authentication failed for %.100s, remote %.100s.",
-		user, client_user);
+	  log_auth("Rhosts authentication failed for %.100s, remote %.100s.",
+		   user, client_user);
 	  xfree(client_user);
 	  break;
 
@@ -1202,14 +1214,16 @@ void do_authentication(char *user, int privileged_port)
 			      options.strict_modes))
 	    {
 	      /* Authentication accepted. */
+	      log_auth("Rhosts authentication for %.100s accepted, remote %.100s.",
+		       user, client_user);
 	      authenticated = 1;
 	      xfree(client_user);
 	      mpz_clear(&client_host_key_e);
 	      mpz_clear(&client_host_key_n);
 	      break;
 	    }
-	  debug("Rhosts authentication failed for %.100s, remote %.100s.",
-		user, client_user);
+	  log_auth("Rhosts authentication failed for %.100s, remote %.100s.",
+		   user, client_user);
 	  xfree(client_user);
 	  mpz_clear(&client_host_key_e);
 	  mpz_clear(&client_host_key_n);
@@ -1225,22 +1239,22 @@ void do_authentication(char *user, int privileged_port)
 	  /* RSA authentication requested. */
 	  {
 	    int nlen;
-	    MP_INT n;
+	    BIGNUM n;
 	    mpz_init(&n);
 	    packet_get_mp_int(&n, &nlen);
 
 	    packet_integrity_check(plen, nlen, type);
 	    
-	    if (auth_rsa(pw, &n, &sensitive_data.random_state))
+	    if (auth_rsa(pw, &n, &sensitive_data.random_state, options.strict_modes))
 	      { 
 		/* Successful authentication. */
 		mpz_clear(&n);
-		log("RSA authentication for %.100s accepted.", user);
+		log_auth("RSA authentication for %.100s accepted.", user);
 		authenticated = 1;
 		break;
 	      }
 	    mpz_clear(&n);
-	    debug("RSA authentication for %.100s failed.", user);
+	    log_auth("RSA authentication for %.100s failed.", user);
 	  }
 	  break;
 
@@ -1262,19 +1276,24 @@ void do_authentication(char *user, int privileged_port)
 	  }
 
 	  /* Try authentication with the password. */
-	  if (auth_password(user, password))
+	  if (auth_password(pw, password))
 	    {
 	      /* Successful authentication. */
 	      /* Clear the password from memory. */
 	      memset(password, 0, strlen(password));
 	      xfree(password);
-	      log("Password authentication for %.100s accepted.", user);
+	      log_auth("Password authentication for %.100s accepted.", user);
 	      authenticated = 1;
 	      break;
 	    }
-	  debug("Password authentication for %.100s failed.", user);
+	  log_auth("Password LOGIN FAILURE for user: %.100s", user);
 	  memset(password, 0, strlen(password));
 	  xfree(password);
+	  break;
+
+	case SSH_CMSG_AUTH_TIS:
+	  /* TIS Authentication is unsupported */
+	  log("TIS authentication disabled.");
 	  break;
 
 	default:
@@ -1287,17 +1306,22 @@ void do_authentication(char *user, int privileged_port)
       if (authenticated)
 	break;
 
+      if (++authentication_failures >= MAX_AUTH_FAILURES) {
+	packet_disconnect("To many authentication failures for %.100s from %.200s", 
+          pw->pw_name, get_canonical_hostname());
+      }
       /* Send a message indicating that the authentication attempt failed. */
       packet_start(SSH_SMSG_FAILURE);
       packet_send();
       packet_write_wait();
+
     }
 
   /* Check if the user is logging in as root and root logins are disallowed. */
   if (pw->pw_uid == 0 && !options.permit_root_login)
     {
       if (forced_command)
-	log("Root login accepted for forced command.", forced_command);
+	log_auth("Root login accepted for forced command.");
       else
 	packet_disconnect("ROOT LOGIN REFUSED FROM %.200s", 
 			  get_canonical_hostname());
@@ -1537,6 +1561,10 @@ void do_authenticated(struct passwd *pw)
 	  xfree(command);
 	  return;
 
+	case SSH_CMSG_MAX_PACKET_SIZE:
+      	  debug("The server does not support limiting packet size.");
+	  goto fail;
+
 	default:
 	  /* Any unknown messages in this phase are ignored, and a failure
 	     message is returned. */
@@ -1610,6 +1638,13 @@ void do_exec_no_pty(const char *command, struct passwd *pw,
       /* Child.  Reinitialize the log since the pid has changed. */
       log_init(av0, debug_flag && !inetd_flag, debug_flag, 
 	       options.quiet_mode, options.log_facility);
+
+#ifdef HAVE_SETSID
+      /* Create a new session and process group since the 4.4BSD setlogin()
+	 affects the entire process group. */
+      if (setsid() < 0)
+	error("setsid failed: %.100s", strerror(errno));
+#endif
 
 #ifdef USE_PIPES
       /* Redirect stdin.  We close the parent side of the socket pair,
@@ -2070,7 +2105,8 @@ void do_child(const char *command, struct passwd *pw, const char *term,
 
 #ifdef HAVE_SETLOGIN
   /* Set login name in the kernel. */
-  setlogin(pw->pw_name);
+  if (setlogin(pw->pw_name) < 0)
+    error("setlogin failed: %s", strerror(errno));
 #endif /* HAVE_SETLOGIN */
 
 #ifdef HAVE_USERSEC_H
@@ -2101,7 +2137,7 @@ void do_child(const char *command, struct passwd *pw, const char *term,
 
 #ifdef HAVE_SETLUID
       /* Initialize login UID. */
-      if (setluid(user_uid) < 0)
+      if (setluid(pw->pw_uid) < 0)
 	{
 	  perror("setluid");
 	  exit(1);
@@ -2210,18 +2246,9 @@ void do_child(const char *command, struct passwd *pw, const char *term,
       child_set_env(&env, &envsize, "XAUTHORITY", xauthfile);
 
   /* Set variable for forwarded authentication connection, if we have one. */
-  if (get_permanent_fd(pw->pw_shell) < 0)
-    {
-      if (auth_get_socket_name() != NULL)
-	child_set_env(&env, &envsize, SSH_AUTHSOCKET_ENV_NAME, 
-		      auth_get_socket_name());
-    }
-  else
-    if (auth_get_fd() >= 0)
-      {
-	sprintf(buf, "%d", auth_get_fd());
-	child_set_env(&env, &envsize, SSH_AUTHFD_ENV_NAME, buf);
-      }
+  if (auth_get_socket_name() != NULL)
+    child_set_env(&env, &envsize, SSH_AUTHSOCKET_ENV_NAME, 
+		  auth_get_socket_name());
 
   /* Read environment variable settings from /etc/environment.  (This exists
      at least on AIX, but could be useful also elsewhere.) */

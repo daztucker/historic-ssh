@@ -13,7 +13,7 @@ This file includes most of the needed system headers.
 
 */
 
-/* RCSID("$Id: includes.h,v 1.3 1999/05/04 11:58:46 bg Exp $"); */
+/* RCSID("$Id: includes.h,v 1.4 1999/10/22 08:52:15 bg Exp $"); */
 
 #ifndef INCLUDES_H
 #define INCLUDES_H
@@ -113,6 +113,12 @@ char *strchr(), *strrchr();
 #endif /* STDC_HEADERS */
 
 #include <sys/socket.h>
+#ifndef SHUT_RD
+#define SHUT_RD   0
+#define SHUT_WR   1
+#define SHUT_RDWR 2
+#endif
+
 #include <netinet/in.h>
 #ifdef HAVE_NETINET_IN_SYSTM_H
 #include <netinet/in_systm.h>
@@ -211,6 +217,9 @@ struct	sockaddr_un {
 
 #ifdef HAVE_SETRLIMIT
 #include <sys/resource.h>
+#if !defined(RLIMIT_CORE) && defined(RLIMIT_NOFILE) && (RLIMIT_NOFILE == 6)
+#define RLIMIT_CORE 5
+#endif
 #endif
 
 #ifndef HAVE_VSNPRINTF

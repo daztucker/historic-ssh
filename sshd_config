@@ -23,13 +23,13 @@ RhostsAuthentication no
 # For this to work you will also need host keys in _ETCDIR_/ssh_known_hosts
 RhostsRSAAuthentication yes
 #
-# Changed RSAAuthentication to no/bg
+# If homedirs are in NFS or AFS you don't want to enable RSAAuthentication
 RSAAuthentication no
 #
-# To enable tunneled clear text passwords, change to yes here!
-PasswordAuthentication no
+# To disable tunneled clear text passwords, change to no here!
+PasswordAuthentication yes
+KerberosOrLocalPasswd yes
 PermitEmptyPasswords no
-#KerberosOrLocalPasswd yes
 
 # Kerberos TGT Passing does only work with the AFS kaserver
 #KerberosTgtPassing yes

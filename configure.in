@@ -8,7 +8,7 @@
 #
 # Created: Wed Mar 22 18:02:48 1995 ylo
 #
-# $Id: configure.in,v 1.19 1999/06/30 16:51:14 bg Exp $
+# $Id: configure.in,v 1.25 1999/11/02 23:25:13 bg Exp $
 #
 
 AC_INIT(sshd.c)
@@ -228,8 +228,12 @@ AC_SUBST(GMPINCS) dnl
 AC_SUBST(GMPLIBS) dnl
 
 AC_CHECK_FUNCS(_getpty clock fchmod getdtablesize gethostname getrusage)
-AC_CHECK_FUNCS(gettimeofday initgroups innetgr memcpy openpty popen seteuid)
+AC_CHECK_FUNCS(gettimeofday initgroups innetgr memcpy openpty popen)
 AC_CHECK_FUNCS(setlogin setluid setrlimit strchr times ulimit umask vsnprintf)
+
+AC_CHECK_FUNCS(setresuid)
+# Beware, setreuid is an emulation routine under OpenBSD.
+AC_CHECK_FUNCS(setreuid)
 
 AC_TYPE_SIGNAL
 AC_TYPE_SIZE_T
@@ -252,6 +256,7 @@ fi
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
 AC_CHECK_HEADERS(unistd.h rusage.h sys/time.h lastlog.h utmp.h utmpx.h)
+AC_CHECK_HEADERS(sys/stream.h sys/conf.h)
 AC_CHECK_HEADERS(sgtty.h sys/select.h sys/ioctl.h sys/filio.h)
 AC_CHECK_HEADERS(paths.h usersec.h utime.h netinet/in_systm.h ulimit.h)
 AC_HEADER_TIME
@@ -300,7 +305,7 @@ if test -n "$XAUTH_PATH"; then
 fi
 
 AC_MSG_CHECKING(for pseudo ttys)
-if test -c /dev/ptmx && test -c /dev/pts/0
+if test -c /dev/ptmx && test -d /dev/pts
 then
   AC_DEFINE(HAVE_DEV_PTMX)
   AC_MSG_RESULT(streams ptys)
@@ -426,40 +431,6 @@ else
   AC_MSG_RESULT(no)
 fi
 
-AC_MSG_CHECKING(whether to include the IDEA encryption algorithm)
-AC_ARG_WITH(idea,
-[  --with-idea             Use IDEA (not default).
-  --without-idea          Don't use IDEA: avoids patent problems in commercial use],
-[ case "$withval" in
-  yes)
-    AC_MSG_RESULT(yes)
-    CONFOBJS="$CONFOBJS idea.o"
-    AC_DEFINE(WITH_IDEA)
-    ;;
-  *)
-    AC_MSG_RESULT(no)
-    ;;
-  esac ],
-  AC_MSG_RESULT(no)
-)
-
-AC_MSG_CHECKING(whether to include the RC4 encryption algorithm)
-AC_ARG_WITH(rc4,
-[  --with-rc4          Include RC4 support.
-  --without-rc4       Don't include RC4 support (default)],
-[ case "$withval" in
-  yes)
-    AC_MSG_RESULT(yes)
-    CONFOBJS="$CONFOBJS rc4.o"
-    AC_DEFINE(WITH_RC4)
-    ;;
-  *)
-    AC_MSG_RESULT(no)
-    ;;
-  esac ],
-  AC_MSG_RESULT(no)
-)
-
 AC_MSG_CHECKING(whether to include the Blowfish encryption algorithm)
 AC_ARG_WITH(blowfish,
 [  --with-blowfish          Include Blowfish support (default).
@@ -484,25 +455,6 @@ no)
     AC_MSG_RESULT(no)
     ;;
 esac
-
-AC_MSG_CHECKING(whether to use rsaref)
-AC_ARG_WITH(rsaref,
-[  --with-rsaref           Use RSAREF (try to avoid patent problems in U.S.)
-  --without-rsaref        Use normal RSA routines (default). ],
-[ case "$withval" in
-  no)
-       AC_MSG_RESULT(no)
-       ;;
-  *)
-       AC_MSG_RESULT(yes)
-       AC_DEFINE(RSAREF)
-       RSAREFDEP="rsaref2/source/librsaref.a"
-       LIBS="-lrsaref $LIBS"
-       LDFLAGS="-Lrsaref2/source $LDFLAGS"
-       ;;
-  esac ],
-  AC_MSG_RESULT(no)
-)
 
 AC_MSG_CHECKING(whether to use rsh)
 AC_ARG_WITH(rsh, 
@@ -561,38 +513,6 @@ AC_ARG_WITH(etcdir,
   esac ],
   ETCDIR="/etc"
   AC_MSG_RESULT(/etc)
-)
-
-AC_MSG_CHECKING(whether to support SecurID)
-AC_ARG_WITH(securid,
-[  --with-securid[=PATH]   Enable support for Security Dynamics SecurID card.],
-[ case "$withval" in
-  no)
-    AC_MSG_RESULT(no)
-    ;;
-  yes)
-    AC_MSG_RESULT(yes)
-    if test '!' -f /usr/ace/sdiclient.a; then
-      AC_ERROR(SecurID sdiclient.a not found in /usr/ace: you must supply the path.)
-    fi
-    AC_MSG_RESULT(yes)
-    AC_MSG_RESULT(Assuming SecurID headers and libraries are in /usr/ace.)
-    AC_DEFINE(HAVE_SECURID)
-    CFLAGS="$CFLAGS -I/usr/ace"
-    LIBS="/usr/ace/sdiclient.a $LIBS"
-    ;;
-  *)
-    AC_MSG_RESULT(yes)
-    if test '!' -f $withval/sdiclient.a; then
-      AC_ERROR(SecurID sdiclient.a not found in $withval: please supply the correct path.)
-    fi
-    AC_MSG_RESULT(Assuming SecurID headers and libraries are in $withval.)
-    AC_DEFINE(HAVE_SECURID)
-    CFLAGS="$CFLAGS -I$withval"
-    LIBS="$withval/sdiclient.a $LIBS"
-    ;;
-  esac ],
-  AC_MSG_RESULT(no)
 )
 
 AC_MSG_CHECKING(whether to include compression support)
@@ -774,6 +694,25 @@ AC_ARG_WITH(socks,
 		[],
 		[ AC_MSG_ERROR(Could not find the $withval library.  You must first install socks.) ])
     ;;
+  esac ],
+  AC_MSG_RESULT(no)
+)
+
+AC_MSG_CHECKING(whether to use rsaref)
+AC_ARG_WITH(rsaref,
+[  --with-rsaref           Use RSAREF (try to avoid patent problems in U.S.)
+  --without-rsaref        Use normal RSA routines (default). ],
+[ case "$withval" in
+  no)
+       AC_MSG_RESULT(no)
+       ;;
+  *)
+       AC_MSG_RESULT(yes)
+       AC_DEFINE(RSAREF)
+       RSAREFDEP="rsaref2/source/librsaref.a"
+       LIBS="-lrsaref $LIBS"
+       LDFLAGS="-Lrsaref2/source $LDFLAGS"
+       ;;
   esac ],
   AC_MSG_RESULT(no)
 )

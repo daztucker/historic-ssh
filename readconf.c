@@ -14,7 +14,7 @@ Functions for reading the configuration files.
 */
 
 #include "includes.h"
-RCSID("$Id: readconf.c,v 1.13 1999/06/14 10:20:32 bg Exp $");
+RCSID("$Id: readconf.c,v 1.15 1999/10/22 10:20:02 bg Exp $");
 
 #include "ssh.h"
 #include "cipher.h"
@@ -91,15 +91,9 @@ typedef enum
 {
   oForwardAgent, oForwardX11, oRhostsAuthentication,
   oPasswordAuthentication, oRSAAuthentication, oFallBackToRsh, oUseRsh,
-#ifdef KRB4
   oKerberosAuthentication,
-#endif /* KRB4 */
-#ifdef KERBEROS_TGT_PASSING
   oKerberosTgtPassing,
-#endif
-#ifdef AFS
   oAFSTokenPassing,
-#endif
   oIdentityFile, oHostName, oPort, oCipher, oRemoteForward, oLocalForward, 
   oUser, oHost, oEscapeChar, oRhostsRSAAuthentication, oProxyCommand,
   oGlobalKnownHostsFile, oUserKnownHostsFile, oConnectionAttempts,
@@ -120,15 +114,9 @@ static struct
   { "rhostsauthentication", oRhostsAuthentication },
   { "passwordauthentication", oPasswordAuthentication },
   { "rsaauthentication", oRSAAuthentication },
-#ifdef KRB4
   { "kerberosauthentication", oKerberosAuthentication },
-#endif /* KRB4 */
-#ifdef KERBEROS_TGT_PASSING
   { "kerberostgtpassing", oKerberosTgtPassing },
-#endif
-#ifdef AFS
   { "afstokenpassing", oAFSTokenPassing },
-#endif
   { "fallbacktorsh", oFallBackToRsh },
   { "usersh", oUseRsh },
   { "identityfile", oIdentityFile },
@@ -508,7 +496,9 @@ void process_config_line(Options *options, const char *host,
       break;
       
     default:
-      fatal("parse_config_file: Unimplemented opcode %d", opcode);
+      debug("Unimplemented option ``%s'' in file %s at line %d.",
+	    cp, filename, linenum);
+      return;
     }
   
   /* Check that there is no garbage at end of line. */

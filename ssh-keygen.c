@@ -14,7 +14,7 @@ Identity and host key generation and maintenance.
 */
 
 #include "includes.h"
-RCSID("$Id: ssh-keygen.c,v 1.2 1999/05/04 11:59:17 bg Exp $");
+RCSID("$Id: ssh-keygen.c,v 1.3 1999/10/31 12:49:53 bg Exp $");
 
 #ifndef HAVE_GETHOSTNAME
 #include <sys/utsname.h>
@@ -25,7 +25,7 @@ RCSID("$Id: ssh-keygen.c,v 1.2 1999/05/04 11:59:17 bg Exp $");
 #include "xmalloc.h"
 
 /* Generated private key. */
-RSAPrivateKey private_key;
+RSA private_key;
 
 /* Generated public key. */
 RSAPublicKey public_key;
@@ -63,7 +63,7 @@ char *identity_comment = NULL;
 void do_change_passphrase(struct passwd *pw)
 {
   char buf[1024], *comment;
-  RSAPrivateKey private_key;
+  RSA private_key;
   char *old_passphrase, *passphrase1, *passphrase2;
   struct stat st;
 
@@ -178,7 +178,7 @@ void do_change_passphrase(struct passwd *pw)
 void do_change_comment(struct passwd *pw)
 {
   char buf[1024], new_comment[1024], *comment;
-  RSAPrivateKey private_key;
+  RSA private_key;
   char *passphrase;
   struct stat st;
   FILE *f;

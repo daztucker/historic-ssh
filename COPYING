@@ -1,0 +1,81 @@
+This file is part of the ssh software, Copyright (c) 1995 Tatu Ylonen, Finland
+
+
+COPYING POLICY AND OTHER LEGAL ISSUES
+
+As far as I am concerned, the code I have written for this software
+can be used freely for any purpose.  Any derived versions of this
+software must be clearly marked as such, and if the derived work is
+incompatible with the protocol description in the RFC file, it must be
+called by a name other than "ssh" or "Secure Shell".
+
+However, I am not implying to give any licenses to any patents or
+copyrights held by third parties, and the software includes parts that
+are not under my direct control.  As far as I know, all included
+source code is used in accordance with the relevant license agreements
+and can be used freely for any purpose (the GNU license being the most
+restrictive); see below for details.
+
+The RSA algorithm and even the concept of public key encryption are
+claimed to patented in the United States.  These patents may interfere
+with your right to use this software.  It is possible to compile the
+software using the RSAREF2 library by giving --with-rsaref on the
+configure command line.  This may or may not make it legal to use this
+software for non-commercial purposes in the United States (I have sent
+a query about this to RSADSI (on July 10, 1995), but have not received
+an answer yet).  The RSAREF2 distribution is not included in this
+distribution, but can be obtained from almost any ftp site worldwide
+containing cryptographic materials.  Using RSAREF is not recommended
+outside the United States.  See "http://www.cs.hut.fi/crypto" if you
+have trouble finding the RSAREF library.
+
+The 32-bit CRC compensation attack detector in deattack.c was
+contributed by CORE SDI S.A. under a BSD-style license. See
+http://www.core-sdi.com/english/ssh/ for details.
+
+Some files, such as memmove.c and random.c, are owned by the Regents
+of the University of California, and can be freely used and
+distributed.  License terms are included in the affected files.  The
+file scp.c is derived from code owned by the Regents of the University
+of California, and can be used freely.
+
+The MD5 implementation in md5.c was taken from PGP and is due to Colin
+Plumb.  Comments in the file indicate that it is in the public domain.
+
+The 32-bit CRC implementation in crc32.c is due to Gary S. Brown.
+Comments in the file indicate it may be used for any purpose without
+restrictions.
+
+Note that any information and cryptographic algorithms used in this
+software are publicly available on the Internet and at any major
+bookstore, scientific library, and patent office worldwide.  More
+information can be found e.g. at "http://www.cs.hut.fi/crypto".
+
+The legal status of this program is some combination of all these
+permissions and restrictions.  Use only at your own responsibility.
+You will be responsible for any legal consequences yourself; I am not
+making any claims whether possessing or using this is legal or not in
+your country, and I am not taking any responsibility on your behalf.
+
+
+			    NO WARRANTY
+
+BECAUSE THE PROGRAM IS LICENSED FREE OF CHARGE, THERE IS NO WARRANTY
+FOR THE PROGRAM, TO THE EXTENT PERMITTED BY APPLICABLE LAW.  EXCEPT WHEN
+OTHERWISE STATED IN WRITING THE COPYRIGHT HOLDERS AND/OR OTHER PARTIES
+PROVIDE THE PROGRAM "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESSED
+OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.  THE ENTIRE RISK AS
+TO THE QUALITY AND PERFORMANCE OF THE PROGRAM IS WITH YOU.  SHOULD THE
+PROGRAM PROVE DEFECTIVE, YOU ASSUME THE COST OF ALL NECESSARY SERVICING,
+REPAIR OR CORRECTION.
+
+IN NO EVENT UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING
+WILL ANY COPYRIGHT HOLDER, OR ANY OTHER PARTY WHO MAY MODIFY AND/OR
+REDISTRIBUTE THE PROGRAM AS PERMITTED ABOVE, BE LIABLE TO YOU FOR DAMAGES,
+INCLUDING ANY GENERAL, SPECIAL, INCIDENTAL OR CONSEQUENTIAL DAMAGES ARISING
+OUT OF THE USE OR INABILITY TO USE THE PROGRAM (INCLUDING BUT NOT LIMITED
+TO LOSS OF DATA OR DATA BEING RENDERED INACCURATE OR LOSSES SUSTAINED BY
+YOU OR THIRD PARTIES OR A FAILURE OF THE PROGRAM TO OPERATE WITH ANY OTHER
+PROGRAMS), EVEN IF SUCH HOLDER OR OTHER PARTY HAS BEEN ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGES.

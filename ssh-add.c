@@ -14,8 +14,11 @@ Adds an identity to the authentication server, or removes an identity.
 */
 
 /*
- * $Id: ssh-add.c,v 1.3 1997/03/19 17:37:59 kivinen Exp $
+ * $Id: ssh-add.c,v 1.4 1997/04/05 21:54:21 kivinen Exp $
  * $Log: ssh-add.c,v $
+ * Revision 1.4  1997/04/05 21:54:21  kivinen
+ * 	Added check that userfile_get_des_1_magic_phrase succeeds.
+ *
  * Revision 1.3  1997/03/19 17:37:59  kivinen
  * 	Added SECURE_RPC, SECURE_NFS and NIS_PLUS support from Andy
  * 	Polyakov <appro@fy.chalmers.se>.
@@ -154,6 +157,8 @@ void add_file(const char *filename)
       if (query_cnt == 0)
 	{
 	  pass = userfile_get_des_1_magic_phrase(geteuid());
+	  if (pass == NULL)
+	    pass = xstrdup("");
 	  query_cnt = 1;
 	  continue;
 	}

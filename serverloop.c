@@ -14,62 +14,67 @@ Server main loop for handling the interactive session.
 */
 
 /*
- * $Id: serverloop.c,v 1.17 1998/05/23 20:37:21 kivinen Exp $
+ * $Id: serverloop.c,v 1.18 1999/02/21 19:52:36 ylo Exp $
  * $Log: serverloop.c,v $
- * Revision 1.17  1998/05/23  20:37:21  kivinen
- * 	Changed () -> (void).
+ * Revision 1.18  1999/02/21 19:52:36  ylo
+ * 	Intermediate commit of ssh1.2.27 stuff.
+ * 	Main change is sprintf -> snprintf; however, there are also
+ * 	many other changes.
+ *
+ * Revision 1.17  1998/05/23 20:37:21  kivinen
+ *      Changed () -> (void).
  *
  * Revision 1.16  1998/05/04  13:36:28  kivinen
- * 	Fixed no_port_forwarding_flag so that it will also disable
- * 	local port forwardings from the server side. Moved
- * 	packet_get_all after reading the the remote_channel number
- * 	from the packet.
+ *      Fixed no_port_forwarding_flag so that it will also disable
+ *      local port forwardings from the server side. Moved
+ *      packet_get_all after reading the the remote_channel number
+ *      from the packet.
  *
  * Revision 1.15  1998/03/27 17:01:02  kivinen
- * 	Fixed idle_time code.
+ *      Fixed idle_time code.
  *
  * Revision 1.14  1997/04/21 01:04:46  kivinen
- * 	Changed server_loop to call pty_cleanup_proc instead of
- * 	pty_release, so we can be sure it is never called twice.
+ *      Changed server_loop to call pty_cleanup_proc instead of
+ *      pty_release, so we can be sure it is never called twice.
  *
  * Revision 1.13  1997/04/17 04:19:28  kivinen
- * 	Added ttyame argument to wait_until_can_do_something and
- * 	server_loop functions.
- * 	Release pty before closing it.
+ *      Added ttyame argument to wait_until_can_do_something and
+ *      server_loop functions.
+ *      Release pty before closing it.
  *
  * Revision 1.12  1997/04/05 21:52:54  kivinen
- * 	Fixed closing of pty, and changed it to use shutdown first and
- * 	close the pty only after pty have been released.
+ *      Fixed closing of pty, and changed it to use shutdown first and
+ *      close the pty only after pty have been released.
  *
  * Revision 1.11  1997/03/26 07:16:11  kivinen
- * 	Fixed idle_time code.
+ *      Fixed idle_time code.
  *
  * Revision 1.10  1997/03/26 05:28:18  kivinen
- * 	Added idle timeout support.
+ *      Added idle timeout support.
  *
  * Revision 1.9  1997/03/25 05:48:49  kivinen
- * 	Moved closing of sockets/pipes out from server_loop.
+ *      Moved closing of sockets/pipes out from server_loop.
  *
  * Revision 1.8  1997/03/19 19:25:17  kivinen
- * 	Added input buffer clearing for error conditions, so packet.c
- * 	can check that buffer must be empty before new packet is read
- * 	in.
+ *      Added input buffer clearing for error conditions, so packet.c
+ *      can check that buffer must be empty before new packet is read
+ *      in.
  *
  * Revision 1.7  1997/03/19 17:56:31  kivinen
- * 	Fixed sigchld race condition.
+ *      Fixed sigchld race condition.
  *
  * Revision 1.6  1996/11/24 08:25:14  kivinen
- * 	Added SSHD_NO_PORT_FORWARDING support.
- * 	Changed all code that checked EAGAIN to check EWOULDBLOCK too.
+ *      Added SSHD_NO_PORT_FORWARDING support.
+ *      Changed all code that checked EAGAIN to check EWOULDBLOCK too.
  *
  * Revision 1.5  1996/09/29 13:42:55  ylo
- * 	Increased the time to wait for more data from 10 ms to 17 ms
- * 	and bytes to 512 (I'm worried it might not always be
- * 	working due to the delay being shorter than the systems
- * 	fundamental clock tick).
+ *      Increased the time to wait for more data from 10 ms to 17 ms
+ *      and bytes to 512 (I'm worried it might not always be
+ *      working due to the delay being shorter than the systems
+ *      fundamental clock tick).
  *
  * Revision 1.4  1996/09/14 08:42:26  ylo
- * 	Added cvs logs.
+ *      Added cvs logs.
  *
  * $EndLog$
  */
@@ -88,32 +93,32 @@ extern int no_port_forwarding_flag;
 extern time_t idle_timeout;
 static time_t idle_time_last = 0;
 
-static Buffer stdin_buffer;	/* Buffer for stdin data. */
-static Buffer stdout_buffer;	/* Buffer for stdout data. */
-static Buffer stderr_buffer;	/* Buffer for stderr data. */
-static int fdin;		/* Descriptor for stdin (for writing) */
-static int fdout;		/* Descriptor for stdout (for reading);
-				   May be same number as fdin. */
-static int fderr;		/* Descriptor for stderr.  May be -1. */
-static long stdin_bytes = 0;	/* Number of bytes written to stdin. */
-static long stdout_bytes = 0;	/* Number of stdout bytes sent to client. */
-static long stderr_bytes = 0;	/* Number of stderr bytes sent to client. */
-static long fdout_bytes = 0;	/* Number of stdout bytes read from program. */
-static int stdin_eof = 0;	/* EOF message received from client. */
-static int fdout_eof = 0;	/* EOF encountered reading from fdout. */
-static int fderr_eof = 0;	/* EOF encountered readung from fderr. */
-static int connection_in;	/* Connection to client (input). */
-static int connection_out;	/* Connection to client (output). */
+static Buffer stdin_buffer;     /* Buffer for stdin data. */
+static Buffer stdout_buffer;    /* Buffer for stdout data. */
+static Buffer stderr_buffer;    /* Buffer for stderr data. */
+static int fdin;                /* Descriptor for stdin (for writing) */
+static int fdout;               /* Descriptor for stdout (for reading);
+                                   May be same number as fdin. */
+static int fderr;               /* Descriptor for stderr.  May be -1. */
+static long stdin_bytes = 0;    /* Number of bytes written to stdin. */
+static long stdout_bytes = 0;   /* Number of stdout bytes sent to client. */
+static long stderr_bytes = 0;   /* Number of stderr bytes sent to client. */
+static long fdout_bytes = 0;    /* Number of stdout bytes read from program. */
+static int stdin_eof = 0;       /* EOF message received from client. */
+static int fdout_eof = 0;       /* EOF encountered reading from fdout. */
+static int fderr_eof = 0;       /* EOF encountered readung from fderr. */
+static int connection_in;       /* Connection to client (input). */
+static int connection_out;      /* Connection to client (output). */
 static unsigned int buffer_high;/* "Soft" max buffer size. */
-static int max_fd;		/* Max file descriptor number for select(). */
+static int max_fd;              /* Max file descriptor number for select(). */
 
 /* This SIGCHLD kludge is used to detect when the child exits.  The server
    will exit after that, as soon as forwarded connections have terminated. */
 
-static int child_pid;  			/* Pid of the child. */
-static volatile int child_terminated;	/* The child has terminated. */
-static volatile int child_wait_status;	/* Status from wait(). */
-static int child_just_terminated;	/* No select() done after termin. */
+static int child_pid;                   /* Pid of the child. */
+static volatile int child_terminated;   /* The child has terminated. */
+static volatile int child_wait_status;  /* Status from wait(). */
+static int child_just_terminated;       /* No select() done after termin. */
 
 RETSIGTYPE sigchld_handler(int sig)
 {
@@ -123,14 +128,14 @@ RETSIGTYPE sigchld_handler(int sig)
   if (wait_pid != -1)
     {
       if (wait_pid != child_pid)
-	error("Strange, got SIGCHLD and wait returned pid %d but child is %d",
-	      wait_pid, child_pid);
+        error("Strange, got SIGCHLD and wait returned pid %d but child is %d",
+              wait_pid, child_pid);
       if (WIFEXITED(child_wait_status) ||
-	  WIFSIGNALED(child_wait_status))
-	{
-	  child_terminated = 1;
-	  child_just_terminated = 1;
-	}
+          WIFSIGNALED(child_wait_status))
+        {
+          child_terminated = 1;
+          child_just_terminated = 1;
+        }
     }
   signal(SIGCHLD, sigchld_handler);
 }
@@ -148,110 +153,110 @@ void process_buffered_input_packets(void)
   while ((type = packet_read_poll()) != SSH_MSG_NONE)
     {
       switch (type)
-	{
-	case SSH_CMSG_STDIN_DATA:
-	  /* Stdin data from the client.  Append it to the buffer. */
-	  if (fdin == -1)
-	    {
-	      packet_get_all();
-	      break; /* Ignore any data if the client has closed stdin. */
-	    }
-	  data = packet_get_string(&data_len);
-	  buffer_append(&stdin_buffer, data, data_len);
-	  memset(data, 0, data_len);
-	  xfree(data);
-	  break;
-	  
-	case SSH_CMSG_EOF:
-	  /* Eof from the client.  The stdin descriptor to the program
-	     will be closed when all buffered data has drained. */
-	  debug("EOF received for stdin.");
-	  stdin_eof = 1;
-	  break;
+        {
+        case SSH_CMSG_STDIN_DATA:
+          /* Stdin data from the client.  Append it to the buffer. */
+          if (fdin == -1)
+            {
+              packet_get_all();
+              break; /* Ignore any data if the client has closed stdin. */
+            }
+          data = packet_get_string(&data_len);
+          buffer_append(&stdin_buffer, data, data_len);
+          memset(data, 0, data_len);
+          xfree(data);
+          break;
+          
+        case SSH_CMSG_EOF:
+          /* Eof from the client.  The stdin descriptor to the program
+             will be closed when all buffered data has drained. */
+          debug("EOF received for stdin.");
+          stdin_eof = 1;
+          break;
 
-	case SSH_CMSG_WINDOW_SIZE:
-	  debug("Window change received.");
-	  row = packet_get_int();
-	  col = packet_get_int();
-	  xpixel = packet_get_int();
-	  ypixel = packet_get_int();
-	  if (fdin != -1)
-	    pty_change_window_size(fdin, row, col, xpixel, ypixel);
-	  break;
-	  
-	case SSH_MSG_PORT_OPEN:
+        case SSH_CMSG_WINDOW_SIZE:
+          debug("Window change received.");
+          row = packet_get_int();
+          col = packet_get_int();
+          xpixel = packet_get_int();
+          ypixel = packet_get_int();
+          if (fdin != -1)
+            pty_change_window_size(fdin, row, col, xpixel, ypixel);
+          break;
+          
+        case SSH_MSG_PORT_OPEN:
 #ifndef SSHD_NO_PORT_FORWARDING
-	  if (no_port_forwarding_flag)
+          if (no_port_forwarding_flag)
 #endif /* SSHD_NO_PORT_FORWARDING */
-	    {
-	      int remote_channel;
-	      
-	      /* Get remote channel number. */
-	      remote_channel = packet_get_int();
-	      
-	      packet_get_all();
-	      
-	      debug("Denied port open request.");
-	      packet_start(SSH_MSG_CHANNEL_OPEN_FAILURE);
-	      packet_put_int(remote_channel);
-	      packet_send();
-	    }
+            {
+              int remote_channel;
+              
+              /* Get remote channel number. */
+              remote_channel = packet_get_int();
+              
+              packet_get_all();
+              
+              debug("Denied port open request.");
+              packet_start(SSH_MSG_CHANNEL_OPEN_FAILURE);
+              packet_put_int(remote_channel);
+              packet_send();
+            }
 #ifndef SSHD_NO_PORT_FORWARDING
-	  else
-	    {
-	      debug("Received port open request.");
-	      channel_input_port_open();
-	    }
+          else
+            {
+              debug("Received port open request.");
+              channel_input_port_open();
+            }
 #endif /* SSHD_NO_PORT_FORWARDING */
-	  break;
-	  
-	case SSH_MSG_CHANNEL_OPEN_CONFIRMATION:
-	  debug("Received channel open confirmation.");
-	  channel_input_open_confirmation();
-	  break;
+          break;
+          
+        case SSH_MSG_CHANNEL_OPEN_CONFIRMATION:
+          debug("Received channel open confirmation.");
+          channel_input_open_confirmation();
+          break;
 
-	case SSH_MSG_CHANNEL_OPEN_FAILURE:
-	  debug("Received channel open failure.");
-	  channel_input_open_failure();
-	  break;
-	  
-	case SSH_MSG_CHANNEL_DATA:
-	  channel_input_data();
-	  break;
-	  
+        case SSH_MSG_CHANNEL_OPEN_FAILURE:
+          debug("Received channel open failure.");
+          channel_input_open_failure();
+          break;
+          
+        case SSH_MSG_CHANNEL_DATA:
+          channel_input_data();
+          break;
+          
 #ifdef SUPPORT_OLD_CHANNELS
-	case SSH_MSG_CHANNEL_CLOSE:
-	  debug("Received channel close.");
-	  channel_input_close();
-	  break;
+        case SSH_MSG_CHANNEL_CLOSE:
+          debug("Received channel close.");
+          channel_input_close();
+          break;
 
-	case SSH_MSG_CHANNEL_CLOSE_CONFIRMATION:
-	  debug("Received channel close confirmation.");
-	  channel_input_close_confirmation();
-	  break;
+        case SSH_MSG_CHANNEL_CLOSE_CONFIRMATION:
+          debug("Received channel close confirmation.");
+          channel_input_close_confirmation();
+          break;
 #else
-	case SSH_MSG_CHANNEL_INPUT_EOF:
-	  debug("Received channel input eof.");
-	  channel_ieof();	  
-	  break;
+        case SSH_MSG_CHANNEL_INPUT_EOF:
+          debug("Received channel input eof.");
+          channel_ieof();         
+          break;
 
-	case SSH_MSG_CHANNEL_OUTPUT_CLOSED:
-	  debug("Received channel output closed.");
-	  channel_oclosed();
-	  break;
+        case SSH_MSG_CHANNEL_OUTPUT_CLOSED:
+          debug("Received channel output closed.");
+          channel_oclosed();
+          break;
 
 #endif
 
-	default:
-	  /* In this phase, any unexpected messages cause a protocol
-	     error.  This is to ease debugging; also, since no 
-	     confirmations are sent messages, unprocessed unknown 
-	     messages could cause strange problems.  Any compatible 
-	     protocol extensions must be negotiated before entering the 
-	     interactive session. */
-	  packet_disconnect("Protocol error during session: type %d", 
-			    type);
-	}
+        default:
+          /* In this phase, any unexpected messages cause a protocol
+             error.  This is to ease debugging; also, since no 
+             confirmations are sent messages, unprocessed unknown 
+             messages could cause strange problems.  Any compatible 
+             protocol extensions must be negotiated before entering the 
+             interactive session. */
+          packet_disconnect("Protocol error during session: type %d", 
+                            type);
+        }
     }
 }
 
@@ -264,21 +269,21 @@ void make_packets_from_stderr_data(void)
 
   /* Send buffered stderr data to the client. */
   while (buffer_len(&stderr_buffer) > 0 && 
-	 packet_not_very_much_data_to_write())
+         packet_not_very_much_data_to_write())
     {
       len = buffer_len(&stderr_buffer);
       if (packet_is_interactive())
-	{
-	  if (len > 512)
-	    len = 512;
-	}
+        {
+          if (len > 512)
+            len = 512;
+        }
       else
-	{
-	  if (len > 32768)
-	    len = 32768;  /* Keep the packets at reasonable size. */
-	  if (len > packet_max_size() / 2)
-	    len = packet_max_size() / 2;
-	}
+        {
+          if (len > 32768)
+            len = 32768;  /* Keep the packets at reasonable size. */
+          if (len > packet_max_size() / 2)
+            len = packet_max_size() / 2;
+        }
       packet_start(SSH_SMSG_STDERR_DATA);
       packet_put_string(buffer_ptr(&stderr_buffer), len);
       packet_send();
@@ -296,21 +301,21 @@ void make_packets_from_stdout_data(void)
 
   /* Send buffered stdout data to the client. */
   while (buffer_len(&stdout_buffer) > 0 && 
-	 packet_not_very_much_data_to_write())
+         packet_not_very_much_data_to_write())
     {
       len = buffer_len(&stdout_buffer);
       if (packet_is_interactive())
-	{
-	  if (len > 512)
-	    len = 512;
-	}
+        {
+          if (len > 512)
+            len = 512;
+        }
       else
-	{
-	  if (len > 32768)
-	    len = 32768;  /* Keep the packets at reasonable size. */
-	  if (len > packet_max_size() / 2)
-	    len = packet_max_size() / 2;
-	}
+        {
+          if (len > 32768)
+            len = 32768;  /* Keep the packets at reasonable size. */
+          if (len > packet_max_size() / 2)
+            len = packet_max_size() / 2;
+        }
       packet_start(SSH_SMSG_STDOUT_DATA);
       packet_put_string(buffer_ptr(&stdout_buffer), len);
       packet_send();
@@ -325,8 +330,8 @@ void make_packets_from_stdout_data(void)
    for the duration of the wait (0 = infinite). */
 
 void wait_until_can_do_something(fd_set *readset, fd_set *writeset,
-				 unsigned int max_time_milliseconds,
-				 void *cleanup_context)
+                                 unsigned int max_time_milliseconds,
+                                 void *cleanup_context)
 {
   struct timeval tv, *tvp;
   int ret;
@@ -348,9 +353,9 @@ void wait_until_can_do_something(fd_set *readset, fd_set *writeset,
   if (packet_not_very_much_data_to_write())
     {
       if (!fdout_eof)
-	FD_SET(fdout, readset);
+        FD_SET(fdout, readset);
       if (!fderr_eof)
-	FD_SET(fderr, readset);
+        FD_SET(fderr, readset);
     }
   
   FD_ZERO(writeset);
@@ -386,22 +391,22 @@ void wait_until_can_do_something(fd_set *readset, fd_set *writeset,
       diff = time(NULL) - idle_time_last;
       
       if (idle_timeout > diff)
-	tv.tv_sec = idle_timeout - diff;
+        tv.tv_sec = idle_timeout - diff;
       else
-	tv.tv_sec = 1;
+        tv.tv_sec = 1;
       tv.tv_usec = 0;
       tvp = &tv;
     }
   else
     {
       if (max_time_milliseconds == 0)
-	tvp = NULL;
+        tvp = NULL;
       else
-	{
-	  tv.tv_sec = max_time_milliseconds / 1000;
-	  tv.tv_usec = 1000 * (max_time_milliseconds % 1000);
-	  tvp = &tv;
-	}
+        {
+          tv.tv_sec = max_time_milliseconds / 1000;
+          tv.tv_usec = 1000 * (max_time_milliseconds % 1000);
+          tvp = &tv;
+        }
     }
 
   /* Wait for something to happen, or the timeout to expire. */
@@ -410,7 +415,7 @@ void wait_until_can_do_something(fd_set *readset, fd_set *writeset,
   if (ret < 0)
     {
       if (errno != EINTR)
-	error("select: %.100s", strerror(errno));
+        error("select: %.100s", strerror(errno));
       /* At least HPSUX fails to zero these, contrary to its documentation. */
       FD_ZERO(readset);
       FD_ZERO(writeset);
@@ -422,40 +427,40 @@ void wait_until_can_do_something(fd_set *readset, fd_set *writeset,
     {
       /* Released the pseudo-tty. */
       if (cleanup_context)
-	pty_cleanup_proc(cleanup_context);
+        pty_cleanup_proc(cleanup_context);
       
       if (fdout != -1)
-	close(fdout);
+        close(fdout);
       fdout = -1;
       fdout_eof = 1;
       if (fderr != -1)
-	close(fderr);
+        close(fderr);
       fderr = -1;
       fderr_eof = 1;
       if (fdin != -1)
-	close(fdin);
+        close(fdin);
       fdin = -1;
     }
   else
     {
-      if (ret == 0)		/* Nothing read, timeout expired */
-	{
-	  /* Check if idle_timeout expired ? */
-	  if (idle_timeout != 0 && !child_terminated &&
-	      time(NULL) - idle_time_last > idle_timeout)
-	    {
-	      /* Yes, kill the child */
-	      kill(child_pid, SIGHUP);
-	      sleep(5);
-	      if (!child_terminated) /* Not exited, be rude */
-		kill(child_pid, SIGKILL);
-	    }
-	}
+      if (ret == 0)             /* Nothing read, timeout expired */
+        {
+          /* Check if idle_timeout expired ? */
+          if (idle_timeout != 0 && !child_terminated &&
+              time(NULL) - idle_time_last > idle_timeout)
+            {
+              /* Yes, kill the child */
+              kill(child_pid, SIGHUP);
+              sleep(5);
+              if (!child_terminated) /* Not exited, be rude */
+                kill(child_pid, SIGKILL);
+            }
+        }
       else
-	{
-	  /* Got something, reset idle timer */
-	  idle_time_last = time(NULL);
-	}
+        {
+          /* Got something, reset idle timer */
+          idle_time_last = time(NULL);
+        }
     }
 }
 
@@ -472,17 +477,17 @@ void process_input(fd_set *readset)
     {
       len = read(connection_in, buf, sizeof(buf));
       if (len == 0)
-	fatal_severity(SYSLOG_SEVERITY_INFO, 
-		       "Connection closed by remote host.");
+        fatal_severity(SYSLOG_SEVERITY_INFO, 
+                       "Connection closed by remote host.");
 
       /* There is a kernel bug on Solaris that causes select to sometimes
-	 wake up even though there is no data available. */
+         wake up even though there is no data available. */
       if (len < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
-	len = 0;
+        len = 0;
 
       if (len < 0)
-	fatal_severity(SYSLOG_SEVERITY_INFO,
-		       "Read error from remote host: %.100s", strerror(errno));
+        fatal_severity(SYSLOG_SEVERITY_INFO,
+                       "Read error from remote host: %.100s", strerror(errno));
 
       /* Buffer any received data. */
       packet_process_incoming(buf, len);
@@ -493,12 +498,12 @@ void process_input(fd_set *readset)
     {
       len = read(fdout, buf, sizeof(buf));
       if (len <= 0)
-	fdout_eof = 1;
+        fdout_eof = 1;
       else
-	{
-	  buffer_append(&stdout_buffer, buf, len);
-	  fdout_bytes += len;
-	}
+        {
+          buffer_append(&stdout_buffer, buf, len);
+          fdout_bytes += len;
+        }
     }
   
   /* Read and buffer any available stderr data from the program. */
@@ -506,9 +511,9 @@ void process_input(fd_set *readset)
     {
       len = read(fderr, buf, sizeof(buf));
       if (len <= 0)
-	fderr_eof = 1;
+        fderr_eof = 1;
       else
-	buffer_append(&stderr_buffer, buf, len);
+        buffer_append(&stderr_buffer, buf, len);
     }
 }
 
@@ -522,27 +527,27 @@ void process_output(fd_set *writeset)
   if (fdin != -1 && FD_ISSET(fdin, writeset))
     {
       len = write(fdin, buffer_ptr(&stdin_buffer),
-		  buffer_len(&stdin_buffer));
+                  buffer_len(&stdin_buffer));
       if (len <= 0)
-	{
-	  if (errno != EWOULDBLOCK && errno != EAGAIN)
-	    {
-	      debug("Process_output: write to fdin failed, len = %d : %.50s",
-		    len, strerror(errno));
-	      if (fdin == fdout)
-		shutdown(fdin, 1); /* We will no longer send. */
-	      else
-		close(fdin);
-	      fdin = -1;
-	    }
-	}
+        {
+          if (errno != EWOULDBLOCK && errno != EAGAIN)
+            {
+              debug("Process_output: write to fdin failed, len = %d : %.50s",
+                    len, strerror(errno));
+              if (fdin == fdout)
+                shutdown(fdin, 1); /* We will no longer send. */
+              else
+                close(fdin);
+              fdin = -1;
+            }
+        }
       else
-	{
-	  /* Successful write.  Consume the data from the buffer. */
-	  buffer_consume(&stdin_buffer, len);
-	  /* Update the count of bytes written to the program. */
-	  stdin_bytes += len;
-	}
+        {
+          /* Successful write.  Consume the data from the buffer. */
+          buffer_consume(&stdin_buffer, len);
+          /* Update the count of bytes written to the program. */
+          stdin_bytes += len;
+        }
     }
   
   /* Send any buffered packet data to the client. */
@@ -560,7 +565,7 @@ void drain_output(void)
     {
       packet_start(SSH_SMSG_STDOUT_DATA);
       packet_put_string(buffer_ptr(&stdout_buffer), 
-			buffer_len(&stdout_buffer));
+                        buffer_len(&stdout_buffer));
       packet_send();
       /* Update the count of sent bytes. */
       stdout_bytes += buffer_len(&stdout_buffer);
@@ -571,7 +576,7 @@ void drain_output(void)
     {
       packet_start(SSH_SMSG_STDERR_DATA);
       packet_put_string(buffer_ptr(&stderr_buffer), 
-			buffer_len(&stderr_buffer));
+                        buffer_len(&stderr_buffer));
       packet_send();
       /* Update the count of sent bytes. */
       stderr_bytes += buffer_len(&stderr_buffer);
@@ -590,9 +595,9 @@ void drain_output(void)
    NULL) */
 
 void server_loop(int pid, int fdin_arg, int fdout_arg, int fderr_arg,
-		 void *cleanup_context)
+                 void *cleanup_context)
 {
-  int wait_status, wait_pid;	/* Status and pid returned by wait(). */
+  int wait_status, wait_pid;    /* Status and pid returned by wait(). */
   int waiting_termination = 0;  /* Have displayed waiting close message. */
   unsigned int max_time_milliseconds;
   unsigned int previous_stdout_buffer_bytes;
@@ -615,7 +620,8 @@ void server_loop(int pid, int fdin_arg, int fdout_arg, int fderr_arg,
   connection_out = packet_get_connection_out();
   
   previous_stdout_buffer_bytes = 0;
-
+  idle_time_last = time(NULL);
+  
   /* Set approximate I/O buffer size. */
   if (packet_is_interactive())
     buffer_high = 4096;
@@ -664,63 +670,63 @@ void server_loop(int pid, int fdin_arg, int fdout_arg, int fderr_arg,
       process_buffered_input_packets();
 
       /* If we have received eof, and there is no more pending input data,
-	 cause a real eof by closing fdin. */
+         cause a real eof by closing fdin. */
       if (stdin_eof && fdin != -1 && buffer_len(&stdin_buffer) == 0)
-	{
-	  if (fdin == fdout)
-	    shutdown(fdin, 1); /* We will no longer send. */
-	  else
-	    close(fdin);
-	  fdin = -1;
-	}
+        {
+          if (fdin == fdout)
+            shutdown(fdin, 1); /* We will no longer send. */
+          else
+            close(fdin);
+          fdin = -1;
+        }
 
       /* Make packets from buffered stderr data to send to the client. */
       make_packets_from_stderr_data();
 
       /* Make packets from buffered stdout data to send to the client.
-	 If there is very little to send, this arranges to not send them
-	 now, but to wait a short while to see if we are getting more data.
-	 This is necessary, as some systems wake up readers from a pty after
-	 each separate character. */
+         If there is very little to send, this arranges to not send them
+         now, but to wait a short while to see if we are getting more data.
+         This is necessary, as some systems wake up readers from a pty after
+         each separate character. */
       max_time_milliseconds = 0;
       stdout_buffer_bytes = buffer_len(&stdout_buffer);
       if (stdout_buffer_bytes != 0 && stdout_buffer_bytes < 512 &&
-	  stdout_buffer_bytes != previous_stdout_buffer_bytes)
-	max_time_milliseconds = 17; /* try again after a while (1/60sec)*/
+          stdout_buffer_bytes != previous_stdout_buffer_bytes)
+        max_time_milliseconds = 17; /* try again after a while (1/60sec)*/
       else
-	make_packets_from_stdout_data(); /* Send it now. */
+        make_packets_from_stdout_data(); /* Send it now. */
       previous_stdout_buffer_bytes = buffer_len(&stdout_buffer);
 
       /* Send channel data to the client. */
       if (packet_not_very_much_data_to_write())
-	channel_output_poll();
+        channel_output_poll();
 
       /* Bail out of the loop if the program has closed its output descriptors,
-	 and we have no more data to send to the client, and there is no
-	 pending buffered data. */
+         and we have no more data to send to the client, and there is no
+         pending buffered data. */
       if (fdout_eof && fderr_eof && !packet_have_data_to_write() &&
-	  buffer_len(&stdout_buffer) == 0 && buffer_len(&stderr_buffer) == 0)
-	{
-	  if (!channel_still_open())
-	    goto quit;
-	  if (!waiting_termination && !child_just_terminated)
-	    {
-	      const char *s = 
-		"Waiting for forwarded connections to terminate...\r\n";
-	      char *cp;
-	      waiting_termination = 1;
-	      buffer_append(&stderr_buffer, s, strlen(s));
+          buffer_len(&stdout_buffer) == 0 && buffer_len(&stderr_buffer) == 0)
+        {
+          if (!channel_still_open())
+            goto quit;
+          if (!waiting_termination && !child_just_terminated)
+            {
+              const char *s = 
+                "Waiting for forwarded connections to terminate...\r\n";
+              char *cp;
+              waiting_termination = 1;
+              buffer_append(&stderr_buffer, s, strlen(s));
 
-	      /* Display list of open channels. */
-	      cp = channel_open_message();
-	      buffer_append(&stderr_buffer, cp, strlen(cp));
-	      xfree(cp);
-	    }
-	}
+              /* Display list of open channels. */
+              cp = channel_open_message();
+              buffer_append(&stderr_buffer, cp, strlen(cp));
+              xfree(cp);
+            }
+        }
 
       /* Sleep in select() until we can do something. */
       wait_until_can_do_something(&readset, &writeset,
-				  max_time_milliseconds, cleanup_context);
+                                  max_time_milliseconds, cleanup_context);
 
       /* Process any channel events. */
       channel_after_select(&readset, &writeset);
@@ -739,7 +745,7 @@ void server_loop(int pid, int fdin_arg, int fdout_arg, int fderr_arg,
   drain_output();
 
   debug("End of interactive session; stdin %ld, stdout (read %ld, sent %ld), stderr %ld bytes.",
-	stdin_bytes, fdout_bytes, stdout_bytes, stderr_bytes);
+        stdin_bytes, fdout_bytes, stdout_bytes, stderr_bytes);
 
   /* Free and clear the buffers. */
   buffer_free(&stdin_buffer);
@@ -771,15 +777,15 @@ void server_loop(int pid, int fdin_arg, int fdout_arg, int fderr_arg,
       /* Wait for the child to exit.  Get its exit status. */
       wait_pid = wait(&wait_status);
       if (wait_pid < 0)
-	{
-	  packet_disconnect("wait: %.100s", strerror(errno));
-	}
+        {
+          packet_disconnect("wait: %.100s", strerror(errno));
+        }
       else
-	{
-	  /* Check if it matches the process we forked. */
-	  if (wait_pid != pid)
-	    error("Strange, wait returned pid %d, expected %d", wait_pid, pid);
-	}
+        {
+          /* Check if it matches the process we forked. */
+          if (wait_pid != pid)
+            error("Strange, wait returned pid %d, expected %d", wait_pid, pid);
+        }
     }
 
   /* Check if it exited normally. */
@@ -794,17 +800,17 @@ void server_loop(int pid, int fdin_arg, int fdout_arg, int fderr_arg,
 
       /* Wait for exit confirmation.  Note that there might be other
          packets coming before it; however, the program has already died
-	 so we just ignore them.  The client is supposed to respond with
-	 the confirmation when it receives the exit status. */
+         so we just ignore them.  The client is supposed to respond with
+         the confirmation when it receives the exit status. */
       do
-	{
-	  type = packet_read();
-	  if (type != SSH_CMSG_EXIT_CONFIRMATION)
-	    {
-	      packet_get_all();
-	      debug("Received packet of type %d after exit.\n", type);
-	    }
-	}
+        {
+          type = packet_read();
+          if (type != SSH_CMSG_EXIT_CONFIRMATION)
+            {
+              packet_get_all();
+              debug("Received packet of type %d after exit.\n", type);
+            }
+        }
       while (type != SSH_CMSG_EXIT_CONFIRMATION);
 
       debug("Received exit confirmation.");
@@ -814,7 +820,7 @@ void server_loop(int pid, int fdin_arg, int fdout_arg, int fderr_arg,
   /* Check if the program terminated due to a signal. */
   if (WIFSIGNALED(wait_status))
     packet_disconnect("Command terminated on signal %d.", 
-		      WTERMSIG(wait_status));
+                      WTERMSIG(wait_status));
 
   /* Some weird exit cause.  Just exit. */
   packet_disconnect("wait returned status %04x.", wait_status);

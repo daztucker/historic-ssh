@@ -15,8 +15,11 @@ with the other side.  This same code is used both on client and server side.
 */
 
 /*
- * $Id: packet.c,v 1.5 1995/09/09 21:26:43 ylo Exp $
+ * $Id: packet.c,v 1.6 1995/09/24 23:59:12 ylo Exp $
  * $Log: packet.c,v $
+ * Revision 1.6  1995/09/24  23:59:12  ylo
+ * 	Added packet_get_protocol_flags.
+ *
  * Revision 1.5  1995/09/09  21:26:43  ylo
  * /m/shadows/u2/users/ylo/ssh/README
  *
@@ -129,6 +132,13 @@ void packet_close()
 void packet_set_protocol_flags(unsigned int protocol_flags)
 {
   remote_protocol_flags = protocol_flags;
+}
+
+/* Returns the remote protocol flags set earlier by the above function. */
+
+unsigned int packet_get_protocol_flags()
+{
+  return remote_protocol_flags;
 }
 
 /* Encrypts the given number of bytes, copying from src to dest.

@@ -14,8 +14,15 @@ This file includes most of the needed system headers.
 */
 
 /*
- * $Id: includes.h,v 1.9 1995/09/13 11:57:21 ylo Exp $
+ * $Id: includes.h,v 1.11 1995/09/27 02:14:08 ylo Exp $
  * $Log: includes.h,v $
+ * Revision 1.11  1995/09/27  02:14:08  ylo
+ * 	Added support for SCO unix.
+ *
+ * Revision 1.10  1995/09/21  17:11:28  ylo
+ * 	Added Paragon support.
+ * 	Added definition of AF_UNIX_SIZE.
+ *
  * Revision 1.9  1995/09/13  11:57:21  ylo
  * 	Changed the code so that "short" gets used as word32 on Cray.
  * 	Some of the code depends on that.  (BTW, "short" has really
@@ -76,6 +83,11 @@ YOU_LOSE
 #endif
 #endif
 
+#ifdef SCO
+/* this is defined so that winsize gets ifdef'd in termio.h */
+#define _IBCS2
+#endif
+
 #if defined(__mips)
 /* Mach3 on MIPS defines conflicting garbage. */
 #define uint32 hidden_uint32
@@ -85,7 +97,7 @@ YOU_LOSE
 #undef uint32
 #endif /* __mips */
 
-#if defined(bsd_44) || defined(__FreeBSD__) || defined(__NetBSD__)
+#if defined(bsd_44) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__PARAGON__)
 #include <sys/param.h>
 #include <machine/endian.h>
 #endif
@@ -151,8 +163,20 @@ char *strchr(), *strrchr();
 #else /* Some old linux systems at least have in_system.h instead. */
 #include <netinet/in_system.h>
 #endif /* HAVE_NETINET_IN_SYSTM_H */
+#ifdef SCO
+/* SCO does not have a un.h and there is no appropriate substitute. */
+/* Latest news: it doesn't have AF_UNIX at all, but this allows
+   it to compile, and outgoing forwarded connections appear to work. */
+struct	sockaddr_un {
+	short	sun_family;		/* AF_UNIX */
+	char	sun_path[108];		/* path name (gag) */
+};
+#else
 #include <sys/un.h>
+#endif /* SCO */
+#if !defined(__PARAGON__)
 #include <netinet/ip.h>
+#endif /* !__PARAGON__ */
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -191,7 +215,11 @@ char *strchr(), *strrchr();
 #endif /* HAVE_UNISTD_H */
 
 #ifdef TIME_WITH_SYS_TIME
+#ifndef SCO
+/* I excluded <sys/time.h> to avoid redefinition of timeval 
+   which SCO puts in both <sys/select.h> and <sys/time.h> */
 #include <sys/time.h>
+#endif /* SCO */
 #include <time.h>
 #else /* TIME_WITH_SYS_TIME */
 #ifdef HAVE_SYS_TIME_H

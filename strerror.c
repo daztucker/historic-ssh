@@ -14,8 +14,11 @@ Replacement for strerror for systems that don't have it.
 */
 
 /*
- * $Id: strerror.c,v 1.2 1995/07/13 01:40:55 ylo Exp $
+ * $Id: strerror.c,v 1.1.1.1 1996/02/18 21:38:11 ylo Exp $
  * $Log: strerror.c,v $
+ * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.2  1995/07/13  01:40:55  ylo
  * 	Removed "Last modified" header.
  * 	Added cvs log.

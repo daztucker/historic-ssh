@@ -15,8 +15,15 @@ login (authentication) dialog.
 */
 
 /*
- * $Id: sshconnect.c,v 1.28 1998/06/11 00:10:50 kivinen Exp $
+ * $Id: sshconnect.c,v 1.30 1998/07/08 14:55:18 tri Exp $
  * $Log: sshconnect.c,v $
+ * Revision 1.30  1998/07/08 14:55:18  tri
+ * 	Fixed version negotiation so, that ssh 2
+ * 	compatibility is even remotedly possible.
+ *
+ * Revision 1.29  1998/07/08 00:47:33  kivinen
+ * 	Moved some debug messages around.
+ *
  * Revision 1.28  1998/06/11 00:10:50  kivinen
  * 	Added ENABLE_SO_LINGER ifdef.
  *
@@ -439,14 +446,14 @@ int ssh_connect(const char *host, int port, int connection_attempts,
 #endif /* BROKEN_INET_ADDR */
       if ((hostaddr.sin_addr.s_addr & 0xffffffff) != 0xffffffff)
 	{ 
-	  /* Valid numeric IP address */
-	  debug("Connecting to %.100s port %d.", 
-		inet_ntoa(hostaddr.sin_addr), port);
-      
 	  /* Create a socket. */
 	  sock = ssh_create_socket(original_real_uid, 
 				   !anonymous && geteuid() == UID_ROOT);
       
+	  /* Valid numeric IP address */
+	  debug("Connecting to %.100s port %d.", 
+		inet_ntoa(hostaddr.sin_addr), port);
+
 	  /* Connect to the host. */
 #if defined(SOCKS) && !defined(HAVE_SOCKS_H)
 	  if (Rconnect(sock, (struct sockaddr *)&hostaddr, sizeof(hostaddr))
@@ -1196,7 +1203,7 @@ void ssh_exchange_identification(void)
 	{
 	  buf[i] = '\n';
 	  buf[i + 1] = 0;
-	  break;
+	  i++;
 	}
       if (buf[i] == '\n')
 	{

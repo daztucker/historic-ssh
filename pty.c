@@ -2,10 +2,11 @@
 
 pty.c
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Fri Mar 17 04:37:25 1995 ylo
 
@@ -14,11 +15,14 @@ Allocating a pseudo-terminal, and making it the controlling tty.
 */
 
 /*
- * $Id: pty.c,v 1.13 1999/05/12 10:27:38 sjl Exp $
+ * $Id: pty.c,v 1.14 1999/11/17 17:04:49 tri Exp $
  * $Log: pty.c,v $
+ * Revision 1.14  1999/11/17 17:04:49  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.13  1999/05/12 10:27:38  sjl
- * 	Fixed so, that works correctly on linux 2.2.x+glibc-2.1 with
- * 	Unix98-style PTYs.
+ *      Fixed so, that works correctly on linux 2.2.x+glibc-2.1 with
+ *      Unix98-style PTYs.
  *
  * Revision 1.12  1999/02/21 19:52:32  ylo
  *      Intermediate commit of ssh1.2.27 stuff.

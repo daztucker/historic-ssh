@@ -1,6 +1,6 @@
 /*
 
-DES implementation; 1995 Tatu Ylonen <ylo@cs.hut.fi>
+DES implementation; 1995 Tatu Ylonen <ylo@ssh.fi>
 
 This implementation is derived from libdes-3.06, which is copyright
 (c) 1993 Eric Young, and distributed under the GNU GPL or the ARTISTIC licence
@@ -25,13 +25,16 @@ cryptography and data security, including the following:
 */
 
 /*
- * $Id: des.c,v 1.1.1.1 1996/02/18 21:38:11 ylo Exp $
+ * $Id: des.c,v 1.2 1999/11/17 17:04:43 tri Exp $
  * $Log: des.c,v $
+ * Revision 1.2  1999/11/17 17:04:43  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
- * 	Imported ssh-1.2.13.
+ *      Imported ssh-1.2.13.
  *
  * Revision 1.2  1995/07/13  01:22:25  ylo
- * 	Added cvs log.
+ *      Added cvs log.
  *
  * $Endlog$
  */
@@ -329,79 +332,79 @@ static const word32 des_SPtrans[8][64]={
 0x08000000, 0x08200020, 0x00008000, 0x00208020 }};
 
 /* Some stuff that used to be in des_locl.h.  Heavily modified. */
-	/* IP and FP
-	 * The problem is more of a geometric problem that random bit fiddling.
-	 0  1  2  3  4  5  6  7      62 54 46 38 30 22 14  6
-	 8  9 10 11 12 13 14 15      60 52 44 36 28 20 12  4
-	16 17 18 19 20 21 22 23      58 50 42 34 26 18 10  2
-	24 25 26 27 28 29 30 31  to  56 48 40 32 24 16  8  0
+        /* IP and FP
+         * The problem is more of a geometric problem that random bit fiddling.
+         0  1  2  3  4  5  6  7      62 54 46 38 30 22 14  6
+         8  9 10 11 12 13 14 15      60 52 44 36 28 20 12  4
+        16 17 18 19 20 21 22 23      58 50 42 34 26 18 10  2
+        24 25 26 27 28 29 30 31  to  56 48 40 32 24 16  8  0
 
-	32 33 34 35 36 37 38 39      63 55 47 39 31 23 15  7
-	40 41 42 43 44 45 46 47      61 53 45 37 29 21 13  5
-	48 49 50 51 52 53 54 55      59 51 43 35 27 19 11  3
-	56 57 58 59 60 61 62 63      57 49 41 33 25 17  9  1
+        32 33 34 35 36 37 38 39      63 55 47 39 31 23 15  7
+        40 41 42 43 44 45 46 47      61 53 45 37 29 21 13  5
+        48 49 50 51 52 53 54 55      59 51 43 35 27 19 11  3
+        56 57 58 59 60 61 62 63      57 49 41 33 25 17  9  1
 
-	The output has been subject to swaps of the form
-	0 1 -> 3 1 but the odd and even bits have been put into
-	2 3    2 0
-	different words.  The main trick is to remember that
-	t=((l>>size)^r)&(mask);
-	r^=t;
-	l^=(t<<size);
-	can be used to swap and move bits between words.
+        The output has been subject to swaps of the form
+        0 1 -> 3 1 but the odd and even bits have been put into
+        2 3    2 0
+        different words.  The main trick is to remember that
+        t=((l>>size)^r)&(mask);
+        r^=t;
+        l^=(t<<size);
+        can be used to swap and move bits between words.
 
-	So l =  0  1  2  3  r = 16 17 18 19
-	        4  5  6  7      20 21 22 23
-	        8  9 10 11      24 25 26 27
-	       12 13 14 15      28 29 30 31
-	becomes (for size == 2 and mask == 0x3333)
-	   t =   2^16  3^17 -- --   l =  0  1 16 17  r =  2  3 18 19
-		 6^20  7^21 -- --        4  5 20 21       6  7 22 23
-		10^24 11^25 -- --        8  9 24 25      10 11 24 25
-		14^28 15^29 -- --       12 13 28 29      14 15 28 29
+        So l =  0  1  2  3  r = 16 17 18 19
+                4  5  6  7      20 21 22 23
+                8  9 10 11      24 25 26 27
+               12 13 14 15      28 29 30 31
+        becomes (for size == 2 and mask == 0x3333)
+           t =   2^16  3^17 -- --   l =  0  1 16 17  r =  2  3 18 19
+                 6^20  7^21 -- --        4  5 20 21       6  7 22 23
+                10^24 11^25 -- --        8  9 24 25      10 11 24 25
+                14^28 15^29 -- --       12 13 28 29      14 15 28 29
 
-	Thanks for hints from Richard Outerbridge - he told me IP&FP
-	could be done in 15 xor, 10 shifts and 5 ands.
-	When I finally started to think of the problem in 2D
-	I first got ~42 operations without xors.  When I remembered
-	how to use xors :-) I got it to its final state.
-	*/
+        Thanks for hints from Richard Outerbridge - he told me IP&FP
+        could be done in 15 xor, 10 shifts and 5 ands.
+        When I finally started to think of the problem in 2D
+        I first got ~42 operations without xors.  When I remembered
+        how to use xors :-) I got it to its final state.
+        */
 #define PERM_OP(a,b,t,n,m) ((t)=((((a)>>(n))^(b))&(m)),\
-	(b)^=(t),\
-	(a)^=((t)<<(n)))
+        (b)^=(t),\
+        (a)^=((t)<<(n)))
 
 #define IP(l,r,t) \
-	PERM_OP(r,l,t, 4,0x0f0f0f0f); \
-	PERM_OP(l,r,t,16,0x0000ffff); \
-	PERM_OP(r,l,t, 2,0x33333333); \
-	PERM_OP(l,r,t, 8,0x00ff00ff); \
-	PERM_OP(r,l,t, 1,0x55555555);
+        PERM_OP(r,l,t, 4,0x0f0f0f0f); \
+        PERM_OP(l,r,t,16,0x0000ffff); \
+        PERM_OP(r,l,t, 2,0x33333333); \
+        PERM_OP(l,r,t, 8,0x00ff00ff); \
+        PERM_OP(r,l,t, 1,0x55555555);
 
 #define FP(l,r,t) \
-	PERM_OP(l,r,t, 1,0x55555555); \
-	PERM_OP(r,l,t, 8,0x00ff00ff); \
-	PERM_OP(l,r,t, 2,0x33333333); \
-	PERM_OP(r,l,t,16,0x0000ffff); \
-	PERM_OP(l,r,t, 4,0x0f0f0f0f);
+        PERM_OP(l,r,t, 1,0x55555555); \
+        PERM_OP(r,l,t, 8,0x00ff00ff); \
+        PERM_OP(l,r,t, 2,0x33333333); \
+        PERM_OP(r,l,t,16,0x0000ffff); \
+        PERM_OP(l,r,t, 4,0x0f0f0f0f);
 
-#define D_ENCRYPT(L,R,S)	\
-	u=(R^s[S  ]); \
-	t=R^s[S+1]; \
-	t=((t>>4)+(t<<28)); \
-	L^=	des_SPtrans[1][(t    )&0x3f]| \
-		des_SPtrans[3][(t>> 8)&0x3f]| \
-		des_SPtrans[5][(t>>16)&0x3f]| \
-		des_SPtrans[7][(t>>24)&0x3f]| \
-		des_SPtrans[0][(u    )&0x3f]| \
-		des_SPtrans[2][(u>> 8)&0x3f]| \
-		des_SPtrans[4][(u>>16)&0x3f]| \
-		des_SPtrans[6][(u>>24)&0x3f];
+#define D_ENCRYPT(L,R,S)        \
+        u=(R^s[S  ]); \
+        t=R^s[S+1]; \
+        t=((t>>4)+(t<<28)); \
+        L^=     des_SPtrans[1][(t    )&0x3f]| \
+                des_SPtrans[3][(t>> 8)&0x3f]| \
+                des_SPtrans[5][(t>>16)&0x3f]| \
+                des_SPtrans[7][(t>>24)&0x3f]| \
+                des_SPtrans[0][(u    )&0x3f]| \
+                des_SPtrans[2][(u>> 8)&0x3f]| \
+                des_SPtrans[4][(u>>16)&0x3f]| \
+                des_SPtrans[6][(u>>24)&0x3f];
 
 /* This part is based on code that used to be in ecb_enc.c. */
 /* Copyright (C) 1993 Eric Young - see README for more details */
 
 void des_encrypt(word32 l, word32 r, word32 *output, DESContext *ks, 
-		 int encrypt)
+                 int encrypt)
 {
   register word32 t,u;
   register int i;
@@ -425,18 +428,18 @@ void des_encrypt(word32 l, word32 r, word32 *output, DESContext *ks,
   if (encrypt)
     {
       for (i=0; i<32; i+=4)
-	{
-	  D_ENCRYPT(l,r,i+0); /*  1 */
-	  D_ENCRYPT(r,l,i+2); /*  2 */
-	}
+        {
+          D_ENCRYPT(l,r,i+0); /*  1 */
+          D_ENCRYPT(r,l,i+2); /*  2 */
+        }
     }
   else
     {
       for (i=30; i>0; i-=4)
-	{
-	  D_ENCRYPT(l,r,i-0); /* 16 */
-	  D_ENCRYPT(r,l,i-2); /* 15 */
-	}
+        {
+          D_ENCRYPT(l,r,i-0); /* 16 */
+          D_ENCRYPT(r,l,i-2); /* 15 */
+        }
     }
   l=(l>>1)|(l<<31);
   r=(r>>1)|(r<<31);
@@ -450,7 +453,7 @@ void des_encrypt(word32 l, word32 r, word32 *output, DESContext *ks,
 /* Copyright (C) 1993 Eric Young - see README for more details */
 
 #define HPERM_OP(a,t,n,m) ((t)=((((a)<<(16-(n)))^(a))&(m)),\
-	(a)=(a)^(t)^(t>>(16-(n))))
+        (a)=(a)^(t)^(t>>(16-(n))))
 
 void des_set_key(unsigned char *key, DESContext *ks)
 {
@@ -480,9 +483,9 @@ void des_set_key(unsigned char *key, DESContext *ks)
   for (i=0; i < 16; i++)
     {
       if (shifts & 1)
-	{ c=((c>>2)|(c<<26)); d=((d>>2)|(d<<26)); }
+        { c=((c>>2)|(c<<26)); d=((d>>2)|(d<<26)); }
       else
-	{ c=((c>>1)|(c<<27)); d=((d>>1)|(d<<27)); }
+        { c=((c>>1)|(c<<27)); d=((d>>1)|(d<<27)); }
       shifts >>= 1;
       c&=0x0fffffff;
       d&=0x0fffffff;
@@ -491,14 +494,14 @@ void des_set_key(unsigned char *key, DESContext *ks)
        * point in time to investigate */
 
       s = des_skb[0][ (c    )&0x3f                ] |
-	  des_skb[1][((c>> 6)&0x03)|((c>> 7)&0x3c)] |
-	  des_skb[2][((c>>13)&0x0f)|((c>>14)&0x30)] |
-	  des_skb[3][((c>>20)&0x01)|((c>>21)&0x06)|((c>>22)&0x38)];
+          des_skb[1][((c>> 6)&0x03)|((c>> 7)&0x3c)] |
+          des_skb[2][((c>>13)&0x0f)|((c>>14)&0x30)] |
+          des_skb[3][((c>>20)&0x01)|((c>>21)&0x06)|((c>>22)&0x38)];
 
       t = des_skb[4][ (d    )&0x3f                ] |
-	  des_skb[5][((d>> 7)&0x03)|((d>> 8)&0x3c)] |
-	  des_skb[6][ (d>>15)&0x3f                ] |
-	  des_skb[7][((d>>21)&0x0f)|((d>>22)&0x30)];
+          des_skb[5][((d>> 7)&0x03)|((d>> 8)&0x3c)] |
+          des_skb[6][ (d>>15)&0x3f                ] |
+          des_skb[7][((d>>21)&0x0f)|((d>>22)&0x30)];
 
       /* table contained 0213 4657 */
       *schedule++ = ((t << 16) | (s & 0xffff));
@@ -508,8 +511,8 @@ void des_set_key(unsigned char *key, DESContext *ks)
 }
 
 void des_cbc_encrypt(DESContext *ks, unsigned char *iv,
-		     unsigned char *dest, const unsigned char *src,
-		     unsigned int len)
+                     unsigned char *dest, const unsigned char *src,
+                     unsigned int len)
 {
   word32 iv0, iv1, out[2];
   unsigned int i;
@@ -534,8 +537,8 @@ void des_cbc_encrypt(DESContext *ks, unsigned char *iv,
 }
 
 void des_cbc_decrypt(DESContext *ks, unsigned char *iv,
-		     unsigned char *dest, const unsigned char *src,
-		     unsigned int len)
+                     unsigned char *dest, const unsigned char *src,
+                     unsigned int len)
 {
   word32 iv0, iv1, d0, d1, out[2];
   unsigned int i;
@@ -562,10 +565,10 @@ void des_cbc_decrypt(DESContext *ks, unsigned char *iv,
 }
 
 void des_3cbc_encrypt(DESContext *ks1, unsigned char *iv1, 
-		      DESContext *ks2, unsigned char *iv2,
-		      DESContext *ks3, unsigned char *iv3,
-		      unsigned char *dest, const unsigned char *src,
-		      unsigned int len)
+                      DESContext *ks2, unsigned char *iv2,
+                      DESContext *ks3, unsigned char *iv3,
+                      unsigned char *dest, const unsigned char *src,
+                      unsigned int len)
 {
   des_cbc_encrypt(ks1, iv1, dest, src, len);
   des_cbc_decrypt(ks2, iv2, dest, dest, len);
@@ -573,10 +576,10 @@ void des_3cbc_encrypt(DESContext *ks1, unsigned char *iv1,
 }
 
 void des_3cbc_decrypt(DESContext *ks1, unsigned char *iv1, 
-		      DESContext *ks2, unsigned char *iv2,
-		      DESContext *ks3, unsigned char *iv3,
-		      unsigned char *dest, const unsigned char *src,
-		      unsigned int len)
+                      DESContext *ks2, unsigned char *iv2,
+                      DESContext *ks3, unsigned char *iv3,
+                      unsigned char *dest, const unsigned char *src,
+                      unsigned int len)
 {
   des_cbc_decrypt(ks3, iv3, dest, src, len);
   des_cbc_encrypt(ks2, iv2, dest, dest, len);
@@ -586,7 +589,7 @@ void des_3cbc_decrypt(DESContext *ks1, unsigned char *iv1,
 #ifdef DES_TEST
 
 void des_encrypt_buf(DESContext *ks, unsigned char *out, 
-		     const unsigned char *in, int encrypt)
+                     const unsigned char *in, int encrypt)
 {
   word32 in0, in1, output[0];
 
@@ -608,39 +611,39 @@ int main(int ac, char **av)
   while (fgets(line, sizeof(line), stdin))
     {
       for (i = 0; i < 8; i++)
-	{
-	  if (sscanf(line + 2 * i, "%02x", &value) != 1)
-	    {
-	      fprintf(stderr, "1st col, i = %d, line: %s", i, line);
-	      exit(1);
-	    }
-	  key[i] = value;
-	}
+        {
+          if (sscanf(line + 2 * i, "%02x", &value) != 1)
+            {
+              fprintf(stderr, "1st col, i = %d, line: %s", i, line);
+              exit(1);
+            }
+          key[i] = value;
+        }
       for (i = 0; i < 8; i++)
-	{
-	  if (sscanf(line + 2 * i + 17, "%02x", &value) != 1)
-	    {
-	      fprintf(stderr, "2nd col, i = %d, line: %s", i, line);
-	      exit(1);
-	    }
-	  data[i] = value;
-	}
+        {
+          if (sscanf(line + 2 * i + 17, "%02x", &value) != 1)
+            {
+              fprintf(stderr, "2nd col, i = %d, line: %s", i, line);
+              exit(1);
+            }
+          data[i] = value;
+        }
       for (i = 0; i < 8; i++)
-	{
-	  if (sscanf(line + 2 * i + 2*17, "%02x", &value) != 1)
-	    {
-	      fprintf(stderr, "3rd col, i = %d, line: %s", i, line);
-	      exit(1);
-	    }
-	  result[i] = value;
-	}
+        {
+          if (sscanf(line + 2 * i + 2*17, "%02x", &value) != 1)
+            {
+              fprintf(stderr, "3rd col, i = %d, line: %s", i, line);
+              exit(1);
+            }
+          result[i] = value;
+        }
       des_set_key(key, &ks);
       des_encrypt_buf(&ks, output, data, 1);
       if (memcmp(output, result, 8) != 0)
-	fprintf(stderr, "Encrypt failed: %s", line);
+        fprintf(stderr, "Encrypt failed: %s", line);
       des_encrypt_buf(&ks, output, result, 0);
       if (memcmp(output, data, 8) != 0)
-	fprintf(stderr, "Decrypt failed: %s", line);
+        fprintf(stderr, "Decrypt failed: %s", line);
     }
   exit(0);
 }

@@ -15,10 +15,13 @@ Functions for returning the canonical host name of the remote site.
 */
 
 /*
- * $Id: canohost.c,v 1.6 1999/11/17 17:04:41 tri Exp $
+ * $Id: canohost.c,v 1.7 2001/02/16 18:37:22 ylo Exp $
  * $Log: canohost.c,v $
+ * Revision 1.7  2001/02/16 18:37:22  ylo
+ * 	Changed sprintf -> snprintf.
+ *
  * Revision 1.6  1999/11/17 17:04:41  tri
- * 	Fixed copyright notices.
+ *      Fixed copyright notices.
  *
  * Revision 1.5  1999/02/21 19:51:58  ylo
  *      Intermediate commit of ssh1.2.27 stuff.
@@ -159,7 +162,7 @@ char *get_remote_hostname(int socket)
           option_size = 256;
         /* Note: "text" buffer must be at least 3x as big as options. */
         for (ucp = options; option_size > 0; ucp++, option_size--, cp += 3)
-          sprintf(cp, " %2.2x", *ucp);
+          snprintf(cp, 3, " %2.2x", *ucp);
         log_msg("Connection from %.100s with IP options:%.800s",
             inet_ntoa(from.sin_addr), text);
         packet_disconnect("Connection from %.100s with IP options:%.800s", 

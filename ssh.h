@@ -14,8 +14,12 @@ Generic header file for ssh.
 */
 
 /*
- * $Id: ssh.h,v 1.19 1997/04/21 01:06:44 kivinen Exp $
+ * $Id: ssh.h,v 1.20 1997/04/27 21:55:35 kivinen Exp $
  * $Log: ssh.h,v $
+ * Revision 1.20  1997/04/27 21:55:35  kivinen
+ * 	Added channel_add_{allow,deny}_forwd_{to,port} prototypes.
+ * 	Added match_port prototype.
+ *
  * Revision 1.19  1997/04/21 01:06:44  kivinen
  * 	Fixed prototype for server_loop to have cleanup_context
  * 	instead of ttyname.
@@ -704,6 +708,20 @@ void channel_request_remote_forwarding(int port, const char *host,
    and the server has no way to know but to trust the client anyway. */
 void channel_permit_all_opens(void);
 
+#ifdef F_SECURE_COMMERCIAL
+
+
+
+
+
+
+
+
+
+
+
+#endif /* F_SECURE_COMMERCIAL */
+
 /* This is called after receiving CHANNEL_FORWARDING_REQUEST.  This initates
    listening for the port, and sends back a success reply (or disconnect
    message if there was an error).  This never returns if there was an 
@@ -766,6 +784,10 @@ void auth_input_open_request(void);
 /* Returns true if the given string matches the pattern (which may contain
    ? and * as wildcards), and zero if it does not match. */
 int match_pattern(const char *s, const char *pattern);
+
+#ifdef F_SECURE_COMMERCIAL
+
+#endif /* F_SECURE_COMMERCIAL */
 
 /* Expands tildes in the file name.  Returns data allocated by xmalloc.
    Warning: this calls getpw*. */

@@ -2,10 +2,11 @@
 
 signals.c
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Fri Jan 19 18:09:37 1995 ylo
 
@@ -16,36 +17,39 @@ maximum core dump size.
 
 /*
  * $Log: signals.c,v $
+ * Revision 1.10  1999/11/17 17:04:55  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.9  1998/05/23 20:24:15  kivinen
- * 	Changed () -> (void).
+ *      Changed () -> (void).
  *
  * Revision 1.8  1998/05/04  13:37:05  kivinen
- * 	Fixed SIGPWR code so that will check if SIGPWR is same than
- * 	SIGINFO and only include it to switch clause if it is
- * 	different.
+ *      Fixed SIGPWR code so that will check if SIGPWR is same than
+ *      SIGINFO and only include it to switch clause if it is
+ *      different.
  *
  * Revision 1.7  1998/04/30 01:56:32  kivinen
- * 	Added SIGPWR handling.
+ *      Added SIGPWR handling.
  *
  * Revision 1.6  1997/04/21 01:07:28  kivinen
- * 	Added HAVE_INCOMPATIBLE_SIGINFO support.
+ *      Added HAVE_INCOMPATIBLE_SIGINFO support.
  *
  * Revision 1.5  1997/03/26 07:16:44  kivinen
- * 	Change sig <= NSIG to sig < NSIG.
+ *      Change sig <= NSIG to sig < NSIG.
  *
  * Revision 1.4  1996/08/30 08:44:22  ylo
- * 	Added Sunos/Solaris SIGFREEZE and SIGTHAW to signals with
- * 	default processing.
+ *      Added Sunos/Solaris SIGFREEZE and SIGTHAW to signals with
+ *      default processing.
  *
  * Revision 1.3  1996/07/12 07:27:18  ttsalo
- * 	ifdef:d SIGIO
+ *      ifdef:d SIGIO
  *
  * Revision 1.2  1996/04/26 00:25:48  ylo
- * 	Test for SIGURG == SIGIO (which appears to be the case on some
- * 	Linux versions).
+ *      Test for SIGURG == SIGIO (which appears to be the case on some
+ *      Linux versions).
  *
  * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
- * 	Imported ssh-1.2.13.
+ *      Imported ssh-1.2.13.
  *
  * $EndLog$
  */
@@ -107,11 +111,11 @@ void signals_prevent_core(void)
       case SIGPWR:
 #endif
 #endif
-	signal(sig, SIG_DFL);
-	break;
+        signal(sig, SIG_DFL);
+        break;
       default:
-	signal(sig, signal_handler);
-	break;
+        signal(sig, signal_handler);
+        break;
       }
 
 #if defined(HAVE_SETRLIMIT) && defined(RLIMIT_CORE)

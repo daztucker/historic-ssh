@@ -17,6 +17,16 @@ This works by forking a separate process to do the reading.
 
 /*
  * $Log: userfile.h,v $
+ * Revision 1.6  1996/09/08 17:21:07  ttsalo
+ * 	A lot of changes in agent-socket handling
+ *
+ * Revision 1.5  1996/09/04 12:40:00  ttsalo
+ * 	Added connecting to unix-domain socket
+ *
+ * Revision 1.4  1996/08/13 09:04:20  ttsalo
+ * 	Home directory, .ssh and .ssh/authorized_keys are now
+ * 	checked for wrong owner and group & world writeability.
+ *
  * Revision 1.3  1996/05/29 07:42:02  ylo
  * 	Updated prototype of userfile_init.
  *
@@ -73,6 +83,11 @@ int userfile_read(UserFile f, void *buf, unsigned int len);
    Returns the number of bytes actually written; -1 indicates error. */
 int userfile_write(UserFile f, const void *buf, unsigned int len);
 
+/* Sends data to a socket.  Sends all data, unless an error is encountered.
+   Returns the number of bytes actually written; -1 indicates error. */
+int userfile_send(UserFile uf, const void *buf, unsigned int len,
+		  unsigned int flags);
+
 /* Reads a line from the file.  The line will be null-terminated, and
    will include the newline.  Returns a pointer to the given buffer,
    or NULL if no more data was available.  If a line is too long,
@@ -101,5 +116,17 @@ UserFile userfile_popen(uid_t uid, const char *command, const char *type);
 
 /* Performs pclose() on the given uid.  Returns <0 if an error occurs. */
 int userfile_pclose(UserFile uf);
+
+/* Check owner and permissions of a given file/directory.
+   Permissions ----w--w- must not exist and owner must be either
+   pw->pw_uid or root. Return value: 0 = not ok, 1 = ok */
+int userfile_check_owner_permissions(struct passwd *pw, const char *path);
+
+/* Open ( = create and connect) a unix-domain socket. Returns
+   UserFile-structure if successful. */
+UserFile userfile_local_socket_connect(uid_t uid, const char *path);
+
+/* Encapsulate a normal file descriptor inside a struct UserFile */
+UserFile userfile_encapsulate_fd(int fd);
 
 #endif /* USERFILE_H */

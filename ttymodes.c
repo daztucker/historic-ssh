@@ -17,8 +17,11 @@ suitable code.
 */
 
 /*
- * $Id: ttymodes.c,v 1.1.1.1 1996/02/18 21:38:12 ylo Exp $
+ * $Id: ttymodes.c,v 1.2 1996/10/29 22:47:53 kivinen Exp $
  * $Log: ttymodes.c,v $
+ * Revision 1.2  1996/10/29 22:47:53  kivinen
+ * 	log -> log_msg.
+ *
  * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
  * 	Imported ssh-1.2.13.
  *
@@ -264,7 +267,7 @@ void tty_make_modes(int fd)
   if (tcgetattr(fd, &tio) < 0)
     {
       packet_put_char(TTY_OP_END);
-      log("tcgetattr: %.100s", strerror(errno));
+      log_msg("tcgetattr: %.100s", strerror(errno));
       return;
     }
 #endif /* USING_TERMIOS */
@@ -272,32 +275,32 @@ void tty_make_modes(int fd)
   if (ioctl(fd, TIOCGETP, &tio) < 0)
     {
       packet_put_char(TTY_OP_END);
-      log("ioctl(fd, TIOCGETP, ...): %.100s", strerror(errno));
+      log_msg("ioctl(fd, TIOCGETP, ...): %.100s", strerror(errno));
       return;
     }
   if (ioctl(fd, TIOCGETC, &tiotc) < 0)
     {
       packet_put_char(TTY_OP_END);
-      log("ioctl(fd, TIOCGETC, ...): %.100s", strerror(errno));
+      log_msg("ioctl(fd, TIOCGETC, ...): %.100s", strerror(errno));
       return;
     }
   if (ioctl(fd, TIOCLGET, &tiolm) < 0)
     {
       packet_put_char(TTY_OP_END);
-      log("ioctl(fd, TIOCLGET, ...): %.100s", strerror(errno));
+      log_msg("ioctl(fd, TIOCLGET, ...): %.100s", strerror(errno));
       return;
     }
   if (ioctl(fd, TIOCGLTC, &tioltc) < 0)
     {
       packet_put_char(TTY_OP_END);
-      log("ioctl(fd, TIOCGLTC, ...): %.100s", strerror(errno));
+      log_msg("ioctl(fd, TIOCGLTC, ...): %.100s", strerror(errno));
       return;
     }
 #ifdef TIOCGSTAT
   if (ioctl(fd, TIOCGSTAT, &tiots) < 0) 
     {
       packet_put_char(TTY_OP_END);
-      log("ioctl(fd, TIOCGSTAT, ...): %.100s", strerror(errno));
+      log_msg("ioctl(fd, TIOCGSTAT, ...): %.100s", strerror(errno));
       return;
     }
 #endif /* TIOCGSTAT */
@@ -475,7 +478,7 @@ void tty_parse_modes(int fd)
 	     about its arguments.  So we must stop parsing.  Note that some
 	     data may be left in the packet; hopefully there is nothing more
 	     coming after the mode data. */
-	  log("parse_tty_modes: unknown opcode %d", opcode);
+	  log_msg("parse_tty_modes: unknown opcode %d", opcode);
 	  goto set;
 	}
     }
@@ -484,7 +487,7 @@ void tty_parse_modes(int fd)
   /* Set the new modes for the terminal. */
 #ifdef USING_TERMIOS
   if (tcsetattr(fd, TCSANOW, &tio) < 0)
-    log("Setting tty modes failed: %.100s", strerror(errno));
+    log_msg("Setting tty modes failed: %.100s", strerror(errno));
 #endif /* USING_TERMIOS */
 #ifdef USING_SGTTY
   if (ioctl(fd, TIOCSETP, &tio) < 0
@@ -495,6 +498,6 @@ void tty_parse_modes(int fd)
       || ioctl(fd, TIOCSSTAT, &tiots) < 0
 #endif /* TIOCSSTAT */
      ) 
-    log("Setting tty modes failed: %.100s", strerror(errno));
+    log_msg("Setting tty modes failed: %.100s", strerror(errno));
 #endif /* USING_SGTTY */
 }

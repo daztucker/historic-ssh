@@ -15,8 +15,18 @@ login (authentication) dialog.
 */
 
 /*
- * $Id: sshconnect.c,v 1.5 1995/07/27 02:18:13 ylo Exp $
+ * $Id: sshconnect.c,v 1.8 1995/09/06 16:01:12 ylo Exp $
  * $Log: sshconnect.c,v $
+ * Revision 1.8  1995/09/06  16:01:12  ylo
+ * 	Added BROKEN_INET_ADDR.
+ *
+ * Revision 1.7  1995/08/31  09:24:23  ylo
+ * 	Fixed user_hostfile name processing.
+ *
+ * Revision 1.6  1995/08/21  23:29:32  ylo
+ * 	Clear sockaddr_in before using.
+ * 	Pass session_id and response_type to ssh_decrypt_challenge.
+ *
  * Revision 1.5  1995/07/27  02:18:13  ylo
  * 	Tell packet_set_encryption_key that we are the client.
  *
@@ -117,6 +127,7 @@ int ssh_connect(const char *host, int port, int anonymous)
 	      sock = socket(AF_INET, SOCK_STREAM, 0);
 	      if (sock < 0)
 		fatal("socket: %s", strerror(errno));
+	      memset(&sin, 0, sizeof(sin));
 	      sin.sin_family = AF_INET;
 	      sin.sin_addr.s_addr = INADDR_ANY;
 	      sin.sin_port = htons(p);
@@ -140,9 +151,14 @@ int ssh_connect(const char *host, int port, int anonymous)
 	}
 
       /* Try to parse the host name as a numeric inet address. */
+      memset(&hostaddr, 0, sizeof(hostaddr));
       hostaddr.sin_family = AF_INET;
       hostaddr.sin_port = htons(port);
+#ifdef BROKEN_INET_ADDR
+      hostaddr.sin_addr.s_addr = inet_network(host);
+#else /* BROKEN_INET_ADDR */
       hostaddr.sin_addr.s_addr = inet_addr(host);
+#endif /* BROKEN_INET_ADDR */
       if ((hostaddr.sin_addr.s_addr & 0xffffffff) != 0xffffffff)
 	{ 
 	  /* Valid numeric IP address */
@@ -269,7 +285,9 @@ int try_agent_authentication()
       debug("Received RSA challenge from server.");
 
       /* Ask the agent to decrypt the challenge. */
-      if (!ssh_decrypt_challenge(auth, bits, &e, &n, &challenge, response))
+      if (!ssh_decrypt_challenge(auth, bits, &e, &n, &challenge, 
+				 session_id, remote_protocol_1_1, 
+				 response))
 	{
 	  /* The agent failed to authenticate this identifier although it
 	     advertised it supports this.  Just return a wrong value. */
@@ -690,9 +708,8 @@ void ssh_login(RandomState *state, int host_key_valid,
 
   /* Check if the host key is present in the user\'s list of known hosts
      or in the systemwide list. */
-  sprintf(buf, "%s/%s", pw->pw_dir, user_hostfile);
-  host_status = check_host_in_hostfile(buf, host, host_key.bits, &host_key.e,
-				       &host_key.n);
+  host_status = check_host_in_hostfile(user_hostfile, host, host_key.bits, 
+				       &host_key.e, &host_key.n);
   if (host_status == HOST_NEW)
     host_status = check_host_in_hostfile(system_hostfile, host, 
 					 host_key.bits, &host_key.e, 
@@ -719,9 +736,10 @@ void ssh_login(RandomState *state, int host_key_valid,
       break;
     case HOST_NEW:
       /* The host is new. */
-      if (!add_host_to_hostfile(buf, host, host_key.bits, &host_key.e,
-				&host_key.n))
-	log("Failed to add the host to the list of known hosts (%s).", buf);
+      if (!add_host_to_hostfile(user_hostfile, host, host_key.bits, 
+				&host_key.e, &host_key.n))
+	log("Failed to add the host to the list of known hosts (%s).", 
+	    user_hostfile);
       else
 	log("Host '%.200s' added to the list of known hosts.", host);
       break;
@@ -734,7 +752,8 @@ void ssh_login(RandomState *state, int host_key_valid,
       error("Someone could be eavesdropping on you right now!");
       error("It is also possible that the host key has just been changed.");
       error("Please contact your system administrator.");
-      error("Add correct host key in %s to get rid of this message.", buf);
+      error("Add correct host key in %s to get rid of this message.", 
+	    user_hostfile);
       error("Password authentication is disabled to avoid trojan horses.");
       password_authentication = 0;
       /* XXX Should permit the user to change to use the new id.  This could

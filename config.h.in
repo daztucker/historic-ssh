@@ -11,8 +11,17 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 /*
  * $Log: config.h.in,v $
- * Revision 1.25  1998/01/14 16:40:30  kivinen
- * 	Added HAVE_GETESPWNAM.
+ * Revision 1.29  1998/04/30 02:33:54  kivinen
+ * *** empty log message ***
+ *
+ * Revision 1.19  1998/04/17 00:36:31  kivinen
+ * 	Added NOLOGIN_ALLOW.
+ *
+ * Revision 1.18  1998/03/27 17:30:10  kivinen
+ * 	Added ENABLE_TCP_NODELAY.
+ *
+ * Revision 1.17  1998/03/27 17:26:08  kivinen
+ * 	Removed TSS.
  *
  * Revision 1.16  1997/05/13 22:32:06  kivinen
  * 	Added SOCKS4 and SOCKS5.
@@ -263,7 +272,6 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define this to leave out that cipher. */
 #undef WITH_IDEA
 #undef WITH_DES
-#undef WITH_TSS
 #undef WITH_ARCFOUR
 #undef WITH_BLOWFISH
 #undef WITH_NONE
@@ -415,6 +423,13 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define this if your spwd struct defined shadow.h have sp_inact field */
 #undef HAVE_STRUCT_SPWD_INACT
 
+/* Define this if you want to enable TCP_NODELAY option */
+#undef ENABLE_TCP_NODELAY
+
+/* File used to override /etc/nologin on a per-user basis.  The default is
+   /etc/nologin.allow. */
+#undef NOLOGIN_ALLOW
+
 /* The number of bytes in a int.  */
 #undef SIZEOF_INT
 
@@ -426,6 +441,9 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 /* Define if you have the _getpty function.  */
 #undef HAVE__GETPTY
+
+/* Define if you have the authenticate function.  */
+#undef HAVE_AUTHENTICATE
 
 /* Define if you have the clock function.  */
 #undef HAVE_CLOCK
@@ -520,6 +538,9 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define if you have the times function.  */
 #undef HAVE_TIMES
 
+/* Define if you have the ttyslot function.  */
+#undef HAVE_TTYSLOT
+
 /* Define if you have the ulimit function.  */
 #undef HAVE_ULIMIT
 
@@ -537,6 +558,9 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 /* Define if you have the <lastlog.h> header file.  */
 #undef HAVE_LASTLOG_H
+
+/* Define if you have the <login_cap.h> header file.  */
+#undef HAVE_LOGIN_CAP_H
 
 /* Define if you have the <machine/endian.h> header file.  */
 #undef HAVE_MACHINE_ENDIAN_H

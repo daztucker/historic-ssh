@@ -14,8 +14,11 @@ Functions for reading the configuration file.
 */
 
 /*
- * $Id: readconf.h,v 1.4 1995/09/24 23:59:57 ylo Exp $
+ * $Id: readconf.h,v 1.1.1.1 1996/02/18 21:38:10 ylo Exp $
  * $Log: readconf.h,v $
+ * Revision 1.1.1.1  1996/02/18 21:38:10  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.4  1995/09/24  23:59:57  ylo
  * 	Added connection_attempts.
  *

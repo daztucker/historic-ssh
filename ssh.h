@@ -14,8 +14,15 @@ Generic header file for ssh.
 */
 
 /*
- * $Id: ssh.h,v 1.9 1995/08/31 09:23:42 ylo Exp $
+ * $Id: ssh.h,v 1.11 1995/09/10 22:47:59 ylo Exp $
  * $Log: ssh.h,v $
+ * Revision 1.11  1995/09/10  22:47:59  ylo
+ * 	Added server_loop.
+ * 	Added original_real_uid parameter to ssh_login.
+ *
+ * Revision 1.10  1995/09/09  21:26:46  ylo
+ * /m/shadows/u2/users/ylo/ssh/README
+ *
  * Revision 1.9  1995/08/31  09:23:42  ylo
  * 	Added support for ETCDIR.
  *
@@ -53,6 +60,28 @@ Generic header file for ssh.
 #include "rsa.h"
 #include "randoms.h"
 #include "cipher.h"
+
+/* The default cipher used if IDEA is not supported by the remote host. 
+   It is recommended that this be one of the mandatory ciphers (DES, 3DES),
+   though that is not required. */
+#define SSH_FALLBACK_CIPHER	SSH_CIPHER_3DES
+
+/* Cipher used for encrypting authentication files. */
+#ifdef WITHOUT_IDEA
+#define SSH_AUTHFILE_CIPHER	SSH_CIPHER_3DES
+#else
+#define SSH_AUTHFILE_CIPHER	SSH_CIPHER_IDEA
+#endif
+
+/* Default port number. */
+#define SSH_DEFAULT_PORT	22
+
+/* Maximum number of TCP/IP ports forwarded per direction. */
+#define SSH_MAX_FORWARDS_PER_DIRECTION	100
+
+/* Maximum number of RSA authentication identity files that can be specified
+   in configuration files or on the command line. */
+#define SSH_MAX_IDENTITY_FILES		100
 
 /* Major protocol version.  Different version indicates major incompatiblity
    that prevents communication.  */
@@ -141,16 +170,6 @@ only by root, whereas ssh_config should be world-readable. */
    authentication socket. */
 #define SSH_AUTHSOCKET_ENV_NAME	"SSH_AUTHENTICATION_SOCKET"
 
-/* Cipher used for encrypting authentication files. */
-#ifdef WITHOUT_IDEA
-#define SSH_AUTHFILE_CIPHER	SSH_CIPHER_3DES
-#else
-#define SSH_AUTHFILE_CIPHER	SSH_CIPHER_IDEA
-#endif
-
-/* Default port number. */
-#define SSH_DEFAULT_PORT	22
-
 /* Force host key length and server key length to differ by at least this
    many bits.  This is to make double encryption with rsaref work. */
 #define SSH_KEY_BITS_RESERVED		128
@@ -158,13 +177,6 @@ only by root, whereas ssh_config should be world-readable. */
 /* Length of the session key in bytes.  (Specified as 256 bits in the 
    protocol.)  */
 #define SSH_SESSION_KEY_LENGTH		32
-
-/* Maximum number of TCP/IP ports forwarded per direction. */
-#define SSH_MAX_FORWARDS_PER_DIRECTION	100
-
-/* Maximum number of RSA authentication identity files that can be specified
-   in configuration files or on the command line. */
-#define SSH_MAX_IDENTITY_FILES		100
 
 /* Authentication methods.  New types can be added, but old types should not
    be removed for compatibility.  The maximum allowed value is 31. */
@@ -227,7 +239,7 @@ unsigned long get_last_login_time(uid_t uid, const char *logname,
 /* Records that the user has logged in.  This does many things normally
    done by login(1). */
 void record_login(int pid, const char *ttyname, const char *user, uid_t uid,
-		  const char *host);
+		  const char *host, struct sockaddr_in *addr);
 
 /* Records that the user has logged out.  This does many thigs normally
    done by login(1) or init. */
@@ -239,7 +251,8 @@ void record_logout(int pid, const char *ttyname);
    port is 0, the default port will be used.  If anonymous is zero,
    a privileged port will be allocated to make the connection. 
    This requires super-user privileges if anonymous is false. */
-int ssh_connect(const char *host, int port, int anonymous);
+int ssh_connect(const char *host, int port, int anonymous,
+		uid_t original_real_uid);
 
 /* Starts a dialog with the server, and authenticates the current user on the
    server.  This does not need any extra privileges.  The basic connection
@@ -256,20 +269,23 @@ void ssh_login(RandomState *state, int host_key_valid, RSAPrivateKey *host_key,
 	       int rhosts_authentication, int rhosts_rsa_authentication,
 	       int rsa_authentication,
 	       int password_authentication, int cipher_type,
-	       const char *system_hostfile, const char *user_hostfile);
+	       const char *system_hostfile, const char *user_hostfile,
+	       uid_t original_real_uid);
 
 /*------------ Definitions for various authentication methods. -------*/
 
 /* Tries to authenticate the user using the .rhosts file.  Returns true if
-   authentication succeeds.  */
-int auth_rhosts(struct passwd *pw, const char *client_user);
+   authentication succeeds.  If ignore_rhosts is non-zero, this will not
+   consider .rhosts and .shosts (/etc/hosts.equiv will still be used). */
+int auth_rhosts(struct passwd *pw, const char *client_user,
+		int ignore_rhosts);
 
 /* Tries to authenticate the user using the .rhosts file and the host using
    its host key.  Returns true if authentication succeeds. */
 int auth_rhosts_rsa(RandomState *state,
 		    struct passwd *pw, const char *client_user,
 		    unsigned int bits, MP_INT *client_host_key_e,
-		    MP_INT *client_host_key_n);
+		    MP_INT *client_host_key_n, int ignore_rhosts);
 
 /* Tries to authenticate the user using password.  Returns true if
    authentication succeeds. */
@@ -528,5 +544,12 @@ char *tilde_expand_filename(const char *filename, uid_t my_uid);
    If pathname is NULL, the path is inferred from the SHELL environment
    variable or the user id. */
 int get_permanent_fd(const char *pathname);
+
+/* Performs the interactive session.  This handles data transmission between
+   the client and the program.  Note that the notion of stdin, stdout, and
+   stderr in this function is sort of reversed: this function writes to
+   stdin (of the child program), and reads from stdout and stderr (of the
+   child program). */
+void server_loop(int pid, int fdin, int fdout, int fderr);
 
 #endif /* SSH_H */

@@ -14,8 +14,13 @@ Definitions for server configuration data and for the functions reading it.
 */
 
 /*
- * $Id: servconf.h,v 1.6 1997/03/27 03:14:31 kivinen Exp $
+ * $Id: servconf.h,v 1.7 1997/04/27 21:51:44 kivinen Exp $
  * $Log: servconf.h,v $
+ * Revision 1.7  1997/04/27 21:51:44  kivinen
+ * 	Added F-SECURE stuff. Added {Allow,Deny}Forwarding{To,Port}
+ * 	feature. Added {Allow,Deny}Users feature from Steve Kann
+ * 	<stevek@SteveK.COM>.
+ *
  * Revision 1.6  1997/03/27 03:14:31  kivinen
  * 	Added kerberos patches from Glenn Machin.
  * 	Added USELOGIN patches from Brian Cully.
@@ -46,6 +51,15 @@ Definitions for server configuration data and for the functions reading it.
 
 #define MAX_ALLOW_HOSTS		256 /* Max # hosts on allow list. */
 #define MAX_DENY_HOSTS		256 /* Max # hosts on deny list. */
+#define MAX_ALLOW_USERS		256 /* Max # users on allow list. */
+#define MAX_DENY_USERS		256 /* Max # users on deny list. */
+
+#ifdef F_SECURE_COMMERCIAL
+#define MAX_ALLOW_FORWD_TO	256 /* Max # forwardingto on allow list. */
+#define MAX_DENY_FORWD_TO	256 /* Max # forwardingto on deny list. */
+#define MAX_ALLOW_FORWD_PORT	256 /* Max # forwardingport on allow list. */
+#define MAX_DENY_FORWD_PORT	256 /* Max # forwardingport on deny list. */
+#endif /* F_SECURE_COMMERCIAL */
 
 typedef struct
 {
@@ -90,6 +104,21 @@ typedef struct
   char *allow_hosts[MAX_ALLOW_HOSTS];
   unsigned int num_deny_hosts;
   char *deny_hosts[MAX_DENY_HOSTS];
+  unsigned int num_allow_users;
+  char *allow_users[MAX_ALLOW_USERS];
+  unsigned int num_deny_users;
+  char *deny_users[MAX_DENY_USERS];
+
+#ifdef F_SECURE_COMMERCIAL
+
+
+
+
+
+
+
+
+#endif /* F_SECURE_COMMERCIAL */
 } ServerOptions;
 
 /* Initializes the server options to special values that indicate that they

@@ -18,8 +18,31 @@ agent connections.
 */
 
 /*
- * $Id: sshd.c,v 1.47 1998/01/03 06:42:43 kivinen Exp $
+ * $Id: sshd.c,v 1.51 1998/05/11 18:51:07 kivinen Exp $
  * $Log: sshd.c,v $
+ * Revision 1.51  1998/05/11 18:51:07  kivinen
+ * 	Fixed AIX authstate code.
+ *
+ * Revision 1.50  1998/04/30 01:58:40  kivinen
+ * 	Fixed osflim handling so that now it allows setting resource
+ * 	to 0. Added -V option (for ssh version 2 compat mode). Added
+ * 	LIBWRAP code to also when in debugging mode. Added BSDI
+ * 	setusercontext code.
+ *
+ * Revision 1.49  1998/04/17 00:42:36  kivinen
+ * 	Freebsd login capabilities support. Added REMOTEUSER
+ * 	environment variable setting. Changed locked account checking
+ * 	so that it will not care if the account is locked if
+ * 	kerberos_or_local_password is not set. Added nologin-allow
+ * 	support. Added setting of AUTHSTATE and KRB5CCNAME enviroment
+ * 	variables if AIX authenticate() function is used.
+ *
+ * Revision 1.48  1998/03/27 17:05:01  kivinen
+ * 	Added SIGDANGER code. Fixed kerberos initialization code so
+ * 	ssh will check the error codes of initialization function.
+ * 	added ignore_root_rhosts code. Moved initgroups before closing
+ * 	all filedescriptors.
+ *
  * Revision 1.47  1998/01/03 06:42:43  kivinen
  * 	Added allow/deny groups option support.
  *
@@ -428,6 +451,10 @@ extern char *setlimits();
 #include "firewall.h"	/* TIS authsrv authentication */
 #endif
 
+#if defined (__FreeBSD__) && defined(HAVE_LOGIN_CAP_H)
+#include <login_cap.h>
+#endif
+
 #ifdef _PATH_BSHELL
 #define DEFAULT_SHELL		_PATH_BSHELL
 #else
@@ -533,6 +560,9 @@ int received_sighup = 0;
    the private key. */
 RSAPublicKey public_key;
 
+/* Remote end username (mallocated) or NULL if not available */
+char *remote_user_name; 
+
 /* Prototypes for various functions defined later in this file. */
 void do_connection(int privileged_port);
 void do_authentication(char *user, int privileged_port, int cipher_type);
@@ -582,6 +612,16 @@ RETSIGTYPE sigterm_handler(int sig)
   close(listen_sock);
   exit(255);
 }
+
+#ifdef SIGDANGER
+/* Signal handler for AIX's SIGDANGER low-memory signal
+   It logs the signal and ignores the message. */
+RETSIGTYPE sigdanger_handler(int sig)
+{
+  log_msg("Received signal %d (SIGDANGER, means memory is low); ignoring.",
+	  sig);
+}
+#endif /* SIGDANGER */
 
 /* SIGCHLD handler.  This is called whenever a child dies.  This will then 
    reap any zombies left by exited c. */
@@ -652,6 +692,7 @@ int main(int ac, char **av)
   char buf[100]; /* Must not be larger than remote_version. */
   char remote_version[100]; /* Must be at least as big as buf. */
   char *comment;
+  char *ssh_remote_version_string = NULL;
   FILE *f;
 #ifdef SO_LINGER
   struct linger linger;
@@ -675,7 +716,7 @@ int main(int ac, char **av)
   initialize_server_options(&options);
 
   /* Parse command-line arguments. */
-  while ((opt = getopt(ac, av, "f:p:b:k:h:g:diq")) != EOF)
+  while ((opt = getopt(ac, av, "f:p:b:k:h:g:diqV:")) != EOF)
     {
       switch (opt)
 	{
@@ -706,6 +747,9 @@ int main(int ac, char **av)
 	case 'h':
 	  options.host_key_file = optarg;
 	  break;
+	case 'V':
+	  ssh_remote_version_string = optarg;
+	  break;
 	case '?':
 	default:
 #ifdef F_SECURE_COMMERCIAL
@@ -724,6 +768,7 @@ int main(int ac, char **av)
 	  fprintf(stderr, "  -b bits    Size of server RSA key (default: 768 bits)\n");
 	  fprintf(stderr, "  -h file    File from which to read host key (default: %s)\n",
 		  HOST_KEY_FILE);
+	  fprintf(stderr, "  -V str     Remote version string already read from the socket\n");
 	  exit(1);
 	}
     }
@@ -988,6 +1033,14 @@ int main(int ac, char **av)
       signal(SIGTERM, sigterm_handler);
       signal(SIGQUIT, sigterm_handler);
       
+      /* AIX sends SIGDANGER when memory runs low.  The default action is
+	 to terminate the process.  This sometimes makes it difficult to
+	 log in and fix the problem. */
+      
+#ifdef SIGDANGER
+      signal(SIGDANGER, sigdanger_handler);
+#endif /* SIGDANGER */
+      
       /* Arrange SIGCHLD to be caught. */
       signal(SIGCHLD, main_sigchld_handler);
 
@@ -996,7 +1049,11 @@ int main(int ac, char **av)
       /* Initialize contexts and setup replay cache */
       if (!ssh_context)
 	{
-	  krb5_init_context(&ssh_context);
+	  krb5_error_code r;
+	  
+	  if ((r = krb5_init_context(&ssh_context)))
+	    fatal("Kerberos V5: %s while initializing krb5.",
+		  error_message(r));
 	  krb5_init_ets(ssh_context);
 	}
 #endif
@@ -1042,6 +1099,18 @@ int main(int ac, char **av)
 	      sock_in = newsock;
 	      sock_out = newsock;
 	      pid = getpid();
+#ifdef LIBWRAP
+	      {
+		struct request_info req;
+		
+		signal(SIGCHLD, SIG_DFL);
+		
+		request_init(&req, RQ_DAEMON, av0, RQ_FILE, newsock, NULL);
+		fromhost(&req);
+		if (!hosts_access(&req))
+		  refuse(&req);
+	      }
+#endif /* LIBWRAP */
 	      break;
 	    }
 	  else
@@ -1170,26 +1239,34 @@ int main(int ac, char **av)
     fatal_severity(SYSLOG_SEVERITY_INFO,
 		   "Could not write ident string.");
 
-  /* Read other side\'s version identification. */
-  for (i = 0; i < sizeof(buf) - 1; i++)
+  if (ssh_remote_version_string == NULL)
     {
-      if (read(sock_in, &buf[i], 1) != 1)
-	fatal_severity(SYSLOG_SEVERITY_INFO,
-		       "Did not receive ident string.");
-      if (buf[i] == '\r')
+      /* Read other side\'s version identification. */
+      for (i = 0; i < sizeof(buf) - 1; i++)
 	{
-	  buf[i] = '\n';
-	  buf[i + 1] = 0;
-	  break;
+	  if (read(sock_in, &buf[i], 1) != 1)
+	    fatal_severity(SYSLOG_SEVERITY_INFO,
+			   "Did not receive ident string.");
+	  if (buf[i] == '\r')
+	    {
+	      buf[i] = '\n';
+	      buf[i + 1] = 0;
+	      break;
+	    }
+	  if (buf[i] == '\n')
+	    {
+	      /* buf[i] == '\n' */
+	      buf[i + 1] = 0;
+	      break;
+	    }
 	}
-      if (buf[i] == '\n')
-	{
-	  /* buf[i] == '\n' */
-	  buf[i + 1] = 0;
-	  break;
-	}
+      buf[sizeof(buf) - 1] = 0;
     }
-  buf[sizeof(buf) - 1] = 0;
+  else
+    {
+      strncpy(buf, ssh_remote_version_string, sizeof(buf) - 1);
+      buf[sizeof(buf) - 1] = 0;
+    }
   
   /* Check that the versions match.  In future this might accept several
      versions and set appropriate flags to handle them. */
@@ -1594,12 +1671,48 @@ int login_permitted(char *user, struct passwd *pwd)
     endspent();
   }
 #endif /* HAVE_ETC_SHADOW */
+#ifdef __FreeBSD__
+  {
+    time_t currtime;
+    
+    if (pwd->pw_change || pwd->pw_expire)
+      currtime = time(NULL);
+    
+    /*
+     * Check for an expired password
+     */
+    if (pwd->pw_change && pwd->pw_change <= currtime)
+      {
+	debug("Account %.100s's password is too old - forced to change.",
+	      user);
+	if (options.forced_passwd_change)
+	  forced_command = "/usr/bin/passwd";
+	else
+	  {
+	    return 0;
+	  }
+      }
+    
+    /*
+     * Check for expired account
+     */
+    if (pwd->pw_expire && pwd->pw_expire <= currtime)
+      {
+	debug("Account %.100s has expired - access denied.", user);
+	return 0;
+      }
+  }
+#endif  /* !FreeBSD */
   /*
    * Check if account is locked. Check if encrypted password starts
    * with "*LK*".
    */
   {
-    if (strncmp(passwd,"*LK*", 4) == 0)
+    if ((strncmp(passwd,"*LK*", 4) == 0)
+#if defined(KERBEROS) && defined(KRB5)
+        && (options.kerberos_or_local_passwd != 0)
+#endif /* defined(KERBEROS) && defined(KRB5) */
+	)
       {
 	debug("Account %.100s is locked.", user);
 	return 0;
@@ -1771,6 +1884,16 @@ void do_authentication(char *user, int privileged_port, int cipher_type)
   krb5_principal client = 0, tkt_client = 0;
   krb5_data krb5data;
 #endif /* defined(KERBEROS) && defined(KRB5) */
+#if defined (__FreeBSD__) && defined(HAVE_LOGIN_CAP_H)
+  login_cap_t *lc;
+  const char *hostname;
+  const char *ipaddr;
+  char *cap_hlist, *hp;
+  int perm_denied = 0;
+  
+  hostname = get_canonical_hostname();
+  ipaddr = get_remote_ipaddr();
+#endif /* HAVE_LOGIN_CAP_H */
 
   if (strlen(user) > 255)
     do_authentication_fail_loop();
@@ -1787,7 +1910,11 @@ void do_authentication(char *user, int privileged_port, int cipher_type)
   
   if (!ssh_context)
     {
-      krb5_init_context(&ssh_context);
+      krb5_error_code r;
+      
+      if ((r = krb5_init_context(&ssh_context)))
+	fatal("Kerberos V5: %s while initializing krb5.",
+	      error_message(r));
       krb5_init_ets(ssh_context);
     }
   debug("Connection attempt for %.100s from %s.", user, 
@@ -1819,7 +1946,7 @@ void do_authentication(char *user, int privileged_port, int cipher_type)
   pwcopy.pw_passwd = xstrdup(pw->pw_passwd);
   pwcopy.pw_uid = pw->pw_uid;
   pwcopy.pw_gid = pw->pw_gid;
-#if defined (__bsdi__) && _BSDI_VERSION >= 199510
+#if (defined (__bsdi__) && _BSDI_VERSION >= 199510) || (defined (__FreeBSD__) && defined(HAVE_LOGIN_CAP_H))
   pwcopy.pw_class = xstrdup(pw->pw_class);
   pwcopy.pw_change = pw->pw_change;
   pwcopy.pw_expire = pw->pw_expire;
@@ -1968,6 +2095,7 @@ void do_authentication(char *user, int privileged_port, int cipher_type)
 
 	  /* Try to authenticate using /etc/hosts.equiv and .rhosts. */
 	  if (auth_rhosts(pw, client_user, options.ignore_rhosts,
+			  options.ignore_root_rhosts, 
 			  options.strict_modes))
 	    {
 	      /* Authentication accepted. */
@@ -1975,7 +2103,7 @@ void do_authentication(char *user, int privileged_port, int cipher_type)
 		  user, client_user, get_canonical_hostname());
 	      authentication_type = SSH_AUTH_RHOSTS;
 	      authenticated = 1;
-	      xfree(client_user);
+	      remote_user_name = client_user;
 	      break;
 	    }
 	  debug("Rhosts authentication failed for '%.100s', remote '%.100s', host '%.200s'.",
@@ -2028,12 +2156,13 @@ void do_authentication(char *user, int privileged_port, int cipher_type)
 			      pw, client_user,
 			      client_host_key_bits, &client_host_key_e,
 			      &client_host_key_n, options.ignore_rhosts,
+			      options.ignore_root_rhosts, 
 			      options.strict_modes))
 	    {
 	      /* Authentication accepted. */
 	      authentication_type = SSH_AUTH_RHOSTS_RSA;
 	      authenticated = 1;
-	      xfree(client_user);
+	      remote_user_name = client_user;
 	      mpz_clear(&client_host_key_e);
 	      mpz_clear(&client_host_key_n);
 	      break;
@@ -2311,6 +2440,50 @@ void do_authentication(char *user, int privileged_port, int cipher_type)
 			    get_canonical_hostname());
       }
 
+#if defined (__FreeBSD__) && defined (HAVE_LOGIN_CAP_H)
+  
+  lc = login_getclass(pw->pw_class);
+  
+  /* Check if the user's login class allows them to log in
+   * from the remote host.
+   */
+  if((cap_hlist = login_getcapstr(lc, "host.deny", NULL, NULL)) != NULL)
+    {
+      hp = strtok(cap_hlist, ",");
+      while(hp != NULL)
+	{
+	  if (match_pattern(hostname, hp) ||
+	      match_pattern(ipaddr, hp))
+	    perm_denied = 1;
+	  hp = strtok(NULL, ",");
+	}
+    }
+  if((!perm_denied) && 
+     ((cap_hlist = login_getcapstr(lc, "host.allow", NULL, NULL)) != NULL))
+    {
+      perm_denied = 1; /* Set default assuming the worst. */
+      hp = strtok(cap_hlist, ",");
+      while(hp != NULL)
+	{
+          if(match_pattern(hostname, hp) ||
+             match_pattern(ipaddr, hp))
+            perm_denied = 0;
+          hp = strtok(NULL,",");
+        }
+    }
+  login_close(lc);
+  if(perm_denied)
+    {
+      const char *hostname;
+      
+      hostname = get_canonical_hostname();
+      log_severity(SYSLOG_SEVERITY_NOTICE,
+		   "Denied connection for %.200s from %.200s [%.200s].\n",
+		   pw->pw_name, hostname, ipaddr);
+      packet_disconnect("Sorry, you are not allowed to connect.");
+    }
+#endif
+  
   /* Log root logins with severity NOTICE. */
   if (pw->pw_uid == UID_ROOT)
     log_severity(SYSLOG_SEVERITY_NOTICE, "ROOT LOGIN as '%.100s' from %.100s",
@@ -2793,6 +2966,9 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
   struct sockaddr_in from;
   int fromlen;
   struct pty_cleanup_context cleanup_context;
+#if defined (__FreeBSD__) && defined(HAVE_LOGIN_CAP_H)
+  login_cap_t *lc;
+#endif
 #if defined (__bsdi__) && _BSDI_VERSION >= 199510 
   struct timeval tp;
 #endif /*  __bsdi__ && _BSDI_VERSION >= 199510 */
@@ -2867,11 +3043,19 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
       record_login(pid, ttyname, pw->pw_name, pw->pw_uid, hostname, 
 		   &from);
 
+#if defined (__FreeBSD__) && defined(HAVE_LOGIN_CAP_H)
+      lc = login_getclass(pw->pw_class);
+#endif
+
       /* Check if .hushlogin exists.  Note that we cannot use userfile
          here because we are in the child. */
       sprintf(line, "%.200s/.hushlogin", pw->pw_dir);
       quiet_login = stat(line, &st) >= 0;
-      
+
+#if defined (__FreeBSD__) && defined(HAVE_LOGIN_CAP_H)
+      quiet_login = login_getcapbool(lc, "hushlogin", quiet_login);
+#endif
+     
       /* If the user has logged in before, display the time of last login. 
          However, don't display anything extra if a command has been 
 	 specified (so that ssh can be used to execute commands on a remote
@@ -2891,6 +3075,29 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
 	    printf("Last login: %s from %s\r\n", time_string, buf);
 	}
 
+#ifdef __FreeBSD__
+      if (command == NULL && !quiet_login)
+	{
+#ifdef HAVE_LOGIN_CAP_H
+	  char *cw;
+	  FILE *f;
+	  
+	  cw = login_getcapstr(lc, "copyright", NULL, NULL);
+	  if (cw != NULL && (f = fopen(cw, "r")) != NULL)
+	    {
+	      while (fgets(line, sizeof(line), f))
+		fputs(line, stdout);
+	      fclose(f);
+	    }
+	  else
+#endif
+	    printf("%s\n\t%s  %s\n\n",
+		   "Copyright (c) 1980, 1983, 1986, 1988, 1990, 1991, 1993, 1994",
+		   "The Regents of the University of California. ",
+		   "All rights reserved.");
+	}
+#endif
+
       /* Print /etc/motd unless a command was specified or printing it was
 	 disabled in server options.  Note that some machines appear to
 	 print it in /etc/profile or similar. */
@@ -2900,7 +3107,12 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
 	  FILE *f;
 
 	  /* Print /etc/motd if it exists. */
+#if defined (__FreeBSD__) && defined(HAVE_LOGIN_CAP_H)
+	  f = fopen(login_getcapstr(lc, "welcome", "/etc/motd", "/etc/motd"),
+		    "r");
+#else
 	  f = fopen("/etc/motd", "r");
+#endif
 	  if (f)
 	    {
 	      while (fgets(line, sizeof(line), f))
@@ -2928,6 +3140,10 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
 		      ctime(&pw->pw_expire));
 #endif /* __bsdi__ & _BSDI_VERSION >= 199510   */
 	}
+
+#if defined (__FreeBSD__) && defined HAVE_LOGIN_CAP_H
+      login_close(lc);
+#endif
 
       /* Do common processing for the child, such as execing the command. */
       do_child(command, pw, term, display, auth_proto, auth_data, ttyname);
@@ -3156,6 +3372,43 @@ void read_etc_default_login(char ***env, unsigned int *envsize,
 
 #endif /* HAVE_ETC_DEFAULT_LOGIN */
 
+#if defined(NOLOGIN_ALLOW)
+/* If /etc/nologin is in place, check this file for users to allow anyway.
+   Useful for sys-admins to be able to touch nologin and still get in to do
+   remote maintainence. */
+int ignore_nologin(char *username)
+{
+  FILE *ignore_file;
+  char buf[256], *begin, *end;
+  int length;
+
+  ignore_file = fopen(NOLOGIN_ALLOW, "r");
+  if (ignore_file == NULL)
+    return 0;
+  
+  while (fgets(buf, 256, ignore_file) != NULL)
+    {
+      if ((end = strpbrk(buf, "# \r\t\n")) != NULL)
+	*end='\0';
+      begin = strpbrk(buf, "abcdefghijklmnopqrstuvwxyz0123456789");
+      if (begin == NULL)
+	continue;
+      length = strspn(begin, "abcdefghijklmnopqrstuvwxyz0123456789-_");
+      if (length > 8)
+	continue;
+      begin[length] = '\0';
+      if (!strcmp(begin, username))
+	{
+	  fprintf(stderr,"\nWARNING: /etc/nologin is in place.\n\n");
+	  fclose(ignore_file);
+	  return(1);
+	}
+    }
+  fclose(ignore_file);
+  return 0;
+}
+#endif /* NOLOGIN_ALLOW */
+
 /* Performs common processing for the child, such as setting up the 
    environment, closing extra file descriptors, setting the user and group 
    ids, and executing the command or shell. */
@@ -3179,8 +3432,22 @@ void do_child(const char *command, struct passwd *pw, const char *term,
   char *user_shell;
   char *remote_ip;
   int remote_port;
+#if defined (__FreeBSD__) && defined(HAVE_LOGIN_CAP_H)
+  login_cap_t *lc;
+  char *real_shell;
+
+  lc = login_getclass(pw->pw_class);
+  auth_checknologin(lc);
+#else /* !HAVE_LOGIN_CAP_H */
 #if defined (__bsdi__) && _BSDI_VERSION >= 199510
   login_cap_t *lc = 0;
+  
+  if ((lc = login_getclass(pw->pw_class)) == NULL)
+    {
+      log_msg("User class %.100s for %.100s not found, assuming default",
+	      pw->pw_class, pw->pw_name);
+      lc = login_getclass("default") ; 
+    }
 #endif /* __bsdi__  && _BSDI_VERSION >= 199510  */
 
   /* Check /etc/nologin. */
@@ -3189,20 +3456,29 @@ void do_child(const char *command, struct passwd *pw, const char *term,
     { /* /etc/nologin exists.  Print its contents and exit. */
       /* Print a message about /etc/nologin existing; I am getting
 	 questions because of this every week. */
-      fprintf(stderr, "Logins are currently denied by /etc/nologin:\n");
-      while (fgets(buf, sizeof(buf), f))
-	fputs(buf, stderr);
-      fclose(f);
+#if defined(NOLOGIN_ALLOW)
+      if (pw->pw_name && ignore_nologin(pw->pw_name))
+	{
+	  fclose(f);
+	} else {
+#endif
+	  fprintf(stderr, "Logins are currently denied by /etc/nologin:\n");
+	  while (fgets(buf, sizeof(buf), f))
+	    fputs(buf, stderr);
+	  fclose(f);
 #if defined (__bsdi__) && _BSDI_VERSION >= 199510
-      if ((lc = login_getclass(pw->pw_class)) == NULL)
-	lc = login_getclass("default") ; 
-      if (pw->pw_uid != UID_ROOT && !login_getcapbool(lc, "ignorenologin", 0))
-	exit(254);
+	  if (pw->pw_uid != UID_ROOT &&
+	      !login_getcapbool(lc, "ignorenologin", 0))
+	    exit(254);
 #else 
-      if (pw->pw_uid != UID_ROOT)
-	exit(254);
+	  if (pw->pw_uid != UID_ROOT)
+	    exit(254);
 #endif /* __bsdi__  && _BSDI_VERSION >= 199510 */ 
+#if defined(NOLOGIN_ALLOW)
+	}
+#endif
     }
+#endif /* HAVE_LOGIN_CAP_H */
 
   if (command != NULL)
     {
@@ -3215,7 +3491,8 @@ void do_child(const char *command, struct passwd *pw, const char *term,
       else
 	log_msg("executing remote command as user %.200s", pw->pw_name);
     }
-  
+
+#ifndef HAVE_LOGIN_CAP_H
 #ifdef HAVE_SETLOGIN
   /* Set login name in the kernel.  Warning: setsid() must be called before
      this. */
@@ -3236,6 +3513,7 @@ void do_child(const char *command, struct passwd *pw, const char *term,
   if (setpcred((char *)pw->pw_name, NULL))
     log_msg("setpcred %.100s: %.100s", strerror(errno));
 #endif /* HAVE_USERSEC_H */
+#endif /* !HAVE_LOGIN_CAP_H */
 
   /* Save some data that will be needed so that we can do certain cleanups
      before we switch to user's uid.  (We must clear all sensitive data 
@@ -3281,31 +3559,82 @@ void do_child(const char *command, struct passwd *pw, const char *term,
   /* Clear the data structure, just in case. */
   memset(&sensitive_data, 0, sizeof(sensitive_data));
 
-  /* Close any extra open file descriptors so that we don\'t have them
-     hanging around in clients.  Note that we want to do this after
-     initgroups, because at least on Solaris 2.3 it leaves file descriptors
-     open. */
-  endgrent();
-  for (i = 3; i < 64; i++)
-    {
-      if (i == auth_get_fd())
-	continue;
-      close(i);
-    }
-
-  /* At this point, this process should no longer be holding any confidential
-     information, as changing uid below will permit the user to attach with
-     a debugger on some machines. */
-
-#ifdef CRAY   /* set up accounting account number, job, limits, permissions  */
-  if (cray_setup(user_uid, user_name) < 0)
-    fatal("Failure performing Cray job setup for user %d.",(int)user_uid);
-#endif
-
 #ifdef USELOGIN
   if (command != NULL || !options.use_login)
 #endif /* USELOGIN */
     {
+#if defined (__FreeBSD__) && defined(HAVE_LOGIN_CAP_H)
+      char *p, *s, **tmpenv;
+
+      /* Initialize the new environment.
+       */
+      envsize = 64;
+      env = xmalloc(envsize * sizeof(char *));
+      env[0] = NULL;
+
+      child_set_env(&env, &envsize, "PATH", DEFAULT_PATH);
+
+#ifdef MAIL_SPOOL_DIRECTORY
+      sprintf(buf, "%.200s/%.50s", MAIL_SPOOL_DIRECTORY, user_name);
+      child_set_env(&env, &envsize, "MAIL", buf);
+#else /* MAIL_SPOOL_DIRECTORY */
+#ifdef MAIL_SPOOL_FILE
+      sprintf(buf, "%.200s/%.50s", user_dir, MAIL_SPOOL_FILE);
+      child_set_env(&env, &envsize, "MAIL", buf);
+#endif /* MAIL_SPOOL_FILE */
+#endif /* MAIL_SPOOL_DIRECTORY */
+
+      /* Let it inherit timezone if we have one. */
+      if (getenv("TZ"))
+	child_set_env(&env, &envsize, "TZ", getenv("TZ"));
+
+      /* Save previous environment array
+       */
+      tmpenv = environ;
+      environ = env;
+
+      /* Set the user's login environment
+       */
+      if (setusercontext(lc, pw, user_uid, LOGIN_SETALL) < 0)
+	{
+	  perror("setusercontext");
+	  exit(1);
+	}
+
+      p = getenv("PATH");
+      s = xmalloc((p != NULL ? strlen(p) + 1 : 0) + sizeof(SSH_BINDIR));
+      *s = '\0';
+      if (p != NULL)
+	{
+	  strcat(s, p);
+	  strcat(s, ":");
+	}
+      strcat(s, SSH_BINDIR);
+
+      env = environ;
+      environ = tmpenv; /* Restore parent environment */
+      for (envsize = 0; env[envsize] != NULL; ++envsize)
+	;
+      /* Reallocate this to what is expected */
+      envsize = (envsize < 100) ? 100 : envsize + 16;
+      env = xrealloc(env, envsize * sizeof(char *));
+      
+      child_set_env(&env, &envsize, "PATH", s);
+      xfree(s);
+
+#else /* !HAVE_LOGIN_CAP_H */
+#if	(_BSDI_VERSION >= 199510)
+      if (setusercontext(lc, pw, user_uid, LOGIN_SETALL) < 0)
+	{
+	  perror("setusercontext");
+	  exit(1);
+	}
+      if (auth_approve(lc, pw->pw_name, "ssh") <= 0)
+	{
+	  perror("approval");
+	  exit(1);
+	}
+#else /* (_BSDI_VERSION >= 199510) */
       /* Set uid, gid, and groups. */
       if (getuid() == UID_ROOT || geteuid() == UID_ROOT)
 	{ 
@@ -3322,7 +3651,28 @@ void do_child(const char *command, struct passwd *pw, const char *term,
 	      exit(1);
 	    }
 #endif /* HAVE_INITGROUPS */
+	  
+	  /* Close any extra open file descriptors so that we don\'t have them
+	     hanging around in clients. Note that we want to do this after
+	     initgroups, because at least on Solaris 2.3 it leaves file
+	     descriptors open. */
 	  endgrent();
+	  for (i = 3; i < 64; i++)
+	    {
+	      if (i == auth_get_fd())
+		continue;
+	      close(i);
+	    }
+	  
+	  /* At this point, this process should no longer be holding any
+	     confidential information, as changing uid below will permit the
+	     user to attach with a debugger on some machines. */
+	  
+#ifdef CRAY   /* set up accounting account number, job, limits, permissions  */
+	  if (cray_setup(user_uid, user_name) < 0)
+	    fatal("Failure performing Cray job setup for user %d.",
+		  (int)user_uid);
+#endif
 	  
 #ifdef HAVE_SETLUID
 	  /* Set login uid, if we have setluid(). */
@@ -3337,6 +3687,8 @@ void do_child(const char *command, struct passwd *pw, const char *term,
       
       if (getuid() != user_uid || geteuid() != user_uid)
 	fatal("Failed to set uids to %d.", (int)user_uid);
+#endif /* (_BSDI_VERSION >= 199510) */
+#endif /* HAVE_LOGIN_CAP_H */
     }
   
   /* Reset signals to their default settings before starting the user
@@ -3346,12 +3698,12 @@ void do_child(const char *command, struct passwd *pw, const char *term,
 #if defined(HAVE_OSF1_C2_SECURITY)
   {
     /* jcastro@ist.utl.pt Sep 1997 */
-    extern unsigned long osflim[8];
+    extern long osflim[8];
     struct rlimit rl;
     int i;  
     
     for (i = 0; i < 8; i++) {    
-      if (osflim[i] != 0) {
+      if (osflim[i] != -1) {
 	rl.rlim_cur= osflim[i];
 	rl.rlim_max= osflim[i];
 	setrlimit(i, &rl);
@@ -3364,11 +3716,16 @@ void do_child(const char *command, struct passwd *pw, const char *term,
      and means /bin/sh. */
   shell = (user_shell[0] == '\0') ? DEFAULT_SHELL : user_shell;
 
+#if defined (__FreeBSD__) && defined(HAVE_LOGIN_CAP_H)
+  real_shell = login_getcapstr(lc, "shell", (char*)shell, (char*)shell);
+  login_close(lc);
+#else /* !HAVE_LOGIN_CAP_H */
   /* Initialize the environment.  In the first part we allocate space for
      all environment variables. */
   envsize = 100;
   env = xmalloc(envsize * sizeof(char *));
   env[0] = NULL;
+#endif /* HAVE_LOGIN_CAP_H */
 
 #ifdef USELOGIN
   if (command != NULL || !options.use_login)
@@ -3378,6 +3735,8 @@ void do_child(const char *command, struct passwd *pw, const char *term,
       child_set_env(&env, &envsize, "HOME", user_dir);
       child_set_env(&env, &envsize, "USER", user_name);
       child_set_env(&env, &envsize, "LOGNAME", user_name);
+
+#ifndef HAVE_LOGIN_CAP_H
       child_set_env(&env, &envsize, "PATH", DEFAULT_PATH ":" SSH_BINDIR);
       
 #ifdef MAIL_SPOOL_DIRECTORY
@@ -3389,6 +3748,7 @@ void do_child(const char *command, struct passwd *pw, const char *term,
       child_set_env(&env, &envsize, "MAIL", buf);
 #endif /* MAIL_SPOOL_FILE */
 #endif /* MAIL_SPOOL_DIRECTORY */
+#endif  /* !HAVE_LOGIN_CAP_H */
       
 #ifdef HAVE_ETC_DEFAULT_LOGIN
       /* Read /etc/default/login; this exists at least on Solaris 2.x.  Note
@@ -3404,9 +3764,11 @@ void do_child(const char *command, struct passwd *pw, const char *term,
     child_set_env(&env, &envsize, "SSH_ORIGINAL_COMMAND",
 		  original_command);
   
+#ifndef HAVE_LOGIN_CAP_H
   /* Let it inherit timezone if we have one. */
   if (getenv("TZ"))
     child_set_env(&env, &envsize, "TZ", getenv("TZ"));
+#endif /* !HAVE_LOGIN_CAP_H */
   
   /* Set custom environment options from RSA authentication. */
   while (custom_environment) 
@@ -3441,6 +3803,24 @@ void do_child(const char *command, struct passwd *pw, const char *term,
   /* Set DISPLAY if we have one. */
   if (display)
     child_set_env(&env, &envsize, "DISPLAY", display);
+
+  /* Set REMOTEUSER if available */
+  if (remote_user_name)
+    child_set_env(&env, &envsize, "REMOTEUSER", remote_user_name);
+
+#if defined(_AIX) && defined(HAVE_AUTHENTICATE)
+  {
+    char *authstate, *krb5cc;
+    
+    /* Set AUTHSTATE if we have AUTHSTATE. */
+    if ((authstate = getenv("AUTHSTATE")) != NULL)
+      child_set_env(&env, &envsize, "AUTHSTATE", authstate);
+    
+    /* Set KRB5CCNAME if we have KRB5CCNAME. */
+    if ((krb5cc = getenv("KRB5CCNAME")) != NULL)
+      child_set_env(&env, &envsize, "KRB5CCNAME", krb5cc);
+  }
+#endif
 
 #ifdef KERBEROS
   /* Set KRBTKFILE to point to our ticket */
@@ -3647,7 +4027,11 @@ void do_child(const char *command, struct passwd *pw, const char *term,
 	  /* Execute the shell. */
 	  argv[0] = buf;
 	  argv[1] = NULL;
+#if defined (__FreeBSD__) && defined(HAVE_LOGIN_CAP_H)
+          execve(real_shell, argv, env);
+#else
 	  execve(shell, argv, env);
+#endif /* HAVE_LOGIN_CAP_H */
 	  /* Executing the shell failed. */
 	  perror(shell);
 	  exit(1);
@@ -3668,7 +4052,11 @@ void do_child(const char *command, struct passwd *pw, const char *term,
   argv[1] = "-c";
   argv[2] = (char *)command;
   argv[3] = NULL;
+#if defined (__FreeBSD__) && defined(HAVE_LOGIN_CAP_H)
+  execve(real_shell, argv, env);
+#else
   execve(shell, argv, env);
+#endif /* HAVE_LOGIN_CAP_H */
   perror(shell);
   exit(1);
 }

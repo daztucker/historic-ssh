@@ -14,9 +14,12 @@ Functions for reading the configuration files.
 */
 
 /*
- * $Id: readconf.c,v 1.13 1998/04/30 01:55:12 kivinen Exp $
+ * $Id: readconf.c,v 1.14 1998/05/23 20:23:39 kivinen Exp $
  * $Log: readconf.c,v $
- * Revision 1.13  1998/04/30 01:55:12  kivinen
+ * Revision 1.14  1998/05/23  20:23:39  kivinen
+ * 	Removed extra comma at the end of OpCodes enum.
+ *
+ * Revision 1.13  1998/04/30  01:55:12  kivinen
  * 	Added PasswordPromptLogin and PasswordPromptHost options, so
  * 	now the password prompt is configurable.
  *
@@ -165,7 +168,7 @@ typedef enum
   oBatchMode, oStrictHostKeyChecking, oCompression, oCompressionLevel,
   oKeepAlives, oUsePriviledgedPort, oKerberosAuthentication,
   oKerberosTgtPassing, oClearAllForwardings, oNumberOfPasswordPrompts,
-  oXauthPath, oGatewayPorts, oPasswordPromptLogin, oPasswordPromptHost, 
+  oXauthPath, oGatewayPorts, oPasswordPromptLogin, oPasswordPromptHost
 } OpCodes;
 
 /* Textual representations of the tokens. */

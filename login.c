@@ -18,8 +18,14 @@ on a tty.
 */
 
 /*
- * $Id: login.c,v 1.5 1996/10/29 22:38:58 kivinen Exp $
+ * $Id: login.c,v 1.7 1997/03/26 07:09:49 kivinen Exp $
  * $Log: login.c,v $
+ * Revision 1.7  1997/03/26 07:09:49  kivinen
+ * 	Added HAVE_NO_TZ_IN_GETTIMEOFDAY support.
+ *
+ * Revision 1.6  1997/01/10 16:15:19  ttsalo
+ *     Merged ttyslot patch for SunOS/Solaris from Scott Schwartz
+ *
  * Revision 1.5  1996/10/29 22:38:58  kivinen
  * 	log -> log_msg.
  *
@@ -296,6 +302,15 @@ void record_login(int pid, const char *ttyname, const char *user, uid_t uid,
   fd = open(utmp, O_RDWR);
   if (fd >= 0)
     {
+#ifdef HAVE_TTYSLOT
+      int n = ttyslot();
+      if (n > 0) {
+        lseek(fd, (off_t)(n*sizeof(u)), 0);
+        if (write(fd, &u, sizeof(u)) != sizeof(u))
+	  log_msg("Could not write to %.100s: %.100s", 
+	    utmp, strerror(errno));
+      } else
+#endif
       while (1)
 	{
 	  offset = lseek(fd, (off_t)0L, 1);
@@ -366,7 +381,11 @@ void record_login(int pid, const char *ttyname, const char *user, uid_t uid,
       ux.ut_type = DEAD_PROCESS;
     else
       ux.ut_type = USER_PROCESS;
+#ifdef HAVE_NO_TZ_IN_GETTIMEOFDAY
+    gettimeofday(&ux.ut_tv);
+#else
     gettimeofday(&ux.ut_tv, NULL);
+#endif
     ux.ut_session = pid;
     strncpy(ux.ut_host, host, sizeof(ux.ut_host));
     ux.ut_host[sizeof(ux.ut_host) - 1] = 0;

@@ -15,8 +15,11 @@ login (authentication) dialog.
 */
 
 /*
- * $Id: sshconnect.c,v 1.22 1997/04/23 00:05:01 kivinen Exp $
+ * $Id: sshconnect.c,v 1.23 1997/04/27 21:55:51 kivinen Exp $
  * $Log: sshconnect.c,v $
+ * Revision 1.23  1997/04/27 21:55:51  kivinen
+ * 	Added F-SECURE stuff.
+ *
  * Revision 1.22  1997/04/23 00:05:01  kivinen
  * 	Implemented NumberOfPasswordPrompts option.
  *
@@ -1207,8 +1210,12 @@ void ssh_exchange_identification()
       fatal("Unexpected return value from check_emulation.");
     }
   
-  sprintf(buf, "SSH-%d.%d-%.100s\n", 
+  sprintf(buf, "SSH-%d.%d-%.100s", 
 	  my_major, my_minor, SSH_VERSION);
+#ifdef F_SECURE_COMMERCIAL
+
+#endif /* F_SECURE_COMMERCIAL */
+  strcat(buf, "\n");
   if (write(connection_out, buf, strlen(buf)) != strlen(buf))
     fatal("write: %.100s", strerror(errno));
 }

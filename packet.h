@@ -2,10 +2,11 @@
 
 packet.h
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Sat Mar 18 02:02:14 1995 ylo
 
@@ -14,40 +15,43 @@ Interface for the packet protocol functions.
 */
 
 /*
- * $Id: packet.h,v 1.7 1998/08/04 00:04:57 kivinen Exp $
+ * $Id: packet.h,v 1.8 1999/11/17 17:04:49 tri Exp $
  * $Log: packet.h,v $
+ * Revision 1.8  1999/11/17 17:04:49  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.7  1998/08/04 00:04:57  kivinen
- * 	Removed socks.h.
+ *      Removed socks.h.
  *
  * Revision 1.6  1998/03/27  16:59:16  kivinen
- * 	Added socks.h include.
+ *      Added socks.h include.
  *
  * Revision 1.5  1997/04/05 17:29:14  ylo
- * 	Added packet_get_len (returns the remaining length of incoming
- * 	packet).
+ *      Added packet_get_len (returns the remaining length of incoming
+ *      packet).
  *
  * Revision 1.4  1997/03/26 07:11:41  kivinen
- * 	Fixed prototypes.
+ *      Fixed prototypes.
  *
  * Revision 1.3  1997/03/19 19:26:16  kivinen
- * 	Added packet_get_all prototype.
+ *      Added packet_get_all prototype.
  *
  * Revision 1.2  1996/11/24 08:24:14  kivinen
- * 	Fixed the comment of packet_send_debug.
+ *      Fixed the comment of packet_send_debug.
  *
  * Revision 1.1.1.1  1996/02/18 21:38:10  ylo
- * 	Imported ssh-1.2.13.
+ *      Imported ssh-1.2.13.
  *
  * Revision 1.4  1995/09/24  23:59:20  ylo
- * 	Added packet_get_protocol_flags.
+ *      Added packet_get_protocol_flags.
  *
  * Revision 1.3  1995/07/27  02:17:53  ylo
- * 	Pass as argument to packet_set_encryption_key whether running
- * 	as the client or the server.
+ *      Pass as argument to packet_set_encryption_key whether running
+ *      as the client or the server.
  *
  * Revision 1.2  1995/07/13  01:27:54  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
+ *      Removed "Last modified" header.
+ *      Added cvs log.
  *
  * $Endlog$
  */
@@ -82,7 +86,7 @@ void packet_close(void);
    are encrypted independently of each other.  Cipher types are
    defined in ssh.h. */
 void packet_set_encryption_key(const unsigned char *key, unsigned int keylen,
-			       int cipher_type, int is_client);
+                               int cipher_type, int is_client);
 
 /* Sets remote side protocol flags for the current connection.  This can
    be called at any time. */

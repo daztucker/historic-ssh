@@ -10,6 +10,15 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 /*
  * $Log: acconfig.h,v $
+ * Revision 1.19  1998/04/17 00:36:31  kivinen
+ * 	Added NOLOGIN_ALLOW.
+ *
+ * Revision 1.18  1998/03/27 17:30:10  kivinen
+ * 	Added ENABLE_TCP_NODELAY.
+ *
+ * Revision 1.17  1998/03/27 17:26:08  kivinen
+ * 	Removed TSS.
+ *
  * Revision 1.16  1997/05/13 22:32:06  kivinen
  * 	Added SOCKS4 and SOCKS5.
  *
@@ -210,7 +219,6 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define this to leave out that cipher. */
 #undef WITH_IDEA
 #undef WITH_DES
-#undef WITH_TSS
 #undef WITH_ARCFOUR
 #undef WITH_BLOWFISH
 #undef WITH_NONE
@@ -368,3 +376,11 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 /* Define this if your spwd struct defined shadow.h have sp_inact field */
 #undef HAVE_STRUCT_SPWD_INACT
+
+/* Define this if you want to enable TCP_NODELAY option */
+#undef ENABLE_TCP_NODELAY
+
+/* File used to override /etc/nologin on a per-user basis.  The default is
+   /etc/nologin.allow. */
+#undef NOLOGIN_ALLOW
+

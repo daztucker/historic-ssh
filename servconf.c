@@ -12,8 +12,14 @@ Created: Mon Aug 21 15:48:58 1995 ylo
 */
 
 /*
- * $Id: servconf.c,v 1.10 1997/04/27 21:51:34 kivinen Exp $
+ * $Id: servconf.c,v 1.12 1998/01/03 06:41:55 kivinen Exp $
  * $Log: servconf.c,v $
+ * Revision 1.12  1998/01/03 06:41:55  kivinen
+ * 	Added allow/deny groups option.
+ *
+ * Revision 1.11  1998/01/02 06:20:33  kivinen
+ * 	Added xauthlocation and checkmail options.
+ *
  * Revision 1.10  1997/04/27 21:51:34  kivinen
  * 	Added F-SECURE stuff. Added {Allow,Deny}Forwarding{To,Port}
  * 	feature. Added {Allow,Deny}Users feature from Steve Kann
@@ -101,6 +107,8 @@ void initialize_server_options(ServerOptions *options)
   options->num_deny_hosts = 0;
   options->num_allow_users = 0;
   options->num_deny_users = 0;
+  options->num_allow_groups = 0;
+  options->num_deny_groups = 0;
 #ifdef F_SECURE_COMMERCIAL
 
 
@@ -109,6 +117,8 @@ void initialize_server_options(ServerOptions *options)
 #endif /* F_SECURE_COMMERCIAL */
   options->umask = -1;
   options->idle_timeout = -1;
+  options->xauth_path = NULL;
+  options->check_mail = -1;
 }
 
 void fill_default_server_options(ServerOptions *options)
@@ -192,6 +202,15 @@ void fill_default_server_options(ServerOptions *options)
     options->forced_passwd_change = 0;
   if (options->idle_timeout == -1)
     options->idle_timeout = 0;
+  if (options->check_mail == -1)
+    options->check_mail = 1;
+#ifdef XAUTH_PATH
+  if (options->xauth_path == NULL)
+    options->xauth_path = XAUTH_PATH;
+#else   /* !XAUTH_PATH */
+  if (options->xauth_path == NULL)
+    options->xauth_path = "xauth";
+#endif  /* !XAUTH_PATH */
 }
 
 #define WHITESPACE " \t\r\n="
@@ -207,7 +226,8 @@ typedef enum
   sStrictModes, sEmptyPasswd, sRandomSeedFile, sKeepAlives, sPidFile,
   sForcedPasswd, sUmask, sSilentDeny, sIdleTimeout, sUseLogin,
   sKerberosAuthentication, sKerberosOrLocalPasswd, sKerberosTgtPassing,
-  sAllowTcpForwarding, sAllowUsers, sDenyUsers,
+  sAllowTcpForwarding, sAllowUsers, sDenyUsers, sXauthPath, sCheckMail,
+  sDenyGroups, sAllowGroups,
 #ifdef F_SECURE_COMMERCIAL
 
 
@@ -240,6 +260,8 @@ static struct
   { "denyhosts", sDenyHosts },
   { "allowusers", sAllowUsers },
   { "denyusers", sDenyUsers },
+  { "allowgroups", sAllowGroups },
+  { "denygroups", sDenyGroups },
 #ifdef F_SECURE_COMMERCIAL
 
 
@@ -264,6 +286,8 @@ static struct
   { "kerberosorlocalpasswd", sKerberosOrLocalPasswd },
   { "kerberostgtpassing", sKerberosTgtPassing },
   { "allowtcpforwarding", sAllowTcpForwarding },
+  { "xauthlocation", sXauthPath },
+  { "checkmail", sCheckMail },
   { NULL, 0 }
 };
 
@@ -684,6 +708,40 @@ void read_server_config(ServerOptions *options, const char *filename)
 	    }
 	  break;
 	  
+	case sAllowGroups:
+ 	  while ((cp = strtok(NULL, WHITESPACE)))
+ 	    {
+ 	      if (options->num_allow_groups >= MAX_ALLOW_GROUPS)
+ 		{
+ 		  fprintf(stderr, "%s line %d: too many allow groups.\n",
+ 			  filename, linenum);
+ 		  exit(1);
+ 		}
+ 	      options->allow_groups[options->num_allow_groups++] = xstrdup(cp);
+ 	    }
+ 	  break;
+ 	  
+ 	case sDenyGroups:
+ 	  while ((cp = strtok(NULL, WHITESPACE)))
+ 	    {
+ 	      if (options->num_deny_groups >= MAX_DENY_GROUPS)
+ 		{
+ 		  fprintf(stderr, "%s line %d: too many deny groups.\n",
+ 			  filename, linenum);
+ 		  exit(1);
+ 		}
+ 	      options->deny_groups[options->num_deny_groups++] = xstrdup(cp);
+  	    }
+  	  break;
+	  
+	case sXauthPath:
+ 	  charptr = &options->xauth_path;
+ 	  goto parse_pathname;
+
+	case sCheckMail:
+	  intptr = &options->check_mail;
+	  goto parse_flag;
+
 #ifdef F_SECURE_COMMERCIAL
 
 

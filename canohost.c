@@ -14,8 +14,11 @@ Functions for returning the canonical host name of the remote site.
 */
 
 /*
- * $Id: canohost.c,v 1.2 1996/10/29 22:35:11 kivinen Exp $
+ * $Id: canohost.c,v 1.3 1997/03/19 15:59:45 kivinen Exp $
  * $Log: canohost.c,v $
+ * Revision 1.3  1997/03/19 15:59:45  kivinen
+ * 	Limit hostname to 255 characters.
+ *
  * Revision 1.2  1996/10/29 22:35:11  kivinen
  * 	log -> log_msg.
  *
@@ -51,7 +54,7 @@ char *get_remote_hostname(int socket)
   struct sockaddr_in from;
   int fromlen, i;
   struct hostent *hp;
-  char name[512];
+  char name[255];
 
   /* Get IP address of client. */
   fromlen = sizeof(from);

@@ -2,10 +2,11 @@
 
 mpaux.c
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Sun Jul 16 04:29:30 1995 ylo
 
@@ -15,16 +16,19 @@ precision integers.
 */
 
 /*
- * $Id: mpaux.c,v 1.2 1996/04/26 00:26:48 ylo Exp $
+ * $Id: mpaux.c,v 1.3 1999/11/17 17:04:48 tri Exp $
  * $Log: mpaux.c,v $
+ * Revision 1.3  1999/11/17 17:04:48  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.2  1996/04/26 00:26:48  ylo
- * 	Fixed problems with 16-bit Windows.
+ *      Fixed problems with 16-bit Windows.
  *
  * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
- * 	Imported ssh-1.2.13.
+ *      Imported ssh-1.2.13.
  *
  * Revision 1.1  1995/07/27  03:28:15  ylo
- * 	Auxiliary functions for manipulating mp-ins.
+ *      Auxiliary functions for manipulating mp-ins.
  *
  * $Endlog$
  */
@@ -39,7 +43,7 @@ precision integers.
    The buffer will contain the value of the integer, msb first. */
 
 void mp_linearize_msb_first(unsigned char *buf, unsigned int len, 
-			    MP_INT *value)
+                            MP_INT *value)
 {
   unsigned int i;
   MP_INT aux;
@@ -62,7 +66,7 @@ void mp_linearize_msb_first(unsigned char *buf, unsigned int len,
    in the buffer msb first. */
 
 void mp_unlinearize_msb_first(MP_INT *value, const unsigned char *buf,
-			      unsigned int len)
+                              unsigned int len)
 {
   unsigned int i;
   mpz_set_ui(value, 0);
@@ -84,11 +88,11 @@ void mp_unlinearize_msb_first(MP_INT *value, const unsigned char *buf,
    first representations of host_key_n, session_key_n, and the cookie. */
 
 void compute_session_id(unsigned char session_id[16],
-			unsigned char cookie[8],
-			unsigned int host_key_bits,
-			MP_INT *host_key_n,
-			unsigned int session_key_bits,
-			MP_INT *session_key_n)
+                        unsigned char cookie[8],
+                        unsigned int host_key_bits,
+                        MP_INT *host_key_n,
+                        unsigned int session_key_bits,
+                        MP_INT *session_key_n)
 {
   unsigned int bytes = (host_key_bits + 7) / 8 + (session_key_bits + 7) / 8 + 8;
   unsigned char *buf = xmalloc(bytes);
@@ -96,9 +100,9 @@ void compute_session_id(unsigned char session_id[16],
   
   mp_linearize_msb_first(buf, (host_key_bits + 7 ) / 8, host_key_n);
   mp_linearize_msb_first(buf + (host_key_bits + 7 ) / 8, 
-			 (session_key_bits + 7) / 8, session_key_n);
+                         (session_key_bits + 7) / 8, session_key_n);
   memcpy(buf + (host_key_bits + 7) / 8 + (session_key_bits + 7) / 8,
-	 cookie, 8);
+         cookie, 8);
   MD5Init(&md);
   MD5Update(&md, buf, bytes);
   MD5Final(session_id, &md);

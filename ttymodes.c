@@ -17,8 +17,11 @@ suitable code.
 */
 
 /*
- * $Id: ttymodes.c,v 1.4 1995/09/09 21:26:48 ylo Exp $
+ * $Id: ttymodes.c,v 1.5 1995/09/27 02:19:11 ylo Exp $
  * $Log: ttymodes.c,v $
+ * Revision 1.5  1995/09/27  02:19:11  ylo
+ * 	Use SPEED_T_IN_STDTYPES_H.
+ *
  * Revision 1.4  1995/09/09  21:26:48  ylo
  * /m/shadows/u2/users/ylo/ssh/README
  *
@@ -48,7 +51,7 @@ suitable code.
 #define cfgetispeed(tio)	((tio)->sg_ispeed)
 #define cfsetospeed(tio, spd)	((tio)->sg_ospeed = (spd), 0)
 #define cfsetispeed(tio, spd)	((tio)->sg_ispeed = (spd), 0)
-#ifndef _NEXT_SOURCE
+#ifndef SPEED_T_IN_STDTYPES_H
 typedef char speed_t;
 #endif
 #endif
@@ -444,7 +447,7 @@ void tty_parse_modes(int fd)
 #undef SGTTYMODEN
 
 	default:
-	  debug("Ignoring unimplemented tty mode opcode %d (0x%x)",
+	  debug("Ignoring unsupported tty mode opcode %d (0x%x)",
 		opcode, opcode);
 	  /* Opcodes 0 to 127 are defined to have a one-byte argument. */
 	  if (opcode >= 0 && opcode < 128)

@@ -12,7 +12,7 @@ Created: Tue Mar 21 15:42:09 1995 ylo
 
 */
 
-/* RCSID("$Id: ttymodes.h,v 1.1 1999/09/26 20:53:38 deraadt Exp $"); */
+/* RCSID("$Id: ttymodes.h,v 1.1 1999/10/27 03:42:46 damien Exp $"); */
 
 /* The tty mode description is a stream of bytes.  The stream consists of
    opcode-arguments pairs.  It is terminated by opcode TTY_OP_END (0).
@@ -34,11 +34,11 @@ Created: Tue Mar 21 15:42:09 1995 ylo
 TTYCHAR(VINTR, 1) 		SGTTYCHAR(tiotc.t_intrc, 1)
 TTYCHAR(VQUIT, 2)		SGTTYCHAR(tiotc.t_quitc, 2)
 TTYCHAR(VERASE, 3)		SGTTYCHAR(tio.sg_erase, 3)
-#if defined(VKILL) || defined(USING_SGTTY)
+#if defined(VKILL)
 TTYCHAR(VKILL, 4)		SGTTYCHAR(tio.sg_kill, 4)
 #endif /* VKILL */
 TTYCHAR(VEOF, 5)		SGTTYCHAR(tiotc.t_eofc, 5)
-#if defined(VEOL) || defined(USING_SGTTY)
+#if defined(VEOL)
 TTYCHAR(VEOL, 6)		SGTTYCHAR(tiotc.t_brkc, 6)
 #endif /* VEOL */
 #ifdef VEOL2			/* n/a */
@@ -46,28 +46,28 @@ TTYCHAR(VEOL2, 7)
 #endif /* VEOL2 */
 TTYCHAR(VSTART, 8)		SGTTYCHAR(tiotc.t_startc, 8)
 TTYCHAR(VSTOP, 9)		SGTTYCHAR(tiotc.t_stopc, 9)
-#if defined(VSUSP) || defined(USING_SGTTY)
+#if defined(VSUSP)
 TTYCHAR(VSUSP, 10)		SGTTYCHAR(tioltc.t_suspc, 10)
 #endif /* VSUSP */
-#if defined(VDSUSP) || defined(USING_SGTTY)
+#if defined(VDSUSP)
 TTYCHAR(VDSUSP, 11)		SGTTYCHAR(tioltc.t_dsuspc, 11)
 #endif /* VDSUSP */
-#if defined(VREPRINT) || defined(USING_SGTTY)
+#if defined(VREPRINT)
 TTYCHAR(VREPRINT, 12)		SGTTYCHAR(tioltc.t_rprntc, 12)
 #endif /* VREPRINT */
-#if defined(VWERASE) || defined(USING_SGTTY)
+#if defined(VWERASE)
 TTYCHAR(VWERASE, 13)		SGTTYCHAR(tioltc.t_werasc, 13)
 #endif /* VWERASE */
-#if defined(VLNEXT) || defined(USING_SGTTY)
+#if defined(VLNEXT)
 TTYCHAR(VLNEXT, 14)		SGTTYCHAR(tioltc.t_lnextc, 14)
 #endif /* VLNEXT */
-#if defined(VFLUSH) || defined(USING_SGTTY)
+#if defined(VFLUSH)
 TTYCHAR(VFLUSH, 15)		SGTTYCHAR(tioltc.t_flushc, 15)
 #endif /* VFLUSH */
 #ifdef VSWTCH
 TTYCHAR(VSWTCH, 16)		/* n/a */
 #endif /* VSWTCH */
-#if defined(VSTATUS) || (defined(USING_SGTTY) && defined(TIOCGSTAT))
+#if defined(VSTATUS)
 TTYCHAR(VSTATUS, 17)		SGTTYCHAR(tiots.tc_statusc, 17)
 #endif /* VSTATUS */
 #ifdef VDISCARD
@@ -82,7 +82,7 @@ TTYMODE(ISTRIP,	c_iflag, 33)	SGTTYMODEN(LPASS8, tiolm, 33)
 TTYMODE(INLCR, 	c_iflag, 34)	/* n/a */
 TTYMODE(IGNCR, 	c_iflag, 35)	/* n/a */
 TTYMODE(ICRNL, 	c_iflag, 36)	SGTTYMODE(CRMOD, tio.sg_flags, 36)
-#if defined(IUCLC) || defined(USING_SGTTY)
+#if defined(IUCLC)
 TTYMODE(IUCLC, 	c_iflag, 37)	SGTTYMODE(LCASE, tio.sg_flags, 37)
 #endif
 TTYMODE(IXON,  	c_iflag, 38)	/* n/a */
@@ -106,18 +106,18 @@ TTYMODE(TOSTOP,	c_lflag, 58)	SGTTYMODE(LTOSTOP, tiolm, 58)
 #ifdef IEXTEN
 TTYMODE(IEXTEN, c_lflag, 59)	/* n/a */
 #endif /* IEXTEN */
-#if defined(ECHOCTL) || defined(USING_SGTTY)
+#if defined(ECHOCTL)
 TTYMODE(ECHOCTL,c_lflag, 60)	SGTTYMODE(LCTLECH, tiolm, 60)
 #endif /* ECHOCTL */
 #ifdef ECHOKE
 TTYMODE(ECHOKE,	c_lflag, 61)	/* n/a */
 #endif /* ECHOKE */
-#if defined(PENDIN) || defined(USING_SGTTY)
+#if defined(PENDIN)
 TTYMODE(PENDIN,	c_lflag, 62)	SGTTYMODE(LPENDIN, tiolm, 62)
 #endif /* PENDIN */
 
 TTYMODE(OPOST,	c_oflag, 70)	/* n/a */
-#if defined(OLCUC) || defined(USING_SGTTY)
+#if defined(OLCUC)
 TTYMODE(OLCUC,	c_oflag, 71)	SGTTYMODE(LCASE, tio.sg_flags, 71)
 #endif
 TTYMODE(ONLCR,	c_oflag, 72)	SGTTYMODE(CRMOD, tio.sg_flags, 72)

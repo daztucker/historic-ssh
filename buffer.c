@@ -14,7 +14,7 @@ Functions for manipulating fifo buffers (that can grow if needed).
 */
 
 #include "includes.h"
-RCSID("$Id: buffer.c,v 1.1 1999/09/26 20:53:34 deraadt Exp $");
+RCSID("$Id: buffer.c,v 1.1 1999/10/27 03:42:43 damien Exp $");
 
 #include "xmalloc.h"
 #include "buffer.h"

@@ -13,14 +13,12 @@ Generic header file for ssh.
 
 */
 
-/* RCSID("$Id: ssh.h,v 1.1 1999/09/26 20:53:38 deraadt Exp $"); */
+/* RCSID("$Id: ssh.h,v 1.1 1999/10/27 03:42:45 damien Exp $"); */
 
 #ifndef SSH_H
 #define SSH_H
 
-#include <gmp.h>
 #include "rsa.h"
-#include "randoms.h"
 #include "cipher.h"
 
 /* The default cipher used if IDEA is not supported by the remote host. 
@@ -47,11 +45,17 @@ Generic header file for ssh.
 
 /* Minor protocol version.  Different version indicates minor incompatibility
    that does not prevent interoperation. */
-#define PROTOCOL_MINOR		3
+#define PROTOCOL_MINOR		5
 
 /* Name for the service.  The port named by this service overrides the default
    port if present. */
 #define SSH_SERVICE_NAME	"ssh"
+
+#ifndef ETCDIR
+#define ETCDIR			"/etc"
+#endif /* ETCDIR */
+
+#define PIDDIR			"/var/run"
 
 /* System-wide file containing host keys of known hosts.  This file should be
    world-readable. */
@@ -63,9 +67,11 @@ and HOST_CONFIG_FILE		/etc/ssh_config
 are all defined in Makefile.in.  Of these, ssh_host_key should be readable
 only by root, whereas ssh_config should be world-readable. */
 
-/* Random seed file for the daemon.  This file should be readable only by 
-   root. */
-#define SSH_DAEMON_SEED_FILE	ETCDIR "/ssh_random_seed"
+#define HOST_KEY_FILE		ETCDIR "/ssh_host_key"
+#define SERVER_CONFIG_FILE	ETCDIR "/sshd_config"
+#define HOST_CONFIG_FILE	ETCDIR "/ssh_config"
+
+#define SSH_PROGRAM		"/usr/bin/ssh"
 
 /* The process id of the daemon listening for connections is saved
    here to make it easier to kill the correct daemon when necessary. */
@@ -79,10 +85,6 @@ only by root, whereas ssh_config should be world-readable. */
    not be readable by anyone except the user him/herself, though this does
    not contain anything particularly secret. */
 #define SSH_USER_HOSTFILE	"~/.ssh/known_hosts"
-
-/* Name of the file containing client-side random seed.  This file should
-   only be readable by the user him/herself. */
-#define SSH_CLIENT_SEEDFILE	".ssh/random_seed"
 
 /* Name of the default file containing client-side authentication key. 
    This file should only be readable by the user him/herself. */
@@ -117,26 +119,9 @@ only by root, whereas ssh_config should be world-readable. */
 /* Additionally, the daemon may use ~/.rhosts and /etc/hosts.equiv if 
    rhosts authentication is enabled. */
 
-/* Socket for connecting the authentication agent.  Normally the connection 
-   to the authentication agent is passed in a file descriptor; however,
-   on some systems, commonly used shells close all open file descriptors.
-   To make the agent usable on those systems, configure checks whether
-   the shells close all descriptors, and if so, defines AGENT_USES_SOCKET.
-   That socket is an unix-domain socket and will be stored with this name
-   in the user\'s home directory.  The socket must not be accessible by
-   anyone but the user him/herself.  The number at the end of the name
-   is the pid of the agent or the forwarding daemon.  Note that this
-   socket is stored in /tmp, which is supposedly on the local machine.  If
-   this were in the user\'s home directory, the daemon (running as root)
-   might not be able to create and chown the file to the user\'s uid. */
-#define SSH_AGENT_SOCKET	"/tmp/ssh_agent.%d"
-
-/* Name of the environment variable containing the authentication fd. */
-#define SSH_AUTHFD_ENV_NAME	"SSH_AUTHENTICATION_FD"
-
 /* Name of the environment variable containing the pathname of the
    authentication socket. */
-#define SSH_AUTHSOCKET_ENV_NAME	"SSH_AUTHENTICATION_SOCKET"
+#define SSH_AUTHSOCKET_ENV_NAME	"SSH_AUTH_SOCK"
 
 /* Force host key length and server key length to differ by at least this
    many bits.  This is to make double encryption with rsaref work. */
@@ -158,6 +143,7 @@ only by root, whereas ssh_config should be world-readable. */
 				/* 5 is TIS */
 #define SSH_AUTH_KERBEROS	6
 #define SSH_PASS_KERBEROS_TGT	7
+				/* 8 to 15 are reserved */
 #define SSH_PASS_AFS_TOKEN	21
 
 /* Protocol flags.  These are bit masks. */
@@ -172,12 +158,12 @@ only by root, whereas ssh_config should be world-readable. */
 #define SSH_MSG_NONE				0	/* no message */
 #define SSH_MSG_DISCONNECT			1	/* cause (string) */
 #define SSH_SMSG_PUBLIC_KEY			2	/* ck,msk,srvk,hostk */
-#define SSH_CMSG_SESSION_KEY			3	/* key (MP_INT) */
+#define SSH_CMSG_SESSION_KEY			3	/* key (BIGNUM) */
 #define SSH_CMSG_USER				4	/* user (string) */
 #define SSH_CMSG_AUTH_RHOSTS			5	/* user (string) */
-#define SSH_CMSG_AUTH_RSA			6	/* modulus (MP_INT) */
-#define SSH_SMSG_AUTH_RSA_CHALLENGE		7	/* int (MP_INT) */
-#define SSH_CMSG_AUTH_RSA_RESPONSE		8	/* int (MP_INT) */
+#define SSH_CMSG_AUTH_RSA			6	/* modulus (BIGNUM) */
+#define SSH_SMSG_AUTH_RSA_CHALLENGE		7	/* int (BIGNUM) */
+#define SSH_CMSG_AUTH_RSA_RESPONSE		8	/* int (BIGNUM) */
 #define SSH_CMSG_AUTH_PASSWORD			9	/* pass (string) */
 #define SSH_CMSG_REQUEST_PTY		        10	/* TERM, tty modes */
 #define SSH_CMSG_WINDOW_SIZE		        11	/* row,col,xpix,ypix */
@@ -207,6 +193,10 @@ only by root, whereas ssh_config should be world-readable. */
 #define SSH_CMSG_AUTH_RHOSTS_RSA		35	/* user,mod (s,mpi) */
 #define SSH_MSG_DEBUG				36	/* string */
 #define SSH_CMSG_REQUEST_COMPRESSION		37	/* level 1-9 (int) */
+#define SSH_CMSG_MAX_PACKET_SIZE		38	/* size 4k-1024k (int) */
+#define SSH_CMSG_AUTH_TIS			39	/* this is proto-1.5, but we ignore TIS */
+#define SSH_SMSG_AUTH_TIS_CHALLENGE		40
+#define SSH_CMSG_AUTH_TIS_RESPONSE		41
 
 #define SSH_CMSG_AUTH_KERBEROS			42	/* (KTEXT) */
 #define SSH_SMSG_AUTH_KERBEROS_RESPONSE		43	/* (KTEXT) */
@@ -245,9 +235,10 @@ void record_logout(int pid, const char *ttyname);
    second.  This returns true on success, and zero on failure.  If the
    connection is successful, this calls packet_set_connection for the
    connection. */
-int ssh_connect(const char *host, int port, int connection_attempts,
+int ssh_connect(const char *host, struct sockaddr_in *hostaddr,
+		int port, int connection_attempts,
 		int anonymous, uid_t original_real_uid,
-		const char *proxy_command, RandomState *random_state);
+		const char *proxy_command);
 
 /* Starts a dialog with the server, and authenticates the current user on the
    server.  This does not need any extra privileges.  The basic connection
@@ -255,8 +246,9 @@ int ssh_connect(const char *host, int port, int connection_attempts,
    If login fails, this function prints an error and never returns. 
    This initializes the random state, and leaves it initialized (it will also
    have references from the packet module). */
-void ssh_login(RandomState *state, int host_key_valid, RSAPrivateKey *host_key,
-	       const char *host, Options *options, uid_t original_real_uid);
+void ssh_login(int host_key_valid, RSA *host_key, const char *host,
+	       struct sockaddr_in *hostaddr, Options *options,
+	       uid_t original_real_uid);
 
 /*------------ Definitions for various authentication methods. -------*/
 
@@ -269,24 +261,23 @@ int auth_rhosts(struct passwd *pw, const char *client_user,
 
 /* Tries to authenticate the user using the .rhosts file and the host using
    its host key.  Returns true if authentication succeeds. */
-int auth_rhosts_rsa(RandomState *state,
-		    struct passwd *pw, const char *client_user,
-		    unsigned int bits, MP_INT *client_host_key_e,
-		    MP_INT *client_host_key_n, int ignore_rhosts,
+int auth_rhosts_rsa(struct passwd *pw, const char *client_user,
+		    unsigned int bits, BIGNUM *client_host_key_e,
+		    BIGNUM *client_host_key_n, int ignore_rhosts,
 		    int strict_modes);
 
 /* Tries to authenticate the user using password.  Returns true if
    authentication succeeds. */
-int auth_password(const char *server_user, const char *password);
+int auth_password(struct passwd *pw, const char *password);
 
 /* Performs the RSA authentication dialog with the client.  This returns
    0 if the client could not be authenticated, and 1 if authentication was
    successful.  This may exit if there is a serious protocol violation. */
-int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state);
+int auth_rsa(struct passwd *pw, BIGNUM *client_n, int strict_modes);
 
 /* Parses an RSA key (number of bits, e, n) from a string.  Moves the pointer
    over the key.  Skips any whitespace at the beginning and at end. */
-int auth_rsa_read_key(char **cpp, unsigned int *bitsp, MP_INT *e, MP_INT *n);
+int auth_rsa_read_key(char **cpp, unsigned int *bitsp, BIGNUM *e, BIGNUM *n);
 
 /* Returns the name of the machine at the other end of the socket.  The
    returned string should be freed by the caller. */
@@ -320,18 +311,18 @@ int match_hostname(const char *host, const char *pattern, unsigned int len);
 typedef enum { HOST_OK, HOST_NEW, HOST_CHANGED } HostStatus;
 HostStatus check_host_in_hostfile(const char *filename, 
 				  const char *host, unsigned int bits,
-				  MP_INT *e, MP_INT *n);
+				  BIGNUM *e, BIGNUM *n,
+				  BIGNUM *ke, BIGNUM *kn);
 
 /* Appends an entry to the host file.  Returns false if the entry
    could not be appended. */
 int add_host_to_hostfile(const char *filename, const char *host,
-			 unsigned int bits, MP_INT *e, MP_INT *n);
+			 unsigned int bits, BIGNUM *e, BIGNUM *n);
 
 /* Performs the RSA authentication challenge-response dialog with the client,
    and returns true (non-zero) if the client gave the correct answer to
    our challenge; returns zero if the client gives a wrong answer. */
-int auth_rsa_challenge_dialog(RandomState *state, unsigned int bits,
-			      MP_INT *e, MP_INT *n);
+int auth_rsa_challenge_dialog(unsigned int bits, BIGNUM *e, BIGNUM *n);
 
 /* Reads a passphrase from /dev/tty with echo turned off.  Returns the 
    passphrase (allocated with xmalloc).  Exits if EOF is encountered. 
@@ -343,14 +334,13 @@ char *read_passphrase(const char *prompt, int from_stdin);
    will precede the key to provide identification of the key without
    needing a passphrase. */
 int save_private_key(const char *filename, const char *passphrase,
-		     RSAPrivateKey *private_key, const char *comment,
-		     RandomState *state);
+		     RSA *private_key, const char *comment);
 
 /* Loads the public part of the key file (public key and comment). 
    Returns 0 if an error occurred; zero if the public key was successfully
    read.  The comment of the key is returned in comment_return if it is
    non-NULL; the caller must free the value with xfree. */
-int load_public_key(const char *filename, RSAPublicKey *pub, 
+int load_public_key(const char *filename, RSA *pub, 
 		    char **comment_return);
 
 /* Loads the private key from the file.  Returns 0 if an error is encountered
@@ -359,7 +349,7 @@ int load_public_key(const char *filename, RSAPublicKey *pub,
    in comment_return if it is non-NULL; the caller must free the value 
    with xfree. */
 int load_private_key(const char *filename, const char *passphrase,
-		     RSAPrivateKey *private_key, char **comment_return);
+		     RSA *private_key, char **comment_return);
 
 /*------------ Definitions for logging. -----------------------*/
 
@@ -414,8 +404,7 @@ void fatal_add_cleanup(void (*proc)(void *context), void *context);
 /* Removes a cleanup frunction to be called at fatal(). */
 void fatal_remove_cleanup(void (*proc)(void *context), void *context);
 
-/*---------------- definitions for x11.c ------------------*/
-
+/*---------------- definitions for channels ------------------*/
 
 /* Sets specific protocol options. */
 void channel_set_options(int hostname_in_open);
@@ -526,18 +515,13 @@ void x11_request_forwarding(void);
 
 /* Requests forwarding for X11 connections, with authentication spoofing.
    This should be called in the client only.  */
-void x11_request_forwarding_with_spoofing(RandomState *state,
-					  const char *proto, const char *data);
+void x11_request_forwarding_with_spoofing(const char *proto, const char *data);
 
 /* Local Xauthority file (server only). */
 extern char *xauthfile;
 
 /* Sends a message to the server to request authentication fd forwarding. */
 void auth_request_forwarding(void);
-
-/* Returns the number of the file descriptor to pass to child programs as
-   the authentication fd. */
-int auth_get_fd(void);
 
 /* Returns the name of the forwarded authentication socket.  Returns NULL
    if there is no forwarded authentication socket.  The returned value points
@@ -559,11 +543,6 @@ int match_pattern(const char *s, const char *pattern);
    Warning: this calls getpw*. */
 char *tilde_expand_filename(const char *filename, uid_t my_uid);
 
-/* Gets a file descriptor that won't get closed by shell pathname.
-   If pathname is NULL, the path is inferred from the SHELL environment
-   variable or the user id. */
-int get_permanent_fd(const char *pathname);
-
 /* Performs the interactive session.  This handles data transmission between
    the client and the program.  Note that the notion of stdin, stdout, and
    stderr in this function is sort of reversed: this function writes to
@@ -583,14 +562,28 @@ struct envstring {
 #ifdef KRB4
 #include <krb.h>
 
-int ssh_tf_init(uid_t uid);
+/* Performs Kerberos v4 mutual authentication with the client. This returns
+   0 if the client could not be authenticated, and 1 if authentication was
+   successful.  This may exit if there is a serious protocol violation. */
 int auth_krb4(const char *server_user, KTEXT auth, char **client);
+int ssh_tf_init(uid_t uid);
+
+#ifdef AFS
+#include <kafs.h>
+
+/* Accept passed Kerberos v4 ticket-granting ticket and AFS tokens. */
 int auth_kerberos_tgt(struct passwd *pw, const char *string);
 int auth_afs_token(char *server_user, uid_t uid, const char *string);
 
 int creds_to_radix(CREDENTIALS *creds, unsigned char *buf);
 int radix_to_creds(const char *buf, CREDENTIALS *creds);
+#endif /* AFS */
 
 #endif /* KRB4 */
+
+#ifdef SKEY
+#include <skey.h>
+char *skey_fake_keyinfo(char *username);
+#endif /* SKEY */
 
 #endif /* SSH_H */

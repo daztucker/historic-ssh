@@ -47,8 +47,9 @@ static int child_pid;  			/* Pid of the child. */
 static volatile int child_terminated;	/* The child has terminated. */
 static volatile int child_wait_status;	/* Status from wait(). */
 
-RETSIGTYPE sigchld_handler(int sig)
+void sigchld_handler(int sig)
 {
+  int save_errno = errno;
   int wait_pid;
   debug("Received SIGCHLD.");
   wait_pid = wait((int *)&child_wait_status);
@@ -62,6 +63,7 @@ RETSIGTYPE sigchld_handler(int sig)
 	child_terminated = 1;
     }
   signal(SIGCHLD, sigchld_handler);
+  errno = save_errno;
 }
 
 /* Process any buffered packets that have been received from the client. */
@@ -357,7 +359,14 @@ void process_output(fd_set *writeset)
 		  buffer_len(&stdin_buffer));
       if (len <= 0)
 	{
-	  shutdown(fdin, 1); /* We will no longer send. */
+#ifdef USE_PIPES
+	  close(fdin); 
+#else
+          if (fdout == -1)
+            close(fdin);
+	  else
+	    shutdown(fdin, SHUT_WR); /* We will no longer send. */
+#endif
 	  fdin = -1;
 	}
       else
@@ -477,7 +486,14 @@ void server_loop(int pid, int fdin_arg, int fdout_arg, int fderr_arg)
 	 cause a real eof by closing fdin. */
       if (stdin_eof && fdin != -1 && buffer_len(&stdin_buffer) == 0)
 	{
-	  shutdown(fdin, 1); /* We will no longer send. */
+#ifdef USE_PIPES
+	  close(fdin);
+#else
+          if (fdout == -1)
+            close(fdin);
+	  else
+	    shutdown(fdin, SHUT_WR); /* We will no longer send. */
+#endif
 	  fdin = -1;
 	}
 
@@ -555,15 +571,15 @@ void server_loop(int pid, int fdin_arg, int fdout_arg, int fderr_arg)
 
   /* Close the file descriptors. */
   if (fdout != -1)
-    shutdown(fdout, 0);
+    close(fdout);
   fdout = -1;
   fdout_eof = 1;
   if (fderr != -1)
-    shutdown(fderr, 0);
+    close(fderr);
   fderr = -1;
   fderr_eof = 1;
   if (fdin != -1)
-    shutdown(fdin, 1);
+    close(fdin);
   fdin = -1;
 
   /* Stop listening for channels; this removes unix domain sockets. */

@@ -13,15 +13,12 @@ Functions to interface with the SSH_AUTHENTICATION_FD socket.
 
 */
 
-/* RCSID("$Id: authfd.h,v 1.1 1999/09/26 20:53:33 deraadt Exp $"); */
+/* RCSID("$Id: authfd.h,v 1.1 1999/10/27 03:42:43 damien Exp $"); */
 
 #ifndef AUTHFD_H
 #define AUTHFD_H
 
 #include "buffer.h"
-
-/* Message types for SSH_AUTHENTICATION_FD socket. */
-#define SSH_AUTHFD_CONNECT	0xf0
 
 /* Messages for the authentication agent connection. */
 #define SSH_AGENTC_REQUEST_RSA_IDENTITIES	1
@@ -43,16 +40,12 @@ typedef struct
 } AuthenticationConnection;
 
 /* Returns the number of the authentication fd, or -1 if there is none. */
-int ssh_get_authentication_fd();
+int ssh_get_authentication_socket();
 
 /* This should be called for any descriptor returned by 
-   ssh_get_authentication_fd().  Depending on the way the descriptor was
+   ssh_get_authentication_socket().  Depending on the way the descriptor was
    obtained, this may close the descriptor. */
 void ssh_close_authentication_socket(int authfd);
-
-/* Opens a socket to the authentication server.  Returns the number of
-   that socket, or -1 if no connection could be made. */
-int ssh_get_authentication_connection_fd();
 
 /* Opens and connects a private socket for communication with the
    authentication agent.  Returns NULL if an error occurred and the 
@@ -69,19 +62,19 @@ void ssh_close_authentication_connection(AuthenticationConnection *ac);
    The caller must initialize the integers before the call, and free the
    comment after a successful call (before calling ssh_get_next_identity). */
 int ssh_get_first_identity(AuthenticationConnection *connection,
-			   int *bitsp, MP_INT *e, MP_INT *n, char **comment);
+			   int *bitsp, BIGNUM *e, BIGNUM *n, char **comment);
 
 /* Returns the next authentication identity for the agent.  Other functions
    can be called between this and ssh_get_first_identity or two calls of this
    function.  This returns 0 if there are no more identities.  The caller
    must free comment after a successful return. */
 int ssh_get_next_identity(AuthenticationConnection *connection,
-			  int *bitsp, MP_INT *e, MP_INT *n, char **comment);
+			  int *bitsp, BIGNUM *e, BIGNUM *n, char **comment);
 
 /* Requests the agent to decrypt the given challenge.  Returns true if
    the agent claims it was able to decrypt it. */
 int ssh_decrypt_challenge(AuthenticationConnection *auth,
-			  int bits, MP_INT *e, MP_INT *n, MP_INT *challenge,
+			  int bits, BIGNUM *e, BIGNUM *n, BIGNUM *challenge,
 			  unsigned char session_id[16], 
 			  unsigned int response_type,
 			  unsigned char response[16]);
@@ -90,13 +83,13 @@ int ssh_decrypt_challenge(AuthenticationConnection *auth,
    be used by normal applications.  This returns true if the identity
    was successfully added. */
 int ssh_add_identity(AuthenticationConnection *connection,
-		     RSAPrivateKey *key, const char *comment);
+		     RSA *key, const char *comment);
 
 /* Removes the identity from the authentication server.  This call is
    not meant to be used by normal applications.  This returns true if the
    identity was successfully added. */
 int ssh_remove_identity(AuthenticationConnection *connection,
-			RSAPublicKey *key);
+			RSA *key);
 
 /* Removes all identities from the authentication agent.  This call is not
    meant to be used by normal applications.  This returns true if the

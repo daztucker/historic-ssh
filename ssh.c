@@ -13,24 +13,20 @@ Ssh client program.  This program can be used to log into a remote machine.
 The software supports strong authentication, encryption, and forwarding
 of X11, TCP/IP, and authentication connections.
 
+Modified to work with SSL by Niels Provos <provos@citi.umich.edu> in Canada.
+
 */
 
 #include "includes.h"
-RCSID("$Id: ssh.c,v 1.1 1999/09/26 20:53:38 deraadt Exp $");
+RCSID("$Id: ssh.c,v 1.1 1999/10/27 03:42:45 damien Exp $");
 
 #include "xmalloc.h"
-#include "randoms.h"
 #include "ssh.h"
 #include "packet.h"
 #include "buffer.h"
 #include "authfd.h"
 #include "readconf.h"
 #include "uidswap.h"
-
-/* Random number generator state.  This is initialized in ssh_login, and
-   left initialized.  This is used both by the packet module and by various
-   other functions. */
-RandomState random_state;
 
 /* Flag indicating whether debug mode is on.  This can be set on the
    command line. */
@@ -62,13 +58,14 @@ Options options;
    in a configuration file. */
 char *host;
 
-#ifdef SIGWINCH
+/* socket address the host resolves to */
+struct sockaddr_in hostaddr;
+
 /* Flag to indicate that we have received a window change signal which has
    not yet been processed.  This will cause a message indicating the new
    window size to be sent to the server a little later.  This is volatile
    because this is updated in a signal handler. */
 volatile int received_window_change_signal = 0;
-#endif /* SIGWINCH */
 
 /* Value of argv[0] (set in the main program). */
 char *av0;
@@ -77,49 +74,44 @@ char *av0;
 int host_private_key_loaded = 0;
 
 /* Host private key. */
-RSAPrivateKey host_private_key;
+RSA *host_private_key = NULL;
 
+/* Original real UID. */
+uid_t original_real_uid;
 
 /* Prints a help message to the user.  This function never returns. */
 
-void usage()
+void
+usage()
 {
-  int i;
-  
   fprintf(stderr, "Usage: %s [options] host [command]\n", av0);
   fprintf(stderr, "Options:\n");
   fprintf(stderr, "  -l user     Log in using this user name.\n");
   fprintf(stderr, "  -n          Redirect input from /dev/null.\n");
-  fprintf(stderr, "  -k          Disable authentication agent forwarding.\n");
-#if defined(KERBEROS_TGT_PASSING) || defined(AFS)
-  fprintf(stderr, "              This also disables passing of AFS tokens/Kerberos tickets.\n");
-#endif /* KERBEROS_TGT_PASSING || AFS */
+  fprintf(stderr, "  -a          Disable authentication agent forwarding.\n");
+#ifdef AFS
+  fprintf(stderr, "  -k          Disable Kerberos ticket and AFS token forwarding.\n");
+#endif /* AFS */
   fprintf(stderr, "  -x          Disable X11 connection forwarding.\n");
   fprintf(stderr, "  -i file     Identity for RSA authentication (default: ~/.ssh/identity).\n");
   fprintf(stderr, "  -t          Tty; allocate a tty even if command is given.\n");
   fprintf(stderr, "  -v          Verbose; display verbose debugging messages.\n");
+  fprintf(stderr, "  -V          Display version number only.\n");
+  fprintf(stderr, "  -P          Don't allocate a privileged port.\n");
   fprintf(stderr, "  -q          Quiet; don't display any warning messages.\n");
   fprintf(stderr, "  -f          Fork into background after authentication.\n");
   fprintf(stderr, "  -e char     Set escape character; ``none'' = disable (default: ~).\n");
 
-  fprintf(stderr, "  -c cipher   Select encryption algorithm: ");
-  for (i = 1; i <= 6; i++)
-    {
-      const char *t = cipher_name(i);
-      if (t[0] == 'n' && t[1] == 'o' && t[2] == ' ')
-	continue;
-      fprintf(stderr, "%s, ", t);
-    }
-  fprintf(stderr, "or none.\n");
-
+  fprintf(stderr, "  -c cipher   Select encryption algorithm: "
+		  "``3des'', "
+		  "``blowfish''\n");
   fprintf(stderr, "  -p port     Connect to this port.  Server must be on the same port.\n");
   fprintf(stderr, "  -L listen-port:host:port   Forward local port to remote address\n");
   fprintf(stderr, "  -R listen-port:host:port   Forward remote port to local address\n");
   fprintf(stderr, "              These cause %s to listen for connections on a port, and\n", av0);
   fprintf(stderr, "              forward them to the other side by connecting to host:port.\n");
-#ifdef WITH_ZLIB
   fprintf(stderr, "  -C          Enable compression.\n");
-#endif /* WITH_ZLIB */
+  fprintf(stderr, "  -g          Allow remote hosts to connect to forwarded ports.\n");
   fprintf(stderr, "  -o 'option' Process the option as if it was read from a configuration file.\n");
   exit(1);
 }
@@ -127,16 +119,16 @@ void usage()
 /* Connects to the given host using rsh (or prints an error message and exits
    if rsh is not available).  This function never returns. */
 
-void rsh_connect(char *host, char *user, Buffer *command)
+void
+rsh_connect(char *host, char *user, Buffer *command)
 {
-#ifdef RSH_PATH
   char *args[10];
   int i;
   
   log("Using rsh.  WARNING: Connection will not be encrypted.");
   /* Build argument list for rsh. */
   i = 0;
-  args[i++] = RSH_PATH;
+  args[i++] = _PATH_RSH;
   args[i++] = host;    /* may have to come after user on some systems */
   if (user)
     {
@@ -159,17 +151,17 @@ void rsh_connect(char *host, char *user, Buffer *command)
 	}
       fprintf(stderr, "\n");
     }
-  execv(RSH_PATH, args);
-  perror(RSH_PATH);
+  execv(_PATH_RSH, args);
+  perror(_PATH_RSH);
   exit(1);
-#else /* RSH_PATH */
-  fatal("Rsh not available.");
-#endif /* RSH_PATH */
 }
 
 /* Main program for the ssh client. */
 
-int main(int ac, char **av)
+uid_t original_real_uid;
+
+int
+main(int ac, char **av)
 {
   int i, opt, optind, type, exit_status, ok, fwd_port, fwd_host_port, authfd;
   char *optarg, *cp, buf[256];
@@ -178,7 +170,6 @@ int main(int ac, char **av)
   struct stat st;
   struct passwd *pw, pwcopy;
   int interactive = 0, dummy;
-  uid_t original_real_uid;
   uid_t original_effective_uid;
   int plen;
 
@@ -190,14 +181,10 @@ int main(int ac, char **av)
   /* If we are installed setuid root be careful to not drop core. */
   if (original_real_uid != original_effective_uid)
     {
-#ifdef HAVE_SETRLIMIT
       struct rlimit rlim;
       rlim.rlim_cur = rlim.rlim_max = 0;
       if (setrlimit(RLIMIT_CORE, &rlim) < 0)
 	fatal("setrlimit failed: %.100s", strerror(errno));
-#else
-      fatal("ssh is installed setuid root.\n");
-#endif
     }
 
   /* Use uid-swapping to give up root privileges for the duration of option
@@ -207,24 +194,14 @@ int main(int ac, char **av)
      we may need to create the port several times). */
   temporarily_use_uid(original_real_uid);
 
-#ifdef HAVE_UMASK
   /* Set our umask to something reasonable, as some files are created with 
      the default umask.  This will make them world-readable but writable 
      only by the owner, which is ok for all files for which we don't set
      the modes explicitly. */
   umask(022);
-#endif /* HAVE_UMASK */
   
   /* Save our own name. */
   av0 = av[0];
-
-#ifdef SOCKS
-  /* Initialize SOCKS (the firewall traversal library). */
-  SOCKSinit(av0);
-#endif /* SOCKS */
-
-  /* Set RSA (actually gmp) memory allocation functions. */
-  rsa_set_mp_memory_allocation();
 
   /* Initialize option structure to indicate that no values have been set. */
   initialize_options(&options);
@@ -247,7 +224,13 @@ int main(int ac, char **av)
 	{
 	  if (host)
 	    break;
-	  host = av[optind];
+          if ((cp = strchr(av[optind], '@'))) {
+            options.user = av[optind];
+            *cp = '\0';
+            host = ++cp;
+          }
+          else
+	    host = av[optind];
 	  continue;
 	}
       opt = av[optind][1];
@@ -288,16 +271,23 @@ int main(int ac, char **av)
 	  options.forward_x11 = 1;
 	  break;
 
-	case 'a':
-	  options.forward_agent = 0;
-#ifdef KERBEROS_TGT_PASSING
-	  options.kerberos_tgt_passing = 0;
-#endif
-#ifdef AFS
-	  options.afs_token_passing = 0;
-#endif
+	case 'g':
+	  options.gateway_ports = 1;
 	  break;
 
+	case 'P':
+	  options.use_privileged_port = 0;
+	  break;
+
+	case 'a':
+	  options.forward_agent = 0;
+	  break;
+#ifdef AFS
+	case 'k':
+	  options.kerberos_tgt_passing = 0;
+	  options.afs_token_passing = 0;
+	  break;
+#endif
 	case 'i':
 	  if (stat(optarg, &st) < 0)
 	    {
@@ -317,16 +307,13 @@ int main(int ac, char **av)
 	  break;
 
 	case 'v':
+	case 'V':
 	  debug_flag = 1;
 	  fprintf(stderr, "SSH Version %s, protocol version %d.%d.\n",
 		  SSH_VERSION, PROTOCOL_MAJOR, PROTOCOL_MINOR);
-#ifdef RSAREF
-	  fprintf(stderr, "Compiled with RSAREF.\n");
-#elif defined(DO_SSL)
 	  fprintf(stderr, "Compiled with SSL.\n");
-#else  /* RSAREF */
-	  fprintf(stderr, "Standard version.  Does not use RSAREF.\n");
-#endif /* RSAREF */
+	  if (opt == 'V')
+	    exit(0);
 	  break;
 
 	case 'q':
@@ -391,20 +378,12 @@ int main(int ac, char **av)
 	      usage();
 	      /*NOTREACHED*/
 	    }
-	  if (fwd_port < 1024 && original_real_uid != 0)
-	    {
-	      fprintf(stderr, 
-		      "Privileged ports can only be forwarded by root.\n");
-	      exit(1);
-	    }
 	  add_local_forward(&options, fwd_port, buf, fwd_host_port);
 	  break;
 
-#ifdef WITH_ZLIB
 	case 'C':
 	  options.compression = 1;
 	  break;
-#endif /* WITH_ZLIB */
 
 	case 'o':
 	  dummy = 1;
@@ -420,6 +399,16 @@ int main(int ac, char **av)
  /* Check that we got a host name. */
   if (!host)
     usage();
+
+  /* check if RSA support exists */
+  if (rsa_alive() == 0) {
+    extern char *__progname;
+
+    fprintf(stderr,
+      "%s: no RSA support in libssl and libcrypto.  See ssl(8).\n",
+      __progname);
+    exit(1);
+  }
 
   /* Initialize the command to execute on remote host. */
   buffer_init(&command);
@@ -482,7 +471,7 @@ int main(int ac, char **av)
   log_init(av[0], 1, debug_flag, quiet_flag, SYSLOG_FACILITY_USER);
 
   /* Read per-user configuration file. */
-  sprintf(buf, "%.100s/%.100s", pw->pw_dir, SSH_USER_CONFFILE);
+  snprintf(buf, sizeof buf, "%.100s/%.100s", pw->pw_dir, SSH_USER_CONFFILE);
   read_config_file(buf, host, &options);
 
   /* Read systemwide configuration file. */
@@ -538,13 +527,18 @@ int main(int ac, char **av)
   restore_uid();
 
   /* Open a connection to the remote host.  This needs root privileges if
-     rhosts_authentication is true.  Note that the random_state is not
-     yet used by this call, although a pointer to it is stored, and thus it
-     need not be initialized. */
-  ok = ssh_connect(host, options.port, options.connection_attempts,
+     rhosts_{rsa_}authentication is true. */
+
+  if (!options.use_privileged_port)
+    {
+       options.rhosts_authentication = 0;
+       options.rhosts_rsa_authentication = 0;
+    }
+
+  ok = ssh_connect(host, &hostaddr, options.port, options.connection_attempts,
 		   !options.rhosts_authentication &&
 		   !options.rhosts_rsa_authentication,
-		   original_real_uid, options.proxy_command, &random_state);
+		   original_real_uid, options.proxy_command);
 
   /* If we successfully made the connection, load the host private key in
      case we will need it later for combined rsa-rhosts authentication. 
@@ -552,7 +546,8 @@ int main(int ac, char **av)
      is only readable by root. */
   if (ok)
     {
-      if (load_private_key(HOST_KEY_FILE, "", &host_private_key, NULL))
+      host_private_key = RSA_new();
+      if (load_private_key(HOST_KEY_FILE, "", host_private_key, NULL))
 	host_private_key_loaded = 1;
     }
 
@@ -564,7 +559,7 @@ int main(int ac, char **av)
 
   /* Now that we are back to our own permissions, create ~/.ssh directory
      if it doesn\'t already exist. */
-  sprintf(buf, "%.100s/%.100s", pw->pw_dir, SSH_USER_DIR);
+  snprintf(buf, sizeof buf, "%.100s/%.100s", pw->pw_dir, SSH_USER_DIR);
   if (stat(buf, &st) < 0)
     if (mkdir(buf, 0755) < 0)
       error("Could not create directory '%.200s'.", buf);
@@ -599,14 +594,13 @@ int main(int ac, char **av)
   options.user_hostfile = tilde_expand_filename(options.user_hostfile,
 						original_real_uid);
 
-  /* Log into the remote system.  This never returns if the login fails. 
-     Note: this initializes the random state, and leaves it initialized. */
-  ssh_login(&random_state, host_private_key_loaded, &host_private_key, 
-	    host, &options, original_real_uid);
+  /* Log into the remote system.  This never returns if the login fails. */
+  ssh_login(host_private_key_loaded, host_private_key, 
+	    host, &hostaddr, &options, original_real_uid);
 
   /* We no longer need the host private key.  Clear it now. */
   if (host_private_key_loaded)
-    rsa_clear_private_key(&host_private_key);
+    RSA_free(host_private_key); /* Destroys contents safely */
 
   /* Close connection cleanly after attack. */
   cipher_attack_detected = packet_disconnect;
@@ -619,12 +613,9 @@ int main(int ac, char **av)
 	fatal("fork failed: %.100s", strerror(errno));
       if (ret != 0)
 	exit(0);
-#ifdef HAVE_SETSID
       setsid();
-#endif /* HAVE_SETSID */
     }
 
-#ifdef WITH_ZLIB
   /* Enable compression if requested. */
   if (options.compression)
     {
@@ -646,7 +637,6 @@ int main(int ac, char **av)
       else
 	packet_disconnect("Protocol error waiting for compression response.");
     }
-#endif /* WITH_ZLIB */
 
   /* Allocate a pseudo tty if appropriate. */
   if (tty_flag)
@@ -697,7 +687,7 @@ int main(int ac, char **av)
 
 #ifdef XAUTH_PATH
       /* Try to get Xauthority information for the display. */
-      sprintf(line, "%.100s list %.200s 2>/dev/null", 
+      snprintf(line, sizeof line, "%.100s list %.200s 2>/dev/null", 
 	      XAUTH_PATH, getenv("DISPLAY"));
       f = popen(line, "r");
       if (f && fgets(line, sizeof(line), f) && 
@@ -713,15 +703,21 @@ int main(int ac, char **av)
 	 otherwise for the local connection. */
       if (!got_data)
 	{
-	  strcpy(proto, "MIT-MAGIC-COOKIE-1");
-	  for (i = 0; i < 16; i++)
-	    sprintf(data + 2 * i, "%02x", random_get_byte(&random_state));
+          u_int32_t rand = 0;
+
+	  strlcpy(proto, "MIT-MAGIC-COOKIE-1", sizeof proto);
+          for (i = 0; i < 16; i++) {
+            if (i % 4 == 0)
+              rand = arc4random();
+            snprintf(data + 2 * i, sizeof data - 2 * i, "%02x", rand & 0xff);
+            rand >>= 8;
+          }
 	}
 
       /* Got local authentication reasonable information.  Request forwarding
 	 with authentication spoofing. */
       debug("Requesting X11 forwarding with authentication spoofing.");
-      x11_request_forwarding_with_spoofing(&random_state, proto, data);
+      x11_request_forwarding_with_spoofing(proto, data);
 
       /* Read response from the server. */
       type = packet_read(&plen);
@@ -740,7 +736,7 @@ int main(int ac, char **av)
   packet_set_interactive(interactive, options.keepalives);
 
   /* Clear agent forwarding if we don\'t have an agent. */
-  authfd = ssh_get_authentication_fd();
+  authfd = ssh_get_authentication_socket();
   if (authfd < 0)
     options.forward_agent = 0;
   else

@@ -15,10 +15,9 @@ The main loop for the interactive session (client side).
 */
 
 #include "includes.h"
-RCSID("$Id: clientloop.c,v 1.1 1999/09/26 20:53:34 deraadt Exp $");
+RCSID("$Id: clientloop.c,v 1.1 1999/10/27 03:42:44 damien Exp $");
 
 #include "xmalloc.h"
-#include "randoms.h"
 #include "ssh.h"
 #include "packet.h"
 #include "buffer.h"
@@ -35,21 +34,14 @@ extern int stdin_null_flag;
    in a configuration file. */
 extern char *host;
 
-#ifdef SIGWINCH
 /* Flag to indicate that we have received a window change signal which has
    not yet been processed.  This will cause a message indicating the new
    window size to be sent to the server a little later.  This is volatile
    because this is updated in a signal handler. */
 static volatile int received_window_change_signal = 0;
-#endif /* SIGWINCH */
 
 /* Terminal modes, as saved by enter_raw_mode. */
-#ifdef USING_TERMIOS
 static struct termios saved_tio;
-#endif
-#ifdef USING_SGTTY
-static struct sgttyb saved_tio;
-#endif
 
 /* Flag indicating whether we are in raw mode.  This is used by enter_raw_mode
    and leave_raw_mode. */
@@ -82,14 +74,8 @@ void leave_raw_mode()
   if (!in_raw_mode)
     return;
   in_raw_mode = 0;
-#ifdef USING_TERMIOS
   if (tcsetattr(fileno(stdin), TCSADRAIN, &saved_tio) < 0)
     perror("tcsetattr");
-#endif /* USING_TERMIOS */
-#ifdef USING_SGTTY
-  if (ioctl(fileno(stdin), TIOCSETP, &saved_tio) < 0)
-    perror("ioctl(stdin, TIOCSETP, ...)");
-#endif /* USING_SGTTY */
 
   fatal_remove_cleanup((void (*)(void *))leave_raw_mode, NULL);
 }
@@ -98,7 +84,6 @@ void leave_raw_mode()
 
 void enter_raw_mode()
 {
-#ifdef USING_TERMIOS
   struct termios tio;
 
   if (tcgetattr(fileno(stdin), &tio) < 0)
@@ -116,19 +101,6 @@ void enter_raw_mode()
   if (tcsetattr(fileno(stdin), TCSADRAIN, &tio) < 0)
     perror("tcsetattr");
   in_raw_mode = 1;
-#endif /* USING_TERMIOS */
-#ifdef USING_SGTTY
-  struct sgttyb tio;
-
-  if (ioctl(fileno(stdin), TIOCGETP, &tio) < 0)
-    perror("ioctl(stdin, TIOCGETP, ...)");
-  saved_tio = tio;
-  tio.sg_flags &= ~(CBREAK | ECHO | CRMOD | LCASE | TANDEM);
-  tio.sg_flags |= (RAW | ANYP);
-  if (ioctl(fileno(stdin), TIOCSETP, &tio) < 0)
-    perror("ioctl(stdin, TIOCSETP, ...)");
-  in_raw_mode = 1;
-#endif /* USING_SGTTY */
 
   fatal_add_cleanup((void (*)(void *))leave_raw_mode, NULL);
 }  
@@ -150,29 +122,23 @@ void leave_non_blocking()
 void enter_non_blocking()
 {
   in_non_blocking_mode = 1;
-#if defined(O_NONBLOCK) && !defined(O_NONBLOCK_BROKEN)
   (void)fcntl(fileno(stdin), F_SETFL, O_NONBLOCK);
-#else /* O_NONBLOCK && !O_NONBLOCK_BROKEN */
-  (void)fcntl(fileno(stdin), F_SETFL, O_NDELAY);
-#endif /* O_NONBLOCK && !O_NONBLOCK_BROKEN */
   fatal_add_cleanup((void (*)(void *))leave_non_blocking, NULL);
 }
 
-#ifdef SIGWINCH
 /* Signal handler for the window change signal (SIGWINCH).  This just
    sets a flag indicating that the window has changed. */
 
-RETSIGTYPE window_change_handler(int sig)
+void window_change_handler(int sig)
 {
   received_window_change_signal = 1;
   signal(SIGWINCH, window_change_handler);
 }
-#endif /* SIGWINCH */
 
 /* Signal handler for signals that cause the program to terminate.  These
    signals must be trapped to restore terminal modes. */
 
-RETSIGTYPE signal_handler(int sig)
+void signal_handler(int sig)
 {
   if (in_raw_mode)
     leave_raw_mode();
@@ -188,13 +154,9 @@ RETSIGTYPE signal_handler(int sig)
 
 double get_current_time()
 {
-#ifdef HAVE_GETTIMEOFDAY
   struct timeval tv;
   gettimeofday(&tv, NULL);
   return (double)tv.tv_sec + (double)tv.tv_usec / 1000000.0;
-#else /* HAVE_GETTIMEOFDAY */
-  return (double)time(NULL);
-#endif /* HAVE_GETTIMEOFDAY */
 }
 
 /* This is called when the interactive is entered.  This checks if there
@@ -384,7 +346,6 @@ void client_make_packets_from_stdin_data()
 
 void client_check_window_change()
 {
-#ifdef SIGWINCH
   /* Send possible window change message to the server. */
   if (received_window_change_signal)
     {
@@ -405,7 +366,6 @@ void client_check_window_change()
 	  packet_send();
 	}
     }
-#endif /* SIGWINCH */
 }
 
 /* Waits until the client can do something (some data becomes available on
@@ -463,7 +423,7 @@ void client_wait_until_can_do_something(fd_set *readset, fd_set *writeset)
       if (errno == EINTR)
 	return;
       /* Note: we might still have data in the buffers. */
-      sprintf(buf, "select: %.100s\r\n", strerror(errno));
+      snprintf(buf, sizeof buf, "select: %s\r\n", strerror(errno));
       buffer_append(&stderr_buffer, buf, strlen(buf));
       stderr_bytes += strlen(buf);
       quit_pending = 1;
@@ -472,9 +432,7 @@ void client_wait_until_can_do_something(fd_set *readset, fd_set *writeset)
 
 void client_suspend_self()
 {
-#ifdef SIGWINCH
   struct winsize oldws, newws;
-#endif /* SIGWINCH */
 
   /* Flush stdout and stderr buffers. */
   if (buffer_len(&stdout_buffer) > 0)
@@ -495,23 +453,19 @@ void client_suspend_self()
   buffer_free(&stdout_buffer);
   buffer_free(&stderr_buffer);
 
-#ifdef SIGWINCH
   /* Save old window size. */
   ioctl(fileno(stdin), TIOCGWINSZ, &oldws);
-#endif /* SIGWINCH */
 
   /* Send the suspend signal to the program
      itself. */
   kill(getpid(), SIGTSTP);
 
-#ifdef SIGWINCH
   /* Check if the window size has changed. */
   if (ioctl(fileno(stdin), TIOCGWINSZ, &newws) >= 0 &&
       (oldws.ws_row != newws.ws_row || oldws.ws_col != newws.ws_col ||
        oldws.ws_xpixel != newws.ws_xpixel || 
        oldws.ws_ypixel != newws.ws_ypixel))
     received_window_change_signal = 1;
-#endif /* SIGWINCH */
 
   /* OK, we have been continued by the user. 
      Reinitialize buffers. */
@@ -537,7 +491,7 @@ void client_process_input(fd_set *readset)
       if (len == 0)
 	{ 
 	  /* Received EOF.  The remote host has closed the connection. */
-	  sprintf(buf, "Connection to %.300s closed by remote host.\r\n",
+	  snprintf(buf, sizeof buf, "Connection to %.300s closed by remote host.\r\n",
 		  host);
 	  buffer_append(&stderr_buffer, buf, strlen(buf));
 	  stderr_bytes += strlen(buf);
@@ -554,7 +508,7 @@ void client_process_input(fd_set *readset)
 	{
 	  /* An error has encountered.  Perhaps there is a network
 	     problem. */
-	  sprintf(buf, "Read from remote host %.300s: %.100s\r\n", 
+	  snprintf(buf, sizeof buf, "Read from remote host %.300s: %.100s\r\n", 
 		  host, strerror(errno));
 	  buffer_append(&stderr_buffer, buf, strlen(buf));
 	  stderr_bytes += strlen(buf);
@@ -576,7 +530,7 @@ void client_process_input(fd_set *readset)
 	     an error condition. */
 	  if (len < 0)
 	    {
-	      sprintf(buf, "read: %.100s\r\n", strerror(errno));
+	      snprintf(buf, sizeof buf, "read: %.100s\r\n", strerror(errno));
 	      buffer_append(&stderr_buffer, buf, strlen(buf));
 	      stderr_bytes += strlen(buf);
 	    }
@@ -622,7 +576,7 @@ void client_process_input(fd_set *readset)
 		      {
 		      case '.':
 			/* Terminate the connection. */
-			sprintf(buf, "%c.\r\n", escape_char);
+			snprintf(buf, sizeof buf, "%c.\r\n", escape_char);
 			buffer_append(&stderr_buffer, buf, strlen(buf));
 			stderr_bytes += strlen(buf);
 			quit_pending = 1;
@@ -631,7 +585,7 @@ void client_process_input(fd_set *readset)
 		      case 'Z' - 64:
 			  /* Suspend the program. */
 			  /* Print a message to that effect to the user. */
-			  sprintf(buf, "%c^Z\r\n", escape_char);
+			  snprintf(buf, sizeof buf, "%c^Z\r\n", escape_char);
 			  buffer_append(&stderr_buffer, buf, strlen(buf));
 			  stderr_bytes += strlen(buf);
 
@@ -686,7 +640,7 @@ void client_process_input(fd_set *readset)
 			continue;
 
 		      case '?':
-			sprintf(buf, "%c?\r\n\
+			snprintf(buf, sizeof buf, "%c?\r\n\
 Supported escape sequences:\r\n\
 ~.  - terminate connection\r\n\
 ~^Z - suspend ssh\r\n\
@@ -700,7 +654,7 @@ Supported escape sequences:\r\n\
 			continue;
 
 		      case '#':
-			sprintf(buf, "%c#\r\n", escape_char);
+			snprintf(buf, sizeof buf, "%c#\r\n", escape_char);
 			buffer_append(&stderr_buffer, buf, strlen(buf));
 			s = channel_open_message();
 			buffer_append(&stderr_buffer, s, strlen(s));
@@ -769,7 +723,7 @@ void client_process_output(fd_set *writeset)
 	    {
 	      /* An error or EOF was encountered.  Put an error message
 		 to stderr buffer. */
-	      sprintf(buf, "write stdout: %.50s\r\n", strerror(errno));
+	      snprintf(buf, sizeof buf, "write stdout: %.50s\r\n", strerror(errno));
 	      buffer_append(&stderr_buffer, buf, strlen(buf));
 	      stderr_bytes += strlen(buf);
 	      quit_pending = 1;
@@ -786,7 +740,7 @@ void client_process_output(fd_set *writeset)
       /* Write as much data as possible. */
       len = write(fileno(stderr), buffer_ptr(&stderr_buffer),
 		  buffer_len(&stderr_buffer));
-      if (len <= 0)
+      if (len <= 0) {
 	if (errno == EAGAIN)
 	  len = 0;
 	else
@@ -795,6 +749,7 @@ void client_process_output(fd_set *writeset)
 	    quit_pending = 1;
 	    return;
 	  }
+      }
       /* Consume printed characters from the buffer. */
       buffer_consume(&stderr_buffer, len);
     }
@@ -843,10 +798,8 @@ int client_loop(int have_pty, int escape_char_arg)
   signal(SIGQUIT, signal_handler);
   signal(SIGTERM, signal_handler);
   signal(SIGPIPE, SIG_IGN);
-#ifdef SIGWINCH
   if (have_pty)
     signal(SIGWINCH, window_change_handler);
-#endif /* SIGWINCH */
 
   /* Enter raw mode if have a pseudo terminal. */
   if (have_pty)
@@ -904,11 +857,9 @@ int client_loop(int have_pty, int escape_char_arg)
 
   /* Terminate the session. */
 
-#ifdef SIGWINCH
   /* Stop watching for window change. */
   if (have_pty)
     signal(SIGWINCH, SIG_DFL);
-#endif /* SIGWINCH */
 
   /* Stop listening for connections. */
   channel_stop_listening();
@@ -917,7 +868,7 @@ int client_loop(int have_pty, int escape_char_arg)
      the connection has been closed. */
   if (have_pty && !quiet_flag)
     {
-      sprintf(buf, "Connection to %.64s closed.\r\n", host);
+      snprintf(buf, sizeof buf, "Connection to %.64s closed.\r\n", host);
       buffer_append(&stderr_buffer, buf, strlen(buf));
       stderr_bytes += strlen(buf);
     }

@@ -11,21 +11,13 @@ Created: Wed Apr 19 16:50:42 1995 ylo
 
 */
 
-/* RCSID("$Id: cipher.h,v 1.1 1999/09/26 20:53:34 deraadt Exp $"); */
+/* RCSID("$Id: cipher.h,v 1.1 1999/10/27 03:42:44 damien Exp $"); */
 
 #ifndef CIPHER_H
 #define CIPHER_H
 
-#ifdef WITH_IDEA
-#include "idea.h"
-#endif /* WITH_IDEA */
-#include "des.h"
-#ifdef WITH_RC4
-#include "rc4.h"
-#endif
-#ifdef WITH_BLOWFISH
-#include "blowfish.h"
-#endif
+#include <openssl/des.h>
+#include <openssl/blowfish.h>
 
 /* Cipher types.  New types can be added, but old types should not be removed
    for compatibility.  The maximum allowed value is 31. */
@@ -41,18 +33,6 @@ Created: Wed Apr 19 16:50:42 1995 ylo
 typedef struct {
   unsigned int type;
   union {
-#ifdef WITH_IDEA
-    struct {
-      IDEAContext key;
-      unsigned char iv[8];
-    } idea;
-#endif /* WITH_IDEA */
-#ifdef WITH_DES
-    struct {
-      des_key_schedule key;
-      des_cblock iv;
-    } des;
-#endif /* WITH_DES */
     struct {
       des_key_schedule key1;
       des_key_schedule key2;
@@ -60,15 +40,10 @@ typedef struct {
       des_key_schedule key3;
       des_cblock iv3;
     } des3;
-#ifdef WITH_RC4
-    RC4Context rc4;
-#endif
-#ifdef WITH_BLOWFISH
     struct {
       struct bf_key_st key;
       unsigned char iv[8];
     } bf;
-#endif /* WITH_BLOWFISH */
   } u;
 } CipherContext;
 

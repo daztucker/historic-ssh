@@ -16,33 +16,12 @@ the login based on rhosts authentication.  This file also processes
 */
 
 #include "includes.h"
-RCSID("$Id: auth-rhosts.c,v 1.1 1999/09/26 20:53:33 deraadt Exp $");
+RCSID("$Id: auth-rhosts.c,v 1.1 1999/10/27 03:42:43 damien Exp $");
 
 #include "packet.h"
 #include "ssh.h"
 #include "xmalloc.h"
 #include "uidswap.h"
-
-/* Returns true if the strings are equal, ignoring case (a-z only). */
-
-static int casefold_equal(const char *a, const char *b)
-{
-  unsigned char cha, chb;
-  for (; *a; a++, b++)
-    {
-      cha = *a;
-      chb = *b;
-      if (!chb)
-	return 0;
-      if (cha >= 'a' && cha <= 'z')
-	cha -= 32;
-      if (chb >= 'a' && chb <= 'z')
-	chb -= 32;
-      if (cha != chb)
-	return 0;
-    }
-  return !*b;
-}
 
 /* This function processes an rhosts-style file (.rhosts, .shosts, or
    /etc/hosts.equiv).  This returns true if authentication can be granted
@@ -86,8 +65,7 @@ int check_rhosts_file(const char *filename, const char *hostname,
 	  continue; /* Empty line? */
 	case 1:
 	  /* Host name only. */
-	  strncpy(userbuf, server_user, sizeof(userbuf));
-	  userbuf[sizeof(userbuf) - 1] = 0;
+	  strlcpy(userbuf, server_user, sizeof(userbuf));
 	  break;
 	case 2:
 	  /* Got both host and user name. */
@@ -131,8 +109,6 @@ int check_rhosts_file(const char *filename, const char *hostname,
 	  continue;
 	}
 	  
-#ifdef HAVE_INNETGR
-
       /* Verify that host name matches. */
       if (host[0] == '@')
 	{
@@ -141,7 +117,7 @@ int check_rhosts_file(const char *filename, const char *hostname,
 	    continue;
 	}
       else
-	if (!casefold_equal(host, hostname) && strcmp(host, ipaddr) != 0)
+	if (strcasecmp(host, hostname) && strcmp(host, ipaddr) != 0)
 	  continue; /* Different hostname. */
 
       /* Verify that user name matches. */
@@ -153,16 +129,6 @@ int check_rhosts_file(const char *filename, const char *hostname,
       else
 	if (strcmp(user, client_user) != 0)
 	  continue; /* Different username. */
-
-#else /* HAVE_INNETGR */
-
-      if (!casefold_equal(host, hostname) && strcmp(host, ipaddr) != 0)
-	continue; /* Different hostname. */
-
-      if (strcmp(user, client_user) != 0)
-	continue; /* Different username. */
-
-#endif /* HAVE_INNETGR */
 
       /* Found the user and host. */
       fclose(f);
@@ -207,7 +173,7 @@ int auth_rhosts(struct passwd *pw, const char *client_user,
        rhosts_file_index++)
     {
       /* Check users .rhosts or .shosts. */
-      sprintf(buf, "%.500s/%.100s", 
+      snprintf(buf, sizeof buf, "%.500s/%.100s", 
 	      pw->pw_dir, rhosts_files[rhosts_file_index]);
       if (stat(buf, &st) >= 0)
 	break;
@@ -286,7 +252,7 @@ int auth_rhosts(struct passwd *pw, const char *client_user,
        rhosts_file_index++)
     {
       /* Check users .rhosts or .shosts. */
-      sprintf(buf, "%.500s/%.100s", 
+      snprintf(buf, sizeof buf, "%.500s/%.100s", 
 	      pw->pw_dir, rhosts_files[rhosts_file_index]);
       if (stat(buf, &st) < 0)
 	continue; /* No such file. */

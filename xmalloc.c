@@ -15,15 +15,9 @@ failure (they call fatal if they encounter an error).
 */
 
 #include "includes.h"
-RCSID("$Id: xmalloc.c,v 1.1 1999/09/26 20:53:38 deraadt Exp $");
+RCSID("$Id: xmalloc.c,v 1.1 1999/10/27 03:42:46 damien Exp $");
 
 #include "ssh.h"
-
-#if 0
-void *malloc(size_t size);
-void *realloc(void *ptr, size_t size);
-void free(void *ptr);
-#endif
 
 void *xmalloc(size_t size)
 {
@@ -54,7 +48,9 @@ void xfree(void *ptr)
 
 char *xstrdup(const char *str)
 {
-  char *cp = xmalloc(strlen(str) + 1);
-  strcpy(cp, str);
+  int len = strlen(str) + 1;
+
+  char *cp = xmalloc(len);
+  strlcpy(cp, str, len);
   return cp;
 }

@@ -13,7 +13,7 @@ Functions for reading the configuration file.
 
 */
 
-/* RCSID("$Id: readconf.h,v 1.1 1999/09/26 20:53:37 deraadt Exp $"); */
+/* RCSID("$Id: readconf.h,v 1.1 1999/10/27 03:42:44 damien Exp $"); */
 
 #ifndef READCONF_H
 #define READCONF_H
@@ -33,31 +33,31 @@ typedef struct
 {
   int forward_agent;		/* Forward authentication agent. */
   int forward_x11;		/* Forward X11 display. */
+  int gateway_ports;		/* Allow remote connects to forwarded ports. */
+  int use_privileged_port;	/* Don't use privileged port if false. */
   int rhosts_authentication;	/* Try rhosts authentication. */
   int rhosts_rsa_authentication;/* Try rhosts with RSA authentication. */
   int rsa_authentication;	/* Try RSA authentication. */
 #ifdef KRB4
   int kerberos_authentication;	/* Try Kerberos authentication. */
 #endif
-#ifdef KERBEROS_TGT_PASSING
-  int kerberos_tgt_passing;	/* Try Kerberos tgt passing. */
-#endif
 #ifdef AFS
+  int kerberos_tgt_passing;	/* Try Kerberos tgt passing. */
   int afs_token_passing;	/* Try AFS token passing. */
 #endif
   int password_authentication;	/* Try password authentication. */
   int fallback_to_rsh;		/* Use rsh if cannot connect with ssh. */
   int use_rsh;			/* Always use rsh (don\'t try ssh). */
   int batch_mode;		/* Batch mode: do not ask for passwords. */
+  int check_host_ip;		/* Also keep track of keys for IP address */
   int strict_host_key_checking;	/* Strict host key checking. */
-#ifdef WITH_ZLIB
   int compression;		/* Compress packets in both directions. */
   int compression_level;	/* Compression level 1 (fast) to 9 (best). */
-#endif /* WITH_ZLIB */
   int keepalives;		/* Set SO_KEEPALIVE. */
 
   int port;			/* Port to connect. */
   int connection_attempts;	/* Max attempts (seconds) before giving up */
+  int number_of_password_prompts; /* Max number of password prompts. */
   int cipher;			/* Cipher to use. */
   char *hostname;		/* Real host to connect. */
   char *proxy_command;		/* Proxy command for connecting the host. */

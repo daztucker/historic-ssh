@@ -12,7 +12,7 @@ Created: Mon Aug 21 15:48:58 1995 ylo
 */
 
 #include "includes.h"
-RCSID("$Id: servconf.c,v 1.1 1999/09/26 20:53:37 deraadt Exp $");
+RCSID("$Id: servconf.c,v 1.1 1999/10/27 03:42:45 damien Exp $");
 
 #include "ssh.h"
 #include "servconf.h"
@@ -24,9 +24,8 @@ void initialize_server_options(ServerOptions *options)
 {
   memset(options, 0, sizeof(*options));
   options->port = -1;
-  options->listen_addr.s_addr = INADDR_ANY;
+  options->listen_addr.s_addr = htonl(INADDR_ANY);
   options->host_key_file = NULL;
-  options->random_seed_file = NULL;
   options->server_key_bits = -1;
   options->login_grace_time = -1;
   options->key_regeneration_time = -1;
@@ -35,7 +34,9 @@ void initialize_server_options(ServerOptions *options)
   options->quiet_mode = -1;
   options->fascist_logging = -1;
   options->print_motd = -1;
+  options->check_mail = -1;
   options->x11_forwarding = -1;
+  options->x11_display_offset = -1;
   options->strict_modes = -1;
   options->keepalives = -1;
   options->log_facility = (SyslogFacility)-1;
@@ -45,20 +46,22 @@ void initialize_server_options(ServerOptions *options)
 #ifdef KRB4
   options->kerberos_authentication = -1;
   options->kerberos_or_local_passwd = -1;
-#endif
-#if defined(KRB4) || defined(AFS)
   options->kerberos_ticket_cleanup = -1;
 #endif
-#ifdef KERBEROS_TGT_PASSING
-  options->kerberos_tgt_passing = -1;
-#endif
 #ifdef AFS
+  options->kerberos_tgt_passing = -1;
   options->afs_token_passing = -1;
 #endif
   options->password_authentication = -1;
+#ifdef SKEY
+  options->skey_authentication = -1;
+#endif
   options->permit_empty_passwd = -1;
-  options->num_allow_hosts = 0;
-  options->num_deny_hosts = 0;
+  options->use_login = -1;
+  options->num_allow_users = 0;
+  options->num_deny_users = 0;
+  options->num_allow_groups = 0;
+  options->num_deny_groups = 0;
 }
 
 void fill_default_server_options(ServerOptions *options)
@@ -76,8 +79,6 @@ void fill_default_server_options(ServerOptions *options)
     }
   if (options->host_key_file == NULL)
     options->host_key_file = HOST_KEY_FILE;
-  if (options->random_seed_file == NULL)
-    options->random_seed_file = SSH_DAEMON_SEED_FILE;
   if (options->server_key_bits == -1)
     options->server_key_bits = 768;
   if (options->login_grace_time == -1)
@@ -85,23 +86,27 @@ void fill_default_server_options(ServerOptions *options)
   if (options->key_regeneration_time == -1)
     options->key_regeneration_time = 3600;
   if (options->permit_root_login == -1)
-    options->permit_root_login = 1;
+    options->permit_root_login = 1;		 /* yes */
   if (options->ignore_rhosts == -1)
     options->ignore_rhosts = 0;
   if (options->quiet_mode == -1)
     options->quiet_mode = 0;
+  if (options->check_mail == -1)
+    options->check_mail = 0;
   if (options->fascist_logging == -1)
     options->fascist_logging = 1;
   if (options->print_motd == -1)
     options->print_motd = 1;
   if (options->x11_forwarding == -1)
     options->x11_forwarding = 1;
+  if (options->x11_display_offset == -1)
+    options->x11_display_offset = 1;
   if (options->strict_modes == -1)
     options->strict_modes = 1;
   if (options->keepalives == -1)
     options->keepalives = 1;
   if (options->log_facility == (SyslogFacility)(-1))
-    options->log_facility = SYSLOG_FACILITY_DAEMON;
+    options->log_facility = SYSLOG_FACILITY_AUTH;
   if (options->rhosts_authentication == -1)
     options->rhosts_authentication = 0;
   if (options->rhosts_rsa_authentication == -1)
@@ -110,26 +115,28 @@ void fill_default_server_options(ServerOptions *options)
     options->rsa_authentication = 1;
 #ifdef KRB4
   if (options->kerberos_authentication == -1)
-    options->kerberos_authentication = 1;
+    options->kerberos_authentication = (access(KEYFILE, R_OK) == 0);
   if (options->kerberos_or_local_passwd == -1)
-    options->kerberos_or_local_passwd = 0;
-#endif
-#if defined(KRB4) || defined(AFS)
+    options->kerberos_or_local_passwd = 1;
   if (options->kerberos_ticket_cleanup == -1)
     options->kerberos_ticket_cleanup = 1;
-#endif
-#ifdef KERBEROS_TGT_PASSING
+#endif /* KRB4 */
+#ifdef AFS
   if (options->kerberos_tgt_passing == -1)
     options->kerberos_tgt_passing = 0;
-#endif
-#ifdef AFS
   if (options->afs_token_passing == -1)
-    options->afs_token_passing = 1;
-#endif
+    options->afs_token_passing = k_hasafs();
+#endif /* AFS */
   if (options->password_authentication == -1)
     options->password_authentication = 1;
+#ifdef SKEY
+  if (options->skey_authentication == -1)
+    options->skey_authentication = 1;
+#endif
   if (options->permit_empty_passwd == -1)
-      options->permit_empty_passwd = 1;
+    options->permit_empty_passwd = 1;
+  if (options->use_login == -1)
+    options->use_login = 0;
 }
 
 #define WHITESPACE " \t\r\n"
@@ -141,20 +148,19 @@ typedef enum
   sPermitRootLogin, sQuietMode, sFascistLogging, sLogFacility,
   sRhostsAuthentication, sRhostsRSAAuthentication, sRSAAuthentication,
 #ifdef KRB4
-  sKerberosAuthentication, sKerberosOrLocalPasswd,
-#endif
-#if defined(KRB4) || defined(AFS)
-  sKerberosTicketCleanup,
-#endif
-#ifdef KERBEROS_TGT_PASSING
-  sKerberosTgtPassing,
+  sKerberosAuthentication, sKerberosOrLocalPasswd, sKerberosTicketCleanup,
 #endif
 #ifdef AFS
-  sAFSTokenPassing,
+  sKerberosTgtPassing, sAFSTokenPassing,
 #endif
-  sPasswordAuthentication, sAllowHosts, sDenyHosts, sListenAddress,
-  sPrintMotd, sIgnoreRhosts, sX11Forwarding,
-  sStrictModes, sEmptyPasswd, sRandomSeedFile, sKeepAlives
+#ifdef SKEY
+  sSkeyAuthentication,
+#endif
+  sPasswordAuthentication, sListenAddress,
+  sPrintMotd, sIgnoreRhosts, sX11Forwarding, sX11DisplayOffset,
+  sStrictModes, sEmptyPasswd, sRandomSeedFile, sKeepAlives, sCheckMail,
+  sUseLogin, sAllowUsers, sDenyUsers, sAllowGroups, sDenyGroups
+
 } ServerOpCodes;
 
 /* Textual representation of the tokens. */
@@ -179,27 +185,31 @@ static struct
 #ifdef KRB4
   { "kerberosauthentication", sKerberosAuthentication },
   { "kerberosorlocalpasswd", sKerberosOrLocalPasswd },
-#endif
-#if defined(KRB4) || defined(AFS)
   { "kerberosticketcleanup", sKerberosTicketCleanup },
 #endif
-#ifdef KERBEROS_TGT_PASSING
-  { "kerberostgtpassing", sKerberosTgtPassing },
-#endif
 #ifdef AFS
+  { "kerberostgtpassing", sKerberosTgtPassing },
   { "afstokenpassing", sAFSTokenPassing },
 #endif
   { "passwordauthentication", sPasswordAuthentication },
-  { "allowhosts", sAllowHosts },
-  { "denyhosts", sDenyHosts },
+#ifdef SKEY
+  { "skeyauthentication", sSkeyAuthentication },
+#endif
+  { "checkmail", sCheckMail },
   { "listenaddress", sListenAddress },
   { "printmotd", sPrintMotd },
   { "ignorerhosts", sIgnoreRhosts },
   { "x11forwarding", sX11Forwarding },
+  { "x11displayoffset", sX11DisplayOffset },
   { "strictmodes", sStrictModes },
   { "permitemptypasswords", sEmptyPasswd },
+  { "uselogin", sUseLogin },
   { "randomseed", sRandomSeedFile },
   { "keepalive", sKeepAlives },
+  { "allowusers", sAllowUsers },
+  { "denyusers", sDenyUsers },
+  { "allowgroups", sAllowGroups },
+  { "denygroups", sDenyGroups },
   { NULL, 0 }
 };
 
@@ -254,7 +264,7 @@ void read_server_config(ServerOptions *options, const char *filename)
   if (!f)
     {
       perror(filename);
-      return;
+      exit(1);
     }
 
   linenum = 0;
@@ -310,16 +320,11 @@ void read_server_config(ServerOptions *options, const char *filename)
 		      filename, linenum);
 	      exit(1);
 	    }
-#ifdef BROKEN_INET_ADDR
-	  options->listen_addr.s_addr = inet_network(cp);
-#else /* BROKEN_INET_ADDR */
 	  options->listen_addr.s_addr = inet_addr(cp);
-#endif /* BROKEN_INET_ADDR */
 	  break;
 
 	case sHostKeyFile:
 	  charptr = &options->host_key_file;
-	parse_pathname:
 	  cp = strtok(NULL, WHITESPACE);
 	  if (!cp)
 	    {
@@ -332,11 +337,38 @@ void read_server_config(ServerOptions *options, const char *filename)
 	  break;
 
 	case sRandomSeedFile:
-	  charptr = &options->random_seed_file;
-	  goto parse_pathname;
+	  fprintf(stderr, "%s line %d: \"randomseed\" option is obsolete.\n",
+		  filename, linenum);
+	  cp = strtok(NULL, WHITESPACE);
+	  break;
 
 	case sPermitRootLogin:
 	  intptr = &options->permit_root_login;
+	  cp = strtok(NULL, WHITESPACE);
+	  if (!cp)
+	    {
+	      fprintf(stderr, "%s line %d: missing yes/without-password/no argument.\n",
+		      filename, linenum);
+	      exit(1);
+	    }
+	  if (strcmp(cp, "without-password") == 0)
+	    value = 2;
+	  else if (strcmp(cp, "yes") == 0)
+	    value = 1;
+	  else if (strcmp(cp, "no") == 0)
+	    value = 0;
+	  else
+	    {
+	      fprintf(stderr, "%s line %d: Bad yes/without-password/no argument: %s\n", 
+	      	filename, linenum, cp);
+	      exit(1);
+	    }
+	  if (*intptr == -1)
+	    *intptr = value;
+	  break;
+
+	case sIgnoreRhosts:
+	  intptr = &options->ignore_rhosts;
 	parse_flag:
 	  cp = strtok(NULL, WHITESPACE);
 	  if (!cp)
@@ -359,10 +391,6 @@ void read_server_config(ServerOptions *options, const char *filename)
 	  if (*intptr == -1)
 	    *intptr = value;
 	  break;
-
-	case sIgnoreRhosts:
-	  intptr = &options->ignore_rhosts;
-	  goto parse_flag;
 	  
 	case sQuietMode:
 	  intptr = &options->quiet_mode;
@@ -392,21 +420,17 @@ void read_server_config(ServerOptions *options, const char *filename)
  	case sKerberosOrLocalPasswd:
  	  intptr = &options->kerberos_or_local_passwd;
  	  goto parse_flag;
-#endif
 
-#if defined(KRB4) || defined(AFS)
 	case sKerberosTicketCleanup:
 	  intptr = &options->kerberos_ticket_cleanup;
 	  goto parse_flag;
 #endif
 	  
-#ifdef KERBEROS_TGT_PASSING
+#ifdef AFS
 	case sKerberosTgtPassing:
 	  intptr = &options->kerberos_tgt_passing;
 	  goto parse_flag;
-#endif
 
-#ifdef AFS
 	case sAFSTokenPassing:
 	  intptr = &options->afs_token_passing;
 	  goto parse_flag;
@@ -416,6 +440,16 @@ void read_server_config(ServerOptions *options, const char *filename)
 	  intptr = &options->password_authentication;
 	  goto parse_flag;
 
+        case sCheckMail:
+          intptr = &options->check_mail;
+          goto parse_flag;
+
+#ifdef SKEY
+	case sSkeyAuthentication:
+	  intptr = &options->skey_authentication;
+	  goto parse_flag;
+#endif
+
 	case sPrintMotd:
 	  intptr = &options->print_motd;
 	  goto parse_flag;
@@ -423,6 +457,10 @@ void read_server_config(ServerOptions *options, const char *filename)
 	case sX11Forwarding:
 	  intptr = &options->x11_forwarding;
 	  goto parse_flag;
+
+	case sX11DisplayOffset:
+	  intptr = &options->x11_display_offset;
+	  goto parse_int;
 
 	case sStrictModes:
 	  intptr = &options->strict_modes;
@@ -435,6 +473,10 @@ void read_server_config(ServerOptions *options, const char *filename)
 	case sEmptyPasswd:
 	  intptr = &options->permit_empty_passwd;
 	  goto parse_flag;
+
+        case sUseLogin:
+          intptr = &options->use_login;
+          goto parse_flag;
 
 	case sLogFacility:
 	  cp = strtok(NULL, WHITESPACE);
@@ -457,29 +499,55 @@ void read_server_config(ServerOptions *options, const char *filename)
 	    options->log_facility = log_facilities[i].facility;
 	  break;
 	  
-	case sAllowHosts:
+	case sAllowUsers:
 	  while ((cp = strtok(NULL, WHITESPACE)))
 	    {
-	      if (options->num_allow_hosts >= MAX_ALLOW_HOSTS)
+	      if (options->num_allow_users >= MAX_ALLOW_USERS)
 		{
-		  fprintf(stderr, "%s line %d: too many allow hosts.\n",
+		  fprintf(stderr, "%s line %d: too many allow users.\n",
 			  filename, linenum);
 		  exit(1);
 		}
-	      options->allow_hosts[options->num_allow_hosts++] = xstrdup(cp);
+	      options->allow_users[options->num_allow_users++] = xstrdup(cp);
 	    }
 	  break;
 
-	case sDenyHosts:
+	case sDenyUsers:
 	  while ((cp = strtok(NULL, WHITESPACE)))
 	    {
-	      if (options->num_deny_hosts >= MAX_DENY_HOSTS)
+	      if (options->num_deny_users >= MAX_DENY_USERS)
 		{
-		  fprintf(stderr, "%s line %d: too many deny hosts.\n",
+		  fprintf(stderr, "%s line %d: too many deny users.\n",
 			  filename, linenum);
 		  exit(1);
 		}
-	      options->deny_hosts[options->num_deny_hosts++] = xstrdup(cp);
+	      options->deny_users[options->num_deny_users++] = xstrdup(cp);
+	    }
+	  break;
+
+	case sAllowGroups:
+	  while ((cp = strtok(NULL, WHITESPACE)))
+	    {
+	      if (options->num_allow_groups >= MAX_ALLOW_GROUPS)
+		{
+		  fprintf(stderr, "%s line %d: too many allow groups.\n",
+			  filename, linenum);
+		  exit(1);
+		}
+	      options->allow_groups[options->num_allow_groups++] = xstrdup(cp);
+	    }
+	  break;
+
+	case sDenyGroups:
+	  while ((cp = strtok(NULL, WHITESPACE)))
+	    {
+	      if (options->num_deny_groups >= MAX_DENY_GROUPS)
+		{
+		  fprintf(stderr, "%s line %d: too many deny groups.\n",
+			  filename, linenum);
+		  exit(1);
+		}
+	      options->deny_groups[options->num_deny_groups++] = xstrdup(cp);
 	    }
 	  break;
 

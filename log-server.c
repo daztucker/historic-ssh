@@ -15,12 +15,9 @@ to the system log.
 */
 
 #include "includes.h"
-RCSID("$Id: log-server.c,v 1.1 1999/09/26 20:53:36 deraadt Exp $");
+RCSID("$Id: log-server.c,v 1.1 1999/10/27 03:42:44 damien Exp $");
 
 #include <syslog.h>
-#ifdef NEED_SYS_SYSLOG_H
-#include <sys/syslog.h>
-#endif /* NEED_SYS_SYSLOG_H */
 #include "packet.h"
 #include "xmalloc.h"
 #include "ssh.h"
@@ -91,12 +88,7 @@ void log_init(char *av0, int on_stderr, int debug, int quiet,
 
 #define MSGBUFSIZE 1024
 
-#ifdef HAVE_VSNPRINTF
 #define DECL_MSGBUF char msgbuf[MSGBUFSIZE]
-#else
-static char msgbuf[MSGBUFSIZE];
-#define DECL_MSGBUF
-#endif
 
 /* Log this message (information that usually should go to the log). */
 
@@ -228,8 +220,7 @@ void fatal(const char *fmt, ...)
   if (ticket)
     {
       if (strcmp(ticket,"none"))
-	/* ticket -> FILE:path */
-	unlink(ticket + 5);
+	unlink(ticket);
       else
 	ticket = NULL;
     }

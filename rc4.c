@@ -1,72 +1,105 @@
-/*
+/*! \file rc4.c
+    \brief Source file for RC4 stream cipher routines
+	 \author Damien Miller <djm@mindrot.org>
+	 \version 0.0.0
+	 \date 1999
+	 
+	 A simple implementation of the RC4 stream cipher, based on the
+	 description given in _Bruce Schneier's_ "Applied Cryptography"
+	 2nd edition.
 
-Alleged RC4 (based on the Usenet posting in Spring-95)
+	 Copyright 1999 Damien Miller
 
+	 Permission is hereby granted, free of charge, to any person
+	 obtaining a copy of this software and associated documentation
+	 files (the "Software"), to deal in the Software without
+	 restriction, including without limitation the rights to use, copy,
+	 modify, merge, publish, distribute, sublicense, and/or sell copies
+	 of the Software, and to permit persons to whom the Software is
+	 furnished to do so, subject to the following conditions:
+
+	 The above copyright notice and this permission notice shall be
+	 included in all copies or substantial portions of the Software.
+
+	 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY
+	 KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+	 WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE
+	 AND NONINFRINGEMENT.  IN NO EVENT SHALL DAMIEN MILLER BE LIABLE
+	 FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+	 CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+	 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+	 \warning None of these functions clears its memory after use. It
+	 \warning is the responsability of the calling routines to ensure
+	 \warning that any sensitive data (keystream, key or plaintext) is
+	 \warning properly erased after use.
+	 
+	 \warning The name "RC4" is trademarked in the United States, 
+	 \warning you may need to use "RC4 compatible" or "ARC4" 
+	 \warning (Alleged RC4).
 */
 
-#include "includes.h"
-RCSID("$Id: rc4.c,v 1.1 1999/09/26 20:53:37 deraadt Exp $");
+/* $Id: rc4.c,v 1.1.1.1 1999/10/26 05:48:13 damien Exp $ */
 
 #include "rc4.h"
 
-void rc4_init(RC4Context *ctx, const unsigned char *key, unsigned int key_len)
+
+void rc4_key(rc4_t *r, unsigned char *key, int len)
 {
-  unsigned int t, u;
-  unsigned int keyindex;
-  unsigned int stateindex;
-  unsigned char* state;
-  unsigned int counter;
+	int t;
+	
+	for(r->i = 0; r->i < 256; r->i++)
+		r->s[r->i] = r->i;
 
-  assert(key_len > 0);
-
-  state = &ctx->state[0];
-  ctx->x = 0;
-  ctx->y = 0;
-  for (counter = 0; counter < 256; counter++)
-    state[counter] = counter;
-  keyindex = 0;
-  stateindex = 0;
-  for (counter = 0; counter < 256; counter++)
-    {
-      t = state[counter];
-      stateindex = (stateindex + key[keyindex] + t) & 0xff;
-      u = state[stateindex];
-      state[stateindex] = t;
-      state[counter] = u;
-      if (++keyindex >= key_len)
-	keyindex = 0;
-    }
+	r->j = 0;
+	for(r->i = 0; r->i < 256; r->i++)
+	{
+		r->j = (r->j + r->s[r->i] + key[r->i % len]) % 256;
+		t = r->s[r->i];
+		r->s[r->i] = r->s[r->j];
+		r->s[r->j] = t;
+	}
+	r->i = r->j = 0;
 }
 
-inline unsigned int rc4_byte(RC4Context *ctx)
+void rc4_crypt(rc4_t *r, unsigned char *plaintext, int len)
 {
-  unsigned int x;
-  unsigned int y;
-  unsigned int sx, sy;
-  unsigned char *state;
+	int t;
+	int c;
 
-  state = ctx->state;
-  x = (ctx->x + 1) & 0xff;
-  sx = state[x];
-  y = (sx + ctx->y) & 0xff;
-  sy = state[y];
-  ctx->x = x;
-  ctx->y = y;
-  state[y] = sx;
-  state[x] = sy;
-  return state[(sx + sy) & 0xff];
+	c = 0;	
+	while(c < len)
+	{
+		r->i = (r->i + 1) % 256;
+		r->j = (r->j + r->s[r->i]) % 256;
+		t = r->s[r->i];
+		r->s[r->i] = r->s[r->j];
+		r->s[r->j] = t;
+
+		t = (r->s[r->i] + r->s[r->j]) % 256;
+
+		plaintext[c] ^= r->s[t];
+		c++;
+	}
 }
 
-void rc4_encrypt(RC4Context *ctx, unsigned char *dest, 
-		 const unsigned char *src, unsigned int len)
+void rc4_getbytes(rc4_t *r, unsigned char *buffer, int len)
 {
-  unsigned int i;
-  for (i = 0; i < len; i++)
-    dest[i] = src[i] ^ rc4_byte(ctx);
-}
+	int t;
+	int c;
 
-void rc4_decrypt(RC4Context *ctx, unsigned char *dest, 
-		 const unsigned char *src, unsigned int len)
-{
-  rc4_encrypt(ctx, dest, src, len);
+	c = 0;	
+	while(c < len)
+	{
+		r->i = (r->i + 1) % 256;
+		r->j = (r->j + r->s[r->i]) % 256;
+		t = r->s[r->i];
+		r->s[r->i] = r->s[r->j];
+		r->s[r->j] = t;
+
+		t = (r->s[r->i] + r->s[r->j]) % 256;
+		
+		buffer[c] = r->s[t];
+		c++;
+	}
 }

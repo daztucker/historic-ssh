@@ -14,7 +14,7 @@ Allocating a pseudo-terminal, and making it the controlling tty.
 */
 
 #include "includes.h"
-RCSID("$Id: pty.c,v 1.1 1999/09/26 20:53:36 deraadt Exp $");
+RCSID("$Id: pty.c,v 1.1 1999/10/27 03:42:44 damien Exp $");
 
 #include "pty.h"
 #include "ssh.h"
@@ -23,12 +23,6 @@ RCSID("$Id: pty.c,v 1.1 1999/09/26 20:53:36 deraadt Exp $");
 #if defined(HAVE__GETPTY) || defined(HAVE_OPENPTY)
 #undef HAVE_DEV_PTMX
 #endif
-
-#ifdef HAVE_DEV_PTMX
-#include <sys/stream.h>
-#include <stropts.h>
-#include <sys/conf.h>
-#endif /* HAVE_DEV_PTMX */
 
 #ifndef O_NOCTTY
 #define O_NOCTTY 0
@@ -157,31 +151,6 @@ int pty_allocate(int *ptyfd, int *ttyfd, char *namebuf)
   return 1;
 
 #else /* HAVE_DEV_PTS_AND_PTC */
-#ifdef CRAY
-  char buf[64];
-  int i;
-
-  for (i = 0; i < 128; i++)
-    {
-      sprintf(buf, "/dev/pty/%03d", i);
-      *ptyfd = open(buf, O_RDWR|O_NOCTTY);
-      if (*ptyfd < 0)
-	continue;
-      sprintf(namebuf, "/dev/ttyp%03d", i);
-      /* Open the slave side. */
-      *ttyfd = open(namebuf, O_RDWR|O_NOCTTY);
-      if (*ttyfd < 0)
-	{
-	  error("%.100s: %.100s", namebuf, strerror(errno));
-	  close(*ptyfd);
-	  return 0;
-	}
-      return 1;
-    }
-  return 0;
-
-#else /* CRAY */  
-
   /* BSD-style pty code. */
 
   char buf[64];
@@ -194,12 +163,12 @@ int pty_allocate(int *ptyfd, int *ttyfd, char *namebuf)
 
   for (i = 0; i < num_ptys; i++)
     {
-      sprintf(buf, "/dev/pty%c%c", ptymajors[i / num_minors], 
+      snprintf(buf, sizeof buf, "/dev/pty%c%c", ptymajors[i / num_minors], 
 	      ptyminors[i % num_minors]);
       *ptyfd = open(buf, O_RDWR|O_NOCTTY);
       if (*ptyfd < 0)
 	continue;
-      sprintf(namebuf, "/dev/tty%c%c", ptymajors[i / num_minors], 
+      snprintf(namebuf, sizeof buf, "/dev/tty%c%c", ptymajors[i / num_minors], 
 	      ptyminors[i % num_minors]);
 
       /* Open the slave side. */
@@ -213,7 +182,6 @@ int pty_allocate(int *ptyfd, int *ttyfd, char *namebuf)
       return 1;
     }
   return 0;
-#endif /* CRAY */
 #endif /* HAVE_DEV_PTS_AND_PTC */
 #endif /* HAVE_DEV_PTMX */
 #endif /* HAVE__GETPTY */
@@ -246,14 +214,8 @@ void pty_make_controlling_tty(int *ttyfd, const char *ttyname)
       close(fd);
     }
 #endif /* TIOCNOTTY */
-#ifdef HAVE_SETSID
-#ifdef ultrix
-  setpgrp(0, 0);
-#else /* ultrix */
   if (setsid() < 0)
     error("setsid: %.100s", strerror(errno));
-#endif /* ultrix */
-#endif /* HAVE_SETSID */
   
   /* Verify that we are successfully disconnected from the controlling tty. */
   fd = open("/dev/tty", O_RDWR|O_NOCTTY);
@@ -284,17 +246,6 @@ void pty_make_controlling_tty(int *ttyfd, const char *ttyname)
   else
     {
       close(fd);
-#ifdef HAVE_VHANGUP
-      signal(SIGHUP, SIG_IGN);
-      vhangup();
-      signal(SIGHUP, SIG_DFL);
-      fd = open(ttyname, O_RDWR);
-      if (fd == -1)
-	error("pty_make_controlling_tty: reopening controlling tty after vhangup failed for %.100s",
-	      ttyname);
-      close(*ttyfd);
-      *ttyfd = fd;
-#endif /* HAVE_VHANGUP */
     }
 }
 

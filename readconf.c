@@ -14,7 +14,7 @@ Functions for reading the configuration files.
 */
 
 #include "includes.h"
-RCSID("$Id: readconf.c,v 1.1 1999/09/26 20:53:37 deraadt Exp $");
+RCSID("$Id: readconf.c,v 1.1 1999/10/27 03:42:44 damien Exp $");
 
 #include "ssh.h"
 #include "cipher.h"
@@ -80,7 +80,6 @@ RCSID("$Id: readconf.c,v 1.1 1999/09/26 20:53:37 deraadt Exp $");
      KeepAlives no
      IdentityFile ~/.ssh/identity
      Port 22
-     Cipher idea
      EscapeChar ~
 
 */
@@ -89,22 +88,20 @@ RCSID("$Id: readconf.c,v 1.1 1999/09/26 20:53:37 deraadt Exp $");
 
 typedef enum
 {
-  oForwardAgent, oForwardX11, oRhostsAuthentication,
+  oForwardAgent, oForwardX11, oGatewayPorts, oRhostsAuthentication,
   oPasswordAuthentication, oRSAAuthentication, oFallBackToRsh, oUseRsh,
 #ifdef KRB4
   oKerberosAuthentication,
 #endif /* KRB4 */
-#ifdef KERBEROS_TGT_PASSING
-  oKerberosTgtPassing,
-#endif
 #ifdef AFS
-  oAFSTokenPassing,
+  oKerberosTgtPassing, oAFSTokenPassing,
 #endif
   oIdentityFile, oHostName, oPort, oCipher, oRemoteForward, oLocalForward, 
   oUser, oHost, oEscapeChar, oRhostsRSAAuthentication, oProxyCommand,
   oGlobalKnownHostsFile, oUserKnownHostsFile, oConnectionAttempts,
-  oBatchMode, oStrictHostKeyChecking, oCompression, oCompressionLevel,
-  oKeepAlives, oTISAuthentication
+  oBatchMode, oCheckHostIP, oStrictHostKeyChecking, oCompression,
+  oCompressionLevel, oKeepAlives, oNumberOfPasswordPrompts, oTISAuthentication,
+  oUsePrivilegedPort
 } OpCodes;
 
 /* Textual representations of the tokens. */
@@ -117,16 +114,16 @@ static struct
 {
   { "forwardagent", oForwardAgent },
   { "forwardx11", oForwardX11 },
+  { "gatewayports", oGatewayPorts },
+  { "useprivilegedport", oUsePrivilegedPort },
   { "rhostsauthentication", oRhostsAuthentication },
   { "passwordauthentication", oPasswordAuthentication },
   { "rsaauthentication", oRSAAuthentication },
 #ifdef KRB4
   { "kerberosauthentication", oKerberosAuthentication },
 #endif /* KRB4 */
-#ifdef KERBEROS_TGT_PASSING
-  { "kerberostgtpassing", oKerberosTgtPassing },
-#endif
 #ifdef AFS
+  { "kerberostgtpassing", oKerberosTgtPassing },
   { "afstokenpassing", oAFSTokenPassing },
 #endif
   { "fallbacktorsh", oFallBackToRsh },
@@ -146,10 +143,12 @@ static struct
   { "userknownhostsfile", oUserKnownHostsFile },
   { "connectionattempts", oConnectionAttempts },
   { "batchmode", oBatchMode },
+  { "checkhostip", oCheckHostIP },
   { "stricthostkeychecking", oStrictHostKeyChecking },
   { "compression", oCompression },
   { "compressionlevel", oCompressionLevel },
   { "keepalive", oKeepAlives },
+  { "numberofpasswordprompts", oNumberOfPasswordPrompts },
   { "tisauthentication", oTISAuthentication },
   { NULL, 0 }
 };
@@ -165,6 +164,11 @@ void add_local_forward(Options *options, int port, const char *host,
 		       int host_port)
 {
   Forward *fwd;
+  extern uid_t original_real_uid;
+  if ((port & 0xffff) != port)
+    fatal("Requested forwarding of nonexistent port %d.", port);
+  if (port < IPPORT_RESERVED && original_real_uid != 0)
+    fatal("Privileged ports can only be forwarded by root.\n");
   if (options->num_local_forwards >= SSH_MAX_FORWARDS_PER_DIRECTION)
     fatal("Too many local forwards (max %d).", SSH_MAX_FORWARDS_PER_DIRECTION);
   fwd = &options->local_forwards[options->num_local_forwards++];
@@ -255,6 +259,14 @@ void process_config_line(Options *options, const char *host,
     case oForwardX11:
       intptr = &options->forward_x11;
       goto parse_flag;
+
+    case oGatewayPorts:
+      intptr = &options->gateway_ports;
+      goto parse_flag;
+      
+    case oUsePrivilegedPort:
+      intptr = &options->use_privileged_port;
+      goto parse_flag;
       
     case oRhostsAuthentication:
       intptr = &options->rhosts_authentication;
@@ -278,13 +290,11 @@ void process_config_line(Options *options, const char *host,
       goto parse_flag;
 #endif /* KRB4 */
 
-#ifdef KERBEROS_TGT_PASSING
+#ifdef AFS
     case oKerberosTgtPassing:
       intptr = &options->kerberos_tgt_passing;
       goto parse_flag;
-#endif
 
-#ifdef AFS
     case oAFSTokenPassing:
       intptr = &options->afs_token_passing;
       goto parse_flag;
@@ -300,6 +310,10 @@ void process_config_line(Options *options, const char *host,
 
     case oBatchMode:
       intptr = &options->batch_mode;
+      goto parse_flag;
+
+    case oCheckHostIP:
+      intptr = &options->check_host_ip;
       goto parse_flag;
 
     case oStrictHostKeyChecking:
@@ -321,16 +335,18 @@ void process_config_line(Options *options, const char *host,
 	*intptr = value;
       break;
       
-#ifdef WITH_ZLIB
     case oCompression:
       intptr = &options->compression;
       goto parse_flag;
-#endif /* WITH_ZLIB */
 
     case oKeepAlives:
       intptr = &options->keepalives;
       goto parse_flag;
 
+    case oNumberOfPasswordPrompts:
+      intptr = &options->number_of_password_prompts;
+      goto parse_int;
+      
     case oTISAuthentication:
       cp = strtok(NULL, WHITESPACE);
       if (cp != 0 && (strcmp(cp, "yes") == 0 || strcmp(cp, "true") == 0))
@@ -340,11 +356,9 @@ void process_config_line(Options *options, const char *host,
 		linenum);
       break;
 
-#ifdef WITH_ZLIB
     case oCompressionLevel:
       intptr = &options->compression_level;
       goto parse_int;
-#endif /* WITH_ZLIB */
 
     case oIdentityFile:
       cp = strtok(NULL, WHITESPACE);
@@ -559,15 +573,15 @@ void initialize_options(Options *options)
   memset(options, 'X', sizeof(*options));
   options->forward_agent = -1;
   options->forward_x11 = -1;
+  options->gateway_ports = -1;
+  options->use_privileged_port = -1;
   options->rhosts_authentication = -1;
   options->rsa_authentication = -1;
 #ifdef KRB4
   options->kerberos_authentication = -1;
 #endif
-#ifdef KERBEROS_TGT_PASSING
-  options->kerberos_tgt_passing = -1;
-#endif
 #ifdef AFS
+  options->kerberos_tgt_passing = -1;
   options->afs_token_passing = -1;
 #endif
   options->password_authentication = -1;
@@ -575,16 +589,14 @@ void initialize_options(Options *options)
   options->fallback_to_rsh = -1;
   options->use_rsh = -1;
   options->batch_mode = -1;
+  options->check_host_ip = -1;
   options->strict_host_key_checking = -1;
-#ifdef WITH_ZLIB
   options->compression = -1;
-#endif /* WITH_ZLIB */
   options->keepalives = -1;
-#ifdef WITH_ZLIB
   options->compression_level = -1;
-#endif /* WITH_ZLIB */
   options->port = -1;
   options->connection_attempts = -1;
+  options->number_of_password_prompts = -1;
   options->cipher = -1;
   options->num_identity_files = 0;
   options->hostname = NULL;
@@ -606,6 +618,10 @@ void fill_default_options(Options *options)
     options->forward_agent = 1;
   if (options->forward_x11 == -1)
     options->forward_x11 = 1;
+  if (options->gateway_ports == -1)
+    options->gateway_ports = 0;
+  if (options->use_privileged_port == -1)
+    options->use_privileged_port = 1;
   if (options->rhosts_authentication == -1)
     options->rhosts_authentication = 1;
   if (options->rsa_authentication == -1)
@@ -613,15 +629,13 @@ void fill_default_options(Options *options)
 #ifdef KRB4
   if (options->kerberos_authentication == -1)
     options->kerberos_authentication = 1;
-#endif
-#ifdef KERBEROS_TGT_PASSING
+#endif /* KRB4 */
+#ifdef AFS
   if (options->kerberos_tgt_passing == -1)
     options->kerberos_tgt_passing = 1;
-#endif
-#ifdef AFS
   if (options->afs_token_passing == -1)
     options->afs_token_passing = 1;
-#endif
+#endif /* AFS */
   if (options->password_authentication == -1)
     options->password_authentication = 1;
   if (options->rhosts_rsa_authentication == -1)
@@ -632,22 +646,22 @@ void fill_default_options(Options *options)
     options->use_rsh = 0;
   if (options->batch_mode == -1)
     options->batch_mode = 0;
+  if (options->check_host_ip == -1)
+    options->check_host_ip = 1;
   if (options->strict_host_key_checking == -1)
     options->strict_host_key_checking = 2; /* 2 is default */
-#ifdef WITH_ZLIB
   if (options->compression == -1)
     options->compression = 0;
-#endif /* WITH_ZLIB */
   if (options->keepalives == -1)
     options->keepalives = 1;
-#ifdef WITH_ZLIB
   if (options->compression_level == -1)
     options->compression_level = 6;
-#endif /* WITH_ZLIB */
   if (options->port == -1)
     options->port = 0; /* Filled in ssh_connect. */
   if (options->connection_attempts == -1)
     options->connection_attempts = 4;
+  if (options->number_of_password_prompts == -1)
+    options->number_of_password_prompts = 3;
   if (options->cipher == -1)
     options->cipher = SSH_CIPHER_NOT_SET; /* Selected in ssh_login(). */
   if (options->num_identity_files == 0)

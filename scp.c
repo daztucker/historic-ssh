@@ -42,52 +42,47 @@ and ssh has the necessary privileges.)
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$Id: scp.c,v 1.1 1999/09/26 20:53:37 deraadt Exp $
+ *	$Id: scp.c,v 1.1 1999/10/27 03:42:45 damien Exp $
  */
 
 #include "includes.h"
-RCSID("$Id: scp.c,v 1.1 1999/09/26 20:53:37 deraadt Exp $");
+RCSID("$Id: scp.c,v 1.1 1999/10/27 03:42:45 damien Exp $");
 
 #include "ssh.h"
 #include "xmalloc.h"
-#ifdef HAVE_UTIME_H
 #include <utime.h>
-#ifdef _NEXT_SOURCE
-struct utimbuf {
-  time_t actime;
-  time_t modtime;
-};
-#endif /* _NEXT_SOURCE */
-#else
-struct utimbuf
-{
-  long actime;
-  long modtime;
-};
-#endif
 
 #define _PATH_CP "cp"
 
-#ifndef STDIN_FILENO
-#define STDIN_FILENO 0
-#endif
-#ifndef STDOUT_FILENO
-#define STDOUT_FILENO 1
-#endif
-#ifndef STDERR_FILENO
-#define STDERR_FILENO 2
-#endif
+/* For progressmeter() -- number of seconds before xfer considered "stalled" */
+#define STALLTIME	5
 
-#if defined(KERBEROS_TGT_PASSING) || defined(AFS)
-/* This is set to non-zero to disable authentication forwarding. */
-int nofwd = 0;
-#endif
- 
+/* Visual statistics about files as they are transferred. */
+void progressmeter(int);
+
+/* Returns width of the terminal (for progress meter calculations). */
+int getttywidth(void);
+
+/* Time a transfer started. */
+static struct timeval start;
+
+/* Number of bytes of current file transferred so far. */
+volatile unsigned long statbytes;
+
+/* Total size of current file. */
+unsigned long totalbytes = 0;
+
+/* Name of current file being transferred. */
+char *curfile;
+
 /* This is set to non-zero to enable verbose mode. */
 int verbose = 0;
 
 /* This is set to non-zero if compression is desired. */
 int compress = 0;
+
+/* This is set to zero if the progressmeter is not desired. */
+int showprogress = 1;
 
 /* This is set to non-zero if running in batch mode (that is, password
    and passphrase queries are not allowed). */
@@ -153,10 +148,6 @@ int do_cmd(char *host, char *remuser, char *cmd, int *fdin, int *fdout)
 	args[i++] = "-C";
       if (batchmode)
 	args[i++] = "-oBatchMode yes";
-#if defined(KERBEROS_TGT_PASSING) || defined(AFS)
-      if (nofwd)
-	args[i++] = "-k";
-#endif
       if (cipher != NULL)
 	{
 	  args[i++] = "-c";
@@ -251,11 +242,7 @@ main(argc, argv)
 	extern int optind;
 
 	fflag = tflag = 0;
-#if defined(KERBEROS_TGT_PASSING) || defined(AFS)
-	while ((ch = getopt(argc, argv, "kdfprtvBCc:i:P:")) != EOF)
-#else
-	while ((ch = getopt(argc, argv,  "dfprtvBCc:i:P:")) != EOF)
-#endif
+	while ((ch = getopt(argc, argv,  "dfprtvBCc:i:P:q")) != EOF)
 		switch(ch) {			/* User-visible flags. */
 		case 'p':
 			pflag = 1;
@@ -267,11 +254,6 @@ main(argc, argv)
 			iamrecursive = 1;
 			break;
 						/* Server options. */
-#if defined(KERBEROS_TGT_PASSING) || defined(AFS)
- 	        case 'k':
-			nofwd = 1;
-			break;
-#endif
 		case 'd':
 			targetshouldbedirectory = 1;
 			break;
@@ -298,6 +280,9 @@ main(argc, argv)
 		case 'C':
 		  	compress = 1;
 		  	break;
+		case 'q':
+		  	showprogress = 0;
+		  	break;
 		case '?':
 		default:
 			usage();
@@ -307,6 +292,9 @@ main(argc, argv)
 
 	if ((pwd = getpwuid(userid = getuid())) == NULL)
 		fatal("unknown user %d", (int)userid);
+
+	if (! isatty(STDERR_FILENO))
+		showprogress = 0;
 
 	remin = STDIN_FILENO;
 	remout = STDOUT_FILENO;
@@ -489,6 +477,7 @@ source(argc, argv)
 
 	for (indx = 0; indx < argc; ++indx) {
                 name = argv[indx];
+		statbytes = 0;
 		if ((fd = open(name, O_RDONLY, 0)) < 0)
 			goto syserr;
 		if (fstat(fd, &stb) < 0) {
@@ -512,6 +501,7 @@ syserr:			run_err("%s: %s", name, strerror(errno));
 			last = name;
 		else
 			++last;
+		curfile = last;
 		if (pflag) {
 			/*
 			 * Make it compatible with possible future
@@ -542,6 +532,11 @@ next:			(void)close(fd);
 			continue;
 		}
 
+		if (showprogress) {
+			totalbytes = stb.st_size;
+			progressmeter(-1);
+		}
+
 		/* Keep writing after an error so that we stay sync'd up. */
 		for (haderr = i = 0; i < stb.st_size; i += bp->cnt) {
 			amt = bp->cnt;
@@ -558,8 +553,12 @@ next:			(void)close(fd);
 				result = write(remout, bp->buf, amt);
 				if (result != amt)
 					haderr = result >= 0 ? EIO : errno;
+				statbytes += result;
 			}
 		}
+		if(showprogress)
+			progressmeter(1);
+
 		if (close(fd) < 0 && !haderr)
 			haderr = errno;
 		if (!haderr)
@@ -750,6 +749,7 @@ sink(argc, argv)
 			np = namebuf;
 		} else
 			np = targ;
+		curfile = cp;
 		exists = stat(np, &stb) == 0;
 		if (buf[0] == 'D') {
 			int mod_flag = pflag;
@@ -791,6 +791,12 @@ bad:			run_err("%s: %s", np, strerror(errno));
 		}
 		cp = bp->buf;
 		wrerr = NO;
+
+		if (showprogress) {
+			totalbytes = size;
+			progressmeter(-1);
+		}
+		statbytes = 0;
 		for (count = i = 0; i < size; i += 4096) {
 			amt = 4096;
 			if (i + amt > size)
@@ -805,6 +811,7 @@ bad:			run_err("%s: %s", np, strerror(errno));
 				}
 				amt -= j;
 				cp += j;
+			statbytes += j;
 			} while (amt > 0);
 			if (count == bp->cnt) {
 				/* Keep reading so we stay sync'd up. */
@@ -819,6 +826,8 @@ bad:			run_err("%s: %s", np, strerror(errno));
 				cp = bp->buf;
 			}
 		}
+		if (showprogress)
+			progressmeter(1);
 		if (count != 0 && wrerr == NO &&
 		    (j = write(ofd, bp->buf, count)) != count) {
 			wrerr = YES;
@@ -832,20 +841,12 @@ bad:			run_err("%s: %s", np, strerror(errno));
 #endif
 		if (pflag) {
 			if (exists || omode != mode)
-#ifdef HAVE_FCHMOD
 				if (fchmod(ofd, omode))
-#else /* HAVE_FCHMOD */
-				if (chmod(np, omode))
-#endif /* HAVE_FCHMOD */
 					run_err("%s: set mode: %s",
 					    np, strerror(errno));
 		} else {
 			if (!exists && omode != mode)
-#ifdef HAVE_FCHMOD
 				if (fchmod(ofd, omode & ~mask))
-#else /* HAVE_FCHMOD */
-				if (chmod(np, omode & ~mask))
-#endif /* HAVE_FCHMOD */
 					run_err("%s: set mode: %s",
 					    np, strerror(errno));
 		}
@@ -912,7 +913,7 @@ void
 usage()
 {
 	(void)fprintf(stderr,
-	    "usage: scp [-p] f1 f2; or: scp [-pr] f1 ... fn directory\n");
+	    "usage: scp [-pqrvC] [-P port] [-c cipher] [-i identity] f1 f2; or:\n       scp [options] f1 ... fn directory\n");
 	exit(1);
 }
 
@@ -975,7 +976,7 @@ run_err(const char *fmt, ...)
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$Id: scp.c,v 1.1 1999/09/26 20:53:37 deraadt Exp $
+ *	$Id: scp.c,v 1.1 1999/10/27 03:42:45 damien Exp $
  */
 
 char *
@@ -1036,7 +1037,6 @@ allocbuf(bp, fd, blksize)
 	int fd, blksize;
 {
 	size_t size;
-#ifdef HAVE_ST_BLKSIZE
 	struct stat stb;
 
 	if (fstat(fd, &stb) < 0) {
@@ -1047,10 +1047,7 @@ allocbuf(bp, fd, blksize)
 	  size = blksize;
         else
   	  size = blksize + (stb.st_blksize - blksize % stb.st_blksize) %
-	  stb.st_blksize;
-#else /* HAVE_ST_BLKSIZE */
-	size = blksize;
-#endif /* HAVE_ST_BLKSIZE */
+	    stb.st_blksize;
 	if (bp->cnt >= size)
 		return (bp);
   	if (bp->buf == NULL)
@@ -1069,3 +1066,155 @@ lostconn(signo)
 		fprintf(stderr, "lost connection\n");
 	exit(1);
 }
+
+/*
+ * ensure all of data on socket comes through. f==read || f==write
+ */
+int
+atomicio(f, fd, s, n)
+int (*f)();
+char *s;
+{
+	int res, pos = 0;
+
+	while (n>pos) {
+		res = (f)(fd, s+pos, n-pos);
+		switch (res) {
+		case -1:
+			if (errno==EINTR || errno==EAGAIN)
+				continue;
+		case 0:
+			return (res);
+		default:
+			pos += res;
+		}
+	}
+	return (pos);
+}
+
+void
+alarmtimer(int wait)
+{
+   struct itimerval itv;
+
+   itv.it_value.tv_sec = wait;
+   itv.it_value.tv_usec = 0;
+   itv.it_interval = itv.it_value;
+   setitimer(ITIMER_REAL, &itv, NULL);
+}
+
+void
+updateprogressmeter(void)
+{
+	int save_errno = errno;
+
+	progressmeter(0);
+	errno = save_errno;
+}
+
+void
+progressmeter(int flag)
+{
+	static const char prefixes[] = " KMGTP";
+	static struct timeval lastupdate;
+	static off_t lastsize;
+	struct timeval now, td, wait;
+	off_t cursize, abbrevsize;
+	double elapsed;
+	int ratio, barlength, i, remaining;
+	char buf[256];
+
+	if (flag == -1) {
+		(void)gettimeofday(&start, (struct timezone *)0);
+		lastupdate = start;
+		lastsize = 0;
+	}   
+	(void)gettimeofday(&now, (struct timezone *)0);
+	cursize = statbytes;
+	if (totalbytes != 0) {
+		ratio = cursize * 100 / totalbytes;
+		ratio = MAX(ratio, 0);
+		ratio = MIN(ratio, 100);
+	}
+	else
+		ratio = 100;
+
+	snprintf(buf, sizeof(buf), "\r%-20.20s %3d%% ", curfile, ratio); 
+
+	barlength = getttywidth() - 51;
+	if (barlength > 0) {
+		i = barlength * ratio / 100;
+		snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
+		"|%.*s%*s|", i,
+"*****************************************************************************"
+"*****************************************************************************",
+                 barlength - i, "");
+	}
+
+	i = 0;
+	abbrevsize = cursize;
+	while (abbrevsize >= 100000 && i < sizeof(prefixes)) {
+		i++;
+		abbrevsize >>= 10;
+	}
+	snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), " %5qd %c%c ",
+	    (quad_t)abbrevsize, prefixes[i], prefixes[i] == ' ' ? ' ' :
+	    'B');
+
+	timersub(&now, &lastupdate, &wait);
+	if (cursize > lastsize) {
+		lastupdate = now;
+		lastsize = cursize;
+		if (wait.tv_sec >= STALLTIME) {
+			start.tv_sec += wait.tv_sec;
+			start.tv_usec += wait.tv_usec;
+		}
+		wait.tv_sec = 0;
+	}
+
+	timersub(&now, &start, &td);
+	elapsed = td.tv_sec + (td.tv_usec / 1000000.0);
+
+	if (statbytes <= 0 || elapsed <= 0.0 || cursize > totalbytes) {
+		snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
+		    "   --:-- ETA");
+	} else if (wait.tv_sec >= STALLTIME) {
+		snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
+		    " - stalled -");
+	} else {
+		remaining = (int)(totalbytes / (statbytes / elapsed) - elapsed);
+		i = elapsed / 3600;
+		if (i)
+			snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
+			    "%2d:", i);
+		else
+			snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
+			    "   ");
+		i = remaining % 3600;
+		snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
+		    "%02d:%02d ETA", i / 60, i % 60);
+	}
+	atomicio(write, fileno(stdout), buf, strlen(buf));
+
+	if (flag == -1) {
+		signal(SIGALRM, (void *)updateprogressmeter);
+		alarmtimer(1);
+	} else if (flag == 1) {
+		alarmtimer(0);
+		write(fileno(stdout), "\n", 1);
+		statbytes = 0;
+	}
+}
+
+int
+getttywidth(void)
+{
+	struct winsize winsize;
+
+	if (ioctl(fileno(stdout), TIOCGWINSZ, &winsize) != -1)
+		return(winsize.ws_col ? winsize.ws_col : 80);
+	else
+		return(80);
+}
+
+

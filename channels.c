@@ -16,7 +16,7 @@ arbitrary tcp/ip connections, and the authentication agent connection.
 */
 
 #include "includes.h"
-RCSID("$Id: channels.c,v 1.16 1999/11/29 13:20:20 bg Exp $");
+RCSID("$Id: channels.c,v 1.17 1999/12/30 16:25:02 bg Exp $");
 
 #ifndef HAVE_GETHOSTNAME
 #include <sys/utsname.h>
@@ -963,13 +963,16 @@ void channel_input_port_open(int payload_len)
   host_port = packet_get_int();
 
   /* Get remote originator name. */
-  if (have_hostname_in_open)
+  if (have_hostname_in_open) {
     originator_string = packet_get_string(&originator_len);
-  else
+    originator_len += 4;	/* size of packet_int */
+  } else {
     originator_string = xstrdup("unknown (remote did not supply name)");
+    originator_len = 0;		/* no originator supplied */
+  }
 
   packet_integrity_check(payload_len,
-			 4 + 4 + host_len + 4 + 4 + originator_len,
+			 4 + 4 + host_len + 4 + originator_len,
 			 SSH_MSG_PORT_OPEN);
 
   /* Check if opening that port is permitted. */
@@ -1219,13 +1222,16 @@ void x11_input_open(int payload_len)
   remote_channel = packet_get_int();
 
   /* Get remote originator name. */
-  if (have_hostname_in_open)
+  if (have_hostname_in_open) {
     remote_host = packet_get_string(&remote_len);
-  else
+    remote_len += 4;
+  } else {
     remote_host = xstrdup("unknown (remote did not supply name)");
+    remote_len = 0;
+  }
 
   debug("Received X11 open request.");
-  packet_integrity_check(payload_len, 4 + 4+remote_len, SSH_SMSG_X11_OPEN);
+  packet_integrity_check(payload_len, 4 + remote_len, SSH_SMSG_X11_OPEN);
 
   /* Try to open a socket for the local X server. */
   display = getenv("DISPLAY");

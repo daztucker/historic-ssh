@@ -25,7 +25,7 @@ int ssh_tf_init(uid_t uid)
   int fd;
 
   /* Set unique ticket string manually since we're still root. */
-  ticket = xmalloc(MAXPATHLEN);
+  ticket = xmalloc(1024);
 #ifdef AFS
   if (lstat("/ticket", &st) != -1)
     tkt_root = "/ticket/";

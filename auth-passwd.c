@@ -15,7 +15,7 @@ the password is valid for the user.
 */
 
 #include "includes.h"
-RCSID("$Id: auth-passwd.c,v 1.16 1999/11/11 21:29:30 bg Exp $");
+RCSID("$Id: auth-passwd.c,v 1.17 1999/12/30 16:22:30 bg Exp $");
 
 #ifdef HAVE_SCO_ETC_SHADOW
 # include <sys/security.h>
@@ -173,6 +173,7 @@ int auth_password(struct passwd *pw, const char *password)
   return 0;			/* Fail */
 }
 
+#ifdef KRB4
 int
 auth_krb4_pass(struct passwd *pw, const char *password)
 {
@@ -291,3 +292,4 @@ kerberos_auth_failure:
   return 0;
 #endif /* !KRB_VERIFY_SECURE */
 }
+#endif /* KRB4 */

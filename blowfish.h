@@ -96,8 +96,6 @@ void BF_encrypt(BF_LONG *data,BF_KEY *key);
 void BF_decrypt(BF_LONG *data,BF_KEY *key);
 void BF_cbc_encrypt(const unsigned char *in, unsigned char *out, long length,
 	BF_KEY *ks, unsigned char *iv, int enc);
-void BF_iapcbc_encrypt(const unsigned char *in, unsigned char *out,
-		       long length, BF_KEY *ks, unsigned char *iv, int enc);
 void BF_cfb64_encrypt(unsigned char *in, unsigned char *out, long length,
 	BF_KEY *schedule, unsigned char *ivec, int *num, int enc);
 void BF_ofb64_encrypt(unsigned char *in, unsigned char *out, long length,

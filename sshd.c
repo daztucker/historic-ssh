@@ -18,7 +18,7 @@ agent connections.
 */
 
 #include "includes.h"
-RCSID("$Id: sshd.c,v 1.37 1999/11/15 13:29:22 bg Exp $");
+RCSID("$Id: sshd.c,v 1.38 1999/12/30 16:23:25 bg Exp $");
 
 #include "xmalloc.h"
 #include "rsa.h"
@@ -863,6 +863,9 @@ void do_connection(int privileged_port)
   /* Get cipher type. */
   cipher_type = packet_get_char();
 
+  if (!(cipher_mask() & (1 << cipher_type)))
+    packet_disconnect("Warning: client selects unsupported cipher.");
+
   /* Get check bytes from the packet.  These must match those we sent earlier
      with the public key packet. */
   for (i = 0; i < 8; i++)
@@ -1493,7 +1496,7 @@ void do_authenticated(struct passwd *pw)
 	    goto fail;
 
 	  /* Setup to always have a local .Xauthority. */
-	  xauthfile = xmalloc(MAXPATHLEN);
+	  xauthfile = xmalloc(1024);
 	  sprintf(xauthfile, "/tmp/Xauth%d_%d", pw->pw_uid, getpid());
 
 	  break;

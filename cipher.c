@@ -12,7 +12,7 @@ Created: Wed Apr 19 17:41:39 1995 ylo
 */
 
 #include "includes.h"
-RCSID("$Id: cipher.c,v 1.17 1999/11/29 13:34:56 bg Exp $");
+RCSID("$Id: cipher.c,v 1.18 2000/01/05 16:36:40 bg Exp $");
 
 #include "ssh.h"
 #include "cipher.h"
@@ -21,6 +21,89 @@ RCSID("$Id: cipher.c,v 1.17 1999/11/29 13:34:56 bg Exp $");
 #ifdef  WITH_BLOWFISH
 /* Integrity aware plaintext-ciphertext block chaining (iaPCBC) */
 #define WITH_BF_IAPCBC
+#endif
+
+#ifdef WITH_BF_IAPCBC
+#undef n2l
+#define n2l(c,l)        (l =((unsigned long)(*((c)++)))<<24L, \
+                         l|=((unsigned long)(*((c)++)))<<16L, \
+                         l|=((unsigned long)(*((c)++)))<< 8L, \
+                         l|=((unsigned long)(*((c)++))))
+
+#undef l2n
+#define l2n(l,c)        (*((c)++)=(unsigned char)(((l)>>24L)&0xff), \
+                         *((c)++)=(unsigned char)(((l)>>16L)&0xff), \
+                         *((c)++)=(unsigned char)(((l)>> 8L)&0xff), \
+                         *((c)++)=(unsigned char)(((l)     )&0xff))
+
+#define ADDC(carry, sum, addend) { sum += addend; if (sum < addend) carry++; }
+
+void
+BF_iapcbc_encrypt(const unsigned char *in,
+		  unsigned char *out,
+		  long length,
+		  BF_KEY *ks,
+		  unsigned char *iv,
+		  int encrypt)
+{
+  register BF_LONG tin0,tin1;
+  register BF_LONG tout0,tout1,xor0,xor1;
+  register long l=length;
+  BF_LONG tin[2];
+
+  if (encrypt)
+    {
+      n2l(iv,xor0);
+      n2l(iv,xor1);
+      iv-=8;
+      for (l-=8; l>=0; l-=8)
+	{
+	  n2l(in,tin0);
+	  n2l(in,tin1);
+	  tin[0]=tin0^xor0;
+	  tin[1]=tin1^xor1;
+	  BF_encrypt(tin,ks);
+	  tout0=tin[0];
+	  tout1=tin[1];
+	  l2n(tout0,out);
+	  l2n(tout1,out);
+	  ADDC(xor1, xor0, tout0);
+	  ADDC(xor1, xor0, tin0);
+	  /* xor0+=tout0+tin0; */
+	  xor1+=tout1+tin1;
+	}
+      assert(l == -8);
+      l2n(xor0,iv);
+      l2n(xor1,iv);
+    }
+  else
+    {
+      n2l(iv,xor0);
+      n2l(iv,xor1);
+      iv-=8;
+      for (l-=8; l>=0; l-=8)
+	{
+	  n2l(in,tin0);
+	  n2l(in,tin1);
+	  tin[0]=tin0;
+	  tin[1]=tin1;
+	  BF_decrypt(tin,ks);
+	  tout0=tin[0]^xor0;
+	  tout1=tin[1]^xor1;
+	  l2n(tout0,out);
+	  l2n(tout1,out);
+	  ADDC(xor1, xor0, tout0);
+	  ADDC(xor1, xor0, tin0);
+	  /* xor0+=tout0+tin0; */
+	  xor1+=tout1+tin1;
+	}
+      assert(l == -8);
+      l2n(xor0,iv);
+      l2n(xor1,iv);
+    }
+  tin0=tin1=tout0=tout1=xor0=xor1=0;
+  tin[0]=tin[1]=0;
+}
 #endif
 
 /*

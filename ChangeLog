@@ -1,3 +1,11 @@
+Thu Dec 30 14:59:12 1999  Bjoern Groenvall  <bg@sics.se>
+
+	* auth-passwd.c (auth_krb4_pass): Only exists when KRB4 is
+ 	defined.
+	
+	* sshd.c (do_connection): If client selects unsupported cipher,
+ 	disconnect. From Markus.
+
 Sun Nov 28 18:15:40 1999  Bjoern Groenvall  <bg@bg.sics.se>
 
 	* cipher.c (cipher_set_key): Integrate new experimental

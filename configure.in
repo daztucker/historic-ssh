@@ -8,7 +8,7 @@
 #
 # Created: Wed Mar 22 18:02:48 1995 ylo
 #
-# $Id: configure.in,v 1.26 1999/11/29 13:36:15 bg Exp $
+# $Id: configure.in,v 1.27 2000/01/07 19:50:09 bg Exp $
 #
 
 AC_INIT(sshd.c)
@@ -627,7 +627,7 @@ if test "$with_afs" = no; then
     AC_MSG_RESULT(no)
     AC_MSG_WARN("AFS requires Kerberos v4 support.")
   else
-    KRB4_LIBS="${KRB4_LIBS} -lkafs"
+    KRB4_LIBS="-lkafs ${KRB4_LIBS}"
     if test -n "$os_aix"; then
       KRB4_LIBS="${KRB4_LIBS} -lld"
     fi

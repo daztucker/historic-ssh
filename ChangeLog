@@ -1,3 +1,12 @@
+2000-07-05  Sami J. Lehtinen  <sjl@ssh.com>
+
+	* Applied patches:
+	  - disallowing access via unsupported ciphers by Markus Friedl
+	  - not hogging syslog file handles by James Barlow
+	  - making sure scp's don't miss data at the ends of files by N.N.
+
+	  Thanks to Atro Tossavainen for informing me of these.
+
 2000-06-30  Sami J. Lehtinen  <sjl@ssh.com>
 
 	* Updated license.

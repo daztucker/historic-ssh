@@ -14,8 +14,11 @@ Cryptographically strong random number generator.
 */
 
 /*
- * $Id: randoms.h,v 1.2 1995/07/13 01:29:28 ylo Exp $
+ * $Id: randoms.h,v 1.3 1995/09/13 12:00:02 ylo Exp $
  * $Log: randoms.h,v $
+ * Revision 1.3  1995/09/13  12:00:02  ylo
+ * 	Changes to make this work on Cray.
+ *
  * Revision 1.2  1995/07/13  01:29:28  ylo
  * 	Removed "Last modified" header.
  * 	Added cvs log.
@@ -30,13 +33,12 @@ Cryptographically strong random number generator.
 
 #define RANDOM_STATE_BITS	8192
 #define RANDOM_STATE_BYTES	(RANDOM_STATE_BITS / 8)
-#define RANDOM_STATE_WORDS	(RANDOM_STATE_BYTES / sizeof(uint32))
 
 /* Structure for the random state. */
 typedef struct
 {
-  uint32 state[RANDOM_STATE_WORDS];	/* Pool of random data. */
-  uint32 stir_key[16];			/* Extra data for next stirring. */
+  unsigned char state[RANDOM_STATE_BYTES];/* Pool of random data. */
+  unsigned char stir_key[64];		/* Extra data for next stirring. */
   unsigned int next_available_byte;	/* Index of next available byte. */
   unsigned int add_position;		/* Index to add noise. */
 } RandomState;

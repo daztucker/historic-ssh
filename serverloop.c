@@ -14,8 +14,17 @@ Server main loop for handling the interactive session.
 */
 
 /*
- * $Id: serverloop.c,v 1.14 1997/04/21 01:04:46 kivinen Exp $
+ * $Id: serverloop.c,v 1.16 1998/05/04 13:36:28 kivinen Exp $
  * $Log: serverloop.c,v $
+ * Revision 1.16  1998/05/04 13:36:28  kivinen
+ * 	Fixed no_port_forwarding_flag so that it will also disable
+ * 	local port forwardings from the server side. Moved
+ * 	packet_get_all after reading the the remote_channel number
+ * 	from the packet.
+ *
+ * Revision 1.15  1998/03/27 17:01:02  kivinen
+ * 	Fixed idle_time code.
+ *
  * Revision 1.14  1997/04/21 01:04:46  kivinen
  * 	Changed server_loop to call pty_cleanup_proc instead of
  * 	pty_release, so we can be sure it is never called twice.
@@ -69,6 +78,9 @@ Server main loop for handling the interactive session.
 #include "buffer.h"
 #include "servconf.h"
 #include "pty.h"
+
+/* Flags that may be set in authorized_keys options. */
+extern int no_port_forwarding_flag;
 
 extern time_t idle_timeout;
 static time_t idle_time_last = 0;
@@ -165,23 +177,29 @@ void process_buffered_input_packets()
 	  break;
 	  
 	case SSH_MSG_PORT_OPEN:
-#ifdef SSHD_NO_PORT_FORWARDING
-	  {
-	    int remote_channel;
-	    
-	    packet_get_all();
-	    /* Get remote channel number. */
-	    remote_channel = packet_get_int();
-	    
-	    debug("Denied port open request.");
-	    packet_start(SSH_MSG_CHANNEL_OPEN_FAILURE);
-	    packet_put_int(remote_channel);
-	    packet_send();
-	  }
-#else
-	  debug("Received port open request.");
-	  channel_input_port_open();
-#endif
+#ifndef SSHD_NO_PORT_FORWARDING
+	  if (no_port_forwarding_flag)
+#endif /* SSHD_NO_PORT_FORWARDING */
+	    {
+	      int remote_channel;
+	      
+	      /* Get remote channel number. */
+	      remote_channel = packet_get_int();
+	      
+	      packet_get_all();
+	      
+	      debug("Denied port open request.");
+	      packet_start(SSH_MSG_CHANNEL_OPEN_FAILURE);
+	      packet_put_int(remote_channel);
+	      packet_send();
+	    }
+#ifndef SSHD_NO_PORT_FORWARDING
+	  else
+	    {
+	      debug("Received port open request.");
+	      channel_input_port_open();
+	    }
+#endif /* SSHD_NO_PORT_FORWARDING */
 	  break;
 	  
 	case SSH_MSG_CHANNEL_OPEN_CONFIRMATION:
@@ -364,7 +382,7 @@ void wait_until_can_do_something(fd_set *readset, fd_set *writeset,
 
       diff = time(NULL) - idle_time_last;
       
-      if (idle_timeout < diff)
+      if (idle_timeout > diff)
 	tv.tv_sec = idle_timeout - diff;
       else
 	tv.tv_sec = 1;
@@ -586,6 +604,7 @@ void server_loop(int pid, int fdin_arg, int fdout_arg, int fderr_arg,
   signal(SIGCHLD, sigchld_handler);
 
   /* Initialize our global variables. */
+  idle_time_last = time(NULL);
   fdin = fdin_arg;
   fdout = fdout_arg;
   fderr = fderr_arg;

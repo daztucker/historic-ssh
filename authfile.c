@@ -2,10 +2,11 @@
 
 authfile.c
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Mon Mar 27 03:52:05 1995 ylo
 
@@ -15,29 +16,32 @@ for reading the passphrase from the user.
 */
 
 /*
- * $Id: authfile.c,v 1.2 1997/03/19 22:18:27 kivinen Exp $
+ * $Id: authfile.c,v 1.3 1999/11/17 17:04:40 tri Exp $
  * $Log: authfile.c,v $
+ * Revision 1.3  1999/11/17 17:04:40  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.2  1997/03/19 22:18:27  kivinen
- * 	Removed check that SSH_CIPHER_NONE is in cipher_mask because
- * 	it is always internally supported, even if not in cipher_mask.
+ *      Removed check that SSH_CIPHER_NONE is in cipher_mask because
+ *      it is always internally supported, even if not in cipher_mask.
  *
  * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
- * 	Imported ssh-1.2.13.
+ *      Imported ssh-1.2.13.
  *
  * Revision 1.6  1995/10/02  01:19:48  ylo
- * 	Added some casts to avoid compiler warnings.
+ *      Added some casts to avoid compiler warnings.
  *
  * Revision 1.5  1995/09/09  21:26:39  ylo
  * /m/shadows/u2/users/ylo/ssh/README
  *
  * Revision 1.4  1995/08/21  23:21:56  ylo
- * 	Don't complain about bad passphrase if passphrase was empty.
+ *      Don't complain about bad passphrase if passphrase was empty.
  *
  * Revision 1.3  1995/07/13  01:16:38  ylo
- * 	Removed "Last modified" header.
+ *      Removed "Last modified" header.
  *
  * Revision 1.2  1995/07/13  01:11:52  ylo
- * 	Added cvs log.
+ *      Added cvs log.
  *
  * $Endlog$
  */
@@ -62,8 +66,8 @@ for reading the passphrase from the user.
    userfile. */
 
 int save_private_key(uid_t uid, const char *filename, const char *passphrase,
-		     RSAPrivateKey *key, const char *comment, 
-		     RandomState *state)
+                     RSAPrivateKey *key, const char *comment, 
+                     RandomState *state)
 {
   Buffer buffer, encrypted;
   char buf[100], *cp;
@@ -125,8 +129,8 @@ int save_private_key(uid_t uid, const char *filename, const char *passphrase,
 
   cipher_set_key_string(&cipher, cipher_type, passphrase, 1);
   cipher_encrypt(&cipher, (unsigned char *)cp, 
-		 (unsigned char *)buffer_ptr(&buffer),
-		 buffer_len(&buffer));
+                 (unsigned char *)buffer_ptr(&buffer),
+                 buffer_len(&buffer));
   memset(&cipher, 0, sizeof(cipher));
 
   /* Destroy temporary data. */
@@ -142,7 +146,7 @@ int save_private_key(uid_t uid, const char *filename, const char *passphrase,
       buffer_len(&encrypted))
     {
       debug("Write to key file %.200s failed: %.100s", filename,
-	    strerror(errno));
+            strerror(errno));
       buffer_free(&encrypted);
       userfile_close(uf);
       userfile_remove(uid, filename);
@@ -159,7 +163,7 @@ int save_private_key(uid_t uid, const char *filename, const char *passphrase,
    userfile. */
 
 int load_public_key(uid_t uid, const char *filename, RSAPublicKey *pub, 
-		    char **comment_return)
+                    char **comment_return)
 {
   int i;
   UserFile uf;
@@ -188,7 +192,7 @@ int load_public_key(uid_t uid, const char *filename, RSAPublicKey *pub,
   if (userfile_read(uf, cp, len) != len)
     {
       debug("Read from key file %.200s failed: %.100s", filename, 
-	    strerror(errno));
+            strerror(errno));
       buffer_free(&buffer);
       userfile_close(uf);
       return 0;
@@ -208,9 +212,9 @@ int load_public_key(uid_t uid, const char *filename, RSAPublicKey *pub,
   for (i = 0; i < (unsigned int)strlen(AUTHFILE_ID_STRING) + 1; i++)
     if (buffer_get_char(&buffer) != (unsigned char)AUTHFILE_ID_STRING[i])
       {
-	debug("Bad key file %.200s.", filename);
-	buffer_free(&buffer);
-	return 0;
+        debug("Bad key file %.200s.", filename);
+        buffer_free(&buffer);
+        return 0;
       }
 
   /* Skip cipher type and reserved data. */
@@ -238,7 +242,7 @@ int load_public_key(uid_t uid, const char *filename, RSAPublicKey *pub,
    uid with userfile. */
 
 int load_private_key(uid_t uid, const char *filename, const char *passphrase,
-		     RSAPrivateKey *prv, char **comment_return)
+                     RSAPrivateKey *prv, char **comment_return)
 {
   int i, check1, check2, cipher_type;
   UserFile uf;
@@ -268,7 +272,7 @@ int load_private_key(uid_t uid, const char *filename, const char *passphrase,
   if (userfile_read(uf, cp, len) != len)
     {
       debug("Read from key file %.200s failed: %.100s", filename,
-	    strerror(errno));
+            strerror(errno));
       buffer_free(&buffer);
       userfile_close(uf);
       return 0;
@@ -288,9 +292,9 @@ int load_private_key(uid_t uid, const char *filename, const char *passphrase,
   for (i = 0; i < (unsigned int)strlen(AUTHFILE_ID_STRING) + 1; i++)
     if (buffer_get_char(&buffer) != (unsigned char)AUTHFILE_ID_STRING[i])
       {
-	debug("Bad key file %.200s.", filename);
-	buffer_free(&buffer);
-	return 0;
+        debug("Bad key file %.200s.", filename);
+        buffer_free(&buffer);
+        return 0;
       }
 
   /* Read cipher type. */
@@ -313,7 +317,7 @@ int load_private_key(uid_t uid, const char *filename, const char *passphrase,
       (cipher_mask() & (1 << cipher_type)) == 0)
     {
       debug("Unsupported cipher %.100s used in key file %.200s.",
-	    cipher_name(cipher_type), filename);
+            cipher_name(cipher_type), filename);
       buffer_free(&buffer);
       goto fail;
     }
@@ -325,8 +329,8 @@ int load_private_key(uid_t uid, const char *filename, const char *passphrase,
   /* Rest of the buffer is encrypted.  Decrypt it using the passphrase. */
   cipher_set_key_string(&cipher, cipher_type, passphrase, 0);
   cipher_decrypt(&cipher, (unsigned char *)cp,
-		 (unsigned char *)buffer_ptr(&buffer),
-		 buffer_len(&buffer));
+                 (unsigned char *)buffer_ptr(&buffer),
+                 buffer_len(&buffer));
 
   buffer_free(&buffer);
 
@@ -336,14 +340,14 @@ int load_private_key(uid_t uid, const char *filename, const char *passphrase,
       check2 != buffer_get_char(&decrypted))
     {
       if (strcmp(passphrase, "") != 0)
-	debug("Bad passphrase supplied for key file %.200s.", filename);
+        debug("Bad passphrase supplied for key file %.200s.", filename);
       /* Bad passphrase. */
       buffer_free(&decrypted);
     fail:
       mpz_clear(&prv->n);
       mpz_clear(&prv->e);
       if (comment_return)
-	xfree(*comment_return);
+        xfree(*comment_return);
       return 0;
     }
 

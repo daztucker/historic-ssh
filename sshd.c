@@ -18,8 +18,66 @@ agent connections.
 */
 
 /*
- * $Id: sshd.c,v 1.26 1996/10/29 22:46:25 kivinen Exp $
+ * $Id: sshd.c,v 1.36 1997/03/27 05:59:50 kivinen Exp $
  * $Log: sshd.c,v $
+ * Revision 1.36  1997/03/27 05:59:50  kivinen
+ * 	Fixed bug in HAVE_USERSEC_H code.
+ *
+ * Revision 1.35  1997/03/27 03:12:22  kivinen
+ * 	Added kerberos patches from Glenn Machin.
+ * 	Added USELOGIN patches from Brian Cully.
+ *
+ * Revision 1.34  1997/03/26 05:32:42  kivinen
+ * 	Added idle_timeout variable.
+ * 	If debug_flag is given set rsa to verbose.
+ * 	Changed uid 0 to bee UID_ROOT.
+ *
+ * Revision 1.33  1997/03/25 05:48:29  kivinen
+ * 	Implemented SilentDeny and umask options. Added HAVE_DAEMON
+ * 	support.
+ * 	Moved LIBWRAP code to child.
+ * 	Moved closing of sockets/pipes out from server_loop.
+ *
+ * Revision 1.32  1997/03/19 23:04:43  kivinen
+ * 	Fixed typo.
+ *
+ * Revision 1.31  1997/03/19 21:17:57  kivinen
+ * 	Added some errno printing to all fatal calls.
+ * 	Added SSH_ORIGINAL_COMMAND environment variable setting. It
+ * 	will have the original command from the network when using
+ * 	forced command. It can be used to get arguments for forced
+ * 	command.
+ *
+ * Revision 1.30  1997/03/19 19:25:57  kivinen
+ * 	Added input buffer clearing for error conditions, so packet.c
+ * 	can check that buffer must be empty before new packet is read
+ * 	in.
+ *
+ * Revision 1.29  1997/03/19 17:53:17  kivinen
+ * 	Added more ETC_SHADOW support and SECURE_RPC, SECURE_NFS and
+ * 	NIS_PLUS support from Andy Polyakov <appro@fy.chalmers.se>.
+ * 	Added TIS authentication code from Andre April
+ * 	<Andre.April@cediti.be>.
+ * 	Moved authentication fail loop to do_authentication_fail_loop
+ * 	function. Added checks that username isn't longer than 255
+ * 	characters.
+ * 	Changed do_authentication to get cipher_type, so it can
+ * 	disable RhostsRsa authentication if using unsecure cipher
+ * 	(NONE, or ARCFOUR).
+ * 	Changed order of environment variables set to child, because
+ * 	digital unixes telnet dumps core if USER is the first
+ * 	environment variable set.
+ * 	Added code that will set all ip-address to xauth so it should
+ * 	work for multihosted machines too. Dont use xauth add
+ * 	host/unix:0 on crays, because it complains about it. Patch
+ * 	from Arne Henrik Juul <arnej@imf.unit.no>
+ *
+ * Revision 1.28  1996/11/24 08:26:15  kivinen
+ * 	Added SSHD_NO_{PORT,X11}_FORWARDING support.
+ *
+ * Revision 1.27  1996/11/04 06:35:01  ylo
+ * 	Updated processing of check_emulation output.
+ *
  * Revision 1.26  1996/10/29 22:46:25  kivinen
  * 	log -> log_msg. Added old agent emulation code (disable agent
  * 	forwarding if the other end is too old).
@@ -280,6 +338,14 @@ agent connections.
 #ifdef HAVE_ULIMIT_H
 #include <ulimit.h>
 #endif /* HAVE_ULIMIT_H */
+#ifdef HAVE_ETC_SHADOW
+#ifdef HAVE_SHADOW_H
+#include <shadow.h>
+#endif /* HAVE_SHADOW_H */
+#ifndef SHADOW
+#define SHADOW "/etc/shadow"
+#endif
+#endif /* HAVE_ETC_SHADOW */
 
 #ifdef LIBWRAP
 #include <tcpd.h>
@@ -296,6 +362,12 @@ int deny_severity = LOG_WARNING;
 #include <unistd.h>
 #include <sys/category.h>
 extern char *setlimits();
+#endif
+
+#ifdef HAVE_TIS
+/* Support for TIS authentication server
+   Contributed by Andre April <Andre.April@cediti.be>. */
+#include "firewall.h"	/* TIS authsrv authentication */
 #endif
 
 #ifdef _PATH_BSHELL
@@ -319,6 +391,16 @@ extern char *setlimits();
 #ifndef O_NOCTTY
 #define O_NOCTTY	0
 #endif
+
+#ifdef KERBEROS
+#ifdef KRB5
+#include <krb5.h>
+/* Global the contexts */
+krb5_context ssh_context = 0;
+krb5_auth_context auth_context = 0;
+#endif /* KRB5 */
+char *ticket = "none\0";
+#endif /* KERBEROS */
 
 /* Server configuration options. */
 ServerOptions options;
@@ -355,7 +437,9 @@ int no_port_forwarding_flag = 0;
 int no_agent_forwarding_flag = 0;
 int no_x11_forwarding_flag = 0;
 int no_pty_flag = 0;
+time_t idle_timeout = 0;
 char *forced_command = NULL;  /* RSA authentication "command=" option. */
+char *original_command = NULL;  /* original command from protocol. */
 struct envstring *custom_environment = NULL; 
 			  /* RSA authentication "environment=" options. */
 
@@ -393,7 +477,7 @@ RSAPublicKey public_key;
 
 /* Prototypes for various functions defined later in this file. */
 void do_connection(int privileged_port);
-void do_authentication(char *user, int privileged_port);
+void do_authentication(char *user, int privileged_port, int cipher_type);
 void do_authenticated(struct passwd *pw);
 void do_exec_pty(const char *command, int ptyfd, int ttyfd, 
 		 const char *ttyname, struct passwd *pw, const char *term,
@@ -497,6 +581,7 @@ int main(int ac, char **av)
   extern int optind;
   int opt, aux, sock_in, sock_out, newsock, i, pid, on = 1;
   int remote_major, remote_minor;
+  int perm_denied = 0;
   struct sockaddr_in sin;
   char buf[100]; /* Must not be larger than remote_version. */
   char remote_version[100]; /* Must be at least as big as buf. */
@@ -505,7 +590,8 @@ int main(int ac, char **av)
 #ifdef SO_LINGER
   struct linger linger;
 #endif /* SO_LINGER */
-
+  int done;
+  
   /* Save argv[0]. */
   saved_argv = av;
   if (strchr(av[0], '/'))
@@ -591,6 +677,10 @@ int main(int ac, char **av)
       fprintf(stderr, "Bad port number.\n");
       exit(1);
     }
+  if (options.umask != -1)
+    {
+      umask(options.umask);
+    }
 
   /* Check that there are no remaining arguments. */
   if (optind < ac)
@@ -607,8 +697,24 @@ int main(int ac, char **av)
   debug("sshd version %.100s [%.100s]", SSH_VERSION, HOSTTYPE);
 
   /* Load the host key.  It must have empty passphrase. */
-  if (!load_private_key(geteuid(), options.host_key_file, "", 
-			&sensitive_data.host_key, &comment))
+  done = load_private_key(geteuid(), options.host_key_file, "", 
+			  &sensitive_data.host_key, &comment);
+
+#ifdef SECURE_RPC
+  if (!done)
+    {
+      char *passphrase;
+
+      passphrase = userfile_get_des_1_magic_phrase(geteuid());
+      done = load_private_key(geteuid(), options.host_key_file,
+			      passphrase, &sensitive_data.host_key, &comment);
+      if (done)
+	debug ("Using SUN-DES-1 magic phrase to decrypt host key.");
+      memset(passphrase, 0, strlen(passphrase));
+      xfree(passphrase);
+    }
+#endif
+  if (!done)
     {
       if (debug_flag)
 	{
@@ -638,7 +744,11 @@ int main(int ac, char **av)
   /* If not in debugging mode, and not started from inetd, disconnect from
      the controlling terminal, and fork.  The original process exits. */
   if (!debug_flag && !inetd_flag)
-    { 
+#ifdef HAVE_DAEMON
+    if (daemon(0, 0) < 0)
+      error("daemon: %.100s", strerror(errno));
+#else /* HAVE_DAEMON */
+    {
 #ifdef TIOCNOTTY
       int fd;
 #endif /* TIOCNOTTY */
@@ -670,7 +780,8 @@ int main(int ac, char **av)
 #endif
 #endif /* HAVE_SETSID */
     }
-
+#endif /* HAVE_DAEMON */
+    
   /* Reinitialize the log (because of the fork above). */
   log_init(av0, debug_flag && !inetd_flag, 
 	   debug_flag || options.fascist_logging, 
@@ -695,7 +806,7 @@ int main(int ac, char **av)
   rsa_set_mp_memory_allocation();
 
   /* Do not display messages to stdout in RSA code. */
-  rsa_set_verbose(0);
+  rsa_set_verbose(debug_flag);
 
   /* Initialize the random number generator. */
   debug("Initializing random number generator; seed file %.200s", 
@@ -706,6 +817,8 @@ int main(int ac, char **av)
   /* Chdir to the root directory so that the current disk can be unmounted
      if desired. */
   chdir("/");
+
+  idle_timeout = options.idle_timeout;
   
   /* Start listening for a socket, unless started from inetd. */
   if (inetd_flag)
@@ -760,7 +873,8 @@ int main(int ac, char **av)
 	  error("bind: %.100s", strerror(errno));
 	  shutdown(listen_sock, 2);
 	  close(listen_sock);
-	  fatal("Bind to port %d failed.", options.port);
+	  fatal("Bind to port %d failed: %.200s.", options.port,
+		strerror(errno));
 	}
 
       if (!debug_flag)
@@ -803,6 +917,17 @@ int main(int ac, char **av)
       /* Arrange SIGCHLD to be caught. */
       signal(SIGCHLD, main_sigchld_handler);
 
+#ifdef KERBEROS
+#ifdef KRB5
+      /* Initialize contexts and setup replay cache */
+      if (!ssh_context)
+	{
+	  krb5_init_context(&ssh_context);
+	  krb5_init_ets(ssh_context);
+	}
+#endif
+#endif
+
       /* Stay listening for connections until the system crashes or the
 	 daemon is killed with a signal. */
       for (;;)
@@ -821,24 +946,6 @@ int main(int ac, char **av)
 	      error("accept: %.100s", strerror(errno));
 	      continue;
 	    }
-
-#ifdef LIBWRAP
-	  {
-	    struct request_info req;
-	    request_init(&req, RQ_DAEMON, av0, RQ_FILE, newsock, NULL);
-	    fromhost(&req);
-	    if (!hosts_access(&req)) 
-	      {
-		error("Connection from %.500s refused by tcp_wrappers.",
-		      eval_client(&req));
-		shutdown(newsock, 2);
-		close(newsock);
-		continue;
-	      }
-	    /* if from inet: refuse(&req); */
-	    log_msg("connect from %.500s", eval_client(&req));
-	  }
-#endif /* LIBWRAP */
 
 	  /* Got connection.  Fork a child to handle it, unless we are in
 	     debugging mode. */
@@ -866,6 +973,16 @@ int main(int ac, char **av)
 		  close(listen_sock);
 		  sock_in = newsock;
 		  sock_out = newsock;
+#ifdef LIBWRAP
+		  {
+		    struct request_info req;
+		    request_init(&req, RQ_DAEMON, av0, RQ_FILE, newsock, NULL);
+		    fromhost(&req);
+		    if (!hosts_access(&req))
+		      refuse(&req);
+		  }
+#endif /* LIBWRAP */
+
 		  log_init(av0, debug_flag && !inetd_flag, 
 			   options.fascist_logging || debug_flag, 
 			   options.quiet_mode, options.log_facility);
@@ -918,23 +1035,33 @@ int main(int ac, char **av)
       get_remote_ipaddr(), get_remote_port());
 
   /* Check whether logins are denied from this host. */
-  if (options.num_deny_hosts > 0)
-    {
-      const char *hostname = get_canonical_hostname();
-      const char *ipaddr = get_remote_ipaddr();
-      int i;
-      for (i = 0; i < options.num_deny_hosts; i++)
-	if (match_pattern(hostname, options.deny_hosts[i]) ||
-	    match_pattern(ipaddr, options.deny_hosts[i]))
-	  {
-	    log_msg("Connection from %.200s denied.\n", hostname);
-	    hostname = "You are not allowed to connect.  Go away!\r\n";
-	    write(sock_out, hostname, strlen(hostname));
-	    close(sock_in);
-	    close(sock_out);
-	    exit(0);
-	  }
-    }
+  {
+    const char *hostname = get_canonical_hostname();
+    const char *ipaddr = get_remote_ipaddr();
+    int i;
+    if (options.num_deny_hosts > 0)
+      {
+	for (i = 0; i < options.num_deny_hosts; i++)
+	  if (match_pattern(hostname, options.deny_hosts[i]) ||
+	      match_pattern(ipaddr, options.deny_hosts[i]))
+	    perm_denied = 1;
+      }
+    if ((!perm_denied) && options.num_allow_hosts > 0)
+      {
+	for (i = 0; i < options.num_allow_hosts; i++)
+	  if (match_pattern(hostname, options.allow_hosts[i]) ||
+	      match_pattern(ipaddr, options.allow_hosts[i]))
+	    break;
+	if (i >= options.num_allow_hosts)
+	  perm_denied = 1;
+      }
+    if (perm_denied && options.silent_deny)
+      {
+	close(sock_in);
+	close(sock_out);
+	exit(0);
+      }
+  }
 
   /* We don\'t want to listen forever unless the other side successfully
      authenticates itself.  So we set up an alarm which is cleared after
@@ -1002,36 +1129,27 @@ int main(int ac, char **av)
 		       PROTOCOL_MAJOR, remote_major);
       }
       break;
-    case EMULATE_VERSION_REALLY_TOO_OLD:
     case EMULATE_VERSION_TOO_OLD:
       packet_disconnect("Your ssh version is too old and is no "
 			"longer supported.  Please install a newer version.");
       break;
-    case EMULATE_VERSION_TOO_NEW:
+    case EMULATE_VERSION_NEWER:
       packet_disconnect("This server does not support your "
 			"new ssh version.");
-      break;      
-    default:
-      /* just continue... */
       break;
+    case EMULATE_VERSION_OK:
+      break;
+    default:
+      fatal("Unexpected return value from check_emulation.");
     }
 
-  /* Check whether logins are permitted from this host. */
-  if (options.num_allow_hosts > 0)
+  if (perm_denied)
     {
       const char *hostname = get_canonical_hostname();
-      const char *ipaddr = get_remote_ipaddr();
-      int i;
-      for (i = 0; i < options.num_allow_hosts; i++)
-	if (match_pattern(hostname, options.allow_hosts[i]) ||
-	    match_pattern(ipaddr, options.allow_hosts[i]))
-	  break;
-      if (i >= options.num_allow_hosts)
-	{
-	  log_msg("Connection from %.200s not allowed.\n", hostname);
-	  packet_disconnect("Sorry, you are not allowed to connect.");
-	  /*NOTREACHED*/
-	}
+      
+      log_msg("Connection from %.200s not allowed.\n", hostname);
+      packet_disconnect("Sorry, you are not allowed to connect.");
+      /*NOTREACHED*/
     }
 
   packet_set_nonblocking();
@@ -1102,6 +1220,22 @@ void do_connection(int privileged_port)
     auth_mask |= 1 << SSH_AUTH_RHOSTS_RSA;
   if (options.rsa_authentication)
     auth_mask |= 1 << SSH_AUTH_RSA;
+#ifdef HAVE_TIS
+  if (options.tis_authentication)
+    auth_mask |= 1 << SSH_AUTH_TIS;
+#endif
+#ifdef KERBEROS
+#ifdef KRB5
+  if (options.kerberos_authentication)
+    auth_mask |= 1 << SSH_AUTH_KERBEROS;
+#endif
+#endif
+#ifdef KERBEROS_TGT_PASSING
+#ifdef KRB5
+  if (options.kerberos_tgt_passing)
+    auth_mask |= 1 << SSH_PASS_KERBEROS_TGT;
+#endif
+#endif
   if (options.password_authentication)
     auth_mask |= 1 << SSH_AUTH_PASSWORD;
   packet_put_int(auth_mask);
@@ -1205,75 +1339,194 @@ void do_connection(int privileged_port)
   rsa_clear_private_key(&sensitive_data.host_key);
 
   /* Do the authentication. */
-  do_authentication(user, privileged_port);
+  do_authentication(user, privileged_port, cipher_type);
 }
 
 /* Returns true if logging in as the specified user is permitted.  Returns
    false if login is not permitted (e.g., the account is expired). */
 
-int login_permitted(char *user)
+int login_permitted(char *user, struct passwd *pwd)
 {
+  char passwd[6];		/* Only for account lock check */
+ 
+  strncpy(passwd, pwd->pw_passwd, sizeof(passwd));
+  passwd[sizeof(passwd) - 1] = '\0';
 #ifdef HAVE_USERSEC_H
-  char *expiration, current_time[100], normalized[100];
-  int rlogin_permitted;
-  time_t t;
-  struct tm *tm;
-  if (setuserdb(S_READ) < 0)
-    {
-      debug("setuserdb S_READ failed.");
-      return 0;
-    }
-  if (getuserattr(user, S_RLOGINCHK, &rlogin_permitted, SEC_BOOL) < 0)
-    {
-      debug("getuserattr S_RLOGINCHK failed.");
-      enduserdb();
-      return 0;
-    }
-  if (getuserattr(user, S_EXPIRATION, &expiration, SEC_CHAR) < 0)
-    {
-      debug("getuserattr S_EXPIRATION failed.");
-      enduserdb();
-      return 0;
-    }
-  if (!rlogin_permitted)
-    {
-      debug("Remote logins to account %.100s not permitted by user profile.",
-	    user);
-      enduserdb();
-      return 0;
-    }
-  if (strcmp(expiration, "0") == 0)
-    {
-      /* The account does not expire - return success immediately. */
-      enduserdb();
-      return 1;
-    }
-  if (strlen(expiration) != 10)
-    {
-      debug("Account %.100s expiration date is in wrong format.", user);
-      enduserdb();
-      return 0;
-    }
-  t = time(NULL);
-  tm = localtime(&t);
-  sprintf(current_time, "%04d%02d%02d%02d%02d",
-	  tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday,
-	  tm->tm_hour, tm->tm_min);
-  if (expiration[8] < '7') /* Assume year < 70 is 20YY. */
-    strcpy(normalized, "20");
-  else
-    strcpy(normalized, "19");
-  strcat(normalized, expiration + 8);
-  strcat(normalized, expiration);
-  normalized[12] = '\0';
-  if (strcmp(normalized, current_time) < 0)
-    {
-      debug("Account %.100s has expired - access denied.", user);
-      enduserdb();
-      return 0;
-    }
-  enduserdb();
+  {
+    char *expiration, current_time[100], normalized[100];
+    int rlogin_permitted;
+    time_t t;
+    struct tm *tm;
+    if (setuserdb(S_READ) < 0)
+      {
+	debug("setuserdb S_READ failed: %.200s.", strerror(errno));
+	return 0;
+      }
+    if (getuserattr(user, S_RLOGINCHK, &rlogin_permitted, SEC_BOOL) < 0)
+      {
+	debug("getuserattr S_RLOGINCHK failed: %.200s", strerror(errno));
+	enduserdb();
+	return 0;
+      }
+    if (getuserattr(user, S_EXPIRATION, &expiration, SEC_CHAR) < 0)
+      {
+	debug("getuserattr S_EXPIRATION failed: %.200s.", strerror(errno));
+	enduserdb();
+	return 0;
+      }
+    if (!rlogin_permitted)
+      {
+	debug("Remote logins to account %.100s not permitted by user profile.",
+	      user);
+	enduserdb();
+	return 0;
+      }
+    if (strcmp(expiration, "0") == 0)
+      {
+	/* The account does not expire - return success immediately. */
+	enduserdb();
+	return 1;
+      }
+    if (strlen(expiration) != 10)
+      {
+	debug("Account %.100s expiration date is in wrong format.", user);
+	enduserdb();
+	return 0;
+      }
+    t = time(NULL);
+    tm = localtime(&t);
+    sprintf(current_time, "%04d%02d%02d%02d%02d",
+	    tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday,
+	    tm->tm_hour, tm->tm_min);
+    if (expiration[8] < '7') /* Assume year < 70 is 20YY. */
+      strcpy(normalized, "20");
+    else
+      strcpy(normalized, "19");
+    strcat(normalized, expiration + 8);
+    strcat(normalized, expiration);
+    normalized[12] = '\0';
+    if (strcmp(normalized, current_time) < 0)
+      {
+	debug("Account %.100s has expired - access denied.", user);
+	enduserdb();
+	return 0;
+      }
+    enduserdb();
+  }
 #endif /* HAVE_USERSEC_H */
+#ifdef HAVE_ETC_SHADOW
+  {
+    struct spwd *sp;
+    
+    sp = getspnam(user);
+#if defined(SECURE_RPC) && defined(NIS_PLUS)
+    if (geteuid() == UID_ROOT && pwd->pw_uid != UID_ROOT /* do we have guts? */
+	&& (!sp || !sp->sp_pwdp || !strcmp(sp->sp_pwdp,"*NP*")))
+      {
+	if (seteuid(pwd->pw_uid) == UID_ROOT)
+	  {
+	    sp = getspnam(user); /* retry as user */
+	    seteuid(UID_ROOT); 
+	  }
+      }
+#endif /* SECURE_RPC && NIS_PLUS */
+    if (!sp)
+      {
+	/*
+	 * Some systems, e.g.: IRIX, may or may not have /etc/shadow.
+	 * Just check if there is one. If such system is also an YP
+	 * client, then valid password might already be present in passwd
+	 * structure. Just check if it's other than "x". Assume that
+	 * YP server is always right if this is the case.
+ 	 *                                      appro@fy.chalmers.se
+	 */
+	struct stat sbf;
+	
+	if ((stat(SHADOW, &sbf) == 0) && !strcmp(pwd->pw_passwd,"x"))
+	  {
+	    debug("Can't find %.100s's shadow - access denied.", user);
+	    endspent();
+	    return 0;
+	  }
+      }
+    else
+      {
+	time_t today = time((time_t *)NULL)/24/60/60; /* what a day! */
+	
+	/* Check for expiration date */
+	if (sp->sp_expire > 0 && today > sp->sp_expire)
+	  {
+	    debug("Account %.100s has expired - access denied.", user);
+	    endspent();
+	    return 0;
+	  }
+	
+	/* Check for last login */
+	if (sp->sp_inact > 0)
+	  {
+	    char buf[64];
+	    unsigned long llt;
+	    
+	    llt = get_last_login_time(pwd->pw_uid, user, buf, sizeof(buf));
+	    if (llt && (today - llt/24/60/60) > sp->sp_inact)
+	      {
+		debug("Account %.100s was inactive for more than %d days.",
+		      user, sp->sp_inact);
+		endspent();
+	      return 0;
+	      }
+	  }
+	
+	/* Check if password is valid */
+	if (sp->sp_lstchg == 0 ||
+	    (sp->sp_max > 0 && today > sp->sp_lstchg + sp->sp_max))
+	  {
+	    debug("Account %.100s's password is too old - forced to change.",
+		  user);
+	    if (options.forced_passwd_change)
+	      forced_command = "/bin/passwd";
+	    else
+	      {
+		endspent();
+		return 0;
+	      }
+	  }
+	strncpy(passwd, sp->sp_pwdp, sizeof(passwd));
+	passwd[sizeof(passwd) - 1] = '\0';
+      }
+    endspent();
+  }
+#endif /* HAVE_ETC_SHADOW */
+  /*
+   * Check if account is locked. Check if encrypted password starts
+   * with "*LK*".
+   */
+  {
+    if (strncmp(passwd,"*LK*", 4) == 0)
+      {
+	debug("Account %.100s is locked.", user);
+	return 0;
+      }
+  }
+#ifdef CHECK_ETC_SHELLS
+  {
+    int  invalid = 1;
+    char *shell = pwd->pw_shell, *etc_shell, *getusershell();
+    
+    if (!shell || !*shell)
+      shell = DEFAULT_SHELL;
+    
+    while (invalid && (etc_shell = getusershell()))
+      invalid = strcmp(etc_shell,shell);
+    endusershell();
+    
+    if (invalid)
+      {
+	debug("Account %.100s doesn't have valid shell", user);
+	return 0;
+      }
+  }
+#endif /* CHECK_ETC_SHELLS */
   return 1;
 }
 
@@ -1307,12 +1560,38 @@ static void sshd_userfile_cleanup(void *context)
 			    16, SSH_CIPHER_3DES, 0);
 }
 
+/* Fails all authentication requests */
+void do_authentication_fail_loop(void)
+{
+  /* The user does not exist. */
+  packet_start(SSH_SMSG_FAILURE);
+  packet_send();
+  packet_write_wait();
+  
+  /* Keep reading packets, and always respond with a failure.  This is to
+     avoid disclosing whether such a user really exists. */
+  for (;;)
+    {
+      /* Read a packet.  This will not return if the client disconnects. */
+      (void) packet_read();
+      packet_get_all();
+      
+      /* Send failure.  This should be indistinguishable from a failed
+	 authentication. */
+      packet_start(SSH_SMSG_FAILURE);
+      packet_send();
+      packet_write_wait();
+    }
+  /*NOTREACHED*/
+  abort();
+}
+
 /* Performs authentication of an incoming connection.  Session key has already
    been exchanged and encryption is enabled.  User is the user name to log
    in as (received from the clinet).  Privileged_port is true if the
    connection comes from a privileged port (used for .rhosts authentication).*/
 
-void do_authentication(char *user, int privileged_port)
+void do_authentication(char *user, int privileged_port, int cipher_type)
 {
   int type;
   int authenticated = 0;
@@ -1323,34 +1602,52 @@ void do_authentication(char *user, int privileged_port)
   unsigned int client_host_key_bits;
   MP_INT client_host_key_e, client_host_key_n;
   int password_attempts = 0;
+#if defined(KERBEROS) && defined(KRB5)
+  char kuser[128];
+  krb5_principal client = 0, tkt_client = 0;
+  krb5_data krb5data;
+#endif /* defined(KERBEROS) && defined(KRB5) */
+
+  if (strlen(user) > 255)
+    do_authentication_fail_loop();
+
+#if defined(KERBEROS) && defined(KRB5)
+  /* For KRB5 allow the user to input fully qualified name i.e.
+     "username@realm" as the local user name. Then use this name to call
+     out to krb5_aname_to_localname to find if there is a localname
+     for this user. By doing this local names do not have to match
+     kerberos network names. This comes in handy when doing cross realm
+     authentication, or when you want auth_password to authenticate
+     to the users local realm.  Pass client down to auth_password(),
+     auth_kerberos() and auth_kerberos_tgt() */
+  
+  if (!ssh_context)
+    {
+      krb5_init_context(&ssh_context);
+      krb5_init_ets(ssh_context);
+    }
+  debug("Connection attempt for %.100s from %s.", user, 
+	get_canonical_hostname());
+  
+  if (strchr(user,'@') || strchr(user,'%'))
+    {
+      if (strchr(user,'%'))
+	*strchr(user,'%') = '@';
+      krb5_parse_name(ssh_context, user, &client);
+      if (!(krb5_aname_to_localname(ssh_context, client,
+				    sizeof(kuser), kuser)))
+	user = kuser;
+    }
+  else 
+    krb5_parse_name(ssh_context, user, &client);
+#endif /* defined(KERBEROS) && defined(KRB5) */
 			 
   /* Verify that the user is a valid user.  We disallow usernames starting
      with any characters that are commonly used to start NIS entries. */
   pw = getpwnam(user);
   if (!pw || user[0] == '-' || user[0] == '+' || user[0] == '@' ||
-      !login_permitted(user))
-    {
-      /* The user does not exist. */
-      packet_start(SSH_SMSG_FAILURE);
-      packet_send();
-      packet_write_wait();
-
-      /* Keep reading packets, and always respond with a failure.  This is to
-	 avoid disclosing whether such a user really exists. */
-      for (;;)
-	{
-	  /* Read a packet.  This will not return if the client disconnects. */
-	  (void) packet_read();
-
-	  /* Send failure.  This should be indistinguishable from a failed
-	     authentication. */
-	  packet_start(SSH_SMSG_FAILURE);
-	  packet_send();
-	  packet_write_wait();
-	}
-      /*NOTREACHED*/
-      abort();
-    }
+      !login_permitted(user, pw))
+    do_authentication_fail_loop();
   
   /* Take a copy of the returned structure. */
   memset(&pwcopy, 0, sizeof(pwcopy));
@@ -1371,13 +1668,18 @@ void do_authentication(char *user, int privileged_port)
 
   /* If we are not running as root, the user must have the same uid as the
      server. */
-  if (getuid() != 0 && pw->pw_uid != getuid())
+  if (getuid() != UID_ROOT && pw->pw_uid != getuid())
     packet_disconnect("Cannot change user when server not running as root.");
 
   debug("Attempting authentication for %.100s.", user);
 
+#if defined (KERBEROS) && defined (KRB5)
+  if (!options.kerberos_authentication && options.password_authentication &&
+      auth_password(user, "", 0))
+#else /* defined(KERBEROS) && defined(KRB5) */
   /* If the user has no password, accept authentication immediately. */
   if (options.password_authentication && auth_password(user, ""))
+#endif /* defined(KERBEROS) && defined(KRB5) */
     {
       /* Authentication with empty password succeeded. */
       debug("Login for user %.100s accepted without authentication.", user);
@@ -1402,10 +1704,82 @@ void do_authentication(char *user, int privileged_port)
       /* Process the packet. */
       switch (type)
 	{
-
+#ifdef KERBEROS_TGT_PASSING
+#ifdef KRB5
+	case SSH_CMSG_HAVE_KERBEROS_TGT:
+	  if (!options.kerberos_tgt_passing || 
+	      (!(options.kerberos_authentication || 
+		 options.password_authentication ||
+		 options.rsa_authentication)))
+	    {
+	      packet_get_all();
+	      log_msg("Kerberos tgt passing disabled.");
+	      break;
+	    }
+	  
+	  /* Accept Kerberos tgt. */
+	  krb5data.data = packet_get_string((unsigned int *) &krb5data.length);
+	  
+	  if (!auth_kerberos_tgt(user, &krb5data, client) ||
+	      !krb5_kuserok(ssh_context, client, user)){
+	    log_msg("Kerberos tgt REFUSED for %s", user);
+	    debug("Kerberos tgt REFUSED for %s", user);
+	  }
+	  free(krb5data.data);
+#endif
+	  continue;
+#endif /* KERBEROS_TGT_PASSING */
+	  
+#ifdef KERBEROS
+#ifdef KRB5
+	case SSH_CMSG_AUTH_KERBEROS:
+	  if (!options.kerberos_authentication)
+	    {
+	      packet_get_all();
+	      log_msg("Kerberos authentication disabled.");
+	      break;
+	    }
+	  /* Try Kerberos authentication. */
+	  krb5data.data = packet_get_string((unsigned int *) &krb5data.length);
+          if (auth_kerberos(user, &krb5data, &tkt_client))
+	    {
+	      char *tkt_user;
+	      
+	      free(krb5data.data);
+	      krb5_unparse_name(ssh_context, tkt_client, &tkt_user);
+	      
+	      /* Check ~/.klogin authorization now. */
+	      if (krb5_kuserok(ssh_context, tkt_client, user))
+		{
+		  if (client)
+		    krb5_free_principal(ssh_context, client);
+		  client = tkt_client;
+		  /* Client has successfully authenticated to us. */
+		  log_msg("Kerberos authentication accepted %.100s for login to account %.100s from %.200s",
+			  tkt_user, user, get_canonical_hostname());
+		  authentication_type = SSH_AUTH_KERBEROS;
+		  authenticated = 1;
+		  break;
+		}
+	      else
+		{
+		  krb5_free_principal(ssh_context, tkt_client);
+		  packet_send_debug("Kerberos authorization failed.");
+		  log_msg( "Kerberos authorization failed for %.100s for login to account %.100s from %.200s.",
+			   tkt_user, user, get_canonical_hostname());
+		}
+	      free(tkt_user);
+	    }
+#endif /* KRB5 */
+	  debug("Kerberos authentication failed for %.100s from %.200s",
+		user, get_canonical_hostname());
+	  break;
+#endif /* KERBEROS */
+	  
 	case SSH_CMSG_AUTH_RHOSTS:
 	  if (!options.rhosts_authentication)
 	    {
+	      packet_get_all();
 	      log_msg("Rhosts authentication disabled.");
 	      break;
 	    }
@@ -1413,6 +1787,7 @@ void do_authentication(char *user, int privileged_port)
 	  /* Rhosts authentication (also uses /etc/hosts.equiv). */
 	  if (!privileged_port)
 	    {
+	      packet_get_all();
 	      log_msg("Rhosts authentication not available for connections from unprivileged port.");
 	      break;
 	    }
@@ -1442,6 +1817,7 @@ void do_authentication(char *user, int privileged_port)
 	case SSH_CMSG_AUTH_RHOSTS_RSA:
 	  if (!options.rhosts_rsa_authentication)
 	    {
+	      packet_get_all();
 	      log_msg("Rhosts with RSA authentication disabled.");
 	      break;
 	    }
@@ -1450,7 +1826,20 @@ void do_authentication(char *user, int privileged_port)
 	     host authentication. */
 	  if (!privileged_port)
 	    {
-	      log_msg("Rhosts authentication not available for connections from unprivileged port.");
+	      packet_get_all();
+	      log_msg("RhostsRsa authentication not available for connections from unprivileged port.");
+	      break;
+	    }
+	  if (cipher_type == SSH_CIPHER_NONE)
+	    {
+	      packet_get_all();
+	      log_msg("RhostsRsa authentication not available for unencrypted session.");
+	      break;
+	    }
+	  if (cipher_type == SSH_CIPHER_ARCFOUR)
+	    {
+	      packet_get_all();
+	      log_msg("RhostsRsa authentication not available for session encrypted with arcfour.");
 	      break;
 	    }
 
@@ -1490,6 +1879,7 @@ void do_authentication(char *user, int privileged_port)
 	case SSH_CMSG_AUTH_RSA:
 	  if (!options.rsa_authentication)
 	    {
+	      packet_get_all();
 	      log_msg("RSA authentication disabled.");
 	      break;
 	    }
@@ -1514,10 +1904,151 @@ void do_authentication(char *user, int privileged_port)
 	  }
 	  break;
 
+#ifdef HAVE_TIS
+	case SSH_CMSG_AUTH_TIS:
+	  /* Support for TIS authentication server
+	     Contributed by Andre April <Andre.April@cediti.be>. */
+	  debug("TIS Authentication...");
+	  if (!options.tis_authentication) {
+	    packet_get_all();
+	    log_msg("Tis authsrv authentication disabled.");
+	    break;
+	  } else {
+	    char buf[128];
+	    char prompt[128];
+	    char mapping[128];
+	    FILE *f;
+	    int found = 0;
+	    char *key, *value, *resp;
+	    Cfg* cfg;
+	    
+	    /* Tis authsrvr authentication requested */
+	    /* Asks Tis server for challenge */
+	    cfg = cfg_read("sshd");
+	    auth_open(cfg);
+	    if (auth_recv(buf, sizeof(buf))) {
+	      log_msg("Cannot connect to authentication server");
+	      packet_start(SSH_SMSG_FAILURE);
+	      packet_send();
+	      packet_write_wait();
+	      break;
+	    }
+	    if (strncmp(buf, "Authsrv ready", 13)) {
+	      auth_close();
+	      log_msg("Bad response from authentication server");
+	      packet_start(SSH_SMSG_FAILURE);
+	      packet_send();
+	      packet_write_wait();
+	      break;
+	    }
+	    
+	    /* If /etc/sshd_tis.map exists, try to find in that file
+	       the name in the Tis database corresponding to "user".
+	       It the file does not exist or "user" is not found in the
+	       file, both names are supposed to be the same. */
+	    f = fopen(TIS_MAP_FILE, "r");
+	    if (f != 0) {
+	      debug("searching for %s in /etc/sshd_tis.map", user);
+	      while (fgets(mapping, 128, f)) {
+		mapping[strlen(mapping)-1] = '\0';	/* suppress '\n' */
+		key = strtok(mapping, ":");
+		value = strtok(0, ":");
+		if (!strcmp(key, user)) {
+		  found = 1;
+		  debug("user %s is mapped to %s", user, value);
+		  break;
+		}
+	      }
+	    } else {
+	      debug("cannot open /etc/sshd_tis.map");
+	    }
+	    if (found && (value != 0)) {
+	      /* Limit user name to 100 characters to prevent buffer
+		 overflow. Who is going to use a longer name, anyway? */
+	      if (strlen(value) > 100) {
+		log_msg("User name longer than 100 characters!!!");
+		break;	/* Authentication fails */
+	      }
+	      debug("asking authorization for %s", value);
+	      sprintf(buf, "authorize %s sshd", value);
+	      debug("string sent to server: '%s'", buf);
+	    } else {
+	      if (strlen(user) > 100) {
+		/* Should not happen since do_authentication already
+		   checked that "user" is a valid user and Unix
+		   usernames are limited to 8 chars */
+		log_msg("User name longer than 100 characters!!!");
+		break;	/* Authentication fails */
+	      }
+	      debug("asking authorization for %s", user);
+	      sprintf(buf, "authorize %s sshd", user);
+	    }
+	    auth_send(buf);
+	    auth_recv(buf, 100); /* More than enough for the challenge */
+	    
+	    if (!strncmp(buf,"challenge ", 10)) {
+	      sprintf(prompt,"Challenge \"%.100s\": ",&buf[10]);
+	      debug("TIS challenge %s", buf);
+	      packet_start(SSH_SMSG_AUTH_TIS_CHALLENGE);
+	      packet_put_string(prompt, strlen(prompt));
+	      packet_send();
+	      packet_write_wait();
+	    } else {
+	      if (!strncmp(buf, "password", 8)) {
+		debug("TIS password");
+		packet_start(SSH_SMSG_AUTH_TIS_CHALLENGE);
+		packet_put_string("Password: ", 10);
+		packet_send();
+		packet_write_wait();
+	      } else {
+		/* Unknown user */
+		auth_close();
+		debug("Unknown user from authentication server");
+		break;
+	      }
+	    }
+	    type = packet_read();
+	    if (type != SSH_CMSG_AUTH_TIS_RESPONSE) {
+	      packet_get_all();
+	      auth_close();
+	      log_msg("Protocol error: got %d in respsonse to TIS challenge",
+		      type);
+	      break;
+	    }
+	    password = packet_get_string(NULL);
+	    resp = xmalloc(strlen(password) + 12);
+	    sprintf(resp,"response '%s'",password);
+	    auth_send(resp);
+	    xfree(resp);
+	    auth_recv(buf, sizeof(buf));
+	    debug("response from authsrvr = %s",buf);
+	    if (!strncmp(buf, "ok", 2)) {
+	      auth_close();
+	      memset(password, 0, strlen(password));
+	      xfree(password);
+	      authentication_type = SSH_AUTH_TIS;
+	      authenticated = 1;
+	      break;
+	    } else {
+	      debug("TIS authentication for %s failed",user);
+	      memset(password, 0, strlen(password));
+	      xfree(password);
+	      break;
+	    }
+	  }
+	  break;	/* TIS authsrv authentication not supported */
+#endif
 	case SSH_CMSG_AUTH_PASSWORD:
 	  if (!options.password_authentication)
 	    {
+	      packet_get_all();
 	      log_msg("Password authentication disabled.");
+	      break;
+	    }
+	  if (cipher_type == SSH_CIPHER_NONE)
+	    {
+	      packet_get_all();
+	      log_msg("Password authentication not available for unencrypted session.");
 	      break;
 	    }
 
@@ -1544,7 +2075,11 @@ void do_authentication(char *user, int privileged_port)
 	  password_attempts++;
 
 	  /* Try authentication with the password. */
+#if defined(KERBEROS) && defined(KRB5)
+	  if (auth_password(user, password, client))
+#else  /* defined(KERBEROS) && defined(KRB5) */
 	  if (auth_password(user, password))
+#endif /* defined(KERBEROS) && defined(KRB5) */
 	    {
 	      /* Successful authentication. */
 	      /* Clear the password from memory. */
@@ -1563,6 +2098,7 @@ void do_authentication(char *user, int privileged_port)
 	default:
 	  /* Any unknown messages will be ignored (and failure returned)
 	     during authentication. */
+	  packet_get_all();
 	  log_msg("Unknown message during authentication: type %d", type);
 	  break; /* Respond with a failure message. */
 	}
@@ -1570,6 +2106,18 @@ void do_authentication(char *user, int privileged_port)
       if (authenticated)
 	break;
 
+#ifdef KERBEROS
+      /* If you forwarded a ticket you get one shot for proper
+         authentication. */
+      /* If tgt was passed unlink file */
+      if (ticket){
+          if (strcmp(ticket,"none"))
+            unlink(ticket);
+          else
+            ticket = NULL;
+      }
+#endif /* KERBEROS */
+      
       /* Send a message indicating that the authentication attempt failed. */
       packet_start(SSH_SMSG_FAILURE);
       packet_send();
@@ -1577,14 +2125,14 @@ void do_authentication(char *user, int privileged_port)
     }
 
   /* Check if the user is logging in as root and root logins are disallowed. */
-  if (pw->pw_uid == 0 && options.permit_root_login == 1)
+  if (pw->pw_uid == UID_ROOT && options.permit_root_login == 1)
     {
       if (authentication_type == SSH_AUTH_PASSWORD)
 	packet_disconnect("ROOT LOGIN REFUSED FROM %.200s", 
 			  get_canonical_hostname());
     }
   else
-    if (pw->pw_uid == 0 && options.permit_root_login == 0)
+    if (pw->pw_uid == UID_ROOT && options.permit_root_login == 0)
       {
 	if (forced_command)
 	  log_msg("Root login accepted for forced command.", forced_command);
@@ -1594,7 +2142,7 @@ void do_authentication(char *user, int privileged_port)
       }
 
   /* Log root logins with severity NOTICE. */
-  if (pw->pw_uid == 0)
+  if (pw->pw_uid == UID_ROOT)
     log_severity(SYSLOG_SEVERITY_NOTICE, "ROOT LOGIN as '%.100s' from %.100s",
 		 pw->pw_name, get_canonical_hostname());
   
@@ -1677,6 +2225,7 @@ void do_authenticated(struct passwd *pw)
 	case SSH_CMSG_REQUEST_PTY:
 	  if (no_pty_flag)
 	    {
+	      packet_get_all();
 	      debug("Allocating a pty not permitted for this authentication.");
 	      goto fail;
 	    }
@@ -1688,6 +2237,7 @@ void do_authenticated(struct passwd *pw)
 	  /* Allocate a pty and open it. */
 	  if (!pty_allocate(&ptyfd, &ttyfd, ttyname))
 	    {
+	      packet_get_all();
 	      error("Failed to allocate pty.");
 	      goto fail;
 	    }
@@ -1734,14 +2284,22 @@ void do_authenticated(struct passwd *pw)
 	  break;
 
 	case SSH_CMSG_X11_REQUEST_FORWARDING:
+#ifdef SSHD_NO_X11_FORWARDING
+	  packet_get_all();
+	  debug("X11 forwarding disabled in this site.");
+	  packet_send_debug("X11 forwarding disabled in this site.");
+	  goto fail;
+#else
 	  if (!options.x11_forwarding)
 	    {
+	      packet_get_all();
 	      packet_send_debug("X11 forwarding disabled in server configuration file.");
 	      goto fail;
 	    }
 #ifdef XAUTH_PATH
 	  if (no_x11_forwarding_flag)
 	    {
+	      packet_get_all();
 	      packet_send_debug("X11 forwarding not permitted for this authentication.");
 	      goto fail;
 	    }
@@ -1753,6 +2311,7 @@ void do_authenticated(struct passwd *pw)
 	     the binary was moved from elsewhere). */
 	  if (stat(XAUTH_PATH, &st) < 0)
 	    {
+	      packet_get_all();
 	      packet_send_debug("Remote host has no X11 installed.");
 	      goto fail;
 	    }
@@ -1770,13 +2329,16 @@ void do_authenticated(struct passwd *pw)
 	  break;
 #else /* XAUTH_PATH */
 	  /* No xauth program; we won't accept forwarding with spoofing. */
+	  packet_get_all();
 	  packet_send_debug("No xauth program; cannot forward with spoofing.");
 	  goto fail;
 #endif /* XAUTH_PATH */
+#endif /* SSHD_NO_X11_FORWARDING */
 
 	case SSH_CMSG_AGENT_REQUEST_FORWARDING:
 	  if (no_agent_forwarding_flag)
 	    {
+	      packet_get_all();
 	      debug("Authentication agent forwarding not permitted for this authentication.");
 	      goto fail;
 	    }
@@ -1786,18 +2348,29 @@ void do_authenticated(struct passwd *pw)
 	      goto fail;
 	    }
 	  debug("Received authentication agent forwarding request.");
-	  auth_input_request_forwarding(pw);
+	  if (!auth_input_request_forwarding(pw))
+	    {
+	      goto fail;
+	    }
 	  break;
 
 	case SSH_CMSG_PORT_FORWARD_REQUEST:
-	  if (no_port_forwarding_flag)
+#ifdef SSHD_NO_PORT_FORWARDING
+	  packet_get_all();
+	  debug("All port forwardings disabled in this site.");
+	  packet_send_debug("All port forwardings disabled in this site.");
+	  goto fail;
+#else
+	  if (no_port_forwarding_flag || !options.allow_tcp_forwarding)
 	    {
+	      packet_get_all();
 	      debug("Port forwarding not permitted for this authentication.");
 	      goto fail;
 	    }
 	  debug("Received TCP/IP port forwarding request.");
-	  channel_input_port_forward_request(pw->pw_uid == 0);
+	  channel_input_port_forward_request(pw->pw_uid == UID_ROOT);
 	  break;
+#endif
 
 	case SSH_CMSG_EXEC_SHELL:
 	  /* Set interactive/non-interactive mode. */
@@ -1819,10 +2392,14 @@ void do_authenticated(struct passwd *pw)
 	  packet_set_interactive(have_pty || display != NULL,
 				 options.keepalives);
 
-	  if (forced_command != NULL)
-	    goto do_forced_command;
 	  /* Get command from the packet. */
 	  command = packet_get_string(NULL);
+	  
+	  if (forced_command != NULL)
+	    {
+	      original_command = command;
+	      goto do_forced_command;
+	    }
 	  debug("Executing command '%.500s'", command);
 	  if (have_pty)
 	    do_exec_pty(command, ptyfd, ttyfd, ttyname, pw, term, display,
@@ -1835,6 +2412,7 @@ void do_authenticated(struct passwd *pw)
 	default:
 	  /* Any unknown messages in this phase are ignored, and a failure
 	     message is returned. */
+	  packet_get_all();
 	  log_msg("Unknown packet type received after authentication: %d", type);
 	  goto fail;
 	}
@@ -1855,6 +2433,7 @@ void do_authenticated(struct passwd *pw)
 
     fail:
       /* The request failed. */
+      packet_get_all();
       packet_start(SSH_SMSG_FAILURE);
       packet_send();
       packet_write_wait();
@@ -1963,7 +2542,10 @@ void do_exec_no_pty(const char *command, struct passwd *pw,
 
   /* Enter the interactive session. */
   server_loop(pid, pin[1], pout[0], perr[0]);
-  /* server_loop has closed pin[1], pout[1], and perr[1]. */
+
+  close(pin[1]);
+  close(pout[0]);
+  close(perr[0]);
 #else /* USE_PIPES */
   /* We are the parent.  Close the child sides of the socket pairs. */
   close(inout[0]);
@@ -1972,7 +2554,9 @@ void do_exec_no_pty(const char *command, struct passwd *pw,
   /* Enter the interactive session.  Note: server_loop must be able to handle
      the case that fdin and fdout are the same. */
   server_loop(pid, inout[1], inout[1], err[1]);
-  /* server_loop has closed inout[1] and err[1]. */
+  
+  close(inout[1]);
+  close(err[1]);
 #endif /* USE_PIPES */
 }
 
@@ -2010,7 +2594,7 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
 {
   int pid, fdout;
   const char *hostname;
-  time_t last_login_time;
+  time_t last_login_time = 0;
   char buf[100], *time_string;
   char line[256];
   struct stat st;
@@ -2027,8 +2611,12 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
 
   /* Get the time when the user last logged in.  Buf will be set to contain
      the hostname the last login was from. */
-  last_login_time = get_last_login_time(pw->pw_uid, pw->pw_name,
-					buf, sizeof(buf));
+#ifndef USELOGIN
+  options.use_login = 0;
+#endif /* USELOGIN */
+  if (!options.use_login)
+    last_login_time = get_last_login_time(pw->pw_uid, pw->pw_name,
+					  buf, sizeof(buf));
 
   /* Fork the child. */
   if ((pid = fork()) == 0)
@@ -2094,7 +2682,8 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
          However, don't display anything extra if a command has been 
 	 specified (so that ssh can be used to execute commands on a remote
 	 machine without users knowing they are going to another machine). */
-      if (command == NULL && last_login_time != 0 && !quiet_login)
+      if (!options.use_login && command == NULL && last_login_time != 0 &&
+	  !quiet_login)
 	{
 	  /* Convert the date to a string. */
 	  time_string = ctime(&last_login_time);
@@ -2111,7 +2700,8 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
       /* Print /etc/motd unless a command was specified or printing it was
 	 disabled in server options.  Note that some machines appear to
 	 print it in /etc/profile or similar. */
-      if (command == NULL && options.print_motd && !quiet_login)
+      if (!options.use_login && command == NULL && options.print_motd &&
+	  !quiet_login)
 	{
 	  FILE *f;
 
@@ -2153,7 +2743,10 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
 
   /* Enter interactive session. */
   server_loop(pid, ptyfd, fdout, -1);
-  /* server_loop has closed ptyfd and fdout. */
+  
+  close(ptyfd);
+  close(fdout);
+
 
   /* Cancel the cleanup function. */
   fatal_remove_cleanup(pty_cleanup_proc, (void *)&cleanup_context);
@@ -2304,7 +2897,7 @@ void read_etc_default_login(char ***env, unsigned int *envsize,
   /* Set PATH from SUPATH if we are logging in as root, and PATH
      otherwise.  If neither of these exists, we use the default ssh
      path. */
-  if (user_uid == 0)
+  if (user_uid == UID_ROOT)
     def = child_get_env(defenv, "SUPATH");
   else
     def = child_get_env(defenv, "PATH");
@@ -2387,7 +2980,7 @@ void do_child(const char *command, struct passwd *pw, const char *term,
       while (fgets(buf, sizeof(buf), f))
 	fputs(buf, stderr);
       fclose(f);
-      if (pw->pw_uid != 0)
+      if (pw->pw_uid != UID_ROOT)
 	exit(254);
     }
 
@@ -2397,7 +2990,7 @@ void do_child(const char *command, struct passwd *pw, const char *term,
 	 users, don't log the command, because logging it would be a
 	 violation of the user's privacy (and even potentially illegal with
 	 respect to privacy/data protection laws in some countries). */
-      if (pw->pw_uid == 0)
+      if (pw->pw_uid == UID_ROOT)
 	log_msg("executing remote command as root: %.200s", command);
       else
 	log_msg("executing remote command as user %.200s", pw->pw_name);
@@ -2406,8 +2999,14 @@ void do_child(const char *command, struct passwd *pw, const char *term,
 #ifdef HAVE_SETLOGIN
   /* Set login name in the kernel.  Warning: setsid() must be called before
      this. */
+#ifdef USELOGIN
+  if (command != NULL || !options.use_login)
+    if (setlogin(pw->pw_name) < 0)
+      error("setlogin failed: %.100s", strerror(errno));
+#else  /* USELOGIN */
   if (setlogin(pw->pw_name) < 0)
     error("setlogin failed: %.100s", strerror(errno));
+#endif /* USELOGIN */
 #endif /* HAVE_SETLOGIN */
 
 #ifdef HAVE_USERSEC_H
@@ -2483,38 +3082,43 @@ void do_child(const char *command, struct passwd *pw, const char *term,
     fatal("Failure performing Cray job setup for user %d.",(int)user_uid);
 #endif
 
-  /* Set uid, gid, and groups. */
-  if (getuid() == 0 || geteuid() == 0)
-    { 
-      if (setgid(user_gid) < 0)
-	{
-	  perror("setgid");
-	  exit(1);
-	}
+#ifdef USELOGIN
+  if (command != NULL || !options.use_login)
+#endif /* USELOGIN */
+    {
+      /* Set uid, gid, and groups. */
+      if (getuid() == UID_ROOT || geteuid() == UID_ROOT)
+	{ 
+	  if (setgid(user_gid) < 0)
+	    {
+	      perror("setgid");
+	      exit(1);
+	    }
 #ifdef HAVE_INITGROUPS
-      /* Initialize the group list. */
-      if (initgroups(user_name, user_gid) < 0)
-	{
-	  perror("initgroups");
-	  exit(1);
-	}
+	  /* Initialize the group list. */
+	  if (initgroups(user_name, user_gid) < 0)
+	    {
+	      perror("initgroups");
+	      exit(1);
+	    }
 #endif /* HAVE_INITGROUPS */
-      endgrent();
-
+	  endgrent();
+	  
 #ifdef HAVE_SETLUID
-      /* Set login uid, if we have setluid(). */
-      if (setluid(user_uid) < 0)
-	fatal("setluid %d: %s", (int)user_uid, strerror(errno));
+	  /* Set login uid, if we have setluid(). */
+	  if (setluid(user_uid) < 0)
+	    fatal("setluid %d: %s", (int)user_uid, strerror(errno));
 #endif /* HAVE_SETLUID */
-
-      /* Permanently switch to the desired uid. */
-      if (setuid(user_uid) < 0)
-	fatal("setuid %d: %s", (int)user_uid, strerror(errno));
+	  
+	  /* Permanently switch to the desired uid. */
+	  if (setuid(user_uid) < 0)
+	    fatal("setuid %d: %s", (int)user_uid, strerror(errno));
+	}
+      
+      if (getuid() != user_uid || geteuid() != user_uid)
+	fatal("Failed to set uids to %d.", (int)user_uid);
     }
-
-  if (getuid() != user_uid || geteuid() != user_uid)
-    fatal("Failed to set uids to %d.", (int)user_uid);
-
+  
   /* Reset signals to their default settings before starting the user
      process. */
   signals_reset();
@@ -2529,35 +3133,44 @@ void do_child(const char *command, struct passwd *pw, const char *term,
   env = xmalloc(envsize * sizeof(char *));
   env[0] = NULL;
 
-  /* Set basic environment. */
-  child_set_env(&env, &envsize, "USER", user_name);
-  child_set_env(&env, &envsize, "LOGNAME", user_name);
-  child_set_env(&env, &envsize, "HOME", user_dir);
-  child_set_env(&env, &envsize, "PATH", DEFAULT_PATH ":" SSH_BINDIR);
+#ifdef USELOGIN
+  if (command != NULL || !options.use_login)
+#endif /* USELOGIN */
+    {
+      /* Set basic environment. */
+      child_set_env(&env, &envsize, "HOME", user_dir);
+      child_set_env(&env, &envsize, "USER", user_name);
+      child_set_env(&env, &envsize, "LOGNAME", user_name);
+      child_set_env(&env, &envsize, "PATH", DEFAULT_PATH ":" SSH_BINDIR);
+      
+#ifdef MAIL_SPOOL_DIRECTORY
+      sprintf(buf, "%.200s/%.50s", MAIL_SPOOL_DIRECTORY, user_name);
+      child_set_env(&env, &envsize, "MAIL", buf);
+#else /* MAIL_SPOOL_DIRECTORY */
+#ifdef MAIL_SPOOL_FILE
+      sprintf(buf, "%.200s/%.50s", user_dir, MAIL_SPOOL_FILE);
+      child_set_env(&env, &envsize, "MAIL", buf);
+#endif /* MAIL_SPOOL_FILE */
+#endif /* MAIL_SPOOL_DIRECTORY */
+      
+#ifdef HAVE_ETC_DEFAULT_LOGIN
+      /* Read /etc/default/login; this exists at least on Solaris 2.x.  Note
+	 that we are already running on the user's uid. */
+      read_etc_default_login(&env, &envsize, user_shell, user_uid);
+#else /* HAVE_ETC_DEFAULT_LOGIN */
+      /* Normal systems set SHELL by default. */
+      child_set_env(&env, &envsize, "SHELL", shell);
+#endif /* HAVE_ETC_DEFAULT_LOGIN */
+    }
 
+  if (original_command != NULL)
+    child_set_env(&env, &envsize, "SSH_ORIGINAL_COMMAND",
+		  original_command);
+  
   /* Let it inherit timezone if we have one. */
   if (getenv("TZ"))
     child_set_env(&env, &envsize, "TZ", getenv("TZ"));
-
-#ifdef MAIL_SPOOL_DIRECTORY
-  sprintf(buf, "%.200s/%.50s", MAIL_SPOOL_DIRECTORY, user_name);
-  child_set_env(&env, &envsize, "MAIL", buf);
-#else /* MAIL_SPOOL_DIRECTORY */
-#ifdef MAIL_SPOOL_FILE
-  sprintf(buf, "%.200s/%.50s", user_dir, MAIL_SPOOL_FILE);
-  child_set_env(&env, &envsize, "MAIL", buf);
-#endif /* MAIL_SPOOL_FILE */
-#endif /* MAIL_SPOOL_DIRECTORY */
-
-#ifdef HAVE_ETC_DEFAULT_LOGIN
-  /* Read /etc/default/login; this exists at least on Solaris 2.x.  Note
-     that we are already running on the user's uid. */
-  read_etc_default_login(&env, &envsize, user_shell, user_uid);
-#else /* HAVE_ETC_DEFAULT_LOGIN */
-  /* Normal systems set SHELL by default. */
-  child_set_env(&env, &envsize, "SHELL", shell);
-#endif /* HAVE_ETC_DEFAULT_LOGIN */
-
+  
   /* Set custom environment options from RSA authentication. */
   while (custom_environment) 
     {
@@ -2592,128 +3205,203 @@ void do_child(const char *command, struct passwd *pw, const char *term,
   if (display)
     child_set_env(&env, &envsize, "DISPLAY", display);
 
+#ifdef KERBEROS
+  /* Set KRBTKFILE to point to our ticket */
+#ifdef KRB5
+  if (ticket)
+    child_set_env(&env, &envsize, "KRB5CCNAME", ticket);
+#endif /* KRB5 */
+#endif /* KERBEROS */
+
   /* Set variable for forwarded authentication connection, if we have one. */
   if (auth_get_socket_name() != NULL)
     child_set_env(&env, &envsize, SSH_AUTHSOCKET_ENV_NAME, 
 		  auth_get_socket_name());
 
-  /* Read environment variable settings from /etc/environment.  (This exists
-     at least on AIX, but could be useful also elsewhere.) */
-  read_environment_file(&env, &envsize, "/etc/environment");
+#ifdef USELOGIN
+  if (command != NULL || !options.use_login)
+#endif /* USELOGIN */
+    {
+      /* Read environment variable settings from /etc/environment.  (This
+	 exists at least on AIX, but could be useful also elsewhere.) */
+      read_environment_file(&env, &envsize, "/etc/environment");
 
-  /* Read $HOME/.ssh/environment. */
-  sprintf(buf, "%.200s/.ssh/environment", user_dir);
-  read_environment_file(&env, &envsize, buf);
-
+      /* Read $HOME/.ssh/environment. */
+      sprintf(buf, "%.200s/.ssh/environment", user_dir);
+      read_environment_file(&env, &envsize, buf);
+      
+      /* Change current directory to the user\'s home directory. */
+      if (chdir(user_dir) < 0)
+	fprintf(stderr, "Could not chdir to home directory %s: %s\n",
+		user_dir, strerror(errno));
+    }
+  
   /* If debugging, dump the environment to stderr. */
   if (debug_flag)
     {
       fprintf(stderr, "Environment:\n");
       for (i = 0; env[i]; i++)
 	fprintf(stderr, "  %.200s\n", env[i]);
+      fprintf(stderr, "\n");
     }
-
-  /* Change current directory to the user\'s home directory. */
-  if (chdir(user_dir) < 0)
-    fprintf(stderr, "Could not chdir to home directory %s: %s\n",
-	    user_dir, strerror(errno));
-
+      
+  
   /* Must take new environment into use so that .ssh/rc, /etc/sshrc and
      xauth are run in the proper environment. */
   environ = env;
 
-  /* Run $HOME/.ssh/rc, /etc/sshrc, or xauth (whichever is found first
-     in this order).  Note that we are already running on the user's uid. */
-  if (stat(SSH_USER_RC, &st) >= 0)
+#ifdef USELOGIN
+  if (command != NULL || !options.use_login)
+#endif /* USELOGIN */
     {
-      sprintf(buf, "%.100s %.100s", shell, SSH_USER_RC);
-
-      if (debug_flag)
-	fprintf(stderr, "Running %s\n", buf);
-
-      f = popen(buf, "w");
-      if (f)
+      /* Run $HOME/.ssh/rc, /etc/sshrc, or xauth (whichever is found first
+	 in this order).  Note that we are already running on the user's
+	 uid. */
+      if (stat(SSH_USER_RC, &st) >= 0)
 	{
-	  if (auth_proto != NULL && auth_data != NULL)
-	    fprintf(f, "%s %s\n", auth_proto, auth_data);
-	  pclose(f);
+	  sprintf(buf, "%.100s %.100s", shell, SSH_USER_RC);
+	  
+	  if (debug_flag)
+	    fprintf(stderr, "Running %s\n", buf);
+	  
+	  f = popen(buf, "w");
+	  if (f)
+	    {
+	      if (auth_proto != NULL && auth_data != NULL)
+		fprintf(f, "%s %s\n", auth_proto, auth_data);
+	      pclose(f);
+	    }
+	  else
+	    fprintf(stderr, "Could not run %s\n", SSH_USER_RC);
 	}
       else
-	fprintf(stderr, "Could not run %s\n", SSH_USER_RC);
-    }
-  else
-    if (stat(SSH_SYSTEM_RC, &st) >= 0)
-      {
-	sprintf(buf, "%.100s %.100s", "/bin/sh", SSH_SYSTEM_RC);
-
-	if (debug_flag)
-	  fprintf(stderr, "Running %s\n", buf);
-
-	f = popen(buf, "w");
-	if (f)
+	if (stat(SSH_SYSTEM_RC, &st) >= 0)
 	  {
-	    if (auth_proto != NULL && auth_data != NULL)
-	      fprintf(f, "%s %s\n", auth_proto, auth_data);
-	    pclose(f);
-	  }
-	else
-	  fprintf(stderr, "Could not run %s\n", SSH_SYSTEM_RC);
-      }
-#ifdef XAUTH_PATH
-    else
-      {
-	/* Add authority data to .Xauthority if appropriate. */
-	if (auth_proto != NULL && auth_data != NULL)
-	  {
-	    if (debug_flag)
-	      fprintf(stderr, "Running %.100s add %.100s %.100s %.100s\n",
-		      XAUTH_PATH, display, auth_proto, auth_data);
-
-	    signal(SIGPIPE, SIG_IGN);
+	    sprintf(buf, "%.100s %.100s", "/bin/sh", SSH_SYSTEM_RC);
 	    
-	    f = popen(XAUTH_PATH " -q -", "w");
+	    if (debug_flag)
+	      fprintf(stderr, "Running %s\n", buf);
+	    
+	    f = popen(buf, "w");
 	    if (f)
 	      {
-		fprintf(f, "add %s %s %s\n", display, auth_proto, auth_data);
-		cp = strchr(display, ':');
-		if (cp)
-		  fprintf(f, "add %.*s/unix%s %s %s\n",
-			  cp - display, display, cp, auth_proto, auth_data);
+		if (auth_proto != NULL && auth_data != NULL)
+		  fprintf(f, "%s %s\n", auth_proto, auth_data);
 		pclose(f);
 	      }
 	    else
-	      fprintf(stderr, "Could not run %s -q -\n", XAUTH_PATH);
-
-	    signal(SIGPIPE, SIG_DFL);
+	      fprintf(stderr, "Could not run %s\n", SSH_SYSTEM_RC);
 	  }
-      }
+#ifdef XAUTH_PATH
+	else
+	  {
+	    /* Add authority data to .Xauthority if appropriate. */
+	    if (auth_proto != NULL && auth_data != NULL)
+	      {
+		int i;
+		char name[255], *p;
+		struct hostent *hp;
+		
+		strncpy(name, display, sizeof(name));
+		name[sizeof(name) - 1] = '\0';
+		p = strchr(name, ':');
+		if (p)
+		  *p = '\0';
+		
+		if (debug_flag)
+		  fprintf(stderr, "Running %.100s add %.100s %.100s %.100s\n",
+			  XAUTH_PATH, display, auth_proto, auth_data);
+		
+		signal(SIGPIPE, SIG_IGN);
+		
+		f = popen(XAUTH_PATH " -q -", "w");
+		if (f)
+		  {
+		    fprintf(f, "add %s %s %s\n", display, auth_proto,
+			    auth_data);
+		    cp = strchr(display, ':');
+		    if (cp)
+		      {
+#ifndef CRAY
+			/* Cray xauth cannot take host/unix:0 as displayname */
+			fprintf(f, "add %.*s/unix%s %s %s\n",
+				cp - display, display, cp, auth_proto,
+				auth_data);
+#endif
+			hp = gethostbyname(name);
+			if (hp)
+			  {
+			    for(i = 0; hp->h_addr_list[i]; i++)
+			      {
+				if (debug_flag)
+				  {
+				    fprintf(stderr, "Running %s add %s%s %s %s\n",
+					    XAUTH_PATH,
+					    inet_ntoa(*((struct in_addr *)
+							hp->h_addr_list[i])),
+					    cp, auth_proto, auth_data);
+				  }
+				fprintf(f, "add %s%s %s %s\n",
+					inet_ntoa(*((struct in_addr *)
+						    hp->h_addr_list[i])),
+					cp, auth_proto, auth_data);
+			      }
+			  }
+		      }
+		    pclose(f);
+		  }
+		else
+		  fprintf(stderr, "Could not run %s -q -\n", XAUTH_PATH);
+		
+		signal(SIGPIPE, SIG_DFL);
+	      }
+	  }
 #endif /* XAUTH_PATH */
+    }
 
-  /* Get the last component of the shell name. */
-  cp = strrchr(shell, '/');
-  if (cp)
-    cp++;
-  else
-    cp = shell;
-
+#ifdef USELOGIN
+  if (command != NULL || !options.use_login)
+#endif /* USELOGIN */
+    {
+      /* Get the last component of the shell name. */
+      cp = strrchr(shell, '/');
+      if (cp)
+	cp++;
+      else
+	cp = shell;
+    }
+  
   /* If we have no command, execute the shell.  In this case, the shell name
      to be passed in argv[0] is preceded by '-' to indicate that this is
      a login shell. */
   if (!command)
     {
-      char buf[256];
-
-      /* Start the shell.  Set initial character to '-'. */
-      buf[0] = '-';
-      strncpy(buf + 1, cp, sizeof(buf) - 1);
-      buf[sizeof(buf) - 1] = 0;
-      /* Execute the shell. */
-      argv[0] = buf;
-      argv[1] = NULL;
-      execve(shell, argv, env);
-      /* Executing the shell failed. */
-      perror(shell);
-      exit(1);
+#ifdef USELOGIN
+      if (!options.use_login)
+#endif /* USELOGIN */
+	{
+	  char buf[256];
+	  
+	  /* Start the shell.  Set initial character to '-'. */
+	  buf[0] = '-';
+	  strncpy(buf + 1, cp, sizeof(buf) - 1);
+	  buf[sizeof(buf) - 1] = 0;
+	  /* Execute the shell. */
+	  argv[0] = buf;
+	  argv[1] = NULL;
+	  execve(shell, argv, env);
+	  /* Executing the shell failed. */
+	  perror(shell);
+	  exit(1);
+	}
+#ifdef USELOGIN
+      else
+	{
+	  execl(PATH_LOGIN, "login", "-h", remote_ip, "-p", "-f",
+		"--", user_name, NULL);
+	  /* NOTREACHED */
+	}
+#endif /* USELOGIN */
     }
 
   /* Execute the command using the user's shell.  This uses the -c option

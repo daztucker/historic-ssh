@@ -14,9 +14,12 @@ Simple pattern matching, with '*' and '?' as wildcards.
 */
 
 /*
- * $Id: match.c,v 1.3 1997/04/27 22:19:35 kivinen Exp $
+ * $Id: match.c,v 1.4 1998/06/11 00:07:36 kivinen Exp $
  * $Log: match.c,v $
- * Revision 1.3  1997/04/27 22:19:35  kivinen
+ * Revision 1.4  1998/06/11 00:07:36  kivinen
+ * 	Added match_user function.
+ *
+ * Revision 1.3  1997/04/27  22:19:35  kivinen
  * 	Fixed typo.
  *
  * Revision 1.2  1997/04/27 21:52:05  kivinen
@@ -34,6 +37,7 @@ Simple pattern matching, with '*' and '?' as wildcards.
 
 #include "includes.h"
 #include "ssh.h"
+#include "xmalloc.h"
 
 /* Returns true if the given string matches the pattern (which may contain
    ? and * as wildcards), and zero if it does not match. */
@@ -93,6 +97,40 @@ int match_pattern(const char *s, const char *pattern)
     }
   /*NOTREACHED*/
 }
+
+/* this combines the effect of match_pattern on a username, hostname
+   and IP address. If the pattern contains a @ then the part preceding
+   the @ is checked against the username. The part after the @ is
+   checked against the hostname and IP address. If no @ is found then
+   a normal match_pattern is done against the username 
+
+   This is more useful than just a match_pattern as it allows you to
+   specify exactly what users are alowed to login from what hosts
+   (tridge, May 1998)
+*/
+int match_user(const char *user, const char *host, const char *ip,
+	       const char *pattern)
+{
+  int ret;
+  char *p2;
+  char *p;
+
+  p = strchr(pattern,'@');
+  
+  if (!p)
+    return match_pattern(user, pattern);
+
+  p2 = xstrdup(pattern);
+  p = strchr(p2, '@');
+  
+  *p = 0;
+
+  ret = match_pattern(user,p2) && 
+    (match_pattern(host, p+1) || match_pattern(ip, p+1));
+  
+  xfree(p2);
+  return ret;
+ }
 
 #ifdef F_SECURE_COMMERCIAL
 

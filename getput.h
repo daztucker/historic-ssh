@@ -2,10 +2,11 @@
 
 getput.h
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Wed Jun 28 22:36:30 1995 ylo
 
@@ -14,14 +15,17 @@ Macros for storing and retrieving data in msb first and lsb first order.
 */
 
 /*
- * $Id: getput.h,v 1.1.1.1 1996/02/18 21:38:11 ylo Exp $
+ * $Id: getput.h,v 1.2 1999/11/17 17:04:44 tri Exp $
  * $Log: getput.h,v $
+ * Revision 1.2  1999/11/17 17:04:44  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
- * 	Imported ssh-1.2.13.
+ *      Imported ssh-1.2.13.
  *
  * Revision 1.2  1995/07/13  01:24:09  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
+ *      Removed "Last modified" header.
+ *      Added cvs log.
  *
  * $Endlog$
  */
@@ -32,12 +36,12 @@ Macros for storing and retrieving data in msb first and lsb first order.
 /*------------ macros for storing/extracting msb first words -------------*/
 
 #define GET_32BIT(cp) (((unsigned long)(unsigned char)(cp)[0] << 24) | \
-  		       ((unsigned long)(unsigned char)(cp)[1] << 16) | \
-		       ((unsigned long)(unsigned char)(cp)[2] << 8) | \
-		       ((unsigned long)(unsigned char)(cp)[3]))
+                       ((unsigned long)(unsigned char)(cp)[1] << 16) | \
+                       ((unsigned long)(unsigned char)(cp)[2] << 8) | \
+                       ((unsigned long)(unsigned char)(cp)[3]))
 
 #define GET_16BIT(cp) (((unsigned long)(unsigned char)(cp)[0] << 8) | \
-		       ((unsigned long)(unsigned char)(cp)[1]))
+                       ((unsigned long)(unsigned char)(cp)[1]))
 
 #define PUT_32BIT(cp, value) do { \
   (cp)[0] = (value) >> 24; \

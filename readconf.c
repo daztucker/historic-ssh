@@ -14,8 +14,23 @@ Functions for reading the configuration files.
 */
 
 /*
- * $Id: readconf.c,v 1.1.1.1 1996/02/18 21:38:12 ylo Exp $
+ * $Id: readconf.c,v 1.5 1997/03/27 03:10:16 kivinen Exp $
  * $Log: readconf.c,v $
+ * Revision 1.5  1997/03/27 03:10:16  kivinen
+ * 	Added kerberos patches from Glenn Machin.
+ *
+ * Revision 1.4  1997/03/26 05:34:37  kivinen
+ * 	Added UsePriviledgedPort option.
+ *
+ * Revision 1.3  1997/03/25 05:40:58  kivinen
+ * 	Changed keywords to be case insensitive.
+ * 	Added = to WHITESPACE so now it allows options in format
+ * 	Foo=bar.
+ *
+ * Revision 1.2  1997/03/19 17:54:37  kivinen
+ * 	Added TIS authentication code from Andre April
+ * 	<Andre.April@cediti.be>.
+ *
  * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
  * 	Imported ssh-1.2.13.
  *
@@ -116,13 +131,14 @@ Functions for reading the configuration files.
 
 typedef enum
 {
-  oForwardAgent, oForwardX11, oRhostsAuthentication,
+  oForwardAgent, oForwardX11, oRhostsAuthentication, oTISAuthentication,
   oPasswordAuthentication, oRSAAuthentication, oFallBackToRsh, oUseRsh,
   oIdentityFile, oHostName, oPort, oCipher, oRemoteForward, oLocalForward, 
   oUser, oHost, oEscapeChar, oRhostsRSAAuthentication, oProxyCommand,
   oGlobalKnownHostsFile, oUserKnownHostsFile, oConnectionAttempts,
   oBatchMode, oStrictHostKeyChecking, oCompression, oCompressionLevel,
-  oKeepAlives
+  oKeepAlives, oUsePriviledgedPort, oKerberosAuthentication,
+  oKerberosTgtPassing
 } OpCodes;
 
 /* Textual representations of the tokens. */
@@ -133,37 +149,41 @@ static struct
   OpCodes opcode;
 } keywords[] =
 {
-  { "ForwardAgent", oForwardAgent },
-  { "ForwardX11", oForwardX11 },
-  { "RhostsAuthentication", oRhostsAuthentication },
-  { "PasswordAuthentication", oPasswordAuthentication },
-  { "RSAAuthentication", oRSAAuthentication },
-  { "FallBackToRsh", oFallBackToRsh },
-  { "UseRsh", oUseRsh },
-  { "IdentityFile", oIdentityFile },
-  { "HostName", oHostName },
-  { "ProxyCommand", oProxyCommand },
-  { "Port", oPort },
-  { "Cipher", oCipher },
-  { "RemoteForward", oRemoteForward },
-  { "LocalForward", oLocalForward },
-  { "User", oUser },
-  { "Host", oHost },
-  { "EscapeChar", oEscapeChar },
-  { "RhostsRSAAuthentication", oRhostsRSAAuthentication },
-  { "GlobalKnownHostsFile", oGlobalKnownHostsFile },
-  { "UserKnownHostsFile", oUserKnownHostsFile },
-  { "ConnectionAttempts", oConnectionAttempts },
-  { "BatchMode", oBatchMode },
-  { "StrictHostKeyChecking", oStrictHostKeyChecking },
-  { "Compression", oCompression },
-  { "CompressionLevel", oCompressionLevel },
-  { "KeepAlive", oKeepAlives },
+  { "forwardagent", oForwardAgent },
+  { "forwardx11", oForwardX11 },
+  { "rhostsauthentication", oRhostsAuthentication },
+  { "passwordauthentication", oPasswordAuthentication },
+  { "rsaauthentication", oRSAAuthentication },
+  { "tisauthentication", oTISAuthentication },
+  { "fallbacktorsh", oFallBackToRsh },
+  { "usersh", oUseRsh },
+  { "identityfile", oIdentityFile },
+  { "hostname", oHostName },
+  { "proxycommand", oProxyCommand },
+  { "port", oPort },
+  { "cipher", oCipher },
+  { "remoteforward", oRemoteForward },
+  { "localforward", oLocalForward },
+  { "user", oUser },
+  { "host", oHost },
+  { "escapechar", oEscapeChar },
+  { "rhostsrsaauthentication", oRhostsRSAAuthentication },
+  { "globalknownhostsfile", oGlobalKnownHostsFile },
+  { "userknownhostsfile", oUserKnownHostsFile },
+  { "connectionattempts", oConnectionAttempts },
+  { "batchmode", oBatchMode },
+  { "stricthostkeychecking", oStrictHostKeyChecking },
+  { "compression", oCompression },
+  { "compressionlevel", oCompressionLevel },
+  { "keepalive", oKeepAlives },
+  { "usepriviledgedport", oUsePriviledgedPort },
+  { "kerberosauthentication", oKerberosAuthentication },
+  { "kerberostgtpassing", oKerberosTgtPassing },
   { NULL, 0 }
 };
 
 /* Characters considered whitespace in strtok calls. */
-#define WHITESPACE " \t\r\n"
+#define WHITESPACE " \t\r\n="
 
 
 /* Adds a local TCP/IP port forward to options.  Never returns if there
@@ -222,7 +242,7 @@ void process_config_line(Options *options, const char *host,
 			 int *activep)
 {
   char buf[256], *cp, *string, **charptr;
-  int opcode, *intptr, value, fwd_port, fwd_host_port;
+  int opcode, *intptr, value, fwd_port, fwd_host_port, i;
 
   /* Skip leading whitespace. */
   cp = line + strspn(line, WHITESPACE);
@@ -231,6 +251,8 @@ void process_config_line(Options *options, const char *host,
 
   /* Get the keyword. (Each line is supposed to begin with a keyword). */
   cp = strtok(cp, WHITESPACE);
+  for(i = 0; cp[i]; i++)
+    cp[i] = tolower(cp[i]);
   opcode = parse_token(cp, filename, linenum);
 
   switch (opcode)
@@ -244,6 +266,8 @@ void process_config_line(Options *options, const char *host,
 	fatal("%.200s line %d: Missing yes/no argument.",
 	      filename, linenum);
       value = 0; /* To avoid compiler warning... */
+      for(i = 0; cp[i]; i++)
+	cp[i] = tolower(cp[i]);
       if (strcmp(cp, "yes") == 0 || strcmp(cp, "true") == 0)
 	value = 1;
       else
@@ -272,8 +296,20 @@ void process_config_line(Options *options, const char *host,
       intptr = &options->rsa_authentication;
       goto parse_flag;
       
+    case oTISAuthentication:
+      intptr = &options->tis_authentication;
+      goto parse_flag;
+      
     case oRhostsRSAAuthentication:
       intptr = &options->rhosts_rsa_authentication;
+      goto parse_flag;
+      
+    case oKerberosAuthentication:
+      intptr = &options->kerberos_authentication;
+      goto parse_flag;
+      
+    case oKerberosTgtPassing:
+      intptr = &options->kerberos_tgt_passing;
       goto parse_flag;
       
     case oFallBackToRsh:
@@ -300,6 +336,10 @@ void process_config_line(Options *options, const char *host,
       intptr = &options->keepalives;
       goto parse_flag;
 
+    case oUsePriviledgedPort:
+      intptr = &options->use_priviledged_port;
+      goto parse_flag;
+      
     case oCompressionLevel:
       intptr = &options->compression_level;
       goto parse_int;
@@ -362,7 +402,36 @@ void process_config_line(Options *options, const char *host,
 	fatal("%.200s line %d: Missing argument.", filename, linenum);
       if (cp[0] < '0' || cp[0] > '9')
 	fatal("%.200s line %d: Bad number.", filename, linenum);
-      value = atoi(cp);
+      if (*cp == '0')	/* Octal or hex */
+	{
+	  int base;
+	  
+	  cp++;
+	  if (*cp == 'x')	/* Hex */
+	    {
+	      cp++;
+	      base = 16;
+	    }
+	  else
+	    base = 8;
+	  value = 0;
+	  while ((base == 16 && isxdigit(*cp)) ||
+		 (base == 8 && isdigit(*cp) && *cp < '8'))
+	    {
+	      value *= base;
+	      if (*cp >= 'a' && *cp <= 'f')
+		value += *cp - 'a' + 10;
+	      else if (*cp >= 'A' && *cp <= 'F')
+		value += *cp - 'A' + 10;
+	      else
+		value += *cp - '0';
+	      cp++;
+	    }
+	}
+      else
+	{
+	  value = atoi(cp);
+	}
       if (*activep && *intptr == -1)
 	*intptr = value;
       break;
@@ -512,6 +581,9 @@ void initialize_options(Options *options)
   options->forward_x11 = -1;
   options->rhosts_authentication = -1;
   options->rsa_authentication = -1;
+  options->kerberos_authentication = -1;
+  options->kerberos_tgt_passing = -1;
+  options->tis_authentication = -1;
   options->password_authentication = -1;
   options->rhosts_rsa_authentication = -1;
   options->fallback_to_rsh = -1;
@@ -533,6 +605,8 @@ void initialize_options(Options *options)
   options->user_hostfile = NULL;
   options->num_local_forwards = 0;
   options->num_remote_forwards = 0;
+  options->use_priviledged_port = -1;
+  options->no_user_given = 0;
 }
 
 /* Called after processing other sources of option data, this fills those
@@ -548,6 +622,20 @@ void fill_default_options(Options *options)
     options->rhosts_authentication = 1;
   if (options->rsa_authentication == -1)
     options->rsa_authentication = 1;
+  if (options->kerberos_authentication == -1)
+#if defined(KERBEROS) && defined(KRB5)
+    options->kerberos_authentication = 1;
+#else  /* defined(KERBEROS) && defined(KRB5) */
+    options->kerberos_authentication = 0;
+#endif /* defined(KERBEROS) && defined(KRB5) */
+  if (options->kerberos_tgt_passing == -1)
+#if defined(KERBEROS_TGT_PASSING) && defined(KRB5)
+    options->kerberos_tgt_passing = 1;
+#else  /* defined(KERBEROS_TGT_PASSING) && defined(KRB5) */
+    options->kerberos_tgt_passing = 0;
+#endif /* defined(KERBEROS_TGT_PASSING) && defined(KRB5) */
+  if (options->tis_authentication == -1)
+    options->tis_authentication = 0;
   if (options->password_authentication == -1)
     options->password_authentication = 1;
   if (options->rhosts_rsa_authentication == -1)
@@ -560,6 +648,8 @@ void fill_default_options(Options *options)
     options->batch_mode = 0;
   if (options->strict_host_key_checking == -1)
     options->strict_host_key_checking = 0;
+  if (options->use_priviledged_port == -1)
+    options->use_priviledged_port = 1;
   if (options->compression == -1)
     options->compression = 0;
   if (options->keepalives == -1)

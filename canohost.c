@@ -14,8 +14,11 @@ Functions for returning the canonical host name of the remote site.
 */
 
 /*
- * $Id: canohost.c,v 1.4 1995/09/06 15:57:59 ylo Exp $
+ * $Id: canohost.c,v 1.5 1995/09/21 17:08:24 ylo Exp $
  * $Log: canohost.c,v $
+ * Revision 1.5  1995/09/21  17:08:24  ylo
+ * 	Added get_remote_port.
+ *
  * Revision 1.4  1995/09/06  15:57:59  ylo
  * 	Fixed serious bugs.
  *
@@ -181,4 +184,27 @@ const char *get_remote_ipaddr()
 
   /* Return ip address string. */
   return canonical_host_ip;
+}
+
+/* Returns the port number of the remote host.  */
+
+int get_remote_port()
+{
+  struct sockaddr_in from;
+  int fromlen, socket;
+
+  /* Get client socket. */
+  socket = packet_get_connection();
+
+  /* Get IP address of client. */
+  fromlen = sizeof(from);
+  memset(&from, 0, sizeof(from));
+  if (getpeername(socket, (struct sockaddr *)&from, &fromlen) < 0)
+    {
+      error("getpeername failed");
+      return 0;
+    }
+
+  /* Return port number. */
+  return ntohs(from.sin_port);
 }

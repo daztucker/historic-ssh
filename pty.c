@@ -14,8 +14,14 @@ Allocating a pseudo-terminal, and making it the controlling tty.
 */
 
 /*
- * $Id: pty.c,v 1.3 1995/07/16 01:03:28 ylo Exp $
+ * $Id: pty.c,v 1.5 1995/09/13 11:58:18 ylo Exp $
  * $Log: pty.c,v $
+ * Revision 1.5  1995/09/13  11:58:18  ylo
+ * 	Added Cray support.
+ *
+ * Revision 1.4  1995/09/09  21:26:44  ylo
+ * /m/shadows/u2/users/ylo/ssh/README
+ *
  * Revision 1.3  1995/07/16  01:03:28  ylo
  * 	Added pty_release.
  *
@@ -62,7 +68,7 @@ int pty_allocate(int *ptyfd, int *ttyfd, char *namebuf)
 
   if (i < 0) 
     {
-      error("openpty: %s", strerror(errno));
+      error("openpty: %.100s", strerror(errno));
       return 0;
     }
   
@@ -79,7 +85,7 @@ int pty_allocate(int *ptyfd, int *ttyfd, char *namebuf)
   slave = _getpty(ptyfd, O_RDWR, 0622, 0);
   if (slave == NULL)
     {
-      error("_getpty: %s", strerror(errno));
+      error("_getpty: %.100s", strerror(errno));
       return 0;
     }
   strcpy(namebuf, slave);
@@ -87,7 +93,7 @@ int pty_allocate(int *ptyfd, int *ttyfd, char *namebuf)
   *ttyfd = open(namebuf, O_RDWR|O_NOCTTY);
   if (*ttyfd < 0)
     {
-      error("%s: %s", namebuf, strerror(errno));
+      error("%.200s: %.100s", namebuf, strerror(errno));
       close(*ptyfd);
       return 0;
     }
@@ -104,17 +110,17 @@ int pty_allocate(int *ptyfd, int *ttyfd, char *namebuf)
   ptm = open("/dev/ptmx", O_RDWR|O_NOCTTY);
   if (ptm < 0)
     {
-      error("/dev/ptmx: %s", strerror(errno));
+      error("/dev/ptmx: %.100s", strerror(errno));
       return 0;
     }
   if (grantpt(ptm) < 0)
     {
-      error("grantpt: %s", strerror(errno));
+      error("grantpt: %.100s", strerror(errno));
       return 0;
     }
   if (unlockpt(ptm) < 0)
     {
-      error("unlockpt: %s", strerror(errno));
+      error("unlockpt: %.100s", strerror(errno));
       return 0;
     }
   pts = ptsname(ptm);
@@ -127,15 +133,17 @@ int pty_allocate(int *ptyfd, int *ttyfd, char *namebuf)
   *ttyfd = open(namebuf, O_RDWR|O_NOCTTY);
   if (*ttyfd < 0)
     {
-      error("%s: %s", namebuf, strerror(errno));
+      error("%.100s: %.100s", namebuf, strerror(errno));
       close(*ptyfd);
       return 0;
     }
   /* Push the appropriate streams modules, as described in Solaris pts(7). */
   if (ioctl(*ttyfd, I_PUSH, "ptem") < 0)
-    error("ioctl I_PUSH ptem: %s", strerror(errno));
+    error("ioctl I_PUSH ptem: %.100s", strerror(errno));
   if (ioctl(*ttyfd, I_PUSH, "ldterm") < 0)
-    error("ioctl I_PUSH ldterm: %s", strerror(errno));
+    error("ioctl I_PUSH ldterm: %.100s", strerror(errno));
+  if (ioctl(*ttyfd, I_PUSH, "ttcompat") < 0)
+    error("ioctl I_PUSH ttcompat: %.100s", strerror(errno));
   return 1;
 
 #else /* HAVE_DEV_PTMX */
@@ -148,7 +156,7 @@ int pty_allocate(int *ptyfd, int *ttyfd, char *namebuf)
   *ptyfd = open("/dev/ptc", O_RDWR|O_NOCTTY);
   if (*ptyfd < 0)
     {
-      error("Could not open /dev/ptc: %s", strerror(errno));
+      error("Could not open /dev/ptc: %.100s", strerror(errno));
       return 0;
     }
   name = ttyname(*ptyfd);
@@ -158,13 +166,38 @@ int pty_allocate(int *ptyfd, int *ttyfd, char *namebuf)
   *ttyfd = open(name, O_RDWR|O_NOCTTY);
   if (*ttyfd < 0)
     {
-      error("Could not open pty slave side %.100s: %s", name, strerror(errno));
+      error("Could not open pty slave side %.100s: %.100s", 
+	    name, strerror(errno));
       close(*ptyfd);
       return 0;
     }
   return 1;
 
 #else /* HAVE_DEV_PTS_AND_PTC */
+#ifdef CRAY
+  char buf[64];
+  int i;
+
+  for (i = 0; i < 128; i++)
+    {
+      sprintf(buf, "/dev/pty/%03d", i);
+      *ptyfd = open(buf, O_RDWR|O_NOCTTY);
+      if (*ptyfd < 0)
+	continue;
+      sprintf(namebuf, "/dev/ttyp%03d", i);
+      /* Open the slave side. */
+      *ttyfd = open(namebuf, O_RDWR|O_NOCTTY);
+      if (*ttyfd < 0)
+	{
+	  error("%.100s: %.100s", namebuf, strerror(errno));
+	  close(*ptyfd);
+	  return 0;
+	}
+      return 1;
+    }
+  return 0;
+
+#else /* CRAY */  
 
   /* BSD-style pty code. */
 
@@ -190,13 +223,14 @@ int pty_allocate(int *ptyfd, int *ttyfd, char *namebuf)
       *ttyfd = open(namebuf, O_RDWR|O_NOCTTY);
       if (*ttyfd < 0)
 	{
-	  error("%s: %s", namebuf, strerror(errno));
+	  error("%.100s: %.100s", namebuf, strerror(errno));
 	  close(*ptyfd);
 	  return 0;
 	}
       return 1;
     }
   return 0;
+#endif /* CRAY */
 #endif /* HAVE_DEV_PTS_AND_PTC */
 #endif /* HAVE_DEV_PTMX */
 #endif /* HAVE__GETPTY */
@@ -209,9 +243,9 @@ int pty_allocate(int *ptyfd, int *ttyfd, char *namebuf)
 void pty_release(const char *ttyname)
 {
   if (chown(ttyname, (uid_t)0, (gid_t)0) < 0)
-    debug("chown %.100s 0 0 failed: %s", ttyname, strerror(errno));
+    debug("chown %.100s 0 0 failed: %.100s", ttyname, strerror(errno));
   if (chmod(ttyname, (mode_t)0666) < 0)
-    debug("chmod %.100s 0666 failed: %s", ttyname, strerror(errno));
+    debug("chmod %.100s 0666 failed: %.100s", ttyname, strerror(errno));
 }
 
 /* Makes the tty the processes controlling tty and sets it to sane modes. */
@@ -231,7 +265,7 @@ void pty_make_controlling_tty(int *ttyfd, const char *ttyname)
 #endif /* TIOCNOTTY */
 #ifdef HAVE_SETSID
   if (setsid() < 0)
-    error("setsid: %s", strerror(errno));
+    error("setsid: %.100s", strerror(errno));
 #endif /* HAVE_SETSID */
   
   /* Verify that we are successfully disconnected from the controlling tty. */
@@ -251,14 +285,14 @@ void pty_make_controlling_tty(int *ttyfd, const char *ttyname)
 #endif /* TIOCSCTTY */
   fd = open(ttyname, O_RDWR);
   if (fd < 0)
-    error("%s: %s", ttyname, strerror(errno));
+    error("%.100s: %.100s", ttyname, strerror(errno));
   else
     close(fd);
 
   /* Verify that we now have a controlling tty. */
   fd = open("/dev/tty", O_WRONLY);
   if (fd < 0)
-    error("open /dev/tty failed - could not set controlling tty: %s",
+    error("open /dev/tty failed - could not set controlling tty: %.100s",
 	  strerror(errno));
   else
     {

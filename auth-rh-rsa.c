@@ -15,8 +15,11 @@ authentication.
 */
 
 /*
- * $Id: auth-rh-rsa.c,v 1.5 1995/09/21 17:06:50 ylo Exp $
+ * $Id: auth-rh-rsa.c,v 1.1.1.1 1996/02/18 21:38:12 ylo Exp $
  * $Log: auth-rh-rsa.c,v $
+ * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.5  1995/09/21  17:06:50  ylo
  * 	Added ignore_rhosts.
  *

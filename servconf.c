@@ -12,8 +12,11 @@ Created: Mon Aug 21 15:48:58 1995 ylo
 */
 
 /*
- * $Id$
- * $Log$
+ * $Id: servconf.c,v 1.1.1.1 1996/02/18 21:38:12 ylo Exp $
+ * $Log: servconf.c,v $
+ * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * $EndLog$
  */
 

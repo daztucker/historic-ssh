@@ -8,11 +8,23 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Sat Apr 22 00:25:29 1995 ylo
-Last modified: Mon Jul 10 22:25:00 1995 ylo
 
 Functions for reading the configuration file.
 
 */
+
+/*
+ * $Id: readconf.h,v 1.3 1995/07/27 00:39:10 ylo Exp $
+ * $Log: readconf.h,v $
+ * Revision 1.3  1995/07/27  00:39:10  ylo
+ * 	Added GlobalKnownHostsFile and UserKnownHostsFile.
+ *
+ * Revision 1.2  1995/07/13  01:30:46  ylo
+ * 	Removed "Last modified" header.
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
 
 #ifndef READCONF_H
 #define READCONF_H
@@ -44,6 +56,9 @@ typedef struct
   char *hostname;		/* Real host to connect. */
   char *user;			/* User to log in as. */
   int escape_char;		/* Escape character; -2 = none */
+
+  char *system_hostfile;	/* Path for /etc/ssh_known_hosts. */
+  char *user_hostfile;		/* Path for $HOME/.ssh/known_hosts. */
 
   int num_identity_files;	/* Number of files for RSA identities. */
   char *identity_files[SSH_MAX_IDENTITY_FILES];

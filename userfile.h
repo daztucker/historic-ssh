@@ -2,10 +2,11 @@
 
 userfile.h
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (C) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (C) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Wed Jan 24 19:53:02 1996 ylo
 
@@ -17,34 +18,37 @@ This works by forking a separate process to do the reading.
 
 /*
  * $Log: userfile.h,v $
+ * Revision 1.10  1999/11/17 17:05:01  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.9  1997/03/26 05:36:21  kivinen
- * 	Fixed prototypes.
+ *      Fixed prototypes.
  *
  * Revision 1.8  1997/03/19 17:53:56  kivinen
- * 	Added USERFILE_GET_DES_1_MAGIC_PHRASE.
+ *      Added USERFILE_GET_DES_1_MAGIC_PHRASE.
  *
  * Revision 1.7  1996/10/29 22:48:43  kivinen
- * 	Removed userfile_local_socket_connect and userfile_send
- * 	prototypes.
+ *      Removed userfile_local_socket_connect and userfile_send
+ *      prototypes.
  *
  * Revision 1.6  1996/09/08 17:21:07  ttsalo
- * 	A lot of changes in agent-socket handling
+ *      A lot of changes in agent-socket handling
  *
  * Revision 1.5  1996/09/04 12:40:00  ttsalo
- * 	Added connecting to unix-domain socket
+ *      Added connecting to unix-domain socket
  *
  * Revision 1.4  1996/08/13 09:04:20  ttsalo
- * 	Home directory, .ssh and .ssh/authorized_keys are now
- * 	checked for wrong owner and group & world writeability.
+ *      Home directory, .ssh and .ssh/authorized_keys are now
+ *      checked for wrong owner and group & world writeability.
  *
  * Revision 1.3  1996/05/29 07:42:02  ylo
- * 	Updated prototype of userfile_init.
+ *      Updated prototype of userfile_init.
  *
  * Revision 1.2  1996/02/18 21:49:10  ylo
- * 	Added userfile_close_pipes.
+ *      Added userfile_close_pipes.
  *
  * Revision 1.1.1.1  1996/02/18 21:38:10  ylo
- * 	Imported ssh-1.2.13.
+ *      Imported ssh-1.2.13.
  *
  * $EndLog$
  */
@@ -60,7 +64,7 @@ typedef struct UserFile *UserFile;
    The cleanup callback will be called in the child before switching to the
    user's uid.  The callback may be NULL. */
 void userfile_init(const char *username, uid_t uid, gid_t gid,
-		   void (*cleanup_callback)(void *), void *context);
+                   void (*cleanup_callback)(void *), void *context);
 
 /* Stops reading files as an ordinary user.  It is not an error to call this
    even if userfile_init has not been called. */

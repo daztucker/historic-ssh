@@ -12,8 +12,15 @@ Created: Wed Apr 19 17:41:39 1995 ylo
 */
 
 /*
- * $Id: cipher.c,v 1.9 1997/03/26 07:03:04 kivinen Exp $
+ * $Id: cipher.c,v 1.11 1998/04/30 01:51:32 kivinen Exp $
  * $Log: cipher.c,v $
+ * Revision 1.11  1998/04/30 01:51:32  kivinen
+ * 	Reserved cipher number 7 to Bernard Perrot
+ * 	<perrot@lal.in2p3.fr> for some weak 40 bit encryption method.
+ *
+ * Revision 1.10  1998/03/27 17:23:43  kivinen
+ * 	Removed TSS.
+ *
  * Revision 1.9  1997/03/26 07:03:04  kivinen
  * 	Added check that warning about arcfour is given only once.
  *
@@ -62,7 +69,8 @@ Created: Wed Apr 19 17:41:39 1995 ylo
 /* Names of all encryption algorithms.  These must match the numbers defined
    int cipher.h. */
 static char *cipher_names[] =
-{ "none", "idea", "des", "3des", "tss", "arcfour", "blowfish" };
+{ "none", "idea", "des", "3des", "used to be tss", "arcfour", "blowfish",
+  "reserved"};
 
 /* Returns a bit mask indicating which ciphers are supported by this
    implementation.  The bit mask has the corresponding bit set of each
@@ -85,10 +93,6 @@ unsigned int cipher_mask()
 #endif /* WITH_DES */
 
   mask |= 1 << SSH_CIPHER_3DES;
-  
-#ifdef WITH_TSS
-  mask |= 1 << SSH_CIPHER_TSS;
-#endif /* WITH_TSS */
   
 #ifdef WITH_ARCFOUR
   mask |= 1 << SSH_CIPHER_ARCFOUR;
@@ -228,14 +232,6 @@ void cipher_set_key(CipherContext *context, int cipher,
       memset(context->u.des3.iv3, 0, sizeof(context->u.des3.iv3));
       break;
 
-#ifdef WITH_TSS
-    case SSH_CIPHER_TSS:
-      if (keylen < 8)
-	error("Key length %d is insufficient for TSS.", keylen);
-      TSS_Init(&context->u.tss, key, keylen);
-      break;
-#endif /* WITH_TSS */
-
 #ifdef WITH_ARCFOUR
     case SSH_CIPHER_ARCFOUR:
       arcfour_init(&context->u.arcfour, key, keylen);
@@ -286,13 +282,6 @@ void cipher_encrypt(CipherContext *context, unsigned char *dest,
 		       dest, src, len);
       break;
 
-#ifdef WITH_TSS
-    case SSH_CIPHER_TSS:
-      memcpy(dest, src, len);
-      TSS_Encrypt(&context->u.tss, dest, len);
-      break;
-#endif /* WITH_TSS */
-
 #ifdef WITH_ARCFOUR
     case SSH_CIPHER_ARCFOUR:
       arcfour_encrypt(&context->u.arcfour, dest, src, len);
@@ -340,13 +329,6 @@ void cipher_decrypt(CipherContext *context, unsigned char *dest,
 		       &context->u.des3.key3, context->u.des3.iv3,
 		       dest, src, len);
       break;
-
-#ifdef WITH_TSS
-    case SSH_CIPHER_TSS:
-      memcpy(dest, src, len);
-      TSS_Decrypt(&context->u.tss, dest, len);
-      break;
-#endif /* WITH_TSS */
 
 #ifdef WITH_ARCFOUR
     case SSH_CIPHER_ARCFOUR:

@@ -16,10 +16,13 @@ output to the system log.
 */
 
 /*
- * $Id: log-server.c,v 1.9 2000/07/05 13:42:47 sjl Exp $
+ * $Id: log-server.c,v 1.10 2001/03/15 03:32:35 sjl Exp $
  * $Log: log-server.c,v $
+ * Revision 1.10  2001/03/15 03:32:35  sjl
+ * 	strdup => xstrdup.
+ *
  * Revision 1.9  2000/07/05 13:42:47  sjl
- * 	Applied patch for syslog file handle hogging by James Barlow.
+ *      Applied patch for syslog file handle hogging by James Barlow.
  *
  * Revision 1.8  1999/11/17 17:04:46  tri
  *      Fixed copyright notices.
@@ -135,7 +138,7 @@ void log_init(char *av0, int on_stderr, int debug, int quiet,
   log_debug = debug;
   log_quiet = quiet;
   log_on_stderr = on_stderr;
-  prg_name = strdup(av0); /* store the program name for later use */
+  prg_name = xstrdup(av0); /* store the program name for later use */
   closelog(); /* Close any previous log. */
 #if 0 /* don't open log here, it keeps an open handle on every ssh running */
   openlog(av0, LOG_PID, log_facility);

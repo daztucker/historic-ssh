@@ -15,8 +15,12 @@ login (authentication) dialog.
 */
 
 /*
- * $Id: sshconnect.c,v 1.6 1996/05/25 23:33:12 ylo Exp $
+ * $Id: sshconnect.c,v 1.7 1996/10/29 22:47:16 kivinen Exp $
  * $Log: sshconnect.c,v $
+ * Revision 1.7  1996/10/29 22:47:16  kivinen
+ * 	log -> log_msg.
+ * 	Added username to password prompt.
+ *
  * Revision 1.6  1996/05/25 23:33:12  ylo
  * 	Fixed a minor bug in the logic used to determine whether to allocate
  * 	a privileged local port.
@@ -536,7 +540,7 @@ int try_agent_authentication()
 	{
 	  /* The agent failed to authenticate this identifier although it
 	     advertised it supports this.  Just return a wrong value. */
-	  log("Authentication agent failed to decrypt challenge.");
+	  log_msg("Authentication agent failed to decrypt challenge.");
 	  memset(response, 0, sizeof(response));
 	}
       
@@ -970,10 +974,10 @@ void ssh_login(RandomState *state, int host_key_valid,
       if (!add_host_to_hostfile(original_real_uid,
 				options->user_hostfile, host, host_key.bits,
 				&host_key.e, &host_key.n))
-	log("Failed to add the host to the list of known hosts (%.500s).", 
+	log_msg("Failed to add the host to the list of known hosts (%.500s).", 
 	    options->user_hostfile);
       else
-	log("Host '%.200s' added to the list of known hosts.", host);
+	log_msg("Host '%.200s' added to the list of known hosts.", host);
       break;
     case HOST_CHANGED:
       /* The host key has changed. */
@@ -1008,7 +1012,7 @@ void ssh_login(RandomState *state, int host_key_valid,
   /* Initialize the random number generator. */
   sprintf(buf, "%.500s/%.200s", pw->pw_dir, SSH_CLIENT_SEEDFILE);
   if (userfile_stat(pw->pw_uid, buf, &st) < 0)
-    log("Creating random seed file ~/%.200s.  This may take a while.", 
+    log_msg("Creating random seed file ~/%.200s.  This may take a while.", 
 	SSH_CLIENT_SEEDFILE);
   else
     debug("Initializing random; seed file %.900s", buf);
@@ -1192,10 +1196,12 @@ void ssh_login(RandomState *state, int host_key_valid,
   if ((supported_authentications & (1 << SSH_AUTH_PASSWORD)) &&
       options->password_authentication && !options->batch_mode)
     {
+      char prompt[50];
       debug("Doing password authentication.");
       if (options->cipher == SSH_CIPHER_NONE)
-	log("WARNING: Encryption is disabled! Password will be transmitted in clear text.");
-      password = read_passphrase(pw->pw_uid, "Password: ", 0);
+	log_msg("WARNING: Encryption is disabled! Password will be transmitted in clear text.");
+      sprintf(prompt, "%.30s's password: ", server_user);
+      password = read_passphrase(pw->pw_uid, prompt, 0);
       packet_start(SSH_CMSG_AUTH_PASSWORD);
       packet_put_string(password, strlen(password));
       memset(password, 0, strlen(password));

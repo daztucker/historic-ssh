@@ -9,12 +9,15 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Tue Aug 22 17:25:30 1995 ylo
-Last modified: Sat Sep 30 17:18:05 1995 ylo
 
 */
 
 /*
  * $Log: minfd.c,v $
+ * Revision 1.4  1995/10/02  01:24:36  ylo
+ * 	Avoid a compiler warning.
+ * 	Removed "Last modified" header.
+ *
  * Revision 1.3  1995/09/09  21:26:43  ylo
  * /m/shadows/u2/users/ylo/ssh/README
  *

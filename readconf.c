@@ -14,8 +14,11 @@ Functions for reading the configuration files.
 */
 
 /*
- * $Id: readconf.c,v 1.5 1995/09/06 19:52:36 ylo Exp $
+ * $Id: readconf.c,v 1.6 1995/09/09 21:26:44 ylo Exp $
  * $Log: readconf.c,v $
+ * Revision 1.6  1995/09/09  21:26:44  ylo
+ * /m/shadows/u2/users/ylo/ssh/README
+ *
  * Revision 1.5  1995/09/06  19:52:36  ylo
  * 	Fixed spelling of fascist.
  *
@@ -186,8 +189,8 @@ static OpCodes parse_token(const char *cp, const char *filename, int linenum)
     if (strcmp(cp, keywords[i].name) == 0)
       return keywords[i].opcode;
 
-  fatal("%.200s line %d: Bad configuration option: %.100s", 
-	filename, linenum, cp);
+  fatal("%.200s line %d: Bad configuration option.",
+	filename, linenum);
   /*NOTREACHED*/
   return 0;
 }
@@ -219,7 +222,7 @@ void process_config_line(Options *options, const char *host,
     parse_flag:
       cp = strtok(NULL, WHITESPACE);
       if (!cp)
-	fatal("%.200s line %d: Missing yes/no argument", 
+	fatal("%.200s line %d: Missing yes/no argument.",
 	      filename, linenum);
       value = 0; /* To avoid compiler warning... */
       if (strcmp(cp, "yes") == 0)
@@ -228,8 +231,8 @@ void process_config_line(Options *options, const char *host,
 	if (strcmp(cp, "no") == 0)
 	  value = 0;
 	else
-	  fatal("%.200s line %d: Bad yes/no argument: %.200s", 
-		filename, linenum, cp);
+	  fatal("%.200s line %d: Bad yes/no argument.", 
+		filename, linenum);
       if (*activep && *intptr == -1)
 	*intptr = value;
       break;
@@ -303,7 +306,7 @@ void process_config_line(Options *options, const char *host,
       if (!cp)
 	fatal("%.200s line %d: Missing argument.", filename, linenum);
       if (cp[0] < '0' || cp[0] > '9')
-	fatal("%.200s line %d: Bad number: %.100s", filename, linenum, cp);
+	fatal("%.200s line %d: Bad number.", filename, linenum);
       value = atoi(cp);
       if (*activep && *intptr == -1)
 	*intptr = value;
@@ -314,7 +317,7 @@ void process_config_line(Options *options, const char *host,
       cp = strtok(NULL, WHITESPACE);
       value = cipher_number(cp);
       if (value == -1)
-	fatal("%.200s line %d: Bad cipher: %.100s", filename, linenum, cp);
+	fatal("%.200s line %d: Bad cipher.", filename, linenum);
       if (*activep && *intptr == -1)
 	*intptr = value;
       break;
@@ -491,8 +494,9 @@ void fill_default_options(Options *options)
     options->cipher = SSH_CIPHER_NOT_SET; /* Selected in ssh_login(). */
   if (options->num_identity_files == 0)
     {
-      options->identity_files[0] = xmalloc(2 + strlen(SSH_CLIENT_IDENTITY) + 1);
-      sprintf(options->identity_files[0], "~/%s", SSH_CLIENT_IDENTITY);
+      options->identity_files[0] = 
+	xmalloc(2 + strlen(SSH_CLIENT_IDENTITY) + 1);
+      sprintf(options->identity_files[0], "~/%.100s", SSH_CLIENT_IDENTITY);
       options->num_identity_files = 1;
     }
   if (options->escape_char == -1)

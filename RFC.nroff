@@ -1,7 +1,10 @@
 .\" -*- nroff -*-
 .\"
-.\" $Id: RFC.nroff,v 1.1.1.1 1996/02/18 21:38:10 ylo Exp $
+.\" $Id: RFC.nroff,v 1.2 1996/06/20 23:50:13 ylo Exp $
 .\" $Log: RFC.nroff,v $
+.\" Revision 1.2  1996/06/20 23:50:13  ylo
+.\" 	Fixed a typo.
+.\"
 .\" Revision 1.1.1.1  1996/02/18 21:38:10  ylo
 .\" 	Imported ssh-1.2.13.
 .\"
@@ -912,7 +915,7 @@ bitwise or of (1 << cipher_number), where << is the left shift
 operator, for all supported ciphers), and
 supported_authentications_mask (which is the bitwise or of (1 <<
 authentication_type) for all supported authentication types).  The
-anti_spoofing_cookie is 64 random bytes, and must be sent back
+anti_spoofing_cookie is 64 random bits, and must be sent back
 verbatim by the client in its reply.  It is used to make IP-spoofing
 more difficult (encryption and host keys are the real defense against
 spoofing).

@@ -9,8 +9,12 @@
 .\"
 .\" Created: Sat Apr 22 21:55:14 1995 ylo
 .\"
-.\" $Id: sshd.8.in,v 1.1.1.1 1996/02/18 21:38:13 ylo Exp $
+.\" $Id: sshd.8.in,v 1.2 1996/08/13 00:25:15 ylo Exp $
 .\" $Log: sshd.8.in,v $
+.\" Revision 1.2  1996/08/13 00:25:15  ylo
+.\" 	Documented that $HOME/.ssh/rc is run with user's shell,
+.\" 	/etc/sshrc with /bin/sh.
+.\"
 .\" Revision 1.1.1.1  1996/02/18 21:38:13  ylo
 .\" 	Imported ssh-1.2.13.
 .\"
@@ -414,9 +418,10 @@ Reads $HOME/.ssh/environment if it exists.
 .IP 8.
 Changes to user's home directory.
 .IP 9.
-If $HOME/.ssh/rc exists, runs it; else if @ETCDIR@/sshrc exists, runs
-it; otherwise runs xauth.  The "rc" files are given the X11
-authentication protocol and cookie in standard input.
+If $HOME/.ssh/rc exists, runs it (with the user's shell); else if
+@ETCDIR@/sshrc exists, runs it (with /bin/sh); otherwise runs xauth.
+The "rc" files are given the X11 authentication protocol and cookie in
+standard input.
 .IP 10.
 Runs user's shell or command.
 .RT
@@ -717,7 +722,7 @@ This file should be writable only by the user, and need not be
 readable by anyone else.
 .TP
 .I @ETCDIR@/sshrc
-Like $HOME/\s+2.\s0ssh/rc.  This can be used to specify
+Like $HOME/\s+2.\s0ssh/rc, but run with /bin/sh.  This can be used to specify
 machine-specific login-time initializations globally.  This file
 should be writable only by root, and should be world-readable.
 

@@ -590,6 +590,7 @@ void check_keyboard()
 /* Event loop. */
 void event_loop()
 {
+  int focused = 0;
   XEvent event;
   XSelectInput(display, main_window, ButtonPressMask |
 	       VisibilityChangeMask | StructureNotifyMask |	       
@@ -614,8 +615,14 @@ void event_loop()
 	  key_press(&event.xkey);
 	  break;
 	case Expose:
-	  if (event.xexpose.count == 0)
+	  if (event.xexpose.count == 0) {
 	    draw_it();
+	    if (!focused) {
+	      XSetInputFocus(display, main_window, RevertToPointerRoot,
+			     CurrentTime);
+	      focused = 1;
+	    }
+	  }
 	  break;		     
 	}
     }

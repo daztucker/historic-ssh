@@ -9,8 +9,14 @@
 .\"
 .\" Created: Sat Apr 22 21:55:14 1995 ylo
 .\"
-.\" $Id: ssh.1.in,v 1.1.1.1 1996/02/18 21:38:13 ylo Exp $
+.\" $Id: ssh.1.in,v 1.3 1996/09/29 01:03:36 ylo Exp $
 .\" $Log: ssh.1.in,v $
+.\" Revision 1.3  1996/09/29 01:03:36  ylo
+.\" 	Documented blowfish.
+.\"
+.\" Revision 1.2  1996/09/27 14:31:34  ttsalo
+.\" 	Socks5 support from David Kågedal  <davidk@lysator.liu.se>
+.\"
 .\" Revision 1.1.1.1  1996/02/18 21:38:13  ylo
 .\" 	Imported ssh-1.2.13.
 .\"
@@ -62,7 +68,7 @@ ssh \- secure shell client (remote login program)
 ]
 [\c
 .B \-c
-\fIidea\fR\||\|\fIdes\fR\||\|\fI3des\c
+\fIidea\fR\||\|\fIblowfish\fR\||\|\fIdes\fR\||\|\fI3des\c
 \fR\||\|\fIarcfour\fR\||\|\fItss\fR\||\|\fInone\fR\c
 ]
 [\c
@@ -322,7 +328,7 @@ Disables forwarding of the authentication agent connection.  This may
 also be specified on a per-host basis in the configuration file.
 .ne 3
 .TP
-.BI \-c \ \fIidea\fR\||\|\fIdes\fR\||\|\fI3des\fR\||\|\fIarcfour\fR\||\|\fItss\fR\||\|\fInone\fR
+.BI \-c \ \fIidea\fR\||\|\fIdes\fR\||\|\fI3des\fR\||\|\fIblowfish\fR\||\|\fIarcfour\fR\||\|\fItss\fR\||\|\fInone\fR
 Selects the cipher to use for encrypting the session. 
 .B \s-1idea\s0
 is used by default.  It is believed to be secure. 
@@ -333,6 +339,9 @@ governments, large corporations, and major criminal organizations.
 (triple-des) is encrypt-decrypt-encrypt triple with three different
 keys.  It is presumably more secure than
 DES.  It is used as default if both sites do not support IDEA.
+.B \s-1blowfish\s0
+is an encryption algorithm invented by Bruce Schneier.  It uses 128
+bit keys.
 .B \s-1arcfour\s0
 is an algorithm published in the Usenet News in 1995.
 This algorithm is believed to be equivalent with the RC4 cipher from
@@ -524,6 +533,7 @@ Specifies the cipher to use for encrypting the session.  Currently,
 .IR idea ",
 .IR des ",
 .IR 3des ",
+.IR blowfish ",
 .IR arcfour ",
 .IR tss ",
 and
@@ -660,7 +670,7 @@ the user).
 Note that
 .B ssh
 can also be configured to support the SOCKS system using the
---with-socks compile-time configuration option.
+--with-socks4 or --with-socks5 compile-time configuration option.
 .ne 3
 .TP
 .B RemoteForward

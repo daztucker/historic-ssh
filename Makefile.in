@@ -8,8 +8,30 @@
 #
 # Created: Wed Mar 22 17:37:49 1995 ylo
 #
-# $Id: Makefile.in,v 1.7 1996/06/03 20:06:14 ylo Exp $
+# $Id: Makefile.in,v 1.14 1996/09/29 22:46:09 kivinen Exp $
 # $Log: Makefile.in,v $
+# Revision 1.14  1996/09/29 22:46:09  kivinen
+# 	Updated gmp-2.0 to gmp-2.0.2. Added tags target.
+#
+# Revision 1.13  1996/09/27 13:55:33  ttsalo
+# 	Added blowfish
+#
+# Revision 1.12  1996/09/08 17:45:51  ttsalo
+# 	Distclean makes distclean in zlib too
+#
+# Revision 1.11  1996/08/29 15:18:18  ttsalo
+# 	make distclean makes disclean in gmp too
+#
+# Revision 1.10  1996/08/27 12:59:30  ttsalo
+# 	Changed gmp 1.3.2 to gmp 2.0
+#
+# Revision 1.9  1996/07/12 07:07:40  ttsalo
+# 	Changed zlib version to zlib-1.0.3, detached ssh-askpass from
+# 	NORMAL_PROGRAMS to X_PROGRAMS, which is conditionally defined.
+#
+# Revision 1.8  1996/06/24 14:40:27  ttsalo
+# 	Changed zlib to version 1.0.2, zlibdir = zlib-1.0.2
+#
 # Revision 1.7  1996/06/03 20:06:14  ylo
 # 	Removed ssh-askpass.wish from DISTFILES.
 # 	Removed explicit rule for ssh-askpass.o.  It breaks
@@ -136,11 +158,11 @@ SERVER_CONFIG_FILE = $(etcdir)/sshd_config
 
 SHELL = /bin/sh
 
-GMPDIR 		= gmp-1.3.2
+GMPDIR 		= gmp-2.0.2
 GMPLIBS 	= -L$(GMPDIR) -lgmp
 GMPDEP 		= $(GMPDIR)/gmp.h $(GMPDIR)/libgmp.a
 
-ZLIBDIR		= zlib095
+ZLIBDIR		= zlib-1.0.3
 ZLIBDEP		= $(ZLIBDIR)/libz.a
 ZLIBLIBS	= -L$(ZLIBDIR) -lz
 
@@ -158,7 +180,7 @@ COMMON_OBJS = $(LIBOBJS) $(CONFOBJS) \
 	rsa.o randoms.o md5.o buffer.o emulate.o packet.o compress.o \
 	xmalloc.o ttymodes.o newchannels.o bufaux.o authfd.o authfile.o crc32.o \
 	rsaglue.o tss.o cipher.o des.o match.o arcfour.o mpaux.o minfd.o \
-	userfile.o signals.o
+	userfile.o signals.o blowfish.o
 SSHD_OBJS = sshd.o auth-rhosts.o auth-passwd.o auth-rsa.o auth-rh-rsa.o pty.o \
 	log-server.o login.o hostfile.o canohost.o servconf.o tildexpand.o \
 	serverloop.o $(COMMON_OBJS)
@@ -166,19 +188,20 @@ SSH_OBJS = ssh.o sshconnect.o log-client.o readconf.o hostfile.o readpass.o \
 	tildexpand.o clientloop.o canohost.o $(COMMON_OBJS)
 KEYGEN_OBJS = ssh-keygen.o log-client.o readpass.o rsa.o randoms.o md5.o \
 	buffer.o xmalloc.o authfile.o tss.o cipher.o des.o arcfour.o mpaux.o \
-	bufaux.o userfile.o signals.o $(LIBOBJS) $(CONFOBJS)
+	bufaux.o userfile.o signals.o blowfish.o $(LIBOBJS) $(CONFOBJS)
 AGENT_OBJS = ssh-agent.o log-client.o rsa.o randoms.o md5.o buffer.o \
 	xmalloc.o bufaux.o authfd.o authfile.o rsaglue.o tss.o cipher.o \
-	des.o arcfour.o mpaux.o minfd.o userfile.o signals.o $(LIBOBJS) $(CONFOBJS)
+	des.o arcfour.o mpaux.o minfd.o userfile.o signals.o blowfish.o \
+	$(LIBOBJS) $(CONFOBJS)
 ADD_OBJS = ssh-add.o log-client.o readpass.o rsa.o randoms.o md5.o buffer.o \
-	xmalloc.o bufaux.o authfd.o authfile.o tss.o cipher.o \
+	xmalloc.o bufaux.o authfd.o authfile.o tss.o cipher.o blowfish.o \
 	des.o arcfour.o mpaux.o minfd.o userfile.o signals.o $(LIBOBJS) \
 	$(CONFOBJS)
 SCP_OBJS = scp.o xmalloc.o
 GEN_MINFD_OBJS = gen_minfd.o $(LIBOBJS)
 EDD_OBJS = rsa.o randoms.o md5.o buffer.o xmalloc.o bufaux.o authfd.o \
 	authfile.o crc32.o rsaglue.o tss.o cipher.o des.o match.o arcfour.o \
-	mpaux.o minfd.o userfile.o signals.o idea.o \
+	mpaux.o minfd.o userfile.o signals.o idea.o blowfish.o \
         readpass.o edd.o edd-block.o
 SSH_ASKPASS_OBJS = ssh-askpass.o xmalloc.o
 
@@ -208,10 +231,12 @@ DISTFILES = COPYING README README.SECURID INSTALL TODO libdes-README \
 
 DISTNAME = ssh-`sed 's/.*"\(.*\)".*/\1/' version.h`
 
-NORMAL_PROGRAMS = ssh-keygen ssh-agent ssh-add scp ssh-askpass
+NORMAL_PROGRAMS = ssh-keygen ssh-agent ssh-add scp
+X_PROGRAMS = @X_PROGRAMS@
 SCRIPT_PROGRAMS = make-ssh-known-hosts
 SBIN_PROGRAMS = sshd
-PROGRAMS = ssh $(SBIN_PROGRAMS) $(NORMAL_PROGRAMS) $(SCRIPT_PROGRAMS)
+PROGRAMS = ssh $(SBIN_PROGRAMS) $(NORMAL_PROGRAMS) $(SCRIPT_PROGRAMS)\
+$(X_PROGRAMS)
 SSH_PROGRAM = $(bindir)/ssh
 
 all: $(PROGRAMS)
@@ -270,17 +295,7 @@ minfd.h: gen_minfd
 GMP_COPY_SOURCES = mpz_gcd.c mpz_powm.c mpz_pow_ui.c mpz_add.c mpz_sub.c \
 		mpz_mul.c mpz_cmp.c mpz_sqrtrem.c
 $(GMPDIR)/libgmp.a:
-	-if test '!' -d $(GMPDIR); then \
-	  mkdir $(GMPDIR); mkdir $(GMPDIR)/tests; \
-	  cp $(srcdir)/$(GMPDIR)/Makefile $(GMPDIR); \
-	  cp $(srcdir)/$(GMPDIR)/cre-*.c $(GMPDIR); \
-	  cp $(srcdir)/$(GMPDIR)/tests/Makefile $(GMPDIR)/tests; \
-	  for i in $(GMP_COPY_SOURCES); do \
-	    cp $(srcdir)/$(GMPDIR)/$$i $(GMPDIR); done; \
-	fi
-	cd $(GMPDIR); $(MAKE) VPATH=$(srcdir)/$(GMPDIR):../$(srcdir)/$(GMPDIR)\
-              CC="$(CC)" CFLAGS="$(CFLAGS) -I. -I$(srcdir)/$(GMPDIR) \
-	       -I../$(srcdir)/$(GMPDIR)" RANLIB="$(RANLIB)"
+	cd $(GMPDIR); $(MAKE)
 
 $(ZLIBDEP):
 	-if test '!' -d $(ZLIBDIR); then \
@@ -454,8 +469,8 @@ clean:
 distclean: clean
 	-rm -f Makefile config.status config.cache config.log config.h
 	-rm -f ssh.1 sshd.8 make-ssh-known-hosts.1
-	cd $(GMPDIR); $(MAKE) clean
-	cd $(ZLIBDIR); $(MAKE) clean
+	cd $(GMPDIR); $(MAKE) distclean
+	cd $(ZLIBDIR); $(MAKE) distclean
 
 dist:
 	-rm -rf $(DISTNAME)
@@ -480,3 +495,6 @@ dist:
 
 depend:
 	$(MAKEDEP) -I$(srcdir) -I. -I$(GMPDIR) -I$(ZLIBDIR) $(DEFS) $(SRCS)
+
+tags:
+	find config.h $(srcdir) -name '*.[chly]' -print | xargs etags -a

@@ -1049,7 +1049,7 @@ Internet-Draft  SSH (Secure Shell) Remote Login Protocol15 November 1995
         shift operator, for all supported ciphers), and
         supported_authentications_mask (which is the bitwise or of (1 <<
         authentication_type) for all supported authentication types).
-        The anti_spoofing_cookie is 64 random bytes, and must be sent
+        The anti_spoofing_cookie is 64 random bits, and must be sent
         back verbatim by the client in its reply.  It is used to make
         IP-spoofing more difficult (encryption and host keys are the
         real defense against spoofing).

@@ -1,3 +1,5 @@
+Compiling without X11 breaks for ssh-askpass.
+
 SunOS has utmp problems (slot 0?).
 
 The first part of README is too long.

@@ -8,8 +8,67 @@
 #
 # Created: Wed Mar 22 18:02:48 1995 ylo
 #
-# $Id: configure.in,v 1.6 1996/06/03 19:25:12 ylo Exp $
+# $Id: configure.in,v 1.23 1996/10/03 13:53:17 ttsalo Exp $
 # $Log: configure.in,v $
+# Revision 1.23  1996/10/03 13:53:17  ttsalo
+# 	Configuring for m68k-apple-sysv added
+#
+# Revision 1.22  1996/09/30 01:24:04  kivinen
+# 	Fixed test of existence of shadow.h in /etc/shadow testing.
+#
+# Revision 1.21  1996/09/29 22:45:33  kivinen
+# 	Added --with-socks option that will first try to use socks5 if
+# 	found and then socks4. Updated gmp-2.0 to gmp-2.0.2.
+#
+# Revision 1.20  1996/09/27 23:35:50  ylo
+# 	Define no_termios=yes on ultrix.
+#
+# Revision 1.19  1996/09/27 14:31:36  ttsalo
+# 	Socks5 support from David Kågedal  <davidk@lysator.liu.se>
+#
+# Revision 1.18  1996/09/27 13:58:43  ttsalo
+# 	Added checking of shadow.h, removed checking of old slackware
+# 	bugs (was causing difficulties with newer distributions).
+#
+# Revision 1.17  1996/09/08 17:36:50  ttsalo
+# 	Patches for HPUX 10.x shadow passwords from
+# 	vincent@ucthpx.uct.ac.za (Russell Vincent) merged.
+#
+# Revision 1.16  1996/09/04 12:45:04  ttsalo
+# 	Configuring zlib for compilation to separate object
+# 	directory now possible
+#
+# Revision 1.15  1996/08/27 12:59:32  ttsalo
+# 	Changed gmp 1.3.2 to gmp 2.0
+#
+# Revision 1.14  1996/08/16 02:33:44  ylo
+# 	Fixes for NextStep.
+# 	Fixed quotes in no_x test.
+#
+# Revision 1.13  1996/08/11 22:29:37  ylo
+# 	Added checking of machine/endian.h.
+# 	Added checking of setpgrp.
+#
+# Revision 1.12  1996/07/24 12:00:28  ttsalo
+# 	Fixed X detection
+#
+# Revision 1.11  1996/07/12 09:10:03  ttsalo
+# 	Added configuring in zlib-1.0.3
+#
+# Revision 1.10  1996/07/12 07:15:57  ttsalo
+# 	-lipc for BSDI 2.1, -lrsc for cray, SCO v5 defines,
+# 	dynix/ptx defines, detection of getpseudotty() and
+# 	sco-style ptys.
+#
+# Revision 1.9  1996/06/25 14:43:39  ylo
+# 	Added no_utmpx=yes for OSF/1.
+#
+# Revision 1.8  1996/06/21 00:39:24  ylo
+# 	Define no_utmpx on ultrix.
+#
+# Revision 1.7  1996/06/20 23:49:52  ylo
+# 	Define no_utmpx on hpux.
+#
 # Revision 1.6  1996/06/03 19:25:12  ylo
 # 	Add -L/usr/local/lib in LIBS.  This seems to be necessary on
 # 	many machines to easily find locally installed libraries, such as
@@ -218,10 +277,13 @@ case "$host" in
     no_setsid=yes
     ;;
   *-dec-ultrix*)
-    # Ultrix stuff from dmckilli@qc.bell.ca, jbotz@orixa.mtholyoke.edu.
+    # Ultrix stuff from dmckilli@qc.bell.ca, jbotz@orixa.mtholyoke.edu,
+    # corey@cac.washington.edu
     AC_DEFINE(O_NONBLOCK_BROKEN)
     AC_DEFINE(HAVE_ULTRIX_SHADOW_PASSWORDS)
     no_vhangup=yes
+    no_utmpx=yes
+    no_termios=yes
     # Ultrix shadow passwords implemented in auth-passwd.c.
     no_shadows_password_checking=yes
     AC_CHECK_LIB(auth, authenticate_user)
@@ -238,6 +300,14 @@ case "$host" in
       CFLAGS="$CFLAGS -Aa -D_HPUX_SOURCE"
     fi
     AC_DEFINE(HPSUX_NONSTANDARD_X11_KLUDGE)
+    AC_MSG_CHECKING(for HPUX tcb auth option)
+    if test -f /tcb/files/auth/system/pw_id_map; then
+      AC_MSG_RESULT(yes)
+      AC_DEFINE(HAVE_HPUX_TCB_AUTH)
+      LIBS="$LIBS -lsec"
+    else
+      AC_MSG_RESULT(no)
+    fi
     ;;
   *-*-hpux*)
     # HPUX flags from jgotts@engin.umich.edu
@@ -245,11 +315,13 @@ case "$host" in
       CFLAGS="$CFLAGS -Aa -D_HPUX_SOURCE"
     fi
     AC_DEFINE(HPSUX_NONSTANDARD_X11_KLUDGE)
+    no_utmpx=yes
     ;;
   alpha-dec-osf*)
     AC_DEFINE(TTY_GROUP, "terminal")
     AC_CHECK_LIB(security, set_auth_parameters)
     AC_CHECK_FUNCS(setluid)
+    no_utmpx=yes
     AC_MSG_CHECKING(for OSF/1 C2 security package)
     osfc2sec=`/usr/sbin/setld -i | grep '^OSFC2SEC' | grep 'installed'`
     if test -n "$osfc2sec"; then
@@ -263,31 +335,21 @@ case "$host" in
   *-*-nextstep*)
     # Nextstep support from a person who wants to remain anonymous
     no_termios=yes
-    AC_DEFINE(SPEED_T_IN_STDTYPES_H)
+    if test -f /usr/include/bsd/sys/termios.h; then
+      AC_DEFINE(SPEED_T_IN_STDTYPES_H)
+    fi
     ;;
   *-*-linux*)
-    # Test for a bug in older slackware distributions
-    AC_MSG_CHECKING(for bugs in your linux distribution)
-    SAVED_LIBS="$LIBS"
-    LIBS="$LIBS -lm"
-    AC_TRY_LINK([#include <math.h>],
-                [ extern char **environ;
-		  double d = sin((double)(int)environ[0]);
-		  return (int)d; ],
-		AC_MSG_RESULT(ok),
-		AC_MSG_RESULT(problems)
-		AC_MSG_WARN(Your linux distribution contains an error.)
-		AC_MSG_WARN(To fix it use ln -s libc.sa /usr/lib/libg.sa)
-		AC_MSG_WARN(Alternatively you can configure ssh with CFLAGS=-O LDFLAGS=-O ./configure)
-		AC_MSG_ERROR(Compilation cannot continue before this is fixed.)
-	       )
-    LIBS="$SAVED_LIBS"
     # Linux shadow password support (Andrew.Macpherson.1248566@bnr.co.uk)
     if test -f /etc/shadow && test -f /etc/login.defs; then
       AC_MSG_RESULT(Using linux John Haugh shadow passwords and pw_encrypt for password encryption)
       AC_DEFINE(crypt,pw_encrypt)
       LIBS="$LIBS -lshadow"
     fi
+    ;;
+  i*86-*-bsdi2.1*)
+    no_pipe=yes
+    X_EXTRA_LIBS="$X_EXTRA_LIBS -lipc"
     ;;
   i*86-*-bsdi*)
     no_pipe=yes
@@ -300,11 +362,18 @@ case "$host" in
     # From snabb@niksula.hut.fi
     no_vhangup=yes
     ;;
+  m68k-apple-sysv)
+    # Macintosh A/UX tweaks - prune LIB = -L/usr/local/lib, exceeds ld capacity
+    #   add -lposix to it, needed for termio stuff
+    LIBS="-lposix"
+    AC_DEFINE(_POSIX_SOURCE)
+    ;;
   m88k-dg-dgux*)
     AC_DEFINE(BROKEN_INET_ADDR)
     ;;
   *-cray-unicos*)
     CFLAGS="$CFLAGS -DCRAY_STACKSEG_END=_getb67"
+    LIBS="$LIBS -lrsc"
     ;;
   *-*-sysv4*)
     AC_CHECK_LIB(gen, openlog)
@@ -313,10 +382,19 @@ case "$host" in
     AC_DEFINE(USE_STRLEN_FOR_AF_UNIX)
     no_vhangup=yes
     ;;
-  i*86-unknown-sco*)
+  i*86-unknown-sco3.2v4*)
     # From moi@dio.com
     AC_DEFINE(HAVE_SCO_ETC_SHADOW)
     AC_DEFINE(SCO)
+    no_ranlib=yes
+    LIBS="-L/usr/lib/libp -lprot -lx $LIBS"
+    CFLAGS="$CFLAGS -UM_I86SM"
+    ;;
+  i*86-unknown-sco3.2v5*)
+    # From brian@ilinx.com
+    AC_DEFINE(HAVE_SCO_ETC_SHADOW)
+    AC_DEFINE(SCO)
+    AC_DEFINE(SCO5)
     no_ranlib=yes
     LIBS="-L/usr/lib/libp -lprot -lx $LIBS"
     CFLAGS="$CFLAGS -UM_I86SM"
@@ -329,6 +407,10 @@ case "$host" in
   *-sequent-ptx*)
     # From geek+@cmu.edu
     test_libinet=yes
+    ;;
+  *-sequent-dynix*|*-sequent-ptx*)
+    LIBS="-lseq -lsec $LIBS"
+    X_EXTRA_LIBS="-lsocket -linet -lnsl $X_EXTRA_LIBS"
     ;;
   *-*-freebsd*)
     # From Ollivier Robert: FreeBSD and NetBSD use master.passwd, but set
@@ -392,10 +474,14 @@ if test -z "$no_termios"; then
   AC_CHECK_HEADERS(termios.h)
 fi
 
+if test -z "$no_utmpx"; then
+  AC_CHECK_HEADERS(utmpx.h)
+fi
+
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
-AC_CHECK_HEADERS(unistd.h rusage.h sys/time.h lastlog.h utmp.h utmpx.h)
-AC_CHECK_HEADERS(sgtty.h sys/select.h sys/ioctl.h)
+AC_CHECK_HEADERS(unistd.h rusage.h sys/time.h lastlog.h utmp.h shadow.h)
+AC_CHECK_HEADERS(sgtty.h sys/select.h sys/ioctl.h machine/endian.h)
 AC_CHECK_HEADERS(paths.h usersec.h utime.h netinet/in_systm.h ulimit.h)
 AC_HEADER_TIME
 AC_HEADER_DIRENT
@@ -432,7 +518,8 @@ fi
 
 AC_CHECK_FUNCS(gettimeofday times getrusage ftruncate revoke makeutx)
 AC_CHECK_FUNCS(strchr memcpy setlogin openpty _getpty clock fchmod ulimit)
-AC_CHECK_FUNCS(gethostname getdtablesize umask innetgr initgroups)
+AC_CHECK_FUNCS(gethostname getdtablesize umask innetgr initgroups setpgrp)
+AC_CHECK_FUNCS(setpgid)
 
 AC_REPLACE_FUNCS(strerror memmove remove random putenv crypt socketpair)
 
@@ -446,6 +533,13 @@ fi
 AC_PROGRAMS_CHECK(MAKEDEP, makedepend makedep, makedepend)
 
 AC_PATH_XTRA
+
+if test "$no_x" = yes; then
+  X_PROGRAMS=""
+else
+  X_PROGRAMS="ssh-askpass"
+fi
+AC_SUBST(X_PROGRAMS)
 
 AC_PATH_PROG(XAUTH_PATH, xauth)
 if test -n "$XAUTH_PATH"; then
@@ -465,12 +559,24 @@ then
   AC_DEFINE(HAVE_DEV_PTMX)
   AC_MSG_RESULT(streams ptys)
 else
+if test -c /dev/getpty
+then
+  AC_DEFINE(HAVE_GETPSEUDOTTY)
+  AC_MSG_RESULT(getpseudotty)
+else
 if test -c /dev/pts && test -c /dev/ptc
 then
   AC_DEFINE(HAVE_DEV_PTS_AND_PTC)
   AC_MSG_RESULT(/dev/pts and /dev/ptc)
 else
+if test -c /dev/ptyp10
+then
+  AC_DEFINE(HAVE_DEV_PTYP10)
+  AC_MSG_RESULT(sco-style ptys)
+else
   AC_MSG_RESULT(bsd-style ptys)
+fi
+fi
 fi
 fi
 
@@ -485,12 +591,18 @@ fi
 if test -z "$no_shadows_password_checking"; then
   AC_MSG_CHECKING(for shadow passwords)
   if test -f /etc/shadow; then
-    AC_DEFINE(HAVE_ETC_SHADOW)
-    AC_MSG_RESULT(/etc/shadow)
-    # SunOS C2 security uses this style of shadow passwords, but does not
-    # have getspent in a system library.  However, a libshadow.a library
-    # contaning these is publicly available.
-    AC_CHECK_LIB(shadow, getspent)
+      # If we don't have shadow.h, this might be some nonstandard
+      # kludging... So better check it out.
+    if test -n "$ac_cv_header_shadow_h"; then
+      AC_DEFINE(HAVE_ETC_SHADOW)
+      AC_MSG_RESULT(/etc/shadow)
+      # SunOS C2 security uses this style of shadow passwords, but does not
+      # have getspent in a system library.  However, a libshadow.a library
+      # contaning these is publicly available.
+      AC_CHECK_LIB(shadow, getspent)
+    else
+      AC_MSG_RESULT(no)
+    fi
   elif test -n "$os_aix"; then
     AC_DEFINE(HAVE_ETC_SECURITY_PASSWD)
     AC_MSG_RESULT(/etc/security/passwd)
@@ -745,26 +857,105 @@ AC_ARG_WITH(libwrap,
 
 AC_MSG_CHECKING(whether to support SOCKS)
 AC_ARG_WITH(socks,
-[  --with-socks[=PATH]     Compile with SOCKS firewall traversal support.],
+[  --with-socks             Compile with SOCKS firewall traversal support.],
 [ case "$withval" in
   no)
     AC_MSG_RESULT(no)
     ;;
-  *)
+  yes)
     AC_MSG_RESULT(yes)
-    AC_DEFINE(SOCKS)
-    if test "x$withval" = "xyes"; then
-      withval="-lsocks"
-    fi
-    LIBS="$withval $LIBS"
-    AC_TRY_LINK([],
-                [ Rconnect(); ],
-		[],
-		[ AC_MSG_ERROR(Could not find the $withval library.  You must first install socks.) ])
+    AC_CHECK_LIB(socks5, SOCKSconnect, [
+	    socks=5
+	    LIBS="-lsocks5 $LIBS"], [
+	AC_CHECK_LIB(socks, Rconnect, [
+	    socks=4
+	    LIBS="-lsocks $LIBS"], [
+		AC_MSG_ERROR(Could not find socks library.  You must first install socks.) ] ) ] )
     ;;
   esac ],
   AC_MSG_RESULT(no)
 )
+
+if test "x$socks" = "x"; then
+	AC_MSG_CHECKING(whether to support SOCKS5)
+	AC_ARG_WITH(socks5,
+	[  --with-socks5[=PATH]    Compile with SOCKS5 firewall traversal support.],
+	[ case "$withval" in
+	  no)
+	    AC_MSG_RESULT(no)
+	    ;;
+	  *)
+	    AC_MSG_RESULT(yes)
+	    socks=5
+	    if test "x$withval" = "xyes"; then
+	      withval="-lsocks5"
+	    fi
+	    LIBS="$withval $LIBS"
+	    AC_TRY_LINK([],
+	                [ SOCKSconnect(); ],
+			[],
+			[ AC_MSG_ERROR(Could not find the $withval library.  You must first install socks5.) ])
+	    ;;
+	  esac ],
+	  AC_MSG_RESULT(no)
+	)
+fi
+
+if test "x$socks" = "x"; then
+	AC_MSG_CHECKING(whether to support SOCKS4)
+	AC_ARG_WITH(socks4,
+	[  --with-socks4[=PATH]     Compile with SOCKS4 firewall traversal support.],
+	[ case "$withval" in
+	  no)
+	    AC_MSG_RESULT(no)
+	    ;;
+	  *)
+	    AC_MSG_RESULT(yes)
+	    socks=4
+	    if test "x$withval" = "xyes"; then
+	      withval="-lsocks"
+	    fi
+	    LIBS="$withval $LIBS"
+	    AC_TRY_LINK([],
+	                [ Rconnect(); ],
+			[],
+			[ AC_MSG_ERROR(Could not find the $withval library.  You must first install socks.) ])
+	    ;;
+	  esac ],
+	  AC_MSG_RESULT(no)
+	)
+fi
+
+
+
+if test "x$socks" = "x4"; then
+    AC_DEFINE(SOCKS)
+fi
+
+if test "x$socks" = "x5"; then
+    AC_DEFINE(SOCKS)
+    AC_DEFINE(Rconnect,SOCKSconnect)
+    AC_DEFINE(Rgetsockname,SOCKSgetsockname)
+    AC_DEFINE(Rgetpeername,SOCKSgetpeername)
+    AC_DEFINE(Rbind,SOCKSbind)
+    AC_DEFINE(Raccept,SOCKSaccept)
+    AC_DEFINE(Rlisten,SOCKSlisten)
+    AC_DEFINE(Rselect,SOCKSselect)
+    AC_DEFINE(Rrecvfrom,SOCKSrecvfrom)
+    AC_DEFINE(Rsendto,SOCKSsendto)
+    AC_DEFINE(Rrecv,SOCKSrecv)
+    AC_DEFINE(Rsend,SOCKSsend)
+    AC_DEFINE(Rread,SOCKSread)
+    AC_DEFINE(Rwrite,SOCKSwrite)
+    AC_DEFINE(Rrresvport,SOCKSrresvport)
+    AC_DEFINE(Rshutdown,SOCKSshutdown)
+    AC_DEFINE(Rlisten,SOCKSlisten)
+    AC_DEFINE(Rclose,SOCKSclose)
+    AC_DEFINE(Rdup,SOCKSdup)
+    AC_DEFINE(Rdup2,SOCKSdup2)
+    AC_DEFINE(Rfclose,SOCKSfclose)
+    AC_DEFINE(Rgethostbyname,SOCKSgethostbyname)
+fi
 
 AC_MSG_CHECKING(whether to use rsaref)
 AC_ARG_WITH(rsaref,
@@ -792,6 +983,8 @@ if test '!' -d $PIDDIR; then
 fi
 AC_MSG_RESULT($PIDDIR)
 
+AC_CONFIG_SUBDIRS(gmp-2.0.2)
+
 AC_ARG_PROGRAM
 
 AC_SUBST(ETCDIR)
@@ -799,4 +992,4 @@ AC_SUBST(PIDDIR)
 AC_SUBST(RSAREFDEP)
 AC_SUBST(CONFOBJS)
 
-AC_OUTPUT(Makefile sshd.8 ssh.1 make-ssh-known-hosts.1)
+AC_OUTPUT(Makefile sshd.8 ssh.1 make-ssh-known-hosts.1 zlib-1.0.3/Makefile)

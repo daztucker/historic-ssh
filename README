@@ -1,4 +1,4 @@
-Ssh (Secure Shell) is a program to log into another computer over a
+SSH (Secure Shell) is a program to log into another computer over a
 network, to execute commands in a remote machine, and to move files
 from one machine to another.  It provides strong authentication and
 secure communications over insecure channels.  It is intended as a
@@ -8,7 +8,7 @@ See the file INSTALL for installation instructions.  See COPYING for
 license terms and other legal issues.  See RFC for a description of
 the protocol.  There is a WWW page for ssh; see http://www.cs.hut.fi/ssh.
 
-This file has been updated to match ssh-1.2.12.
+This file has been updated to match ssh-1.2.15.
 
 
 FEATURES
@@ -123,115 +123,31 @@ just to listen to the network and collect passwords.  Programs for
 doing this are available on the Internet, or can be built by a
 competent programmer in a few hours.
 
-Any information that you type or is printed on your screen can be
-monitored, recorded, and analyzed.  For example, an intruder who has
-penetrated a host connected to a major network can start a program
-that listens to all data flowing in the network, and whenever it
-encounters a 16-digit string, it checks if it is a valid credit card
-number (using the check digit), and saves the number plus any
-surrounding text (to catch expiration date and holder) in a file.
-When the intruder has collected a few thousand credit card numbers, he
-makes smallish mail-order purchases from a few thousand stores around
-the world, and disappears when the goods arrive but before anyone
-suspects anything.
+Furthermore, it is possible to hijack connections going though the
+network.  This means that an intruder can enter in the middle of an
+existing connection, and start modifying data in both directions.
+This can, e.g., be used to insert new commands in sessions
+authenticated by one-time passwords.  A consequence is that no
+security method based on purely authenticating the user is safe.
+Furthermore, routing spoofing can be used to bring almost any
+connection in the Internet to a location where it can be attacked.
 
-Businesses have trade secrets, patent applications in preparation,
-pricing information, subcontractor information, client data, personnel
-data, financial information, etc.  Currently, anyone with access to
-the network (any machine on the network) can listen to anything that
-goes in the network, without any regard to normal access restrictions.
+Encryption and cryptographic authentication and integrity protection
+are required to secure networks and computer systems.  SSH uses strong
+cryptographic algorithms to achieve these goals.
 
-Many companies are not aware that information can so easily be
-recovered from the network.  They trust that their data is safe
-since nobody is supposed to know that there is sensitive information
-in the network, or because so much other data is transferred in the
-network.  This is not a safe policy.
+Ease of use is critical to the acceptance of a piece of software.  SSH
+attempts to be *easier* to use than its insecure counterparts.
 
-Individual persons also have confidential information, such as
-diaries, love letters, health care documents, information about their
-personal interests and habits, professional data, job applications,
-tax reports, political documents, unpublished manuscripts, etc.
+SSH has gained very wide acceptance.  It is currently (late 1996)
+being used in approximately 50 countries at probably tens of thousands
+of organizations.  Its users include top universities, research
+laboratories, banks, major corporations, and numerous smaller
+companies and individuals.
 
-One should also be aware that economical intelligence and industrial
-espionage has recently become a major priority of the intelligence
-agencies of major governments.  President Clinton recently assigned
-economical espionage as the primary task of the CIA, and the French
-have repeatedly been publicly boasting about their achievements on
-this field.
-
-
-There is also another frightening aspect about the poor security of
-communications.  Computer storage and analysis capability has
-increased so much that it is feasible for governments, major
-companies, and criminal organizations to automatically analyze,
-identify, classify, and file information about millions of people over
-the years.  Because most of the work can be automated, the cost of
-collecting this information is getting very low.  
-
-Government agencies may be able to monitor major communication
-systems, telephones, fax, computer networks, etc., and passively
-collect huge amounts of information about all people with any
-significant position in the society.  Most of this information is not
-sensitive, and many people would say there is no harm in someone
-getting that information.  However, the information starts to get
-sensitive when someone has enough of it.  You may not mind someone
-knowing what you bought from the shop one random day, but you might
-not like someone knowing every small thing you have bought in the last
-ten years.
-
-If the government some day starts to move into a more totalitarian
-direction (one should remember that Nazi Germany was created by
-democratic elections), there is considerable danger of an ultimate
-totalitarian state.  With enough information (the automatically
-collected records of an individual can be manually analyzed when the
-person becomes interesting), one can form a very detailed picture of
-the individual's interests, opinions, beliefs, habits, friends,
-lovers, weaknesses, etc.  This information can be used to 1) locate
-any persons who might oppose the new system 2) use deception to
-disturb any organizations which might rise against the government 3)
-eliminate difficult individuals without anyone understanding what
-happened.  Additionally, if the government can monitor communications
-too effectively, it becomes too easy to locate and eliminate any
-persons distributing information contrary to the official truth.
-
-Fighting crime and terrorism are often used as grounds for domestic
-surveillance and restricting encryption.  These are good goals, but
-there is considerable danger that the surveillance data starts to get
-used for questionable purposes.  I find that it is better to tolerate
-a small amount of crime in the society than to let the society become
-fully controlled.  I am in favor of a fairly strong state, but the
-state must never get so strong that people become unable to spread
-contra-official information and unable to overturn the government if it
-is bad.  The danger is that when you notice that the government is
-too powerful, it is too late.  Also, the real power may not be where
-the official government is.
-
-For these reasons (privacy, protecting trade secrets, and making it
-more difficult to create a totalitarian state), I think that strong
-cryptography should be integrated to the tools we use every day.
-Using it causes no harm (except for those who wish to monitor
-everything), but not using it can cause huge problems.  If the society
-changes in undesirable ways, then it will be to late to start
-encrypting.
-
-Encryption has had a "military" or "classified" flavor to it.  There
-are no longer any grounds for this.  The military can and will use its
-own encryption; that is no excuse to prevent the civilians from
-protecting their privacy and secrets.  Information on strong
-encryption is available in every major bookstore, scientific library,
-and patent office around the world, and strong encryption software is
-available in every country on the Internet.
-
-Some people would like to make it illegal to use encryption, or to
-force people to use encryption that governments can break.  This
-approach offers no protection if the government turns bad.  Also, the
-"bad guys" will be using true strong encryption anyway.  Good
-encryption techniques are too widely known to make them disappear.
-Thus, any "key escrow encryption" or other restrictions will only help
-monitor ordinary people and petty criminals.  It does not help against
-powerful criminals, terrorists, or espionage, because they will know
-how to use strong encryption anyway.  (One source for internationally
-available encryption software is http://www.cs.hut.fi/crypto.)
+SSH is available for almost all Unix platforms, and commercial
+versions are available for Windows (3.1, 95, NT) and Macintosh.  For
+more information, see http://www.datafellows.com/f-secure.
 
 
 OVERVIEW OF SECURE SHELL
@@ -458,53 +374,24 @@ disabled (commented out in /etc/inetd.conf).  This is highly
 recommended.
 
 
-WEAKEST LINKS IN SECURITY
-
-One should understand that while this software may provide
-cryptographically secure communications, it may be easy to
-monitor the communications at their endpoints.
-
-Basically, anyone with root access on the local machine on which you
-are running the software may be able to do anything.  Anyone with root
-access on the server machine may be able to monitor your
-communications, and a very talented root user might even be able to
-send his/her own requests to your authentication agent.
-
-One should also be aware that computers send out electromagnetic
-radiation that can sometimes be picked up hundreds of meters away.
-Your keyboard is particularly easy to listen to.  The image on your
-monitor might also be seen on another monitor in a van parked behind
-your house.
-
-Beware that unwanted visitors might come to your home or office and
-use your machine while you are away.  They might also make
-modifications or install bugs in your hardware or software.
-
-Beware that the most effective way for someone to decrypt your data
-may be with a rubber hose.
-
-
 LEGAL ISSUES
 
-As far as I am concerned, anyone is permitted to use this software
-freely.  However, see the file COPYING for detailed copying,
-licensing, and distribution information.
+See the file COPYING for distribution conditions.  To summarize, you
+can use this software freely for non-commercial purposes.  However,
+this software cannot be sold or used for directly revenue-generating
+purposes without licensing.  THERE IS NO WARRANTY FOR THIS PROGRAM.
 
-In some countries, particularly France, Russia, Iraq, and Pakistan,
-it may be illegal to use any encryption at all without a special
-permit, and the rumor has it that you cannot get a permit for any
-strong encryption.
+In some countries, particularly Russia, Iraq, Pakistan, and France, it
+may be illegal to use any encryption at all without a special permit.
 
 This software may be freely imported into the United States; however,
 the United States Government may consider re-exporting it a criminal
-offense.
+offense.  Thus, if you are outside the US, please retrieve this
+software from outside the US.
 
 Note that any information and cryptographic algorithms used in this
 software are publicly available on the Internet and at any major
 bookstore, scientific library, or patent office worldwide.
-
-THERE IS NO WARRANTY FOR THIS PROGRAM.  Please consult the file
-COPYING for more information.
 
 
 MAILING LISTS AND OTHER INFORMATION
@@ -517,47 +404,41 @@ The WWW home page for ssh is http://www.cs.hut.fi/ssh.  It contains an
 archive of the mailing list, and detailed information about new
 releases, mailing lists, and other relevant issues.
 
+For information about Windows, Macintosh, and commercial licensing,
+see http://www.datafellows.com/f-secure, or mail to
+f-secure-ssh-sales@datafellows.com.
+
 Bug reports should be sent to ssh-bugs@cs.hut.fi.
 
 
 ABOUT THE AUTHOR
 
-This software was written by Tatu Ylonen <ylo@cs.hut.fi>.  I work as a
-researcher at Helsinki University of Technology, Finland.  For more
-information, see http://www.cs.hut.fi/~ylo/.  My PGP public key is
-available via finger from ylo@cs.hut.fi and from the key servers.  I
-prefer PGP encrypted mail.
-
-The author can be contacted via ordinary mail at
-  Tatu Ylonen
-  Helsinki University of Technology
-  Otakaari 1
-  FIN-02150 ESPOO
-  Finland
-
-  Fax. +358-0-4513293
+This software was originally written by Tatu Ylonen <ylo@cs.hut.fi> in
+Finland.  It is now being maintained by SSH Communications Security
+(http://www.ssh.fi) and Data Fellows (http://www.datafellows.com).
 
 
 ACKNOWLEDGEMENTS
 
-I thank Antti Huima, Tero Kivinen, Pekka Nikander, Timo Rinne, Janne
-Snabb, and Heikki Suonsivu for their help and comments in the design,
-implementation and porting of this software.
+Many people have contributed to the development of this software.
 
-I also thank numerous contributors, including but not limited to Tim
-Adam, Walker Aumann, Jurgen Botz, Hans-Werner Braun, Stephane
-Bortzmeyer, Bill Broadley, Adrian Colley, Michael Cooper, David
-Dombek, Ian Donaldson, Danek Duvall, Jerome Etienne, Bill Fithen, Mark
-Fullmer, Bert Gijsbers, Klaus Guntermann, Andreas Gustafsson, Michael
-Henits, Ton Hospel, Cedomir Igaly, Steve Johnson, Thomas Koenig,
+Martin Abadi, Satoshi Adachi, Tim Adam, Walker Aumann, Jurgen Botz,
+Hans-Werner Braun, Stephane Bortzmeyer, Bill Broadley, Andrey Chernov,
+Adrian Colley, Michael Cooper, David Dombek, Ian Donaldson, Danek
+Duvall, Jerome Etienne, Bill Fithen, Mark Fullmer, Jean-Loup Gailly,
+Bert Gijsbers, Torbjorn Granlund, Klaus Guntermann, Andreas
+Gustafsson, Michael Henits, Ton Hospel, Antti Huima, Cedomir Igaly,
+Steve Johnson, Tero Kivinen, Mika Kojo, Thomas König, David Kågedal,
 Joseph Lappa, Felix Leitner, Gunnar Lindberg, Harald Lundberg, Andrew
 Macpherson, Marc Martinec, Paul Mauvais, David Mazieres, Donald
-McKillican, Pedro Melo, Leon Mlakar, Robert Muchsel, Mark Treacy,
-Bryan O'Sullivan, Mikael Suokas, Ollivier Robert, Jakob Schlyter,
-Wayne Schroeder, Harlan Stenn, Tomasz Surmacz, Holger Trapp, Dragan
-Vecerina, Wietse Venema, Alvar Vinacua, Petri Virkkula, Michael
-Warfield, Brian Weaver, Peter Wemm, Mike Williams, and Cristophe
-Wolfhugel.  My apologies to people whom I have forgotten to list.
+McKillican, Pedro Melo, Leon Mlakar, Robert Muchsel, Pekka Nikander,
+Matt Power, Timo Rinne, Ollivier Robert, Tomi Salo, Janne Snabb, Bryan
+O'Sullivan, Mikael Suokas, Heikki Suonsivu, Corey Satten, Jakob
+Schlyter, Wayne Schroeder, Harlan Stenn, Tomasz Surmacz, Holger Trapp,
+Mark Treacy, Dragan Vecerina, Wietse Venema, Alvar Vinacua, Russell
+Vincent, Petri Virkkula, Michael Warfield, Brian Weaver, Peter Wemm,
+Mike Williams, and Christophe Wolfhugel.  My apologies to people whom I
+have forgotten to list.
 
 Thanks also go to Philip Zimmermann, whose PGP software and the
 associated legal battle provided inspiration, motivation, and many
@@ -566,4 +447,4 @@ Cryptography has done a great service in widely distributing knowledge
 about cryptographic methods.
 
 
-Copyright (c) 1995 Tatu Ylonen, Espoo, Finland.
+Copyright (c) 1996 SSH Communications Security, Espoo, Finland.

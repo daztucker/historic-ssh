@@ -2,10 +2,11 @@
 
 readpass.c
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Mon Jul 10 22:08:59 1995 ylo
 
@@ -14,12 +15,15 @@ Functions for reading passphrases and passwords.
 */
 
 /*
- * $Id: readpass.c,v 1.7 1999/02/21 19:52:33 ylo Exp $
+ * $Id: readpass.c,v 1.8 1999/11/17 17:04:51 tri Exp $
  * $Log: readpass.c,v $
+ * Revision 1.8  1999/11/17 17:04:51  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.7  1999/02/21 19:52:33  ylo
- * 	Intermediate commit of ssh1.2.27 stuff.
- * 	Main change is sprintf -> snprintf; however, there are also
- * 	many other changes.
+ *      Intermediate commit of ssh1.2.27 stuff.
+ *      Main change is sprintf -> snprintf; however, there are also
+ *      many other changes.
  *
  * Revision 1.6  1997/05/13 22:30:18  kivinen
  *      Added some casts.

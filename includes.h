@@ -14,8 +14,12 @@ This file includes most of the needed system headers.
 */
 
 /*
- * $Id: includes.h,v 1.8 1996/10/14 16:16:19 ttsalo Exp $
+ * $Id: includes.h,v 1.9 1997/03/19 18:02:19 kivinen Exp $
  * $Log: includes.h,v $
+ * Revision 1.9  1997/03/19 18:02:19  kivinen
+ * 	Added SECURE_RPC, SECURE_NFS and NIS_PLUS support from Andy
+ * 	Polyakov <appro@fy.chalmers.se>.
+ *
  * Revision 1.8  1996/10/14 16:16:19  ttsalo
  *       Support for OpenBSD (from Thorsten Lockert <tholo@SigmaSoft.COM>
  *
@@ -343,5 +347,9 @@ struct linger {
 #endif
 
 #define SUPPORT_OLD_CHANNELS
+
+#ifdef _HPUX_SOURCE
+#define seteuid(uid) setresuid(-1,(uid),-1)
+#endif
 
 #endif /* INCLUDES_H */

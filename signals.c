@@ -16,6 +16,9 @@ maximum core dump size.
 
 /*
  * $Log: signals.c,v $
+ * Revision 1.5  1997/03/26 07:16:44  kivinen
+ * 	Change sig <= NSIG to sig < NSIG.
+ *
  * Revision 1.4  1996/08/30 08:44:22  ylo
  * 	Added Sunos/Solaris SIGFREEZE and SIGTHAW to signals with
  * 	default processing.
@@ -58,7 +61,7 @@ void signals_prevent_core()
 {
   int sig;
 
-  for (sig = 1; sig <= NSIG; sig++)
+  for (sig = 1; sig < NSIG; sig++)
     switch (sig)
       {
       case SIGSTOP:
@@ -110,7 +113,7 @@ void signals_reset()
 {
   int sig;
 
-  for (sig = 1; sig <= NSIG; sig++)
+  for (sig = 1; sig < NSIG; sig++)
     signal(sig, SIG_DFL);
 
 #if defined(HAVE_SETRLIMIT) && defined(RLIMIT_CORE)

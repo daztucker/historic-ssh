@@ -122,6 +122,46 @@ void log(const char *fmt, ...)
   syslog(LOG_INFO, "log: %.500s", buf);
 }
 
+/* Converts portable syslog severity to machine-specific syslog severity. */
+
+static int syslog_severity(int severity)
+{
+  switch (severity)
+    {
+    case SYSLOG_SEVERITY_DEBUG:
+      return LOG_DEBUG;
+    case SYSLOG_SEVERITY_INFO:
+      return LOG_INFO;
+    case SYSLOG_SEVERITY_NOTICE:
+      return LOG_NOTICE;
+    case SYSLOG_SEVERITY_WARNING:
+      return LOG_WARNING;
+    case SYSLOG_SEVERITY_ERR:
+      return LOG_ERR;
+    case SYSLOG_SEVERITY_CRIT:
+      return LOG_CRIT;
+    default:
+      fatal("syslog_severity: bad severity %d", severity);
+    }
+}
+
+/* Log this message (information that usually should go to the log) at
+   the given severity level. */
+
+void log_severity(SyslogSeverity severity, const char *fmt, ...)
+{
+  char buf[1024];
+  va_list args;
+  if (log_quiet)
+    return;
+  va_start(args, fmt);
+  vsprintf(buf, fmt, args);
+  va_end(args);
+  if (log_on_stderr)
+    fprintf(stderr, "log: %s\n", buf);
+  syslog(syslog_severity(severity), "log: %.500s", buf);
+}
+
 /* Debugging messages that should not be logged during normal operation. */
 
 void debug(const char *fmt, ...)
@@ -196,14 +236,32 @@ void fatal_remove_cleanup(void (*proc)(void *context), void *context)
 	(unsigned long)proc, (unsigned long)context);
 }
 
+static void do_fatal_cleanups()
+{
+  struct fatal_cleanup *cu, *next_cu;
+  static int fatal_called = 0;
+
+  if (!fatal_called)
+    {
+      fatal_called = 1;
+
+      /* Call cleanup functions. */
+      for (cu = fatal_cleanups; cu; cu = next_cu)
+	{
+	  next_cu = cu->next;
+	  debug("Calling cleanup 0x%lx(0x%lx)",
+		(unsigned long)cu->proc, (unsigned long)cu->context);
+	  (*cu->proc)(cu->context);
+	}
+    }
+}
+
 /* Fatal messages.  This function never returns. */
 
 void fatal(const char *fmt, ...)
 {
   char buf[1024];
   va_list args;
-  struct fatal_cleanup *cu, *next_cu;
-  static int fatal_called = 0;
 
   if (log_quiet)
     exit(1);
@@ -214,18 +272,26 @@ void fatal(const char *fmt, ...)
     fprintf(stderr, "fatal: %s\n", buf);
   syslog(LOG_ERR, "fatal: %.500s", buf);
 
-  if (fatal_called)
-    exit(1);
-  fatal_called = 1;
+  do_fatal_cleanups();
 
-  /* Call cleanup functions. */
-  for (cu = fatal_cleanups; cu; cu = next_cu)
-    {
-      next_cu = cu->next;
-      debug("Calling cleanup 0x%lx(0x%lx)",
-	    (unsigned long)cu->proc, (unsigned long)cu->context);
-      (*cu->proc)(cu->context);
-    }
+  exit(1);
+}
+
+void fatal_severity(SyslogSeverity severity, const char *fmt, ...)
+{
+  char buf[1024];
+  va_list args;
+
+  if (log_quiet)
+    exit(1);
+  va_start(args, fmt);
+  vsprintf(buf, fmt, args);
+  va_end(args);
+  if (log_on_stderr)
+    fprintf(stderr, "fatal: %s\n", buf);
+  syslog(syslog_severity(severity), "fatal: %.500s", buf);
+
+  do_fatal_cleanups();
 
   exit(1);
 }

@@ -18,10 +18,7 @@ if {$argv==""} {
     label .header -text "[lindex $argv 0]"
 }
 
-entry .pass -relief sunken -textvariable password 
-set bgcolor [lindex [.pass configure -bg] 3]
-.pass configure -fg $bgcolor -selectforeground $bgcolor \
-	-selectbackground $bgcolor
+entry .pass -relief sunken -textvariable password -show #
 
 bind .pass <Return> { set result ok }
 frame .b

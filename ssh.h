@@ -260,6 +260,7 @@ only by root, whereas ssh_config should be world-readable. */
 #define SSH_CMSG_AUTH_RHOSTS_RSA		35	/* user,mod (s,mpi) */
 #define SSH_MSG_DEBUG				36	/* string */
 #define SSH_CMSG_REQUEST_COMPRESSION		37	/* level 1-9 (int) */
+#define SSH_CMSG_MAX_PACKET_SIZE		38	/* max_size (int) */
 
 /* Includes that need definitions above. */
 
@@ -434,6 +435,15 @@ typedef enum
   SYSLOG_FACILITY_LOCAL7
 } SyslogFacility;
 
+typedef enum {
+  SYSLOG_SEVERITY_DEBUG,
+  SYSLOG_SEVERITY_INFO,
+  SYSLOG_SEVERITY_NOTICE,
+  SYSLOG_SEVERITY_WARNING,
+  SYSLOG_SEVERITY_ERR,
+  SYSLOG_SEVERITY_CRIT
+} SyslogSeverity;
+
 /* Initializes logging.  If debug is non-zero, debug() will output something.
    If quiet is non-zero, none of these will log send anything to syslog
    (but maybe to stderr). */
@@ -444,6 +454,12 @@ void log_init(char *av0, int on_stderr, int debug, int quiet,
    The format must guarantee that the final message does not exceed 1024 
    characters.  The message should not contain newline. */
 void log(const char *fmt, ...);
+
+/* Outputs a message to syslog or stderr, depending on the implementation. 
+   The format must guarantee that the final message does not exceed 1024 
+   characters.  The message should not contain newline.  The message
+   is logged at the given severity level. */
+void log_severity(SyslogSeverity severity, const char *fmt, ...);
 
 /* Outputs a message to syslog or stderr, depending on the implementation. 
    The format must guarantee that the final message does not exceed 1024 
@@ -460,6 +476,13 @@ void error(const char *fmt, ...);
    characters.  The message should not contain newline.  
    This call never returns. */
 void fatal(const char *fmt, ...);
+
+/* Outputs a message to syslog or stderr, depending on the implementation. 
+   The format must guarantee that the final message does not exceed 1024 
+   characters.  The message should not contain newline.  
+   This call never returns.  The message is logged with the specified
+   severity level. */
+void fatal_severity(SyslogSeverity severity, const char *fmt, ...);
 
 /* Registers a cleanup function to be called by fatal() before exiting. 
    It is permissible to call fatal_remove_cleanup for the function itself

@@ -8,17 +8,17 @@ purpose.  This software can be distributed freely, as long as it is
 not sold commercially without permission from Tatu Ylonen
 <ylo@cs.hut.fi>.  However, including this software on CD-ROMs
 containing other free software is explicitly permitted even when a
-modest fee is charged for the CD, as long as this software is not a
-primary selling argument for the CD.
+modest distribution fee is charged for the CD, as long as this
+software is not a primary selling argument for the CD.
 
 Building derived versions of this software is permitted, but any
-derived versions must be clearly marked as such, and if the derived
-work is incompatible with the protocol description in the RFC file (or
-a later version published by Tatu Ylonen), it must be called by a name
-other than "ssh" or "Secure Shell".
+derived versions must be clearly marked as such, and must be called by
+a name other than ssh (contact the author if you want to use the name
+ssh).
 
-"Ssh" and "Secure Shell" are trademarks of Tatu Ylonen <ylo@cs.hut.fi>
-and/or SSH Communications Security Oy, Finland.
+"Ssh", "Secure Shell", and "SSH Secure Remote Login" are trademarks of
+Tatu Ylonen <ylo@cs.hut.fi> and/or SSH Communications Security Oy
+<info@ssh.fi>.
 
 However, I am not implying to give any licenses to any patents or
 copyrights held by third parties.  As far as I know, all included
@@ -33,7 +33,7 @@ software using the RSAREF2 library by giving --with-rsaref on the
 configure command line.  This may or may not make it legal to use this
 software for non-commercial purposes in the United States (I have sent
 a query about this to RSADSI (on July 10, 1995), but have not received
-an answer yet).  The RSAREF2 distribution is not included in this
+a final answer yet).  The RSAREF2 distribution is not included in this
 distribution, but can be obtained from almost any ftp site worldwide
 containing cryptographic materials.  Using RSAREF is not recommended
 outside the United States.  See "http://www.cs.hut.fi/crypto" if you

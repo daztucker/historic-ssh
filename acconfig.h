@@ -214,7 +214,3 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define these if on SCO Unix. */
 #undef HAVE_SCO_ETC_SHADOW
 #undef SCO
-
-/* Define this if _POSIX_SAVED_IDS does not imply that saved uids
-   work for seteuid. */
-#undef POSIX_SAVED_IDS_BROKEN_FOR_SETEUID

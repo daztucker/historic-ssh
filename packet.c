@@ -24,10 +24,10 @@ with the other side.  This same code is used both on client and server side.
  * /m/shadows/u2/users/ylo/ssh/README
  *
  * Revision 1.4  1995/07/27  03:59:37  ylo
- * 	Fixed a bug in new rc4 keying.
+ * 	Fixed a bug in new arcfour keying.
  *
  * Revision 1.3  1995/07/27  02:17:11  ylo
- * 	Changed keying for RC4 to avoid using the same key for both
+ * 	Changed keying for arcfour to avoid using the same key for both
  * 	directions.
  *
  * Revision 1.2  1995/07/13  01:27:33  ylo
@@ -94,6 +94,9 @@ static int initialized = 0;
 
 /* Set to true if the connection is interactive. */
 static int interactive_mode = 0;
+
+/* Maximum size of a packet. */
+static unsigned int max_packet_size = (sizeof(int) < 4) ? 32000 : 256000;
 
 /* Sets the descriptors used for communication.  Disables encryption until
    packet_set_encryption_key is called. */
@@ -246,7 +249,7 @@ void packet_set_encryption_key(const unsigned char *key, unsigned int keylen,
 			       int cipher, int is_client)
 {
   cipher_type = cipher;
-  if (cipher == SSH_CIPHER_RC4)
+  if (cipher == SSH_CIPHER_ARCFOUR)
     {
       if (is_client)
 	{ /* In client: use first half for receiving, second for sending. */
@@ -318,6 +321,10 @@ void packet_send()
   char buf[8], *cp;
   int i, padding, len;
   unsigned long checksum;
+
+  if (buffer_len(&outgoing_packet) >= max_packet_size - 30)
+    fatal("packet_send: sending too big a packet: size %u, limit %u.",
+	  buffer_len(&outgoing_packet), max_packet_size);
 
   /* If using packet compression, compress the payload of the outgoing
      packet. */
@@ -403,9 +410,11 @@ int packet_read()
       /* Read data from the socket. */
       len = read(connection_in, buf, sizeof(buf));
       if (len == 0)
-	fatal("Connection closed by remote host.");
+	fatal_severity(SYSLOG_SEVERITY_INFO,
+		       "Connection closed by remote host.");
       if (len < 0)
-	fatal("Read from socket failed: %.100s", strerror(errno));
+	fatal_severity(SYSLOG_SEVERITY_INFO,
+		       "Read from socket failed: %.100s", strerror(errno));
       /* Append it to the buffer. */
       packet_process_incoming(buf, len);
     }
@@ -449,7 +458,7 @@ int packet_read_poll()
   ucp = (unsigned char *)buffer_ptr(&input);
   len = GET_32BIT(ucp);
   if (len < 1 + 2 + 2 || len > 256*1024)
-    packet_disconnect("Bad packet length %d.", len);
+    packet_disconnect("Bad packet length %u.", len);
   padded_len = (len + 8) & ~7;
 
   /* Check if the packet has been entirely received. */
@@ -501,7 +510,7 @@ int packet_read_poll()
 
   /* Handle disconnect message. */
   if ((unsigned char)buf[0] == SSH_MSG_DISCONNECT)
-    fatal("%.900s", packet_get_string(NULL));
+    fatal_severity(SYSLOG_SEVERITY_INFO, "%.900s", packet_get_string(NULL));
 
   /* Ignore ignore messages. */
   if ((unsigned char)buf[0] == SSH_MSG_IGNORE)
@@ -633,7 +642,8 @@ void packet_write_poll()
 	if (errno == EAGAIN)
 	  return;
         else
-	  fatal("Write failed: %.100s", strerror(errno));
+	  fatal_severity(SYSLOG_SEVERITY_INFO,
+			 "Write failed: %.100s", strerror(errno));
       buffer_consume(&output, len);
     }
 }
@@ -665,7 +675,7 @@ int packet_have_data_to_write()
 
 int packet_not_very_much_data_to_write()
 {
-  if (interactive_mode)
+  if (interactive_mode || sizeof(int) < 4)
     return buffer_len(&output) < 16384;
   else
     return buffer_len(&output) < 128*1024;
@@ -728,4 +738,18 @@ void packet_set_interactive(int interactive, int keepalives)
 int packet_is_interactive()
 {
   return interactive_mode;
+}
+
+/* Sets the maximum packet size that can be sent to the other side. */
+
+void packet_set_max_size(unsigned int max_size)
+{
+  max_packet_size = max_size;
+}
+
+/* Returns the maximum packet size that can be sent to the other side. */
+
+unsigned int packet_max_size()
+{
+  return max_packet_size;
 }

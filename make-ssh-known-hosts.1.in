@@ -80,33 +80,29 @@ make-ssh-known-hosts \- make ssh_known_hosts file from DNS data
 \|]
 .br
 .RB "[\|" "\-\-timeout "\c
-.I exec_timeout\c
+.I ssh_exec_timeout\c
+\|]
+.br
+.RB "[\|" "\-\-pingtimeout "\c
+.I ping_timeout\c
 \|]
 .br
 .RB "[\|" "\-\-passwordtimeout "\c
 .I timeout_when_asking_password\c
 \|]
 .br
-.RB "[\|" "\-\-trustdaemon" "\|]"
+.RB "[\|" "\-\-notrustdaemon" "\|]"
+.br
+.RB "[\|" "\-\-norecursive" "\|]"
 .br
 .RB "[\|" "\-\-domainnamesplit" "\|]"
 .br
 .RB "[\|" "\-\-silent" "\|]"
 .br
+.RB "[\|" "\-\-keyscan" "\|]"
+.br
 .RB "[\|" "\-\-nslookup "\c
 .I path_to_nslookup_program\c
-\|]
-.br
-.RB "[\|" "\-\-ping "\c
-.I path_to_ping_program\c
-\|]
-.br
-.RB "[\|" "\-\-pingpreoptions "\c
-.I options_before_hostname\c
-\|]
-.br
-.RB "[\|" "\-\-pingpostoptions "\c
-.I options_after_hostname\c
 \|]
 .br
 .RB "[\|" "\-\-ssh "\c
@@ -155,10 +151,8 @@ option.
 After getting the hostname list
 .B make-ssh-known-hosts
 tries to get the public key from every host in the domain. It first
-uses
-.B ping
-to check if the host is alive, and if so, it tries to run
-the command
+tries to connect ssh port to check check if the host is alive, and if
+so, it tries to run the command
 .B cat @ETCDIR@/ssh_host_key.pub
 on the remote machine using
 .BR ssh ".
@@ -168,18 +162,24 @@ installed properly, and it then extracts the public key from the
 output, and prints the
 .B @ETCDIR@/ssh_known_hosts
 entry for it to 
-.BR STDOUT ".
+.BR STDOUT ". Because
+.B make-ssh-known-hosts
+is usually run before
+remote machines have @ETCDIR@/ssh_known_hosts file you may have to use
+RSA-authentication to allow access to hosts. 
 .LP
 If the command fails for some reason, it checks if the
 .B ssh
 client still got the public key from the remote host in the initial dialog,
-and if so, it will print a proper entry, but comment it out (unless the
-.B \-\-trustdaemon
-option is given).
+and if so, it will print a proper entry, and if
+.B \-\-notrustdaemon
+option is given comment it out.
 .LP
 .I Domain_name
-is the domain name for which the file is to be generated.  Many sites
-will want to include several domains in their
+is the domain name for which the file is to be generated. By default 
+.B make-ssh-known-hosts
+extracts also all subdomains of domain. Many sites will want to
+include several domains in their
 .I @ETCDIR@/ssh_known_hosts
 file.  The entries for each domain should be extracted separately by
 running
@@ -244,14 +244,18 @@ would not make sense.)
 Using a big value (like 999) will print lots of debugging output.
 
 .TP
-.BI "\-\-timeout " "exec_timeout"\c
+.BI "\-\-timeout " "ssh_exec_timeout"\c
 .TP
-.BI "\-ti " "exec_timeout"\c
+.BI "\-ti " "ssh_exec_timeout"\c
 \&Timeout when executing
-.B ping
-or
 .B ssh
-commands.  The default is 60 seconds.
+command.  The default is 60 seconds.
+
+.TP
+.BI "\-\-pingtimeout " "ping_timeout"\c
+.TP
+.BI "\-pi " "ping_timeout"\c
+\&Timeout when trying to ping the ssh port.  The default is 3 seconds.
 
 .TP
 .BI "\-\-passwordtimeout " "timeout_when_asking_password"\c
@@ -261,9 +265,9 @@ commands.  The default is 60 seconds.
 passwords are queried. Use value 0 to have no timeout for password queries.
 
 .TP
-.BI "\-\-trustdaemon"\c
+.BI "\-\-notrustdaemon"\c
 .TP
-.BI "\-tr"\c
+.BI "\-notr"\c
 \&If the
 .B ssh
 command fails, use the public key stored in the local known hosts file
@@ -271,6 +275,15 @@ and trust it is the correct key for the host. If this option is not
 given such entries are commented out in the generated
 .B @ETCDIR@/ssh_known_hosts
 file.
+
+.TP
+.BI "\-\-norecursive"\c
+.TP
+.BI "\-nor"\c
+\&Tell
+.B make-ssh-known-hosts
+that it should only extract keys for the given domain, and not to be
+recursive. 
 
 .TP
 .BI "\-\-domainnamesplit"\c
@@ -293,38 +306,20 @@ entries "\|\c
 \&Be silent.
 
 .TP
+.BI "\-\-keyscan"\c
+.TP
+.BI "\-k"\c
+\&Output list of all hosts in format "ipaddr1,ipaddr2,...ipaddrn
+hostname.domain.co,hostname,ipaddr1,ipaddr2,all_other_hostname_entries".
+The output of this can be feeded to ssh-keyscan to fetch keys.
+
+.TP
 .BI "\-\-nslookup " "path_to_nslookup_program"\c
 .TP
 .BI "\-n " "path_to_nslookup_program"\c
 \&Path to the
 .B nslookup
 program. 
-
-.TP
-.BI "\-\-ping " "path_to_ping_program"\c
-.TP
-.BI "\-ping " "path_to_ping_program"\c
-\&Path to the
-.B ping
-program. The full command line is: "\|\c
-.B ping preoptions hostname postoptions\c
-\|".
-
-.TP
-.BI "\-\-pingpreoptions " "options_before_hostname"\c
-.TP
-.BI "\-pingpr " "options_before_hostname"\c
-\&Options given to
-.B ping
-program before hostname.
-
-.TP
-.BI "\-\-pingpostoptions " "options_after_hostname"\c
-.TP
-.BI "\-pingpo " "options_after_hostname"\c
-\&Options given to
-.B ping
-program after hostname.
 
 .TP
 .BI "\-\-ssh " "path_to_ssh_program"\c
@@ -354,10 +349,12 @@ The command
 .LP
 finds all hosts in
 .B hut.fi
-domain that have ssh service and puts their public key to hut-hosts
-file. This would require that the domain name server of hut.fi would
-define all hosts running ssh to have entry ssh in their WKS record.
-Because nobody yet adds ssh to WKS, it would be better to use command
+domain, and its subdomains having own name server (cs.hut.fi,
+tf.hut.fi, tky.hut.fi) that have ssh service and puts their public key
+to hut-hosts file. This would require that the domain name server of
+hut.fi would define all hosts running ssh to have entry ssh in their
+WKS record. Because nobody yet adds ssh to WKS, it would be better to
+use command
 .IP
 .B example% make-ssh-known-hosts hut.fi '^wks=.*telnet' > \c
 .B hut-hosts
@@ -372,7 +369,8 @@ The command:
 .B dipoli-hosts
 .LP
 finds all hosts in hut.fi domain that are in dipoli.hut.fi subdomain
-and that are not Mac or PC.
+(note dipoli.hut.fi does not have own name server so its entries are
+in hut.fi-server) and that are not Mac or PC.
 
 .SH FILES
 .ta 3i

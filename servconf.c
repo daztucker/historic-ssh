@@ -31,6 +31,7 @@ void initialize_server_options(ServerOptions *options)
   options->listen_addr.s_addr = INADDR_ANY;
   options->host_key_file = NULL;
   options->random_seed_file = NULL;
+  options->pid_file = NULL;
   options->server_key_bits = -1;
   options->login_grace_time = -1;
   options->key_regeneration_time = -1;
@@ -69,6 +70,8 @@ void fill_default_server_options(ServerOptions *options)
     options->host_key_file = HOST_KEY_FILE;
   if (options->random_seed_file == NULL)
     options->random_seed_file = SSH_DAEMON_SEED_FILE;
+  if (options->pid_file == NULL)
+    options->pid_file = SSH_DAEMON_PID_FILE;
   if (options->server_key_bits == -1)
     options->server_key_bits = 768;
   if (options->login_grace_time == -1)
@@ -76,7 +79,7 @@ void fill_default_server_options(ServerOptions *options)
   if (options->key_regeneration_time == -1)
     options->key_regeneration_time = 3600;
   if (options->permit_root_login == -1)
-    options->permit_root_login = 1;
+    options->permit_root_login = 2;
   if (options->ignore_rhosts == -1)
     options->ignore_rhosts = 0;
   if (options->quiet_mode == -1)
@@ -115,7 +118,7 @@ typedef enum
   sRhostsAuthentication, sRhostsRSAAuthentication, sRSAAuthentication,
   sPasswordAuthentication, sAllowHosts, sDenyHosts, sListenAddress,
   sPrintMotd, sIgnoreRhosts, sX11Forwarding,
-  sStrictModes, sEmptyPasswd, sRandomSeedFile, sKeepAlives
+  sStrictModes, sEmptyPasswd, sRandomSeedFile, sKeepAlives, sPidFile
 } ServerOpCodes;
 
 /* Textual representation of the tokens. */
@@ -148,6 +151,7 @@ static struct
   { "PermitEmptyPasswords", sEmptyPasswd },
   { "RandomSeed", sRandomSeedFile },
   { "KeepAlive", sKeepAlives },
+  { "PidFile", sPidFile },
   { NULL, 0 }
 };
 
@@ -276,8 +280,34 @@ void read_server_config(ServerOptions *options, const char *filename)
 	  charptr = &options->random_seed_file;
 	  goto parse_pathname;
 
+	case sPidFile:
+	  charptr = &options->pid_file;
+	  goto parse_pathname;
+
 	case sPermitRootLogin:
-	  intptr = &options->permit_root_login;
+	  cp = strtok (NULL, WHITESPACE);
+	  if (!cp)
+	    {
+	      fprintf(stderr, "%s line %d: missing yes/nopwd/no argument.\n",
+		      filename, linenum);
+	      exit(1);
+	    }
+	  if (strcmp(cp, "yes") == 0)
+	    value = 2;
+	  else if (strcmp(cp, "nopwd") == 0)
+	      value = 1;
+	  else if (strcmp(cp, "no") == 0)
+	    value = 0;
+	  else
+	    {
+	      fprintf(stderr, "%s line %d: Bad yes/nopwd/no argument: %s\n", 
+		      filename, linenum, cp);
+	      exit(1);
+	    }
+	  if (options->permit_root_login == -1)
+	    options->permit_root_login = value;
+	  break;
+
 	parse_flag:
 	  cp = strtok(NULL, WHITESPACE);
 	  if (!cp)
@@ -286,10 +316,10 @@ void read_server_config(ServerOptions *options, const char *filename)
 		      filename, linenum);
 	      exit(1);
 	    }
-	  if (strcmp(cp, "yes") == 0)
+	  if (strcmp(cp, "yes") == 0 || strcmp(cp, "true") == 0)
 	    value = 1;
 	  else
-	    if (strcmp(cp, "no") == 0)
+	    if (strcmp(cp, "no") == 0 || strcmp(cp, "false") == 0)
 	      value = 0;
 	    else
 	      {

@@ -8,7 +8,7 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Wed Jan 24 19:53:02 1996 ylo
-Last modified: Fri Jan 26 00:01:22 1996 ylo
+Last modified: Fri Jan 26 13:30:48 1996 ylo
 
 Functions for reading files as the real user from a program running as root.
 
@@ -54,11 +54,11 @@ int userfile_getc(UserFile f);
 /* Reads data from the file.  Returns as much data as is the buffer
    size, unless end of file is encountered.  Returns the number of bytes
    read, 0 on EOF, and -1 on error. */
-ssize_t userfile_read(UserFile f, void *buf, size_t len);
+int userfile_read(UserFile f, void *buf, unsigned int len);
 
 /* Writes data to the file.  Writes all data, unless an error is encountered.
    Returns the number of bytes actually written; -1 indicates error. */
-ssize_t userfile_write(UserFile f, const void *buf, size_t len);
+int userfile_write(UserFile f, const void *buf, unsigned int len);
 
 /* Reads a line from the file.  The line will be null-terminated, and
    will include the newline.  Returns a pointer to the given buffer,
@@ -67,7 +67,7 @@ ssize_t userfile_write(UserFile f, const void *buf, size_t len);
    it).  If the last line of the file does not terminate with a
    newline, returns the line, null-terminated, but without a
    newline. */
-char *userfile_gets(char *buf, size_t size, UserFile f);
+char *userfile_gets(char *buf, unsigned int size, UserFile f);
 
 /* Performs lseek() on the given file. */
 off_t userfile_lseek(UserFile uf, off_t offset, int whence);

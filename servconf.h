@@ -31,10 +31,11 @@ typedef struct
   struct in_addr listen_addr;	/* Address on which the server listens. */
   char *host_key_file;		/* File containing host key. */
   char *random_seed_file;	/* File containing random seed. */
+  char *pid_file;		/* File containing process ID number. */
   int server_key_bits;		/* Size of the server key. */
   int login_grace_time;		/* Disconnect if no auth in this time (sec). */
   int key_regeneration_time;	/* Server key lifetime (seconds). */
-  int permit_root_login;	/* If true, permit root login. */
+  int permit_root_login;	/* 0 = forced cmd only, 1 = no pwd, 2 = yes. */
   int ignore_rhosts;		/* Ignore .rhosts and .shosts. */
   int quiet_mode;		/* If true, don't log anything but fatals. */
   int fascist_logging;		/* Perform very verbose logging. */

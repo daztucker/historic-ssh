@@ -281,7 +281,7 @@ void channel_prepare_select(fd_set *readset, fd_set *writeset)
 	  break;
 
 	case SSH_CHANNEL_OPEN:
-	  if (buffer_len(&ch->input) < 32768)
+	  if (buffer_len(&ch->input) < packet_max_size() / 2)
 	    FD_SET(ch->sock, readset);
 	  if (buffer_len(&ch->output) > 0)
 	    FD_SET(ch->sock, writeset);
@@ -515,7 +515,10 @@ void channel_after_select(fd_set *readset, fd_set *writeset)
 	  /* Read available incoming data and append it to buffer. */
 	  if (FD_ISSET(ch->sock, readset))
 	    {
-	      len = read(ch->sock, buf, sizeof(buf));
+	      len = sizeof(buf);
+	      if (len > packet_max_size() / 4)
+		len = packet_max_size() / 4;
+	      len = read(ch->sock, buf, len);
 	      if (len <= 0)
 		{
 		  buffer_consume(&ch->output, buffer_len(&ch->output));
@@ -571,6 +574,11 @@ void channel_output_poll()
 
   for (i = 0; i < channels_alloc; i++)
     {
+      /* If we have very much data going to the output socket, don't send more
+	 now. */
+      if (!packet_not_very_much_data_to_write())
+	break; /* Don't send any more data now. */
+
       ch = &channels[i];
       /* We are only interested in channels that can have buffered incoming
 	 data. */
@@ -592,6 +600,8 @@ void channel_output_poll()
 	    {
 	      if (len > 16384)
 		len = 16384;  /* Keep the packets at reasonable size. */
+	      if (len > packet_max_size() / 2)
+		len = packet_max_size() / 2;
 	    }
 	  packet_start(SSH_MSG_CHANNEL_DATA);
 	  packet_put_int(ch->remote_id);
@@ -649,9 +659,9 @@ int channel_not_very_much_buffered_data()
 	case SSH_CHANNEL_AUTH_FD:
 	  continue;
 	case SSH_CHANNEL_OPEN:
-	  if (buffer_len(&ch->input) > 32768)
+	  if (buffer_len(&ch->input) > 32000)
 	    return 0;
-	  if (buffer_len(&ch->output) > 32768)
+	  if (buffer_len(&ch->output) > 32000)
 	    return 0;
 	  continue;
 	case SSH_CHANNEL_INPUT_DRAINING:

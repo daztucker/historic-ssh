@@ -156,8 +156,8 @@ void usage()
   fprintf(stderr, "  -f          Fork into background after authentication.\n");
   fprintf(stderr, "  -e char     Set escape character; ``none'' = disable (default: ~).\n");
   fprintf(stderr, "  -c cipher   Select encryption algorithm: ``idea'' (default, secure),\n");
-  fprintf(stderr, "              ``des'', ``3des'', ``tss'', ``rc4'' (fast, suitable for bulk\n");
-  fprintf(stderr, "              transfers), ``none'' (no encryption).\n");
+  fprintf(stderr, "              ``des'', ``3des'', ``tss'', ``arcfour'' (fast, suitable for bulk\n");
+  fprintf(stderr, "              transfers), ``none'' (no encryption - for debugging only).\n");
   fprintf(stderr, "  -p port     Connect to this port.  Server must be on the same port.\n");
   fprintf(stderr, "  -L listen-port:host:port   Forward local port to remote address\n");
   fprintf(stderr, "  -R listen-port:host:port   Forward remote port to local address\n");
@@ -176,6 +176,7 @@ void rsh_connect(char *host, char *user, Buffer *command)
 #ifdef RSH_PATH
   char *args[10];
   char rsh_program_name[256];
+  char *cp;
   int i;
   
   log("Using rsh.  WARNING: Connection will not be encrypted.");
@@ -185,7 +186,11 @@ void rsh_connect(char *host, char *user, Buffer *command)
     fatal("setuid: %s", strerror(errno));
 
   /* Compute the full path of the suitable rsh/rlogin program. */
-  if (strcmp(av0, "rlogin") == 0 || strcmp(av0, "slogin") == 0)
+  if (strchr(av0, '/'))
+    cp = strrchr(av0, '/') + 1;
+  else
+    cp = av0;
+  if (strcmp(cp, "rlogin") == 0 || strcmp(cp, "slogin") == 0)
     {
       strncpy(rsh_program_name, RSH_PATH, sizeof(rsh_program_name));
       rsh_program_name[sizeof(rsh_program_name) - 20] = '\0';
@@ -239,12 +244,14 @@ int main(int ac, char **av)
   int i, opt, optind, type, exit_status, ok, fwd_port, fwd_host_port, authfd;
   char *optarg, *cp, buf[256];
   Buffer command;
-  struct winsize ws;
   struct stat st;
   struct passwd *pw, pwcopy;
   int interactive = 0, dummy;
   uid_t original_real_uid;
   uid_t original_effective_uid;
+#ifdef SIGWINCH
+  struct winsize ws;
+#endif /* SIGWINCH */
 
   /* Save the original real uid.  It will be needed later (uid-swapping may
      clobber the real uid).  */
@@ -451,6 +458,11 @@ int main(int ac, char **av)
 			      "command-line", 0, &dummy);
 	  break;
 
+	case '8':
+	  /* Ssh is always 8-bit-clean.  This option is only
+	     recognized for backwards compatibility with ssh. */
+	  break;
+
 	default:
 	  usage();
 	}
@@ -619,19 +631,6 @@ int main(int ac, char **av)
   if (host_private_key_loaded)
     rsa_clear_private_key(&host_private_key);
 
-  /* If requested, fork and let ssh continue in the background. */
-  if (fork_after_authentication_flag)
-    {
-      int ret = fork();
-      if (ret == -1)
-	fatal("fork failed: %.100s", strerror(errno));
-      if (ret != 0)
-	exit(0);
-#ifdef HAVE_SETSID
-      setsid();
-#endif /* HAVE_SETSID */
-    }
-
   /* Enable compression if requested. */
   if (options.compression)
     {
@@ -668,12 +667,19 @@ int main(int ac, char **av)
       packet_put_string(cp, strlen(cp));
 
       /* Store window size in the packet. */
+#ifdef SIGWINCH
       if (ioctl(fileno(stdin), TIOCGWINSZ, &ws) < 0)
 	memset(&ws, 0, sizeof(ws));
       packet_put_int(ws.ws_row);
       packet_put_int(ws.ws_col);
       packet_put_int(ws.ws_xpixel);
       packet_put_int(ws.ws_ypixel);
+#else /* SIGWINCH */
+      packet_put_int(0);
+      packet_put_int(0);
+      packet_put_int(0);
+      packet_put_int(0);
+#endif /* SIGWINCH */
       
       /* Store tty modes in the packet. */
       tty_make_modes(fileno(stdin));
@@ -784,6 +790,19 @@ int main(int ac, char **av)
   /* We will no longer need the forked process that reads files on the
      user's uid. */
   userfile_uninit();
+
+  /* If requested, fork and let ssh continue in the background. */
+  if (fork_after_authentication_flag)
+    {
+      int ret = fork();
+      if (ret == -1)
+	fatal("fork failed: %.100s", strerror(errno));
+      if (ret != 0)
+	exit(0);
+#ifdef HAVE_SETSID
+      setsid();
+#endif /* HAVE_SETSID */
+    }
 
   /* If a command was specified on the command line, execute the command now.
      Otherwise request the server to start a shell. */

@@ -285,13 +285,6 @@ struct	sockaddr_un {
 #define S_ISDIR(mode)   (((mode)&(_S_IFMT))==(_S_IFDIR))
 #endif
 
-#ifdef STAT_MACROS_BROKEN
-/* Some systems have broken S_ISDIR etc. macros in sys/stat.h.  Please ask
-   your vendor to fix them.  You can then remove the line below, but only
-   after you have sent a complaint to your vendor. */
-WARNING_MACROS_IN_SYS_STAT_H_ARE_BROKEN_ON_YOUR_SYSTEM_READ_INCLUDES_H
-#endif /* STAT_MACROS_BROKEN */
-
 #if USE_STRLEN_FOR_AF_UNIX
 #define AF_UNIX_SIZE(unaddr) \
   (sizeof((unaddr).sun_family) + strlen((unaddr).sun_path) + 1)

@@ -32,7 +32,7 @@ Created: Wed Apr 19 16:50:42 1995 ylo
 #endif /* WITHOUT_IDEA */
 #include "des.h"
 #include "tss.h"
-#include "rc4.h"
+#include "arcfour.h"
 
 /* Cipher types.  New types can be added, but old types should not be removed
    for compatibility.  The maximum allowed value is 31. */
@@ -42,7 +42,7 @@ Created: Wed Apr 19 16:50:42 1995 ylo
 #define SSH_CIPHER_DES		2 /* DES CBC */
 #define SSH_CIPHER_3DES		3 /* 3DES CBC */
 #define SSH_CIPHER_TSS		4 /* TRI's Simple Stream encryption CBC */
-#define SSH_CIPHER_RC4		5 /* Alleged RC4 */
+#define SSH_CIPHER_ARCFOUR	5 /* Arcfour */
 
 typedef struct {
   unsigned int type;
@@ -66,7 +66,7 @@ typedef struct {
       unsigned char iv3[8];
     } des3;
     struct tss_context tss;
-    RC4Context rc4;
+    ArcfourContext arcfour;
   } u;
 } CipherContext;
 

@@ -1,3 +1,124 @@
+Sun Feb 11 16:35:37 1996  Tatu Ylonen  <ylo@trance.olari.clinet.fi>
+
+	* servconf.c: Fixed pid file default setting.
+
+Sat Feb 10 14:33:29 1996  Tatu Ylonen  <ylo@trance.olari.clinet.fi>
+
+	* Changed licensing conditions in COPYING.
+
+	* ssh.c: Recognize -8 as an option (but it is ignored, as ssh is
+	  always 8-bit clean).
+
+	* sshd.8.in: Documented SIGHUP.
+
+	* Merged PidFile patches from Danek Duvall
+	  <duvall@dhduvall.student.princeton.edu>.
+
+	* sshd.c (and other files): added new packet type
+	  SSH_CMSG_MAX_PACKET_SIZE.  This can be used to limit packet size
+	  sent by the server, which is helpful when implementing the Windows
+	  client, as it is troublesome to manipulate buffers larger than 64k
+	  on Windows.
+
+	* channels.c (channel_output_poll): Don't emit any more data to
+	  the output buffer from channels if it is already quite full.
+	  This may reduce problems with X or TCP/IP traffic jamming the
+	  interactive shell and/or prevent the size of sshd growing.
+
+	* sshd.c (do_child): clear the random number generator before
+	  changing uid.
+
+	* sshd.c (do_child): Run $HOME/.ssh/rc and /etc/sshrc with the
+	  user's shell.  These used to be run with /bin/sh even if the
+	  user's shell was /bin/sync.
+
+Fri Feb  9 00:35:21 1996  Tatu Ylonen  <ylo@trance.olari.clinet.fi>
+
+	* userfile.c (do_popen): Preserve XAUTHORITY.
+
+	* sshconnect.c: When initializing the random number generator,
+ 	  read also some noise from the systemwide seed file.  This
+ 	  prevents the user from guessing his own session key (which,
+ 	  together with sophisticated IP spoofing attacks on the local
+ 	  network, might be exploited to masquerade as another user).
+
+	* ssh.c: Moved the fork caused by the -f option until after all
+	  forwardings have been started.  This makes it more useful in
+	  scripts.
+
+	* Eliminated rc4.  Added arcfour, which is a cipher based on a
+ 	  usenet posting in Spring-1995.  It is widely believed and has
+ 	  been tested to be equivalent with RC4 (RC4 is a trademark of RSA
+ 	  Data Security).
+
+	* configure.in: Added check to determine if found rsh is actually
+	  ssh.  This helps to avoid errors where ssh enters a loop
+	  executing itself when trying to fall back to rsh.
+
+	* New functions log_severity() and fatal_severity().  These
+	  are like log() and fatal(), but allow specifying the severity
+	  of the logged message.  The primary purpose of these functions
+	  is to avoid innocuous messages (e.g. connection closed) being
+	  logged with high severity.
+
+	* servconf.c, readconf.c: accept "true" and "false" as values for
+	  yes/no options.
+
+Thu Feb  8 13:51:59 1996  Tatu Ylonen  <ylo@trance.olari.clinet.fi>
+
+	* sshd.c: moved userfile_uninit() to before forking the child.
+
+	* Merged make-ssh-known-hosts changed from kivinen@niksula.hut.fi.
+
+	    * added builtin ping (much faster, because you can set the
+	      timeout to very short value (1-2 seconds, default is 3
+	      seconds), and because it 'pings' the ssh port it will find
+	      only those hosts with sshd running.
+
+	    * recursive scanning (scans all subdomains of domain
+	      automatically, use --norecursive to turn it off).
+
+	    * automatically use all nameserver entries for domain until
+	      it will get something if the origin or other nameservers
+	      refuse to answer queries.
+
+	    * trust the key returned from daemon by default (use
+	      --notrustdaemon to get old behavior).
+
+	    * --keyscan option that will make list of hosts for keyscan
+	      (not compatible with current version ssh-keyscan, because it
+	      will output all ipaddress separated with commas in the
+	      ipaddress field, and ssh-keyscan expects only one ipaddress,
+	      hopefully ssh-keyscan will accept this format too later, for
+	      now you can use sed 's/^\([0-9.]*\),[,0-9.]*/\1/g' to make it
+	      ssh-keyscan compatible).
+
+	    * added some diagnostic prints to generated ssh_known_hosts:
+	      # Domain = hut.fi, server = Santra.Hut.Fi
+	      # Found 4391 hosts, 361 CNAMEs (total 11570 lines)
+	      # SOA = santra.hut.fi jtv.hut.fi. (10001423 3600 300 3600000 
+	      	3600)
+	
+Mon Feb  5 20:41:29 1996  Tatu Ylonen  <ylo@trance.olari.clinet.fi>
+
+	* ssh-askpass.wish: Merged changes from Antti Huima
+	  <ahuima@niksula.hut.fi>.
+
+	* Removed garbage line from RFC.
+
+Mon Jan 29 23:45:58 1996  Tatu Ylonen  <ylo@trance.olari.clinet.fi>
+
+	* canohost.c (get_remote_ipaddr): If using two different
+	  descriptors, check if they are internet-domain sockets with
+	  the same peername; if so, return that address.  This should make
+	  ssh be able to return the correct peername when started from
+	  inetd.
+
+Fri Jan 26 23:10:20 1996  Tatu Ylonen  <ylo@trance.olari.clinet.fi>
+
+	* pty.c: Merged Cray pty fixes from Wayne Schroeder
+ 	  <schroede@SDSC.EDU>.
+
 Thu Jan 25 08:05:18 1996  Tatu Ylonen  <ylo@trance.olari.clinet.fi>
 	
 	* sshd.c (do_child): moved clearing of resources before switching

@@ -313,10 +313,6 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 #undef HAVE_SCO_ETC_SHADOW
 #undef SCO
 
-/* Define this if _POSIX_SAVED_IDS does not imply that saved uids
-   work for seteuid. */
-#undef POSIX_SAVED_IDS_BROKEN_FOR_SETEUID
-
 /* The number of bytes in a int.  */
 #undef SIZEOF_INT
 
@@ -367,9 +363,6 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 /* Define if you have the revoke function.  */
 #undef HAVE_REVOKE
-
-/* Define if you have the seteuid function.  */
-#undef HAVE_SETEUID
 
 /* Define if you have the setlogin function.  */
 #undef HAVE_SETLOGIN

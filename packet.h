@@ -163,6 +163,12 @@ int packet_have_data_to_write(void);
 /* Returns true if there is not too much data to write to the connection. */
 int packet_not_very_much_data_to_write(void);
 
+/* Sets the maximum packet size that can be sent to the other side. */
+void packet_set_max_size(unsigned int max_size);
+
+/* Returns the maximum packet size that can be sent to the other side. */
+unsigned int packet_max_size(void);
+
 /* Stores tty modes from the fd into current packet. */
 void tty_make_modes(int fd);
 

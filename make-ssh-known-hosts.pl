@@ -27,12 +27,12 @@
 #	  (C) Tero Kivinen 1995 <Tero.Kivinen@hut.fi>
 #
 #	  Creation          : 19:52 Jun 27 1995 kivinen
-#	  Last Modification : 17:39 Sep 27 1995 kivinen
+#	  Last Modification : 03:14 Jan 31 1996 kivinen
 #	  Last check in     : $Date: 1995/10/02 01:23:45 $
 #	  Revision number   : $Revision: 1.4 $
 #	  State             : $State: Exp $
-#	  Version	    : 1.215
-#	  Edit time	    : 66 min
+#	  Version	    : 1.331
+#	  Edit time	    : 235 min
 #
 #	  Description       : Make ssh-known-host file from dns data.
 #
@@ -61,43 +61,60 @@ require 5.000;
 use Getopt::Long;
 use FileHandle;
 use POSIX;
+use Socket;
+use Fcntl;
+
+$version = ' $Id: make-ssh-known-hosts.pl,v 1.4 1995/10/02 01:23:45 ylo Exp $ ';
 
 $command_line = "$0 ";
 foreach $a (@ARGV) {
     $command_line .= $a . " ";
 }
-
 STDERR->autoflush(1);
+
+######################################################################
+# default values for options
+
 $debug = 5;
-$nslookup = "nslookup";
-$ping="ping";
-$pingpreoptions=undef;
-$pingpostoptions=undef;
-$ssh="ssh -x -a -o 'FallBackToRsh no' -o 'GlobalKnownHostsFile /dev/null' -o 'UserKnownHostsFile /tmp/ssh_known_hosts'";
-$sshdisablepasswordoption="-o 'PasswordAuthentication no'";
 $defserver = '';
 $bell='\a';
 $public_key = '/etc/ssh_host_key.pub';
-if (!defined($ENV{'HOME'})) {
-    ($junk, $junk, $junk, $junk, $junk, $junk, $junk, $dir, $junk) =
-	getpwuid($<);
-    $ENV{'HOME'} = $dir;
-}
-$private_ssh_known_hosts = "/tmp/ssh_known_hosts";
-unlink($private_ssh_known_hosts);
+$private_ssh_known_hosts = "/tmp/ssh_known_hosts$$";
 $timeout = 60;
+$ping_timeout = 3;
 $passwordtimeout = undef;
-$trustdaemon = 0;
+$trustdaemon = 1;
 $domainnamesplit = 0;
+$recursive = 1;
+
+######################################################################
+# Programs and their options
+
+$nslookup = "nslookup";
+
+$ssh="ssh -a -c rc4 -x -o 'ConnectionAttempts 1' -o 'FallBackToRsh no' -o 'GlobalKnownHostsFile /dev/null' -o 'KeepAlive yes' -o 'StrictHostKeyChecking no' -o 'UserKnownHostsFile $private_ssh_known_hosts'";
+$sshdisablepasswordoption="-o 'BatchMode yes' -o 'PasswordAuthentication no'";
+
+######################################################################
+# Cleanup and initialization
+
+unlink($private_ssh_known_hosts);
+$sockaddr = 'S n a4 x8';
+($junk, $junk, $sshport) = getservbyname("ssh", "tcp");
+if (!defined($sshport)) {
+    $sshport = 22;
+}
+($tcpprotoname, $junk, $tcpproto) = getprotobyname('tcp');
+defined($tcpprotoname) || die "getprotobyname : $!";
 
 ######################################################################
 # Parse options
 
 GetOptions("initialdns=s", "server=s", "subdomains=s",
 	   "debug=i", "timeout=i", "passwordtimeout=i",
-	   "trustdaemon", "domainnamesplit", "silent",
-	   "nslookup=s",
-	   "ping=s", "pingpostoptions=s", "pingpreoptions=s",
+	   "trustdaemon!", "domainnamesplit", "silent",
+	   "nslookup=s", "pingtimeout=i", "recursive!",
+	   "keyscan", 
 	   "ssh=s")
     || die "Getopt : $!";
 
@@ -111,6 +128,8 @@ if (defined($opt_debug)) { $debug = $opt_debug; }
 
 if (defined($opt_timeout)) { $timeout = $opt_timeout; }
 
+if (defined($opt_pingtimeout)) { $ping_timeout = $opt_pingtimeout; }
+
 if (defined($opt_passwordtimeout)) {
     $passwordtimeout = $opt_passwordtimeout;
     $sshdisablepasswordoption = '';
@@ -118,17 +137,13 @@ if (defined($opt_passwordtimeout)) {
 
 if (defined($opt_trustdaemon)) { $trustdaemon = $opt_trustdaemon; }
 
+if (defined($opt_recursive)) { $recursive = $opt_recursive; }
+
 if (defined($opt_domainnamesplit)) { $domainnamesplit = $opt_domainnamesplit; }
 
 if (defined($opt_silent)) { $bell = ''; }
 
 if (defined($opt_nslookup)) { $nslookup = $opt_nslookup; }
-
-if (defined($opt_ping)) { $ping = $opt_ping; }
-
-if (defined($opt_pingpostoptions)) { $pingpostoptions = $opt_pingpostoptions; }
-
-if (defined($opt_pingpreoptions)) { $pingpreoptions = $opt_pingpreoptions; }
 
 if (defined($opt_ssh)) { $ssh = $opt_ssh; } else {
     $ssh = "$ssh $sshdisablepasswordoption";
@@ -147,36 +162,12 @@ if ($#ARGV == 0) {
     $grep_yes = $ARGV[1];
     $grep_no = $ARGV[2];
 } else {
-    print(STDERR "$0 [--initialdns initial_dns_server] [--server dns_server] [--subdomains sub.sub.domain,sub.sub,sub,] [--debug debug_level] [--timeout exec_timeout_in_secs] [--passwordtimeout timeout_for_password_in_secs] [--trustdaemon] [--domainnamesplit] [--silent] [--nslookup path_to_nslookup] [--ping path_to_ping] [--pingpostoptions string] [--pingpreoptions string] [--ssh path_to_ssh] full.domain [ host_info_take_regexp [ host_info_remove_regex ]]\n");
+    print(STDERR "$0 [--initialdns initial_dns_server] [--server dns_server] [--subdomains sub.sub.domain,sub.sub,sub,] [--debug debug_level] [--timeout ssh_exec_timeout_in_secs] [--pingtimeout ping_timeout_in_secs] [--passwordtimeout timeout_for_password_in_secs] [--notrustdaemon] [--norecursive] [--domainnamesplit] [--silent] [--keyscan] [--nslookup path_to_nslookup] [--ssh path_to_ssh] full.domain [ host_info_take_regexp [ host_info_remove_regex ]]\n");
     exit(1);
 }
 
 ######################################################################
-# Check that ping and ssh programs exists
-
-if (system("$ping > /dev/null 2>&1") != 256) {
-    print(STDERR "Error: Could not run ping program ($ping): $!\nError: Try giving the path to it with --ping option\n");
-    exit(1);
-}
-
-if (!defined($pingpreoptions) && !defined($pingpostoptions)) {
-    if (system("$ping localhost 64 1 > /dev/null 2>&1") == 0) {
-	$pingpreoptions = '';
-	$pingpostoptions = '64 1';
-    } elsif (system("$ping -c 1 localhost > /dev/null 2>&1") == 0) {
-	$pingpreoptions = '-c 1';
-	$pingpostoptions = '';
-    } else {
-	print(STDERR "Error: Could not find out the usage of ping program ($ping): $!\nError: Try giving the pre and post options with --pingpostoptions and pingpreoptions option\n");
-	exit(1);
-    } 
-} elsif (!defined($pingpreoptions)) {
-    $pingpreoptions = '';
-} elsif (!defined($pingpostoptions)) {
-    $pingpostoptions = '';
-}
-
-debug(20, "Ping command: $ping $pingpreoptions hostname $pingpostoptions");
+# Check that ssh program exists
 
 if (system("$ssh > /dev/null 2>&1 ") != 256) {
     print(STDERR "Error: Could not run ssh program ($ssh): $!\nError: Try giving the path to it with --ssh option\n");
@@ -214,22 +205,11 @@ if (!$domainnamesplit) {
 ######################################################################
 # finding SOA entry for domain
 
+@other_servers = ();
 if (!defined($server)) {
     debug(6, "Finding DNS database SOA entry");
-    open(DNS, "$nslookup -type=soa $domain $defserver 2>&1 |") ||
-	die "Error: Could not start nslookup to find SOA entry for $domain : $!\nError: Try giving the path to it with --nslookup option\n";
-    
-    while (<DNS>) {
-	if (/\s+(\S+)\s*=\s*(.*)\s*$/) {
-	    $field = $1;
-	    $data = $2;
-	    debug(10, "Found field $field = $data");
-	    if ($field =~ /origin/i) {
-		$server = $data;
-	    }
-	}
-    }
-    close(DNS);
+
+    ($server, @other_servers) = find_soa($domain, $defserver);
     
     if (!defined($server)) {
 	print(STDERR "Error: Could not find DNS SOA entry from default dns server\nError: Try giving the initial nameserver with --initialdns option\n");
@@ -242,170 +222,272 @@ if (!defined($server)) {
 }
 
 ######################################################################
-# Get DNS database list from server
-
-debug(0, "Getting DNS database from server $server");
-open(DNS, "echo ls -d $domain | nslookup - $server 2>&1 |") ||
-    die "Error: Could not start nslookup to make dns list : $!\nError: Try giving --nslookup option and telling the path to nslookup program\n";
-
-$hostcnt = 0;
-$cnamecnt = 0;
-$lines = 0;
-while(<DNS>) {
-    $lines++;
-    if (/^\s+(\S+)\s+(\S+)\s+(.*)\s*$/) {
-	$host = "\L$1\E";
-	$field = "\L$2\E";
-	$data = "\L$3\E";
-	debug(50, "Line = /$host/$field/$data/");
-	if ($host !~ /\.$/) {
-	    $host .= ".$domain";
-	} else {
-	    $host =~ s/\.$//g;
-	}
-	if ($field eq "a") {
-	    if ($host =~ /$domain$/) {
-		if (defined($host{$host})) {
-		    $host{$host} .= ",$data";
-		} else {
-		    $host{$host} = "$data";
-		    $hostcnt++;
-		}
-		debug(30, "$host A == $host{$host}");
-	    }
-	} elsif ($field eq "cname") {
-	    if ($host =~ /$domain$/) {
-		if (defined($cname{$data})) {
-		    $cname{$data} .= ",$host";
-		} else {
-		    $cname{$data} = "$host";
-		    $cnamecnt++;
-		}
-		debug(30, "$host CNAME $data");
-	    }
-	}
-	if (!defined($hostdata{$host})) {
-	    $hostdata{$host} = "$host\n$field=$data\n";
-	} else {
-	    $hostdata{$host} .= "$field=$data\n";
-	}
-    }
-}
-close(DNS);
-debug(0, "Found $hostcnt hosts, $cnamecnt CNAMEs (total $lines lines)");
-
-######################################################################
 # Print header
-
+    
 ($name, $junk, $junk, $junk, $junk, $junk, $gecos) = getpwuid($<);
 $gecos =~ s/,.*$//g;
 
-print(STDOUT "# This file is generated with make-ssh-known-hosts.pl using command line :\n");
-print(STDOUT "# $command_line\n");
-print(STDOUT "#\n");
-print(STDOUT "# The script was run by $gecos ($name) at " . localtime() . "\n");
-print(STDOUT "# using perl ($^X) version $].\n");
-print(STDOUT "#\n");
+if (!defined($opt_keyscan)) {
+    print(STDOUT "# This file is generated with make-ssh-known-hosts.pl\n");
+    print(STDOUT "#$version\n");
+    print(STDOUT "# with command line :\n");
+    print(STDOUT "# $command_line\n");
+    print(STDOUT "#\n");
+    print(STDOUT "# The script was run by $gecos ($name) at " . localtime() . "\n");
+    print(STDOUT "# using perl ($^X) version $].\n");
+}
+
+######################################################################
+# Get DNS database list from server
+
+do {    
+    $domains_done{$domain} = 1;
+    delete $domains_waiting{$domain};
+
+    $hostcnt = 0;
+    $cnamecnt = 0;
+    $lines = 0;
+    $soa = 0;
+    undef %host;
+    undef %cname;
+    undef %hostdata;
+    
+  dnsagain:
+    debug(1, "Getting DNS database for $domain from server $server");
+    open(DNS, "echo ls -d $domain | nslookup - $server 2>&1 |") ||
+	die "Error: Could not start nslookup to make dns list : $!\nError: Try giving --nslookup option and telling the path to nslookup program\n";
+    
+    while(<DNS>) {
+	$lines++;
+	if (/^\s+(\S+)\s+(\S+)\s+(.*)\s*$/) {
+	    $host = "\L$1\E";
+	    $field = "\L$2\E";
+	    $data = "\L$3\E";
+	    debug(70, "Line = /$host/$field/$data/");
+	    if ($host !~ /\.$/) {
+		$host .= ".$domain";
+	    } else {
+		$host =~ s/\.$//g;
+	    }
+	    if ($field eq "a") {
+		if ($host =~ /$domain$/) {
+		    if (defined($host{$host})) {
+			$host{$host} .= ",$data";
+		    } else {
+			$host{$host} = "$data";
+			$hostcnt++;
+		    }
+		    debug(30, "$host A == $host{$host}");
+		}
+	    } elsif ($field eq "cname") {
+		if ($host =~ /$domain$/) {
+		    if (defined($cname{$data})) {
+			$cname{$data} .= ",$host";
+		    } else {
+			$cname{$data} = "$host";
+			$cnamecnt++;
+		    }
+		    debug(30, "$host CNAME $data");
+		    $junk = $data;
+		    $data = $host;
+		    $host = $junk;
+		}
+	    } elsif ($field eq "ns") {
+		if (!defined($domains_done{$host})) {
+		    if (!defined($domains_waiting{$host})) {
+			debug(10, "Adding subdomain $host to domains list, with NS $data");
+			$domains_waiting{$host} = $data;
+			push(@domains_waiting, $host);
+		    } else {
+			debug(10, "Adding NS $data for domain $host");
+			$domains_waiting{$host} .= ",$data";
+		    }
+		}
+	    } elsif ($field eq "soa") {
+		$soa = $data;
+	    }
+	    if (!defined($hostdata{$host})) {
+		$hostdata{$host} = "$host\n$field=$data\n";
+	    } else {
+		$hostdata{$host} .= "$field=$data\n";
+	    }
+	}
+    }
+    close(DNS);
+    if ($hostcnt == 0 && $cnamecnt == 0) {
+	if ($#other_servers != -1) {
+	    $server = shift(@other_servers);
+	    goto dnsagain;
+	}
+    }
+    debug(1, "Found $hostcnt hosts, $cnamecnt CNAMEs (total $lines lines)");
+    if (!defined($opt_keyscan)) {
+	print(STDOUT "#\n");
+	print(STDOUT "# Domain = $domain, server = $server\n");
+	print(STDOUT "# Found $hostcnt hosts, $cnamecnt CNAMEs (total $lines lines)\n");
+	print(STDOUT "# SOA = $soa\n");
+	print(STDOUT "#\n");
+    }
 
 ######################################################################
 # Loop through hosts and try to connect to hosts
 
-foreach $i (sort (keys %host)) {
-    debug(50, "Host = $i, Hostdata = $hostdata{$i}");
-    if ($hostdata{$i} =~ /$grep_yes/im &&
-	$hostdata{$i} !~ /$grep_no/im &&
-	$i !~ /^localhost\./ &&
-	$host{$i} !~ /^127.0.0.1$|^127.0.0.1,|,127.0.0.1$|,127.0.0.1,/) {
-	debug(2, "Trying host $i");
-	if (try_ping("$i")) {
-	    $trusted = 1;
-	    $err = 'Timeout expired';
-	    $ssh_key = try_ssh("$i");
-	    if (!defined($ssh_key)) {
-		$ssh_key = find_host_from_known_hosts($i);
-		$trusted = 0;
-	    }
-	    if (defined($ssh_key)) {
-		if ($trusted) {
-		    debug(2, "Ssh to $i succeded");
-		} else {
-		    debug(2, "Ssh to $i failed, using local known_hosts entry");
-		}
-		@hostnames = ();
-		if (defined($cname{$i})) {
-		    expand($i, \@hostnames, \@subdomains);
-		    foreach $j (split(/,/, $cname{$i})) {
-			expand($j, \@hostnames, \@subdomains);
-		    }
-		} else {
-		    expand($i, \@hostnames, \@subdomains);
-		}
-		foreach $j (split(/,/, $host{$i})) {
-		    push(@hostnames, $j);
-		}
-		$hostnames = join(',', (@hostnames));
-		debug(4, "adding entries : $hostnames");
-		$ssh_key =~ s/root@//i;
-		if (!$trusted || $trustdaemon) {
-		    print(STDOUT "# $hostnames $ssh_key\n");
-		} else {
-		    print(STDOUT "$hostnames $ssh_key\n");
+    foreach $i (sort (keys %host)) {
+	debug(50, "Host = $i, Hostdata = $hostdata{$i}");
+	if ($hostdata{$i} =~ /$grep_yes/im &&
+	    $hostdata{$i} !~ /$grep_no/im &&
+	    $i !~ /^localhost\./ &&
+	    $host{$i} !~ /^127.0.0.1$|^127.0.0.1,|,127.0.0.1$|,127.0.0.1,/) {
+	    debug(2, "Trying host $i");
+	    
+	    @hostnames = ();
+	    if (defined($cname{$i})) {
+		expand($i, \@hostnames, \@subdomains);
+		foreach $j (split(/,/, $cname{$i})) {
+		    expand($j, \@hostnames, \@subdomains);
 		}
 	    } else {
-		debug(2, "ssh failed : $err");
+		expand($i, \@hostnames, \@subdomains);
+	    }
+	    foreach $j (split(/,/, $host{$i})) {
+		push(@hostnames, $j);
+	    }
+	    $hostnames = join(',', (@hostnames));
+	    
+	    if (defined($opt_keyscan)) {
+		printf(STDOUT "$host{$i}\t$hostnames\n");
+	    } elsif (try_ping($i, $host{$i})) {
+		$trusted = 1;
+		$err = 'Timeout expired';
+		$ssh_key = try_ssh("$i");
+		if (!defined($ssh_key)) {
+		    $ssh_key = find_host_from_known_hosts($i);
+		    $trusted = 0;
+		}
+		if (defined($ssh_key)) {
+		    if ($trusted) {
+			debug(2, "Ssh to $i succeded");
+		    } else {
+			debug(2, "Ssh to $i failed, using local known_hosts entry");
+		    }
+		    debug(4, "adding entries : $hostnames");
+		    $ssh_key =~ s/root@//i;
+		    if (!$trusted && !$trustdaemon) {
+			print(STDOUT "# $hostnames $ssh_key\n");
+		    } else {
+			print(STDOUT "$hostnames $ssh_key\n");
+		    }
+		} else {
+		    debug(2, "ssh failed : $err");
+		}
+	    } else {
+		debug(2, "ping failed");
 	    }
 	} else {
-	    debug(2, "ping failed");
+	    debug(10, "Skipped host $i");
 	}
-    } else {
-	debug(10, "Skipped host $i");
     }
-}
+  again:
+    $domain = shift(@domains_waiting);
+    if (defined($domain)) {
+	$server = $domains_waiting{$domain};
+	@other_servers = split(',', $server);
+	$server = shift(@other_servers);
+	($server, @other_servers) = find_soa($domain, $server);
+	if(!defined($server)) {
+	    debug(1, "Skipping domain $domain because no DNS SOA entry found");
+	    $domains_done{$domain} = 1;
+	    delete $domains_waiting{$domain};
+	    goto again;
+	}
+    }
+} while ($recursive && defined($domain));
 
 unlink($private_ssh_known_hosts);
 exit (0);
 
 ######################################################################
 # try_ping -- try to ping to host and return 1 if success
-# $success = try_ping($host);
+# $success = try_ping($host, $list_ip_addrs);
 
 sub try_ping {
-    my($host) = @_;
-    my($pid, $rin, $nfound, $tmout, $buf, $ret, $pos);
-    
-    $pid = open(PING, "$ping $pingpreoptions $host $pingpostoptions |");
-    if ($pid == 0) {
-	return undef;
-    }
+    my($host, $ipaddrs) = @_;
+    my(@ipaddrs, $ipaddr, $serv, $ip);
+    my($rin, $rout, $win, $wout, $nfound, $tmout, $buf, $len, $ret, $err);
 
-    $tmout = $timeout;
     $buf = '';
-    $pos = 0;
-    debug(10, "Starting ping select loop");
-    while (1) {
-	$rin = '';
-	vec($rin, fileno(PING), 1) = 1;
-	($nfound, $tmout) = select($rin, undef, undef, $tmout);
+    debug(51,"Trying to ping host $host");
+    @ipaddrs = split(/,/, $ipaddrs);
+
+    while ($ipaddr = shift(@ipaddrs)) {
 	
-	# Timeout
-	if ($nfound <= 0) {
-	    debug(20, "Ping select timed out");
-	    kill(9, $pid);
-	    close(PING);
-	    return 0;
-	}
-	# Read the junk
-	$ret = sysread(PING, $buf, 256, $pos);
+	debug(55,"Trying ipaddr $ipaddr");
 	
-	# EOF or error
-	if ($ret <= 0) {
-	    # Yes, close the pipe and return status
+	#initialize socket
+	socket(PING, PF_INET, SOCK_STREAM, $tcpproto) ||
+	    die "socket failed : $!";
+	setsockopt(PING, SOL_SOCKET, SO_REUSEADDR, 1) ||
+	    die "setsockopt failed : $!";
+	PING->autoflush(1);
+	fcntl(PING, F_SETFL, fcntl(PING, F_GETFL, 0) | POSIX::O_NONBLOCK) ||
+	    die "fcntl failed : $!";
+	
+        $ip = pack('C4', split(/\./, $ipaddr, 4));
+	$serv = pack($sockaddr, AF_INET, $sshport, $ip);
+	
+      again:
+	# try connect
+	$ret = connect(PING, $serv);
+	$err = $!;
+	if (!$ret) {
+	    debug(60, "Connect failed : $err");
+	    if ($err == EINTR) {
+		goto again;
+	    }
+	    # socket not yet connected, wait for result, it will
+	    # wake up for writing when done
+	    $tmout = $ping_timeout;
+	    
+ 	    $rin = '';
+	    $win = '';
+	    vec($rin, fileno(PING), 1) = 1;
+	    vec($win, fileno(PING), 1) = 1;
+	    debug(60, "Waiting in select, rin = " . unpack('H*', $rin) .
+		  ", win = " . unpack('H*', $win));
+	    ($nfound) = select($rout = $rin, $wout = $win, undef, $tmout);
+	    $err = $!;
+	    debug(80, "Select returned $nfound, rout = " . unpack('H*', $rout) .
+		  ", wout = " . unpack('H*', $wout));
+	    if ($nfound != 0) {
+		# connect done, read the status with sysread
+		$ret = sysread(PING, $buf, 1);
+		$err = $!;
+		if (defined($ret) || $err == EAGAIN) {
+		    debug(60, "Select ok, read ok ($err), returning ok");
+		    # connection done, return ok
+		    shutdown(PING, 2);
+		    close(PING);
+		    return 1;
+		} else {
+		    # connection failed, try next ipaddr
+		    debug(60, "Select ok, read failed : $err, trying next");
+		    close(PING);
+		}
+	    } else {
+		# timeout exceeded, try next ipaddr
+		debug(60, "Select failed : $err, trying next");
+		close(PING);
+	    }
+	} else {
+	    # connect succeeded, return ok.
+	    debug(60, "Connect ok, returning ok");
+	    shutdown(PING, 2);
 	    close(PING);
-	    debug(20, "Ping select closed status = $?, line = $buf");
-	    return !($?);
+	    return 1;
 	}
-	$pos += $ret;
     }
+    debug(60, "Returning fail");
+    return 0;
 }
 
 ######################################################################
@@ -567,6 +649,30 @@ sub debug {
     if ($debug > $level) {
 	print(STDERR "$0:debug[$level]: $str\n");
     }
+}
+
+######################################################################
+# find_soa -- find soa entry for domain
+# ($soa_origin, @other_servers) = find_soa($domain, $initial_server)
+
+sub find_soa {
+    my($domain, $initial_server) = @_;
+    my($field, $data, $server, @other_servers);
+
+    open(DNS, "$nslookup -type=soa $domain $initial_server 2>&1 |") ||
+	die "Error: Could not start nslookup to find SOA entry for $domain : $!\nError: Try giving the path to it with --nslookup option\n";
+    
+    while (<DNS>) {
+	if (/^[^=]*origin\s*=\s*(.*)/) {
+	    $server = $1;
+	    debug(10, "Found origin : $1");
+	} elsif (/^[^=]*nameserver\s*=\s*(.*)\s*$/) {
+	    push(@other_servers, $1);
+	    debug(10, "Found nameserver : $1");
+	}
+    }
+    close(DNS);
+    return($server, @other_servers);
 }
 
 ######################################################################

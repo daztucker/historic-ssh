@@ -172,6 +172,8 @@ void make_packets_from_stderr_data()
 	{
 	  if (len > 32768)
 	    len = 32768;  /* Keep the packets at reasonable size. */
+	  if (len > packet_max_size() / 2)
+	    len = packet_max_size() / 2;
 	}
       packet_start(SSH_SMSG_STDERR_DATA);
       packet_put_string(buffer_ptr(&stderr_buffer), len);
@@ -202,6 +204,8 @@ void make_packets_from_stdout_data()
 	{
 	  if (len > 32768)
 	    len = 32768;  /* Keep the packets at reasonable size. */
+	  if (len > packet_max_size() / 2)
+	    len = packet_max_size() / 2;
 	}
       packet_start(SSH_SMSG_STDOUT_DATA);
       packet_put_string(buffer_ptr(&stdout_buffer), len);
@@ -320,7 +324,8 @@ void process_input(fd_set *readset)
     {
       len = read(connection_in, buf, sizeof(buf));
       if (len == 0)
-	fatal("Connection closed by remote host.");
+	fatal_severity(SYSLOG_SEVERITY_INFO, 
+		       "Connection closed by remote host.");
 
       /* There is a kernel bug on Solaris that causes select to sometimes
 	 wake up even though there is no data available. */
@@ -328,7 +333,8 @@ void process_input(fd_set *readset)
 	len = 0;
 
       if (len < 0)
-	fatal("Read error from remote host: %.100s", strerror(errno));
+	fatal_severity(SYSLOG_SEVERITY_INFO,
+		       "Read error from remote host: %.100s", strerror(errno));
 
       /* Buffer any received data. */
       packet_process_incoming(buf, len);

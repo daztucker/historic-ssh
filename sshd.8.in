@@ -117,7 +117,7 @@ using a conventional cipher.  Currently,
 .BR \s-1IDEA\s0 ",
 .BR \s-1DES\s0 ",
 .BR \s-1\&3DES\s0 ",
-.BR \s-1RC4\s0 ", and
+.BR \s-1ARCFOUR\s0 ", and
 .B \s-1TSS\s0
 (a fast home-grown algorithm) are supported.  
 .B \s-1IDEA\s0
@@ -162,7 +162,9 @@ the client, and both sides exit.
 can be configured using command-line options or a configuration
 file.  Command-line options override values specified in the
 configuration file.
-
+.LP
+.B Sshd rereads its configuration file if it is sent the hangup
+signal, SIGHUP.
 
 .SH OPTIONS
 .TP
@@ -303,12 +305,23 @@ is "yes".
 .B PermitRootLogin
 Specifies whether the root can log in using
 .BR ssh .
-The default is "yes".
+May be set to "yes", "nopwd", or "no".  The default is "yes", allowing
+root logins through any of the authentication types allowed for other
+users.  The "nopwd" value disables password-authenticated root logins.
+The "no" value disables root logins through any of the authentication
+methods.  ("nopwd" and "no" are equivalent unless you have
+a .rhosts, .shosts, or .ssh/authorized_keys file in the root home
+directory.)
 
 Root login with RSA authentication when the "command" option has been
 specified will be allowed regardless of the value of this setting
 (which may be useful for taking remote backups even if root login is
 normally not allowed).
+.TP
+.B PidFile
+Specifies the location of the file containing the process ID of the
+master sshd daemon (default: /etc/sshd.pid or /var/run/sshd.pid,
+depending on the system).
 .TP
 .B Port
 Specifies the port number that
@@ -680,7 +693,7 @@ the same format.  The file should be writable only by the user; it
 need not be readable by anyone else.
 .TP
 .I \&$HOME/\s+2.\s0ssh/rc
-If this file exists, it is run with /bin/sh after reading the
+If this file exists, it is run with the user's shell after reading the
 environment files but before starting the user's shell or command.  If
 X11 spoofing is in use, this will receive the "proto cookie" pair in
 standard input (and DISPLAY in environment).  This must call xauth in

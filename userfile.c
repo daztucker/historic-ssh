@@ -8,7 +8,7 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Wed Jan 24 20:19:53 1996 ylo
-Last modified: Fri Jan 26 03:57:54 1996 ylo
+Last modified: Fri Feb  9 04:16:19 1996 ylo
 
 */
 
@@ -296,6 +296,7 @@ int do_popen(const char *command, const char *type)
 	    strncmp(environ[j], "TERM=", 5) == 0 ||
 	    strncmp(environ[j], "DISPLAY=", 8) == 0 ||
 	    strncmp(environ[j], "PRINTER=", 8) == 0 ||
+	    strncmp(environ[j], "XAUTHORITY=", 11) == 0 ||
 	    strncmp(environ[j], "TERMCAP=", 8) == 0)
 	  env[i++] = environ[j];
       env[i] = NULL;
@@ -714,7 +715,7 @@ int userfile_getc(UserFile uf)
    size, unless end of file is encountered.  Returns the number of bytes
    read, 0 on EOF, and -1 on error. */
 
-ssize_t userfile_read(UserFile uf, void *buf, size_t len)
+int userfile_read(UserFile uf, void *buf, unsigned int len)
 {
   unsigned int i;
   int ch;
@@ -735,7 +736,7 @@ ssize_t userfile_read(UserFile uf, void *buf, size_t len)
 /* Writes data to the file.  Writes all data, unless an error is encountered.
    Returns the number of bytes actually written; -1 indicates error. */
 
-ssize_t userfile_write(UserFile uf, const void *buf, size_t len)
+int userfile_write(UserFile uf, const void *buf, unsigned int len)
 {
   unsigned int chunk_len, offset;
   int ret;
@@ -784,7 +785,7 @@ ssize_t userfile_write(UserFile uf, const void *buf, size_t len)
    newline, returns the line, null-terminated, but without a
    newline. */
 
-char *userfile_gets(char *buf, size_t size, UserFile uf)
+char *userfile_gets(char *buf, unsigned int size, UserFile uf)
 {
   unsigned int i;
   int ch;

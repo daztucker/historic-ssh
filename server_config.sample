@@ -21,5 +21,6 @@ RhostsRSAAuthentication yes
 RSAAuthentication yes
 PasswordAuthentication yes
 PermitEmptyPasswords yes
+# PidFile /u/zappa/.ssh/pid
 # AllowHosts *.our.com friend.other.com
 # DenyHosts lowsecurity.theirs.com *.evil.org evil.org

@@ -178,7 +178,6 @@ case "$host" in
     ;;
   *-ibm-aix*)
     os_aix=yes
-    AC_DEFINE(POSIX_SAVED_IDS_BROKEN_FOR_SETEUID)
     AC_CHECK_LIB(s, getuserattr)
     ;;
   mips-dec-mach3*)
@@ -188,7 +187,6 @@ case "$host" in
   *-dec-ultrix*)
     # Ultrix stuff from dmckilli@qc.bell.ca, jbotz@orixa.mtholyoke.edu.
     AC_DEFINE(O_NONBLOCK_BROKEN)
-    AC_DEFINE(POSIX_SAVED_IDS_BROKEN_FOR_SETEUID)
     no_vhangup=yes
     # Ultrix shadow passwords implemented in auth-passwd.c.
     no_shadows_password_checking=yes
@@ -376,7 +374,7 @@ fi
 
 AC_CHECK_FUNCS(gettimeofday times getrusage ftruncate revoke makeutx)
 AC_CHECK_FUNCS(strchr memcpy setlogin openpty _getpty clock fchmod ulimit)
-AC_CHECK_FUNCS(gethostname seteuid getdtablesize umask innetgr initgroups)
+AC_CHECK_FUNCS(gethostname getdtablesize umask innetgr initgroups)
 
 AC_REPLACE_FUNCS(strerror memmove remove random putenv crypt socketpair)
 
@@ -576,12 +574,21 @@ AC_ARG_WITH(rsh,
     *) 
        AC_MSG_RESULT($withval)
        AC_DEFINE_UNQUOTED(RSH_PATH, "$withval")
+       RSH_PATH="$withval"
        ;;
   esac ],
   [ AC_MSG_RESULT(yes)
     AC_PATH_PROGS(RSH_PATH, remsh rsh)
     AC_DEFINE_UNQUOTED(RSH_PATH, "$RSH_PATH") ]
 )
+
+# Check that we didn't accidentally get ssh as rsh.
+if test -n "$RSH_PATH"; then
+  if test -n "`$RSH_PATH 2>&1 | grep listen-port:host:port`"; then
+    AC_MSG_WARN(Found rsh in $RSH_PATH but it appears to actually be ssh.)
+    AC_MSG_ERROR(Probably forgot to specify --with-rsh=PATH-TO-REAL-RSH.)
+  fi
+fi
 
 # Code to permit setting default path for users (alden@math.ohio-state.edu)
 AC_MSG_CHECKING(default path)

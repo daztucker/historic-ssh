@@ -60,7 +60,7 @@ these programs.
     - Ssh contains several encryption algorithms.  These are all
       accessed through the cipher.h interface.  The interface code is
       in cipher.c, and the implementations in des.c, idea.c, tss.c,
-      md5.c, rc4.c, and tss.c.
+      md5.c, arcfour.c, and tss.c.
 
   Multiple Precision Integer Library
 

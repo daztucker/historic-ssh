@@ -180,8 +180,16 @@ int pty_allocate(int *ptyfd, int *ttyfd, char *namebuf)
 #ifdef CRAY
   char buf[64];
   int i;
+  int highpty;
 
-  for (i = 0; i < 128; i++)
+#ifdef _SC_CRAY_NPTY
+  highpty=sysconf(_SC_CRAY_NPTY);
+  if (highpty==-1) highpty=128;
+#else
+  highpty=128;
+#endif
+
+  for (i = 0; i < highpty; i++)
     {
       sprintf(buf, "/dev/pty/%03d", i);
       *ptyfd = open(buf, O_RDWR|O_NOCTTY);
@@ -287,6 +295,12 @@ void pty_make_controlling_tty(int *ttyfd, const char *ttyname)
      EINVAL with these arguments, and there is absolutely no documentation. */
   ioctl(*ttyfd, TIOCSCTTY, NULL);
 #endif /* TIOCSCTTY */
+
+#ifdef CRAY
+  debug("Setting controlling tty using TCSETCTTY.");
+  ioctl(*ttyfd, TCSETCTTY, NULL);
+#endif
+
   fd = open(ttyname, O_RDWR);
   if (fd < 0)
     error("%.100s: %.100s", ttyname, strerror(errno));
@@ -320,11 +334,13 @@ void pty_make_controlling_tty(int *ttyfd, const char *ttyname)
 void pty_change_window_size(int ptyfd, int row, int col,
 			    int xpixel, int ypixel)
 {
+#ifdef SIGWINCH
   struct winsize w;
   w.ws_row = row;
   w.ws_col = col;
   w.ws_xpixel = xpixel;  
   w.ws_ypixel = ypixel;
   (void)ioctl(ptyfd, TIOCSWINSZ, &w);
+#endif /* SIGWINCH */
 }
 

@@ -157,16 +157,43 @@ static char *canonical_host_ip = NULL;
 
 const char *get_canonical_hostname()
 {
+  int fromlen, tolen;
+  struct sockaddr_in from, to;
+
   /* Check if we have previously retrieved this same name. */
   if (canonical_host_name != NULL)
     return canonical_host_name;
 
-  /* Get the real hostname if socket; otherwise return UNKNOWN. */
-  if (packet_get_connection_in() == packet_get_connection_out())
-    canonical_host_name = get_remote_hostname(packet_get_connection_in());
-  else
-    canonical_host_name = xstrdup("UNKNOWN");
+  /* If using different descriptors for the two directions, check if
+     both have the same remote address.  If so, get the address; otherwise
+     return UNKNOWN. */
+  if (packet_get_connection_in() != packet_get_connection_out())
+    {
+      fromlen = sizeof(from);
+      memset(&from, 0, sizeof(from));
+      if (getpeername(packet_get_connection_in(), (struct sockaddr *)&from, 
+		      &fromlen) < 0)
+	goto no_ip_addr;
 
+      tolen = sizeof(to);
+      memset(&to, 0, sizeof(to));
+      if (getpeername(packet_get_connection_out(), (struct sockaddr *)&to, 
+		      &tolen) < 0)
+	goto no_ip_addr;
+      
+      if (from.sin_family == AF_INET && to.sin_family == AF_INET &&
+	  memcmp(&from, &to, sizeof(from)) == 0)
+	goto return_ip_addr;
+
+    no_ip_addr:
+      canonical_host_name = xstrdup("UNKNOWN");
+      return canonical_host_name;
+    }
+
+ return_ip_addr:
+
+  /* Get the real hostname. */
+  canonical_host_name = get_remote_hostname(packet_get_connection_in());
   return canonical_host_name;
 }
 
@@ -175,19 +202,40 @@ const char *get_canonical_hostname()
 
 const char *get_remote_ipaddr()
 {
-  struct sockaddr_in from;
-  int fromlen, socket;
+  struct sockaddr_in from, to;
+  int fromlen, tolen, socket;
 
   /* Check if we have previously retrieved this same name. */
   if (canonical_host_ip != NULL)
     return canonical_host_ip;
 
-  /* If not a socket, return UNKNOWN. */
+  /* If using different descriptors for the two directions, check if
+     both have the same remote address.  If so, get the address; otherwise
+     return UNKNOWN. */
   if (packet_get_connection_in() != packet_get_connection_out())
     {
+      fromlen = sizeof(from);
+      memset(&from, 0, sizeof(from));
+      if (getpeername(packet_get_connection_in(), (struct sockaddr *)&from, 
+		      &fromlen) < 0)
+	goto no_ip_addr;
+
+      tolen = sizeof(to);
+      memset(&to, 0, sizeof(to));
+      if (getpeername(packet_get_connection_out(), (struct sockaddr *)&to, 
+		      &tolen) < 0)
+	goto no_ip_addr;
+      
+      if (from.sin_family == AF_INET && to.sin_family == AF_INET &&
+	  memcmp(&from, &to, sizeof(from)) == 0)
+	goto return_ip_addr;
+
+    no_ip_addr:
       canonical_host_ip = xstrdup("UNKNOWN");
       return canonical_host_ip;
     }
+
+ return_ip_addr:
 
   /* Get client socket. */
   socket = packet_get_connection_in();
@@ -233,11 +281,34 @@ int get_peer_port(int sock)
 int get_remote_port()
 {
   int socket;
+  int fromlen, tolen;
+  struct sockaddr_in from, to;
 
-  /* If the connection is not a socket, return 65535.  This is intentionally
-     chosen to be an unprivileged port number. */
+  /* If two different descriptors, check if they are internet-domain, and
+     have the same address. */
   if (packet_get_connection_in() != packet_get_connection_out())
-    return 65535;
+    {
+      fromlen = sizeof(from);
+      memset(&from, 0, sizeof(from));
+      if (getpeername(packet_get_connection_in(), (struct sockaddr *)&from, 
+		      &fromlen) < 0)
+	goto no_ip_addr;
+
+      tolen = sizeof(to);
+      memset(&to, 0, sizeof(to));
+      if (getpeername(packet_get_connection_out(), (struct sockaddr *)&to, 
+		      &tolen) < 0)
+	goto no_ip_addr;
+      
+      if (from.sin_family == AF_INET && to.sin_family == AF_INET &&
+	  memcmp(&from, &to, sizeof(from)) == 0)
+	goto return_port;
+
+    no_ip_addr:
+      return 65535;
+    }
+
+ return_port:
 
   /* Get client socket. */
   socket = packet_get_connection_in();

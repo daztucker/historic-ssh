@@ -52,6 +52,18 @@ void log(const char *fmt, ...)
   va_end(args);
 }
 
+void log_severity(SyslogSeverity severity, const char *fmt, ...)
+{
+  va_list args;
+
+  if (log_quiet)
+    return;
+  va_start(args, fmt);
+  vfprintf(stderr, fmt, args);
+  fprintf(stderr, "\n");
+  va_end(args);
+}  
+
 void debug(const char *fmt, ...)
 {
   va_list args;
@@ -116,16 +128,13 @@ void fatal_remove_cleanup(void (*proc)(void *context), void *context)
 	(unsigned long)proc, (unsigned long)context);
 }
 
-/* Function to display an error message and exit.  This is in this file because
-   this needs to restore terminal modes before exiting.  See log-client.c
-   for other related functions. */
+/* Executes fatal() cleanups. */
 
-void fatal(const char *fmt, ...)
+static void do_fatal_cleanups()
 {
-  va_list args;
   struct fatal_cleanup *cu, *next_cu;
   static int fatal_called = 0;
-  
+
   if (!fatal_called)
     {
       fatal_called = 1;
@@ -137,6 +146,17 @@ void fatal(const char *fmt, ...)
 	  (*cu->proc)(cu->context);
 	}
     }
+}
+
+/* Function to display an error message and exit.  This is in this file because
+   this needs to restore terminal modes before exiting.  See log-client.c
+   for other related functions. */
+
+void fatal(const char *fmt, ...)
+{
+  va_list args;
+
+  do_fatal_cleanups();
 
   va_start(args, fmt);
   vfprintf(stderr, fmt, args);
@@ -145,4 +165,15 @@ void fatal(const char *fmt, ...)
   exit(255);
 }
 
-/* fatal() is in ssh.c so that it can properly reset terminal modes. */
+void fatal_severity(SyslogSeverity severity, const char *fmt, ...)
+{
+  va_list args;
+
+  do_fatal_cleanups();
+
+  va_start(args, fmt);
+  vfprintf(stderr, fmt, args);
+  fprintf(stderr, "\n");
+  va_end(args);
+  exit(255);
+}

@@ -315,7 +315,8 @@ void sighup_restart()
   log("Received SIGHUP; restarting.");
   close(listen_sock);
   execv(saved_argv[0], saved_argv);
-  log("RESTART FAILED: av0='%s', error: %s.", av0, strerror(errno));
+  log("RESTART FAILED: av[0]='%s', error: %s.", 
+      saved_argv[0], strerror(errno));
   exit(1);
 }
 
@@ -348,7 +349,8 @@ RETSIGTYPE grace_alarm_handler(int sig)
   packet_close();
   
   /* Log error and exit. */
-  fatal("Timeout before authentication.");
+  fatal_severity(SYSLOG_SEVERITY_INFO,
+		 "Timeout before authentication.");
 }
 
 /* Signal handler for the key regeneration alarm.  Note that this
@@ -488,7 +490,7 @@ int main(int ac, char **av)
     }
 
   /* Initialize the log (it is reinitialized below in case we forked). */
-  log_init(av0, debug_flag && !inetd_flag, 
+  lognit(sdav0, debug_flag && !inetd_flag, 
 	   debug_flag || options.fascist_logging, 
 	   options.quiet_mode, options.log_facility);
 
@@ -504,7 +506,7 @@ int main(int ac, char **av)
       else
 	{
 	  int err = errno;
-	  log_init(av0, !inetd_flag, 1, 0, options.log_facility);
+	  lognit(sdav0, !inetd_flag, 1, 0, options.log_facility);
 	  error("Could not load host key: %.200s: %.100s", 
 		options.host_key_file, strerror(err));
 	}
@@ -557,7 +559,7 @@ int main(int ac, char **av)
     }
 
   /* Reinitialize the log (because of the fork above). */
-  log_init(av0, debug_flag && !inetd_flag, 
+  lognit(sdav0, debug_flag && !inetd_flag, 
 	   debug_flag || options.fascist_logging, 
 	   options.quiet_mode, options.log_facility);
 
@@ -654,7 +656,7 @@ int main(int ac, char **av)
 	     correct sshd.  We don\'t want to do this before the bind above
 	     because the bind will fail if there already is a daemon, and this
 	     will overwrite any old pid in the file. */
-	  f = fopen(SSH_DAEMON_PID_FILE, "w");
+	  f = fopen(options.pid_file, "w");
 	  if (f)
 	    {
 	      fprintf(f, "%u\n", (unsigned int)getpid());
@@ -751,7 +753,7 @@ int main(int ac, char **av)
 		  close(listen_sock);
 		  sock_in = newsock;
 		  sock_out = newsock;
-		  log_init(av0, debug_flag && !inetd_flag, 
+		  lognit(sdav0, debug_flag && !inetd_flag, 
 			   options.fascist_logging || debug_flag, 
 			   options.quiet_mode, options.log_facility);
 		  break;
@@ -834,13 +836,15 @@ int main(int ac, char **av)
   sprintf(buf, "SSH-%d.%d-%.100s\n", 
 	  PROTOCOL_MAJOR, PROTOCOL_MINOR, SSH_VERSION);
   if (write(sock_out, buf, strlen(buf)) != strlen(buf))
-    fatal("Could not write ident string.");
+    fatal_severity(SYSLOG_SEVERITY_INFO,
+		   "Could not write ident string.");
 
   /* Read other side\'s version identification. */
   for (i = 0; i < sizeof(buf) - 1; i++)
     {
       if (read(sock_in, &buf[i], 1) != 1)
-	fatal("Did not receive ident string.");
+	fatal_severity(SYSLOG_SEVERITY_INFO,
+		       "Did not receive ident string.");
       if (buf[i] == '\r')
 	{
 	  buf[i] = '\n';
@@ -865,7 +869,8 @@ int main(int ac, char **av)
       (void) write(sock_out, s, strlen(s));
       close(sock_in);
       close(sock_out);
-      fatal("Bad protocol version identification: %.100s", buf);
+      fatal_severity(SYSLOG_SEVERITY_INFO,
+		     "Bad protocol version identification: %.100s", buf);
     }
   debug("Client protocol version %d.%d; client software version %.100s",
 	remote_major, remote_minor, remote_version);
@@ -875,8 +880,9 @@ int main(int ac, char **av)
       (void) write(sock_out, s, strlen(s));
       close(sock_in);
       close(sock_out);
-      fatal("Protocol major versions differ: %d vs. %d", 
-	    PROTOCOL_MAJOR, remote_major);
+      fatal_severity(SYSLOG_SEVERITY_INFO,
+		     "Protocol major versions differ: %d vs. %d", 
+		     PROTOCOL_MAJOR, remote_major);
     }
 
   /* Check that the client has sufficiently high software version. */
@@ -1180,6 +1186,7 @@ void do_authentication(char *user, int privileged_port)
 {
   int type;
   int authenticated = 0;
+  int authentication_type = 0;
   char *password;
   struct passwd *pw, pwcopy;
   char *client_user;
@@ -1240,6 +1247,7 @@ void do_authentication(char *user, int privileged_port)
     {
       /* Authentication with empty password succeeded. */
       debug("Login for user %.100s accepted without authentication.", user);
+      authentication_type = SSH_AUTH_PASSWORD;
       authenticated = 1;
       /* Success packet will be sent after loop below. */
     }
@@ -1287,6 +1295,7 @@ void do_authentication(char *user, int privileged_port)
 	      /* Authentication accepted. */
 	      log("Rhosts authentication accepted for %.100s, remote %.100s on %.700s.",
 		  user, client_user, get_canonical_hostname());
+	      authentication_type = SSH_AUTH_RHOSTS;
 	      authenticated = 1;
 	      xfree(client_user);
 	      break;
@@ -1330,6 +1339,7 @@ void do_authentication(char *user, int privileged_port)
 			      options.strict_modes))
 	    {
 	      /* Authentication accepted. */
+	      authentication_type = SSH_AUTH_RHOSTS_RSA;
 	      authenticated = 1;
 	      xfree(client_user);
 	      mpz_clear(&client_host_key_e);
@@ -1360,6 +1370,7 @@ void do_authentication(char *user, int privileged_port)
 		/* Successful authentication. */
 		mpz_clear(&n);
 		log("RSA authentication for %.100s accepted.", user);
+		authentication_type = SSH_AUTH_RSA;
 		authenticated = 1;
 		break;
 	      }
@@ -1389,6 +1400,7 @@ void do_authentication(char *user, int privileged_port)
 	      memset(password, 0, strlen(password));
 	      xfree(password);
 	      log("Password authentication for %.100s accepted.", user);
+	      authentication_type = SSH_AUTH_PASSWORD;
 	      authenticated = 1;
 	      break;
 	    }
@@ -1414,7 +1426,13 @@ void do_authentication(char *user, int privileged_port)
     }
 
   /* Check if the user is logging in as root and root logins are disallowed. */
-  if (pw->pw_uid == 0 && !options.permit_root_login)
+  if (pw->pw_uid == 0 && options.permit_root_login == 1)
+    {
+      if (authentication_type == SSH_AUTH_PASSWORD)
+	packet_disconnect("ROOT LOGIN REFUSED FROM %.200s", 
+			  get_canonical_hostname());
+    }
+  else if (pw->pw_uid == 0 && options.permit_root_login == 0)
     {
       if (forced_command)
 	log("Root login accepted for forced command.", forced_command);
@@ -1443,6 +1461,7 @@ void do_authenticated(struct passwd *pw)
   int compression_level = 0, enable_compression_after_reply = 0;
   int have_pty = 0, ptyfd = -1, ttyfd = -1;
   int row, col, xpixel, ypixel, screen;
+  unsigned long max_size;
   char ttyname[64];
   char *command, *term = NULL, *display = NULL, *proto = NULL, *data = NULL;
   struct group *grp;
@@ -1479,6 +1498,22 @@ void do_authenticated(struct passwd *pw)
 	    }
 	  /* Enable compression after we have responded with SUCCESS. */
 	  enable_compression_after_reply = 1;
+	  break;
+
+	case SSH_CMSG_MAX_PACKET_SIZE:
+	  /* Get maximum size from paket. */
+	  max_size = packet_get_int();
+
+	  /* Make sure that it is acceptable. */
+	  if (max_size < 4096 || max_size > 256 * 1024)
+	    {
+	      packet_send_debug("Received illegal max packet size %lu.",
+				max_size);
+	      goto fail;
+	    }
+
+	  /* Set the size and return success. */
+	  packet_set_max_size(max_size);
 	  break;
 
 	case SSH_CMSG_REQUEST_PTY:
@@ -1688,12 +1723,15 @@ void do_exec_no_pty(const char *command, struct passwd *pw,
     packet_disconnect("Could not create socket pairs: %.100s",
 		      strerror(errno));
 #endif /* USE_PIPES */
+
+  /* We no longer need the child running on user's privileges. */
+  userfile_uninit();
   
   /* Fork the child. */
   if ((pid = fork()) == 0)
     {
       /* Child.  Reinitialize the log since the pid has changed. */
-      log_init(av0, debug_flag && !inetd_flag, debug_flag, 
+      lognit(sdav0, debug_flag && !inetd_flag, debug_flag, 
 	       options.quiet_mode, options.log_facility);
 
 #ifdef HAVE_SETSID
@@ -1749,9 +1787,6 @@ void do_exec_no_pty(const char *command, struct passwd *pw,
   close(pin[0]);
   close(pout[1]);
   close(perr[1]);
-
-  /* We no longer need the child running on user's privileges. */
-  userfile_uninit();
 
   /* Enter the interactive session. */
   server_loop(pid, pin[1], pout[0], perr[0]);
@@ -1814,6 +1849,9 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
   int fromlen;
   struct pty_cleanup_context cleanup_context;
 
+  /* We no longer need the child running on user's privileges. */
+  userfile_uninit();
+
   /* Get remote host name. */
   hostname = get_canonical_hostname();
 
@@ -1828,7 +1866,7 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
       pid = getpid();
 
       /* Child.  Reinitialize the log because the pid has changed. */
-      log_init(av0, debug_flag && !inetd_flag, debug_flag, options.quiet_mode, 
+      lognit(sdav0, debug_flag && !inetd_flag, debug_flag, options.quiet_mode, 
 	       options.log_facility);
 
 #ifdef HAVE_SETSID
@@ -1877,9 +1915,10 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
       record_login(pid, ttyname, pw->pw_name, pw->pw_uid, hostname, 
 		   &from);
 
-      /* Check if .hushlogin exists. */
+      /* Check if .hushlogin exists.  Note that we cannot use userfile
+         here because we are in the child. */
       sprintf(line, "%.200s/.hushlogin", pw->pw_dir);
-      quiet_login = userfile_stat(pw->pw_uid, line, &st) >= 0;
+      quiet_login = stat(line, &st) >= 0;
       
       /* If the user has logged in before, display the time of last login. 
          However, don't display anything extra if a command has been 
@@ -1937,9 +1976,6 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
   cleanup_context.pid = pid;
   cleanup_context.ttyname = ttyname;
   fatal_add_cleanup(pty_cleanup_proc, (void *)&cleanup_context);
-
-  /* We no longer need the child running on user's privileges. */
-  userfile_uninit();
 
   /* Enter interactive session. */
   server_loop(pid, ptyfd, fdout, -1);
@@ -2229,6 +2265,14 @@ void do_child(const char *command, struct passwd *pw, const char *term,
   packet_set_encryption_key((void *)"0123456789ABCDEF0123456789ABCDEF", 32,
 			    SSH_CIPHER_3DES, 0);
 
+  /* Clear any remaining data in the random number generator. */
+  random_clear(&sensitive_data.random_state);
+
+  /* The sensitive private keys were cleared already before authentication. */
+
+  /* Clear the data structure, just in case. */
+  memset(&sensitive_data, 0, sizeof(sensitive_data));
+
   /* Close any extra open file descriptors so that we don\'t have them
      hanging around in clients.  Note that we want to do this after
      initgroups, because at least on Solaris 2.3 it leaves file descriptors
@@ -2239,6 +2283,10 @@ void do_child(const char *command, struct passwd *pw, const char *term,
 	continue;
       close(i);
     }
+
+  /* At this point, this process should no longer be holding any confidential
+     information, as changing uid below will permit the user to attach with
+     a debugger on some machines. */
 
   /* Set uid, gid, and groups. */
   if (getuid() == 0 || geteuid() == 0)
@@ -2344,7 +2392,7 @@ void do_child(const char *command, struct passwd *pw, const char *term,
     child_set_env(&env, &envsize, "DISPLAY", display);
 
   /* Set variable for forwarded authentication connection, if we have one. */
-  if (get_permanent_fd(user_shell) < 0)
+  if (get_permanent_fd(shell) < 0)
     {
       if (auth_get_socket_name() != NULL)
 	child_set_env(&env, &envsize, SSH_AUTHSOCKET_ENV_NAME, 
@@ -2386,10 +2434,12 @@ void do_child(const char *command, struct passwd *pw, const char *term,
      in this order).  Note that we are already running on the user's uid. */
   if (stat(SSH_USER_RC, &st) >= 0)
     {
-      if (debug_flag)
-	fprintf(stderr, "Running /bin/sh %s\n", SSH_USER_RC);
+      sprintf(buf, "%.100s %.100s", shell, SSH_USER_RC);
 
-      f = popen("/bin/sh " SSH_USER_RC, "w");
+      if (debug_flag)
+	fprintf(stderr, "Running %s\n", buf);
+
+      f = popen(buf, "w");
       if (f)
 	{
 	  if (auth_proto != NULL && auth_data != NULL)
@@ -2402,10 +2452,12 @@ void do_child(const char *command, struct passwd *pw, const char *term,
   else
     if (stat(SSH_SYSTEM_RC, &st) >= 0)
       {
-	if (debug_flag)
-	  fprintf(stderr, "Running /bin/sh %s\n", SSH_SYSTEM_RC);
+	sprintf(buf, "%.100s %.100s", shell, SSH_SYSTEM_RC);
 
-	f = popen("/bin/sh " SSH_SYSTEM_RC, "w");
+	if (debug_flag)
+	  fprintf(stderr, "Running %s\n", buf);
+
+	f = popen(buf, "w");
 	if (f)
 	  {
 	    if (auth_proto != NULL && auth_data != NULL)

@@ -788,8 +788,8 @@ void ssh_login(RandomState *state, int host_key_valid,
 	       const char *orighost, 
 	       Options *options, uid_t original_real_uid)
 {
-  int i, type;
-  char buf[1024];
+  int i, type, len, f;
+  char buf[1024], seedbuf[16];
   char *password;
   struct passwd *pw;
   MP_INT key;
@@ -950,7 +950,22 @@ void ssh_login(RandomState *state, int host_key_valid,
   else
     debug("Initializing random; seed file %.900s", buf);
   random_initialize(state, pw->pw_uid, buf);
-  
+
+  /* Read also some random data from the systemwide random seed file to
+     avoid the user being able to guess his own session key when running
+     as root. */
+  f = open(SSH_DAEMON_SEED_FILE, O_RDONLY);
+  if (f >= 0)
+    {
+      len = read(f, seedbuf, sizeof(seedbuf)); /* Try to read 128 bits. */
+      if (len > 0)
+	{
+	  random_add_noise(state, seedbuf, len);
+	  random_stir(state);
+	}
+      close(f);
+    }
+
   /* Generate an encryption key for the session.   The key is a 256 bit
      random number, interpreted as a 32-byte key, with the least significant
      8 bits being the first byte of the key. */

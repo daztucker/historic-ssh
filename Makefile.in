@@ -127,7 +127,7 @@ RSAREFSRCDIR 	= $(RSAREFDIR)/source
 COMMON_OBJS = $(LIBOBJS) $(CONFOBJS) \
 	rsa.o randoms.o md5.o buffer.o packet.o compress.o \
 	xmalloc.o ttymodes.o channels.o bufaux.o authfd.o authfile.o crc32.o \
-	rsaglue.o tss.o cipher.o des.o match.o rc4.o mpaux.o minfd.o \
+	rsaglue.o tss.o cipher.o des.o match.o arcfour.o mpaux.o minfd.o \
 	userfile.o signals.o
 SSHD_OBJS = sshd.o auth-rhosts.o auth-passwd.o auth-rsa.o auth-rh-rsa.o pty.o \
 	log-server.o login.o hostfile.o canohost.o servconf.o tildexpand.o \
@@ -135,14 +135,15 @@ SSHD_OBJS = sshd.o auth-rhosts.o auth-passwd.o auth-rsa.o auth-rh-rsa.o pty.o \
 SSH_OBJS = ssh.o sshconnect.o log-client.o readconf.o hostfile.o readpass.o \
 	tildexpand.o clientloop.o canohost.o $(COMMON_OBJS)
 KEYGEN_OBJS = ssh-keygen.o log-client.o readpass.o rsa.o randoms.o md5.o \
-	buffer.o xmalloc.o authfile.o tss.o cipher.o des.o rc4.o mpaux.o \
+	buffer.o xmalloc.o authfile.o tss.o cipher.o des.o arcfour.o mpaux.o \
 	bufaux.o userfile.o signals.o $(LIBOBJS) $(CONFOBJS)
 AGENT_OBJS = ssh-agent.o log-client.o rsa.o randoms.o md5.o buffer.o \
 	xmalloc.o bufaux.o authfd.o authfile.o rsaglue.o tss.o cipher.o \
-	des.o rc4.o mpaux.o minfd.o userfile.o signals.o $(LIBOBJS) $(CONFOBJS)
+	des.o arcfour.o mpaux.o minfd.o userfile.o signals.o $(LIBOBJS) $(CONFOBJS)
 ADD_OBJS = ssh-add.o log-client.o readpass.o rsa.o randoms.o md5.o buffer.o \
 	xmalloc.o bufaux.o authfd.o authfile.o tss.o cipher.o \
-	des.o rc4.o mpaux.o minfd.o userfile.o signals.o $(LIBOBJS) $(CONFOBJS)
+	des.o arcfour.o mpaux.o minfd.o userfile.o signals.o $(LIBOBJS) \
+	$(CONFOBJS)
 SCP_OBJS = scp.o xmalloc.o
 GEN_MINFD_OBJS = gen_minfd.o $(LIBOBJS)
 

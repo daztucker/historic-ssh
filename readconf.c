@@ -241,10 +241,10 @@ void process_config_line(Options *options, const char *host,
 	fatal("%.200s line %d: Missing yes/no argument.",
 	      filename, linenum);
       value = 0; /* To avoid compiler warning... */
-      if (strcmp(cp, "yes") == 0)
+      if (strcmp(cp, "yes") == 0 || strcmp(cp, "true") == 0)
 	value = 1;
       else
-	if (strcmp(cp, "no") == 0)
+	if (strcmp(cp, "no") == 0 || strcmp(cp, "false") == 0)
 	  value = 0;
 	else
 	  fatal("%.200s line %d: Bad yes/no argument.", 

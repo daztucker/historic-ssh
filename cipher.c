@@ -34,7 +34,7 @@ Created: Wed Apr 19 17:41:39 1995 ylo
 /* Names of all encryption algorithms.  These must match the numbers defined
    int cipher.h. */
 static char *cipher_names[] =
-{ "none", "idea", "des", "3des", "tss", "rc4" };
+{ "none", "idea", "des", "3des", "tss", "arcfour" };
 
 /* Returns a bit mask indicating which ciphers are supported by this
    implementation.  The bit mask has the corresponding bit set of each
@@ -50,7 +50,7 @@ unsigned int cipher_mask()
   mask |= 1 << SSH_CIPHER_DES;
   mask |= 1 << SSH_CIPHER_3DES;
   mask |= 1 << SSH_CIPHER_TSS;
-  mask |= 1 << SSH_CIPHER_RC4;
+  mask |= 1 << SSH_CIPHER_ARCFOUR;
   return mask;
 }
 
@@ -69,6 +69,11 @@ const char *cipher_name(int cipher)
 int cipher_number(const char *name)
 {
   int i;
+
+  /* Recognize other nam for backward compatibility. */
+  if (name[0] == 'r' && name[1] == 'c' && name[2] == '4' && name[3] == '\0')
+    return SSH_CIPHER_ARCFOUR;
+
   for (i = 0; i < sizeof(cipher_names) / sizeof(cipher_names[0]); i++)
     if (strcmp(cipher_names[i], name) == 0)
       return i;
@@ -160,8 +165,8 @@ void cipher_set_key(CipherContext *context, int cipher,
       TSS_Init(&context->u.tss, key, keylen);
       break;
 
-    case SSH_CIPHER_RC4:
-      rc4_init(&context->u.rc4, key, keylen);
+    case SSH_CIPHER_ARCFOUR:
+      arcfour_init(&context->u.arcfour, key, keylen);
       break;
 
     default:
@@ -204,8 +209,8 @@ void cipher_encrypt(CipherContext *context, unsigned char *dest,
       TSS_Encrypt(&context->u.tss, dest, len);
       break;
 
-    case SSH_CIPHER_RC4:
-      rc4_encrypt(&context->u.rc4, dest, src, len);
+    case SSH_CIPHER_ARCFOUR:
+      arcfour_encrypt(&context->u.arcfour, dest, src, len);
       break;
 
     default:
@@ -247,8 +252,8 @@ void cipher_decrypt(CipherContext *context, unsigned char *dest,
       TSS_Decrypt(&context->u.tss, dest, len);
       break;
 
-    case SSH_CIPHER_RC4:
-      rc4_decrypt(&context->u.rc4, dest, src, len);
+    case SSH_CIPHER_ARCFOUR:
+      arcfour_decrypt(&context->u.arcfour, dest, src, len);
       break;
 
     default:

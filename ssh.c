@@ -16,8 +16,42 @@ of X11, TCP/IP, and authentication connections.
 */
 
 /*
- * $Id: ssh.c,v 1.11 1996/10/29 22:45:10 kivinen Exp $
+ * $Id: ssh.c,v 1.20 1997/03/27 03:10:56 kivinen Exp $
  * $Log: ssh.c,v $
+ * Revision 1.20  1997/03/27 03:10:56  kivinen
+ * 	Added kerberos patches from Glenn Machin.
+ * 	Added -V and -k options.
+ *
+ * Revision 1.19  1997/03/26 07:17:17  kivinen
+ * 	Fixed usage so it will display only supported encryption
+ * 	algorithms.
+ *
+ * Revision 1.18  1997/03/26 05:34:17  kivinen
+ * 	Added -P option.
+ *
+ * Revision 1.17  1997/03/19 19:25:30  kivinen
+ * 	Added input buffer clearing for error conditions, so packet.c
+ * 	can check that buffer must be empty before new packet is read
+ * 	in.
+ *
+ * Revision 1.16  1997/03/19 17:43:41  kivinen
+ * 	Limit hostname and username to 255 characters.
+ *
+ * Revision 1.15  1996/11/24 08:25:39  kivinen
+ * 	Added SSH_NO_{PORT,X11}_FORWARDING support.
+ *
+ * Revision 1.14  1996/11/19 22:46:03  kivinen
+ * 	Added parenthes.
+ *
+ * Revision 1.13  1996/11/07 06:52:52  kivinen
+ * 	Allow user@host for ssh too. Patch from peter@baileynm.com
+ * 	(Peter da Silva).
+ *
+ * Revision 1.12  1996/11/04 22:13:44  kivinen
+ * 	Fixed warning message of old agent to be displayed only if
+ * 	user really tried to forward agent (agent running and
+ * 	forwarding is not disabled).
+ *
  * Revision 1.11  1996/10/29 22:45:10  kivinen
  * 	log -> log_msg. Added old agent emulation code (disable agent
  * 	forwarding if the other end is too old).
@@ -190,21 +224,47 @@ void usage()
   fprintf(stderr, "  -l user     Log in using this user name.\n");
   fprintf(stderr, "  -n          Redirect input from /dev/null.\n");
   fprintf(stderr, "  -a          Disable authentication agent forwarding.\n");
+#if defined(KERBEROS_TGT_PASSING) && defined(KRB5)
+  fprintf(stderr, "  -k          Disable Kerberos ticket passing.\n");
+#endif /* defined(KERBEROS_TGT_PASSING) && defined(KRB5) */
+#ifndef SSH_NO_X11_FORWARDING
   fprintf(stderr, "  -x          Disable X11 connection forwarding.\n");
+#endif
   fprintf(stderr, "  -i file     Identity for RSA authentication (default: ~/.ssh/identity).\n");
   fprintf(stderr, "  -t          Tty; allocate a tty even if command is given.\n");
   fprintf(stderr, "  -v          Verbose; display verbose debugging messages.\n");
+  fprintf(stderr, "  -V          Display version number only.\n");
   fprintf(stderr, "  -q          Quiet; don't display any warning messages.\n");
   fprintf(stderr, "  -f          Fork into background after authentication.\n");
   fprintf(stderr, "  -e char     Set escape character; ``none'' = disable (default: ~).\n");
-  fprintf(stderr, "  -c cipher   Select encryption algorithm: ``idea'' (default, secure),\n");
-  fprintf(stderr, "              ``des'', ``3des'', ``tss'', ``arcfour'' (fast, suitable for bulk\n");
-  fprintf(stderr, "              transfers), ``none'' (no encryption - for debugging only).\n");
+  fprintf(stderr, "  -c cipher   Select encryption algorithm: "
+#ifdef WITH_DES
+	  "``des'', "
+#endif /* WITH_DES */
+#ifdef WITH_TSS
+	  "``tss'', "
+#endif /* WITH_TSS */
+#ifdef WITH_ARCFOUR
+	  "``arcfour'', "
+#endif /* WITH_ARCFOUR */
+#ifdef WITH_NONE
+	  "``none'', "
+#endif /* WITH_NONE */
+#ifdef WITH_IDEA
+	  "``idea'', "
+#endif /* WITH_IDEA */
+#ifdef WITH_BLOWFISH
+	  "``blowfish'', "
+#endif /* WITH_BLOWFISH */
+	  "``3des''\n");
   fprintf(stderr, "  -p port     Connect to this port.  Server must be on the same port.\n");
+  fprintf(stderr, "  -P          Dont use priviledged source port.\n");
+#ifndef SSH_NO_PORT_FORWARDING
   fprintf(stderr, "  -L listen-port:host:port   Forward local port to remote address\n");
   fprintf(stderr, "  -R listen-port:host:port   Forward remote port to local address\n");
   fprintf(stderr, "              These cause %s to listen for connections on a port, and\n", av0);
   fprintf(stderr, "              forward them to the other side by connecting to host:port.\n");
+#endif
   fprintf(stderr, "  -C          Enable compression.\n");
   fprintf(stderr, "  -o 'option' Process the option as if it was read from a configuration file.\n");
   exit(1);
@@ -294,6 +354,7 @@ int main(int ac, char **av)
   struct stat st;
   struct passwd *pw, pwcopy;
   int interactive = 0, dummy;
+  int use_priviledged_port = 1;
   uid_t original_effective_uid;
 #ifdef SIGWINCH
   struct winsize ws;
@@ -363,6 +424,13 @@ int main(int ac, char **av)
 	  if (host)
 	    break;
 	  host = av[optind];
+	  
+	  /* allows 'user@host' */
+	  if(cp = strchr(host, '@')) {
+	    options.user = host;
+	    *cp++ = '\0';
+	    host = cp;
+	  }
 	  continue;
 	}
       opt = av[optind][1];
@@ -403,6 +471,10 @@ int main(int ac, char **av)
 	  options.forward_agent = 0;
 	  break;
 
+	case 'k':
+	  options.kerberos_tgt_passing = 0;
+	  break;
+	  
 	case 'i':
 	  if (userfile_stat(original_real_uid, optarg, &st) < 0)
 	    {
@@ -421,6 +493,16 @@ int main(int ac, char **av)
 	  tty_flag = 1;
 	  break;
 
+	case 'V':
+	  fprintf(stderr, "SSH Version %s [%s], protocol version %d.%d.\n",
+		  SSH_VERSION, HOSTTYPE, PROTOCOL_MAJOR, PROTOCOL_MINOR);
+#ifdef RSAREF
+	  fprintf(stderr, "Compiled with RSAREF.\n");
+#else /* RSAREF */
+	  fprintf(stderr, "Standard version.  Does not use RSAREF.\n");
+#endif /* RSAREF */
+	  exit(0);
+	  
 	case 'v':
 	  debug_flag = 1;
 	  fprintf(stderr, "SSH Version %s [%s], protocol version %d.%d.\n",
@@ -476,6 +558,7 @@ int main(int ac, char **av)
 	  break;
 
 	case 'R':
+#ifndef SSH_NO_PORT_FORWARDING
 	  if (sscanf(optarg, "%d:%255[^:]:%d", &fwd_port, buf, 
 		     &fwd_host_port) != 3)
 	    {
@@ -484,9 +567,11 @@ int main(int ac, char **av)
 	      /*NOTREACHED*/
 	    }
 	  add_remote_forward(&options, fwd_port, buf, fwd_host_port);
+#endif
 	  break;
 
 	case 'L':
+#ifndef SSH_NO_PORT_FORWARDING
 	  if (sscanf(optarg, "%d:%255[^:]:%d", &fwd_port, buf, 
 		     &fwd_host_port) != 3)
 	    {
@@ -494,13 +579,14 @@ int main(int ac, char **av)
 	      usage();
 	      /*NOTREACHED*/
 	    }
-	  if (fwd_port < 1024 && original_real_uid != 0)
+	  if (fwd_port < 1024 && original_real_uid != UID_ROOT)
 	    {
 	      fprintf(stderr, 
 		      "Privileged ports can only be forwarded by root.\n");
 	      exit(1);
 	    }
 	  add_local_forward(&options, fwd_port, buf, fwd_host_port);
+#endif
 	  break;
 
 	case 'C':
@@ -518,6 +604,10 @@ int main(int ac, char **av)
 	     recognized for backwards compatibility with ssh, and is
 	     passed to rsh/rlogin if falling back to them. */
 	  binary_clean_flag = 1;
+	  break;
+
+	case 'P':
+	  use_priviledged_port = 0;
 	  break;
 
 	default:
@@ -599,13 +689,20 @@ int main(int ac, char **av)
   /* Fill configuration defaults. */
   fill_default_options(&options);
   if (options.user == NULL)
-    options.user = xstrdup(pw->pw_name);
+    {
+      options.no_user_given = 1;
+      options.user = xstrdup(pw->pw_name);
+    }
 
   if (options.hostname != NULL)
     host = options.hostname;
 
+  /* Limit the hostname and username length to 255 characters */
+  if (strlen(host) > 255 || strlen(options.user) > 255)
+    fatal("Hostname or username is longer than 255 characters.");
+
   /* Disable rhosts authentication if not running as root. */
-  if (original_effective_uid != 0)
+  if (original_effective_uid != UID_ROOT)
     {
       options.rhosts_authentication = 0;
       options.rhosts_rsa_authentication = 0;
@@ -621,13 +718,20 @@ int main(int ac, char **av)
       fatal("rsh_connect returned");
     }
 
+  if (use_priviledged_port && !options.use_priviledged_port)
+    {
+      use_priviledged_port = 0;
+    }
+  if (!options.rhosts_authentication && !options.rhosts_rsa_authentication)
+    {
+      use_priviledged_port = 0;
+    }
   /* Open a connection to the remote host.  This needs root privileges if
      rhosts_authentication is true.  Note that the random_state is not
      yet used by this call, although a pointer to it is stored, and thus it
      need not be initialized. */
   ok = ssh_connect(host, options.port, options.connection_attempts,
-		   !options.rhosts_authentication &&
-		   !options.rhosts_rsa_authentication,
+		   !use_priviledged_port,
 		   original_real_uid, options.proxy_command, &random_state);
 
   /* Check if the connection failed, and try "rsh" if appropriate. */
@@ -707,7 +811,10 @@ int main(int ac, char **av)
       if (type == SSH_SMSG_SUCCESS)
 	packet_start_compression(options.compression_level);
       else
-	log_msg("Warning: Remote host refused compression.");
+	{
+	  packet_get_all();
+	  log_msg("Warning: Remote host refused compression.");
+	}
     }
 
   /* Allocate a pseudo tty if appropriate. */
@@ -752,9 +859,13 @@ int main(int ac, char **av)
       if (type == SSH_SMSG_SUCCESS)
 	interactive = 1;
       else
-	log_msg("Warning: Remote host failed or refused to allocate a pseudo tty.");
+	{
+	  packet_get_all();
+	  log_msg("Warning: Remote host failed or refused to allocate a pseudo tty.");
+	}
     }
 
+#ifndef SSH_NO_X11_FORWARDING
   /* Request X11 forwarding if enabled and DISPLAY is set. */
   if (options.forward_x11 && getenv("DISPLAY") != NULL)
     {
@@ -803,18 +914,16 @@ int main(int ac, char **av)
 	  interactive = 1;
 	}
       else
-	log_msg("Warning: Remote host denied X11 forwarding.");
+	{
+	  packet_get_all();
+	  log_msg("Warning: Remote host denied X11 forwarding, perhaps xauth program could not be run on the server side.");
+	}
     }
+#endif /* SSH_NO_X11_FORWARDING */
 
   /* Tell the packet module whether this is an interactive session. */
   packet_set_interactive(interactive, options.keepalives);
 
-  if (emulation_information & EMULATE_OLD_AGENT_BUG)
-    {
-      log_msg("Warning: Denied agent forwarding because the other end has too old version.");
-      options.forward_agent = 0;
-    }
-  
   if (options.forward_agent)
     {
       /* Clear agent forwarding if we don\'t have an agent. */
@@ -823,6 +932,12 @@ int main(int ac, char **av)
 	options.forward_agent = 0;
       else
 	close(authfd);
+      if ((emulation_information & EMULATE_OLD_AGENT_BUG) &&
+	  options.forward_agent)
+	{
+	  log_msg("Warning: Denied agent forwarding because the other end has too old version.");
+	  options.forward_agent = 0;
+	}
     }
   
   /* Request authentication agent forwarding if appropriate. */
@@ -834,9 +949,13 @@ int main(int ac, char **av)
       /* Read response from the server. */
       type = packet_read();
       if (type != SSH_SMSG_SUCCESS)
-	log_msg("Warning: Remote host denied authentication agent forwarding.");
+	{
+	  packet_get_all();
+	  log_msg("Warning: Remote host denied authentication agent forwarding.");
+	}
     }
 
+#ifndef SSH_NO_PORT_FORWARDING
   /* Initiate local TCP/IP port forwardings. */
   for (i = 0; i < options.num_local_forwards; i++)
     {
@@ -858,6 +977,7 @@ int main(int ac, char **av)
 					options.remote_forwards[i].host,
 					options.remote_forwards[i].host_port);
     }
+#endif /* SSH_NO_PORT_FORWARDING */
 
   /* We will no longer need the forked process that reads files on the
      user's uid. */

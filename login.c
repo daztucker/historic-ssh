@@ -8,7 +8,6 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Fri Mar 24 14:51:08 1995 ylo
-Last modified: Wed Jul 12 02:23:49 1995 ylo
 
 This file performs some of the things login(1) normally does.  We cannot
 easily use something like login -p -h host -f user, because there are
@@ -17,6 +16,27 @@ login the current system has.  Also, we want to be able to execute commands
 on a tty.
 
 */
+
+/*
+ * $Id: login.c,v 1.5 1995/07/27 00:38:43 ylo Exp $
+ * $Log: login.c,v $
+ * Revision 1.5  1995/07/27  00:38:43  ylo
+ * 	Use SSH_{WTMP,UTMP,LASTLOG} instead of hard-coded default
+ * 	values if path not defined in header.
+ *
+ * Revision 1.4  1995/07/16  01:03:11  ylo
+ * 	Clear host name field in record_logout.
+ * 	Test DEAD_PROCESS instead of LOGIN_PROCESS in ifdef.
+ *
+ * Revision 1.3  1995/07/15  13:25:17  ylo
+ * 	NEXTSTEP patches from Ray Spalding.
+ *
+ * Revision 1.2  1995/07/13  01:26:29  ylo
+ * 	Removed "Last modified" header.
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
 
 #include "includes.h"
 #ifdef HAVE_UTMP_H
@@ -96,7 +116,11 @@ unsigned long get_last_login_time(uid_t uid, const char *logname,
 #ifdef LASTLOG_FILE
   lastlog = LASTLOG_FILE;
 #else
+#ifdef _NEXT_SOURCE
+  lastlog = "/usr/adm/lastlog";
+#else
   lastlog = "/var/adm/lastlog";
+#endif
 #endif
 #endif
 
@@ -175,7 +199,7 @@ void record_login(int pid, const char *ttyname, const char *user, uid_t uid,
 
   /* Construct an utmp/wtmp entry. */
   memset(&u, 0, sizeof(u));
-#ifdef LOGIN_PROCESS
+#ifdef DEAD_PROCESS
   if (strcmp(user, "") == 0)
     u.ut_type = DEAD_PROCESS; /* logout */
   else
@@ -214,8 +238,8 @@ void record_login(int pid, const char *ttyname, const char *user, uid_t uid,
   utmp = UTMP_FILE;
   wtmp = WTMP_FILE;
 #else
-  utmp = "/var/adm/utmp";
-  wtmp = "/var/adm/wtmp";
+  utmp = SSH_UTMP;
+  wtmp = SSH_WTMP;
 #endif
 #endif
   
@@ -240,14 +264,14 @@ void record_login(int pid, const char *ttyname, const char *user, uid_t uid,
 	    {
 	      lseek(fd, offset, 0);
 	      if (write(fd, &u, sizeof(u)) != sizeof(u))
-		log("Could not append %s: %s", utmp, strerror(errno));
+		log("Could not append to %.100s: %s", utmp, strerror(errno));
 	      break;
 	    }
 	  if (strncmp(u2.ut_line, ttyname + 5, sizeof(u2.ut_line)) == 0)
 	    {
 	      lseek(fd, offset, 0);
 	      if (write(fd, &u, sizeof(u)) != sizeof(u))
-		log("Could not write %s: %s", utmp, strerror(errno));
+		log("Could not write to %.100s: %s", utmp, strerror(errno));
 	      break;
 	    }
 	}
@@ -296,12 +320,8 @@ void record_login(int pid, const char *ttyname, const char *user, uid_t uid,
 #ifdef LASTLOG_FILE
   lastlog = LASTLOG_FILE;
 #else
-  lastlog = "/var/adm/lastlog";
+  lastlog = SSH_LASTLOG;
 #endif
-#endif
-
-#ifdef LASTLOG_IS_DIR
-  sprintf(lastlogfile, "%s/%s", lastlog, user);
 #endif
 
   /* Update lastlog unless actually recording a logout. */
@@ -316,6 +336,7 @@ void record_login(int pid, const char *ttyname, const char *user, uid_t uid,
       strncpy(ll.ll_line, ttyname + 5, sizeof(ll.ll_line));
       strncpy(ll.ll_host, host, sizeof(ll.ll_host));
 #ifdef LASTLOG_IS_DIR
+      sprintf(lastlogfile, "%s/%s", lastlog, user);
       fd = open(lastlogfile, O_WRONLY | O_CREAT, 0644);
       if (fd >= 0)
 	{
@@ -365,7 +386,7 @@ void record_login(int pid, const char *ttyname, const char *user, uid_t uid,
   
 /* Records that the user has logged out. */
 
-void record_logout(int pid, const char *ttyname, const char *host)
+void record_logout(int pid, const char *ttyname)
 {
-  record_login(pid, ttyname, "", -1, host);
+  record_login(pid, ttyname, "", -1, "");
 }

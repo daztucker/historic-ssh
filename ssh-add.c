@@ -14,8 +14,11 @@ Adds an identity to the authentication server, or removes an identity.
 */
 
 /*
- * $Id: ssh-add.c,v 1.1.1.1 1996/02/18 21:38:12 ylo Exp $
+ * $Id: ssh-add.c,v 1.2 1996/10/20 16:19:33 ttsalo Exp $
  * $Log: ssh-add.c,v $
+ * Revision 1.2  1996/10/20 16:19:33  ttsalo
+ *      Added global variable 'original_real_uid' and it's initialization
+ *
  * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
  * 	Imported ssh-1.2.13.
  *
@@ -50,6 +53,8 @@ Adds an identity to the authentication server, or removes an identity.
 #define EXIT_STATUS_ERROR	5
 
 int exit_status = 0;
+
+uid_t original_real_uid;
 
 void delete_file(const char *filename)
 {
@@ -249,6 +254,8 @@ int main(int ac, char **av)
   int no_files = 1;
   int i;
   int deleting = 0;
+  
+  original_real_uid = getuid();
 
   for (i = 1; i < ac; i++)
     {

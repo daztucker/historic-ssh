@@ -8,9 +8,24 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Sat Mar 18 02:02:14 1995 ylo
-Last modified: Fri Jul  7 03:03:46 1995 ylo
+
+Interface for the packet protocol functions.
 
 */
+
+/*
+ * $Id: packet.h,v 1.3 1995/07/27 02:17:53 ylo Exp $
+ * $Log: packet.h,v $
+ * Revision 1.3  1995/07/27  02:17:53  ylo
+ * 	Pass as argument to packet_set_encryption_key whether running
+ * 	as the client or the server.
+ *
+ * Revision 1.2  1995/07/13  01:27:54  ylo
+ * 	Removed "Last modified" header.
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
 
 #ifndef PACKET_H
 #define PACKET_H
@@ -33,7 +48,7 @@ void packet_close();
    are encrypted independently of each other.  Cipher types are
    defined in ssh.h. */
 void packet_set_encryption_key(const unsigned char *key, unsigned int keylen,
-			       int cipher_type);
+			       int cipher_type, int is_client);
 
 /* Sets remote side protocol flags for the current connection.  This can
    be called at any time. */

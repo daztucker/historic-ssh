@@ -14,8 +14,17 @@ Allocating a pseudo-terminal, and making it the controlling tty.
 */
 
 /*
- * $Id: pty.c,v 1.6 1995/09/21 17:12:07 ylo Exp $
+ * $Id: pty.c,v 1.3 1996/05/30 22:08:21 ylo Exp $
  * $Log: pty.c,v $
+ * Revision 1.3  1996/05/30 22:08:21  ylo
+ * 	Don't print errors about I_PUSH ttcompat failing.
+ *
+ * Revision 1.2  1996/04/26 00:26:06  ylo
+ * 	Fixed process group setting on NeXT.
+ *
+ * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.6  1995/09/21  17:12:07  ylo
  * 	Push ttcompat into streams pty.
  *
@@ -145,8 +154,13 @@ int pty_allocate(int *ptyfd, int *ttyfd, char *namebuf)
     error("ioctl I_PUSH ptem: %.100s", strerror(errno));
   if (ioctl(*ttyfd, I_PUSH, "ldterm") < 0)
     error("ioctl I_PUSH ldterm: %.100s", strerror(errno));
+#if 0 /* HPUX does not have this, causes ugly log entries.  Some systems need
+	 this.  Let's not give any warnings if this fails. */
   if (ioctl(*ttyfd, I_PUSH, "ttcompat") < 0)
     error("ioctl I_PUSH ttcompat: %.100s", strerror(errno));
+#else
+  ioctl(*ttyfd, I_PUSH, "ttcompat");
+#endif
   return 1;
 
 #else /* HAVE_DEV_PTMX */
@@ -299,6 +313,13 @@ void pty_make_controlling_tty(int *ttyfd, const char *ttyname)
 #ifdef CRAY
   debug("Setting controlling tty using TCSETCTTY.");
   ioctl(*ttyfd, TCSETCTTY, NULL);
+#endif
+
+#ifdef NeXT
+  {
+    int arg = getpid();
+    ioctl(*ttyfd, TIOCSPGRP, &arg);
+  }
 #endif
 
   fd = open(ttyname, O_RDWR);

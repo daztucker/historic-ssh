@@ -2,10 +2,11 @@
 
 sshd.c
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Fri Mar 17 17:09:28 1995 ylo
 
@@ -18,10 +19,20 @@ agent connections.
 */
 
 /*
- * $Id: sshd.c,v 1.61 1999/04/29 11:29:47 tri Exp $
+ * $Id: sshd.c,v 1.64 2000/06/28 17:17:56 sjl Exp $
  * $Log: sshd.c,v $
+ * Revision 1.64  2000/06/28 17:17:56  sjl
+ * 	Fixed a kerberos security bug (depended on the value of
+ * 	``ticket'').
+ *
+ * Revision 1.63  1999/11/17 17:04:59  tri
+ *      Fixed copyright notices.
+ *
+ * Revision 1.62  1999/11/17 15:54:46  tri
+ *      Streamlined local SIA interface names.
+ *
  * Revision 1.61  1999/04/29 11:29:47  tri
- * 	Added a syslog call.
+ *      Added a syslog call.
  *
  * Revision 1.60  1999/04/29 07:52:29  tri
  *      Replaced OSF1/C2 security support with more complete SIA
@@ -928,7 +939,7 @@ int main(int ac, char **av)
 #endif
 
 #ifdef HAVE_SIA
-  initialize_sia(ac, av);
+  ssh_sia_initialize(ac, av);
 #endif /* HAVE_SIA */
 
   /* If not in debugging mode, and not started from inetd, disconnect from
@@ -2251,7 +2262,7 @@ void do_authentication(char *user, int privileged_port, int cipher_type)
      has no password.  Otherwise, the call would generate misleading
      "authentication failure" audit records for users that do have
      passwords. */
-  if (options.password_authentication && sia_no_password(user) &&
+  if (options.password_authentication && ssh_sia_no_password(user) &&
       auth_password(user, ""))
 #else /* defined(HAVE_SIA) */
   if (options.password_authentication && auth_password(user, ""))
@@ -3183,7 +3194,7 @@ void do_exec_no_pty(const char *command, struct passwd *pw,
           int argc;
           char **argv;
           
-          get_sia_args(&argc, &argv);
+          ssh_sia_get_args(&argc, &argv);
           if ((sia_ses_init(&sia_entity, argc, argv,
                             (char *)hostname, pw->pw_name,
                             (char *)ttyname, 0, NULL)) != SIASUCCESS)
@@ -3353,7 +3364,7 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
           int argc;
           char **argv;
 
-          get_sia_args(&argc, &argv);
+          ssh_sia_get_args(&argc, &argv);
           if ((sia_ses_init(&sia_entity, argc, argv,
                             (char *)hostname, pw->pw_name,
                             (char *)ttyname, 0, NULL)) != SIASUCCESS)
@@ -4293,8 +4304,12 @@ void do_child(const char *command, struct passwd *pw, const char *term,
 #ifdef KERBEROS
   /* Set KRBTKFILE to point to our ticket */
 #ifdef KRB5
-  if (ticket)
-    child_set_env(&env, &envsize, "KRB5CCNAME", ticket);
+  if (ticket){
+    if (strcmp(ticket, "none"))
+      child_set_env(&env, &envsize, "KRB5CCNAME", ticket);
+    else
+      ticket = NULL;
+  }
 #endif /* KRB5 */
 #endif /* KERBEROS */
 

@@ -8,12 +8,23 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Sat Mar 18 05:11:38 1995 ylo
-Last modified: Sun Jul  2 19:54:14 1995 ylo
 
 Password authentication.  This file contains the functions to check whether
 the password is valid for the user.
 
 */
+
+/*
+ * $Id: auth-passwd.c,v 1.3 1995/07/13 01:12:34 ylo Exp $
+ * $Log: auth-passwd.c,v $
+ * Revision 1.3  1995/07/13  01:12:34  ylo
+ * 	Removed the "Last modified" header.
+ *
+ * Revision 1.2  1995/07/13  01:09:50  ylo
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
 
 #include "includes.h"
 #ifdef HAVE_ETC_SHADOW

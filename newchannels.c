@@ -2,10 +2,11 @@
 
 channels.c
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Fri Mar 24 16:35:24 1995 ylo
 
@@ -16,10 +17,19 @@ arbitrary tcp/ip connections, and the authentication agent connection.
 */
 
 /*
- * $Id: newchannels.c,v 1.49 1999/02/22 08:14:01 tri Exp $
+ * $Id: newchannels.c,v 1.52 2000/02/23 00:23:28 ylo Exp $
  * $Log: newchannels.c,v $
+ * Revision 1.52  2000/02/23 00:23:28  ylo
+ * 	Merged X11 /var/X -> /var/X/.X11-unix fix from noel@cnet.com.
+ *
+ * Revision 1.51  1999/11/24 14:46:51  ttsalo
+ *     Fixed a DOS hole in auth_input_request_forwarding()
+ *
+ * Revision 1.50  1999/11/17 17:04:49  tri
+ *      Fixed copyright notices.
+ *
  * Revision 1.49  1999/02/22 08:14:01  tri
- * 	Final fixes for 1.2.27.
+ *      Final fixes for 1.2.27.
  *
  * Revision 1.48  1999/02/21 19:52:27  ylo
  *      Intermediate commit of ssh1.2.27 stuff.
@@ -2009,7 +2019,7 @@ void x11_input_open(void)
       {
         struct stat st;
 
-        if (stat("/var/X", &st) == 0)
+        if (stat("/var/X/.X11-unix", &st) == 0)
           {
             snprintf(ssun.sun_path, sizeof(ssun.sun_path),
                      "%.80s/X%d", "/var/X/.X11-unix",
@@ -2411,6 +2421,9 @@ int auth_input_request_forwarding(struct passwd *pw)
      creating unix-domain sockets, you might not be able to use
      ssh-agent connections on your system */
   old_umask = umask(S_IRUSR|S_IXUSR|S_IRGRP|S_IXGRP|S_IROTH|S_IXOTH);
+
+  /* Remove the possible dangling symlink before bind */
+  unlink(channel_forwarded_auth_socket_name);
   
   if (bind(sock, (struct sockaddr *)&sunaddr, AF_UNIX_SIZE(sunaddr)) < 0)
     packet_disconnect("Agent socket bind failed: %.100s", strerror(errno));

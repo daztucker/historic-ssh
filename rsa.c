@@ -37,8 +37,16 @@ Description of the RSA algorithm can be found e.g. from the following sources:
 */
 
 /*
- * $Id: rsa.c,v 1.1.1.1 1996/02/18 21:38:12 ylo Exp $
+ * $Id: rsa.c,v 1.3 1997/08/21 22:26:55 ylo Exp $
  * $Log: rsa.c,v $
+ * Revision 1.3  1997/08/21 22:26:55  ylo
+ * 	Set the two highest bits of the prime to one to ensure that we
+ * 	end up with the right number of bits for the generated key.
+ * 	(Bug reported by Ian Goldberg.)
+ *
+ * Revision 1.2  1997/04/27 21:53:46  kivinen
+ * 	Added check that mpz_set_str succeed.
+ *
  * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
  * 	Imported ssh-1.2.13.
  *
@@ -208,7 +216,8 @@ void rsa_random_integer(MP_INT *ret, RandomState *state, unsigned int bits)
     sprintf(str + 2 * i, "%02x", random_get_byte(state));
 
   /* Convert it to the internal representation. */
-  mpz_set_str(ret, str, 16);
+  if (mpz_set_str(ret, str, 16) < 0)
+    fatal("Intenal error, mpz_set_str returned error");
 
   /* Clear extra data. */
   memset(str, 0, 2 * bytes);
@@ -236,9 +245,9 @@ void rsa_random_prime(MP_INT *ret, RandomState *state, unsigned int bits)
   /* Pick a random integer of the appropriate size. */
   rsa_random_integer(&start, state, bits);
 
-  /* Set the highest bit. */
-  mpz_set_ui(&aux, 1);
-  mpz_mul_2exp(&aux, &aux, bits - 1);
+  /* Set the two highest bits. */
+  mpz_set_ui(&aux, 3);
+  mpz_mul_2exp(&aux, &aux, bits - 2);
   mpz_ior(&start, &start, &aux);
   /* Set the lowest bit to make it odd. */
   mpz_set_ui(&aux, 1);

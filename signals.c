@@ -16,6 +16,13 @@ maximum core dump size.
 
 /*
  * $Log: signals.c,v $
+ * Revision 1.4  1996/08/30 08:44:22  ylo
+ * 	Added Sunos/Solaris SIGFREEZE and SIGTHAW to signals with
+ * 	default processing.
+ *
+ * Revision 1.3  1996/07/12 07:27:18  ttsalo
+ * 	ifdef:d SIGIO
+ *
  * Revision 1.2  1996/04/26 00:25:48  ylo
  * 	Test for SIGURG == SIGIO (which appears to be the case on some
  * 	Linux versions).
@@ -60,7 +67,9 @@ void signals_prevent_core()
       case SIGCHLD:
       case SIGTTIN:
       case SIGTTOU:
+#ifdef SIGIO
       case SIGIO:
+#endif
 #if defined(SIGURG) && SIGURG != SIGIO
       case SIGURG:
 #endif
@@ -69,6 +78,12 @@ void signals_prevent_core()
 #endif
 #ifdef SIGINFO
       case SIGINFO:
+#endif
+#if defined(SIGFREEZE)
+      case SIGFREEZE:
+#endif
+#if defined(SIGTHAW)
+      case SIGTHAW:
 #endif
 	signal(sig, SIG_DFL);
 	break;

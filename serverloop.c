@@ -15,10 +15,14 @@ Server main loop for handling the interactive session.
 */
 
 /*
- * $Id: serverloop.c,v 1.19 1999/11/17 17:04:55 tri Exp $
+ * $Id: serverloop.c,v 1.20 2000/07/05 13:46:08 sjl Exp $
  * $Log: serverloop.c,v $
+ * Revision 1.20  2000/07/05 13:46:08  sjl
+ * 	Applied patch for making sure that scp's don't miss data at
+ * 	the ends of files by N.N.
+ *
  * Revision 1.19  1999/11/17 17:04:55  tri
- * 	Fixed copyright notices.
+ *      Fixed copyright notices.
  *
  * Revision 1.18  1999/02/21 19:52:36  ylo
  *      Intermediate commit of ssh1.2.27 stuff.
@@ -433,14 +437,16 @@ void wait_until_can_do_something(fd_set *readset, fd_set *writeset,
       if (cleanup_context)
         pty_cleanup_proc(cleanup_context);
       
-      if (fdout != -1)
+      if (fdout != -1 && fdout_eof) {
         close(fdout);
-      fdout = -1;
-      fdout_eof = 1;
-      if (fderr != -1)
+        fdout = -1;
+      }      
+
+      if (fderr != -1 && fderr_eof) {
         close(fderr);
-      fderr = -1;
-      fderr_eof = 1;
+        fderr = -1;
+      }
+      
       if (fdin != -1)
         close(fdin);
       fdin = -1;

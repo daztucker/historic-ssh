@@ -18,8 +18,11 @@ on a tty.
 */
 
 /*
- * $Id: login.c,v 1.9 1998/04/30 01:52:43 kivinen Exp $
+ * $Id: login.c,v 1.10 1998/07/08 00:44:01 kivinen Exp $
  * $Log: login.c,v $
+ * Revision 1.10  1998/07/08 00:44:01  kivinen
+ * 	Added better hpux TCB auth support. Added ut_syslen support.
+ *
  * Revision 1.9  1998/04/30  01:52:43  kivinen
  * 	Moved copying of user name to utmp structure to be done only
  * 	in login.
@@ -83,12 +86,22 @@ on a tty.
 #ifdef HAVE_UTMPX_H
 #include <utmpx.h>
 #ifndef SCO
+#ifdef MAJOR_IN_MKDEV
 #include <sys/mkdev.h>	/* for minor() */
-#endif
+#endif /* MAJOR_IN_MKDEV */
+#ifdef MAJOR_IN_SYSMACROS
+#include <sys/sysmacros.h>	/* for minor() */
+#endif /* MAJOR_IN_SYSMACROS */
+#endif /* SCO */
 #endif /* HAVE_UTMPX_H */
 #ifdef HAVE_USERSEC_H
 #include <usersec.h>
 #endif /* HAVE_USERSEC_H */
+#ifdef HAVE_HPUX_TCB_AUTH
+#include <sys/types.h>
+#include <hpsecurity.h>
+#include <prot.h>
+#endif /* HAVE_HPUX_TCB_AUTH */
 #include "ssh.h"
 
 /* Returns the time when the user last logged in.  Returns 0 if the 
@@ -205,6 +218,16 @@ unsigned long get_last_login_time(uid_t uid, const char *logname,
   return lasttime;
 
 #else /* HAVE_USERSEC_H */
+#ifdef HAVE_HPUX_TCB_AUTH
+  {
+    struct pr_passwd *pr;
+    
+    pr = getprpwnam(logname);
+    if (pr)
+      if (pr->uflg.fg_slogin)
+	return pr->ufld.fd_slogin;
+  }
+#endif /* HAVE_HPUX_TCB_AUTH */
   
   return 0;
 
@@ -412,6 +435,9 @@ void record_login(int pid, const char *ttyname, const char *user, uid_t uid,
     strncpy(ux.ut_host, host, sizeof(ux.ut_host));
     ux.ut_host[sizeof(ux.ut_host) - 1] = 0;
     ux.ut_syslen = strlen(ux.ut_host);
+#ifdef HAVE_SYSLEN_IN_UTMPX
+    ux.ut_syslen = strlen(ux.ut_host);
+#endif
     ux.ut_exit.e_termination = 0;
     ux.ut_exit.e_exit = 0;
 #ifdef HAVE_MAKEUTX
@@ -480,6 +506,23 @@ void record_login(int pid, const char *ttyname, const char *user, uid_t uid,
 #endif /* LASTLOG_IS_DIR */
     }
 #endif /* HAVE_LASTLOG_H || HAVE_LASTLOG */
+
+#ifdef HAVE_HPUX_TCB_AUTH
+  {
+    struct pr_passwd *pr;
+    
+    pr = getprpwnam(user);
+    if (pr)
+      {
+	pr->ufld.fd_slogin = time(NULL);
+	pr->uflg.fg_slogin = 1; pr->uflg.fg_suctty = 1;
+	pr->ufld.fd_nlogins = 0;
+	strncpy(pr->ufld.fd_suctty, ttyname + 5, sizeof(pr->ufld.fd_suctty));
+	if (putprpwnam(user, pr) == 0)
+	  log_msg("putprpwnam failed for %.100s",user);
+      }
+  }
+#endif /* HAVE_HPUX_TCB_AUTH */
 
 #ifdef HAVE_USERSEC_H
 

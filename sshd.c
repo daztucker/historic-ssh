@@ -18,7 +18,7 @@ agent connections.
 */
 
 #include "includes.h"
-RCSID("$Id: sshd.c,v 1.42 2001/02/15 10:10:15 bg Exp $");
+RCSID("$Id: sshd.c,v 1.43 2001/06/07 15:56:59 bg Exp $");
 
 #include "xmalloc.h"
 #include "rsa.h"
@@ -775,8 +775,10 @@ int main(int ac, char **av)
 #endif /* KRB4 */
 
   /* Cleanup user's local Xauthority file. */
+#if 0				/* Must first drop privileges! */
   if (xauth_file) unlink(xauth_file);
   if (xauth_dir) rmdir(xauth_dir);
+#endif
 
   /* The connection has been terminated. */
   debug("Closing connection to %.100s", inet_ntoa(sin.sin_addr));

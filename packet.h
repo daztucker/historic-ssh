@@ -15,10 +15,13 @@ Interface for the packet protocol functions.
 */
 
 /*
- * $Id: packet.h,v 1.8 1999/11/17 17:04:49 tri Exp $
+ * $Id: packet.h,v 1.9 2001/01/17 14:40:04 tri Exp $
  * $Log: packet.h,v $
+ * Revision 1.9  2001/01/17 14:40:04  tri
+ * 	No debug packets from server if debug is not on or quiet is on.
+ *
  * Revision 1.8  1999/11/17 17:04:49  tri
- * 	Fixed copyright notices.
+ *      Fixed copyright notices.
  *
  * Revision 1.7  1998/08/04 00:04:57  kivinen
  *      Removed socks.h.
@@ -201,6 +204,10 @@ void packet_set_max_size(unsigned int max_size);
 
 /* Returns the maximum packet size that can be sent to the other side. */
 unsigned int packet_max_size(void);
+
+/* Initialize debbugging packet sender.  No debug packets are sent, if
+   debug is zero or quiet is nonzero. */
+void packet_init_debug(int debug, int quiet);
 
 /* Stores tty modes from the fd into current packet. */
 void tty_make_modes(int fd);

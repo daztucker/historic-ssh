@@ -1,19 +1,19 @@
 The first part of README is too long.
 
-Merge rdist into the ssh distribution. -> ssh-1.3.1
+Merge rdist into the ssh distribution. -> ssh-1.4.x
   - patch for stdin/stdout
   - -P arguments
   - configure/makefile
 
 Update protocol to send information about the accepted authentication
 methods for the particular user after the user has been identified.
--> ssh-1.3.1
+-> ssh-2.x?
 
 Update protocol to send real client host name.  Add server
 configuration options to specify firewall names, and disable Rhosts
 authentication and trust the supplied name (with RSA, of course) if
 the connection appears to be coming from the firewall.
--> ssh-1.3.1
+-> ssh-2.x?
 
 Update protocol to include session id to both sides of session key.
 Change all encryption methods to use different keys for each direction.
@@ -26,7 +26,7 @@ Extend protocol to easily permit ip-forwarding only servers without
 authentication.
 
 Update protocol to negotiate 16-bit packet size fields and string size fields.
--> 1.3.1
+-> ??
 
 Some kind of access control for forwarded sockets (e.g., localhost only).
 
@@ -54,8 +54,6 @@ Some kind of "ftp" on top of ssh.
 
 Add client option Verbose (same as -v option).
 
-Provide option to use system login(1) instead of ssh builtin login.
-
 Fix (note not always the suggested fix):
 > rfc-pg.c:56:exit used without including <stdlib.h>
 > remove.c:5:unlink used without including <unistd.h>
@@ -71,8 +69,6 @@ RSAPrivateDecrypt sometimes fails on Alpha (keys < 1024 bytes).
 Brad Karp <karp@eecs.harvard.edu>
 
 /etc/issue or equivalent.
-
-Client should prompt for password multiple times.
 
 Check operation with RSAREF on alpha.
 

@@ -2,7 +2,7 @@ This document is intended for those who wish to read the ssh source
 code.  This tries to give an overview of the structure of the code.
       
 Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
-Updated 17 Nov 1995.
+Updated Jan  2 1998
 
 The software consists of ssh (client), sshd (server), scp, sdist, and
 the auxiliary programs ssh-keygen, ssh-agent, ssh-add, and
@@ -65,7 +65,7 @@ these programs.
   Multiple Precision Integer Library
 
     - Ssh uses the GNU Multiple Precision Library (gmp).  The code is in the
-      gmp-1.3.2 subdirectory.
+      gmp-2.0.2-ssh-2 subdirectory.
 
     - Some auxiliary functions for mp-int manipulation are in mpaux.c.
 

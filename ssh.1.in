@@ -9,8 +9,12 @@
 .\"
 .\" Created: Sat Apr 22 21:55:14 1995 ylo
 .\"
-.\" $Id: ssh.1.in,v 1.12 1997/05/08 03:05:39 kivinen Exp $
+.\" $Id: ssh.1.in,v 1.13 1998/01/02 06:22:26 kivinen Exp $
 .\" $Log: ssh.1.in,v $
+.\" Revision 1.13  1998/01/02 06:22:26  kivinen
+.\" 	Sorted options. Added XAuthLocation option. Renamed
+.\" 	SSH_AUTHENTICATION_SOCKET to SSH_AUTH_SOCK.
+.\"
 .\" Revision 1.12  1997/05/08 03:05:39  kivinen
 .\" 	Added \ before all '-characters (it is troff command if it is
 .\" 	in the beginning of line).
@@ -596,6 +600,7 @@ defaults for all hosts.  The host is the
 argument given on the command line (i.e., the name is not converted to
 a canonicalized host name before matching).
 .ne 3
+
 .TP
 .B BatchMode
 If set to "yes", passphrase/password querying will be disabled.  This
@@ -603,6 +608,7 @@ option is useful in scripts and other batch jobs where you have no
 user to supply the password.  The argument must be
 .YN
 .ne 3
+
 .TP
 .B Cipher
 Specifies the cipher to use for encrypting the session.  Currently,
@@ -618,6 +624,7 @@ are supported.  The default is "idea" (or "3des" if "idea" is not
 supported by both hosts).  Using "none" (no encryption) is intended
 only for debugging, and will render the connection insecure.
 .ne 3
+
 .TP
 .B ClearAllForwardings
 Clears all forwardings after reading all config files and parsing
@@ -626,11 +633,13 @@ when you want to make second connection to host having forwardings in
 config file. Scp sets this on by default so it will not fail even if
 you have some forwardings set in config file.
 .ne 3
+
 .TP
 .B Compression
 Specifies whether to use compression.  The argument must be
 .YN
 .ne 3
+
 .TP
 .B CompressionLevel
 Specifies the compression level to use if compression is enable.  The
@@ -638,12 +647,14 @@ argument must be an integer from 1 (fast) to 9 (slow, best).  The
 default level is 6, which is good for most applications.  The meaning
 of the values is the same as in GNU GZIP.
 .ne 3
+
 .TP
 .B ConnectionAttempts
 Specifies the number of tries (one per second) to make before falling
 back to rsh or exiting.  The argument must be an integer.  This may be
 useful in scripts if the connection sometimes fails.
 .ne 3
+
 .TP
 .B EscapeChar
 Sets the escape character (default: ~).  The escape character can also
@@ -652,6 +663,7 @@ character, \'^\' followed by a letter, or ``none'' to disable the escape
 character entirely (making the connection transparent for binary
 data).
 .ne 3
+
 .TP
 .B FallBackToRsh 
 Specifies that if connecting via
@@ -664,12 +676,14 @@ should automatically be used instead (after a suitable warning about
 the session being unencrypted).  The argument must be
 .YN
 .ne 3
+
 .TP
 .B ForwardAgent
 Specifies whether the connection to the authentication agent (if any)
 will be forwarded to the remote machine.  The argument must be
 .YN
 .ne 3
+
 .TP
 .B ForwardX11
 Specifies whether X11 connections will be automatically redirected
@@ -678,11 +692,13 @@ over the secure channel and
 set.  The argument must be 
 .YN
 .ne 3
+
 .TP
 .B GlobalKnownHostsFile
 Specifies a file to use instead of 
 .IR @ETCDIR@/ssh_known_hosts ".
 .ne 3
+
 .TP
 .B HostName
 Specifies the real host name to log into.  This can be used to specify
@@ -692,6 +708,7 @@ command line and in
 .B HostName
 specifications).
 .ne 3
+
 .TP
 .B IdentityFile
 Specifies the file from which the user's RSA authentication identity
@@ -702,6 +719,7 @@ syntax to refer to a user's home directory.  It is possible to have
 multiple identity files specified in configuration files; all these
 identities will be tried in sequence.
 .ne 3
+
 .TP
 .B KeepAlive
 Specifies whether the system should send keepalive messages to the
@@ -717,12 +735,15 @@ in scripts, and many users want it too.
 To disable keepalives, the value should be set to "no" in both the
 server and the client configuration files.
 .ne 3
+
 .TP
 .B KerberosAuthentication
 Specifies whether Kerberos V5 authentication will be used. 
+
 .TP
 .B KerberosTgtPassing
 Specifies whether a Kerberos V5 TGT will be forwarded to the server.
+
 .TP
 .B LocalForward
 Specifies that a TCP/IP port on the local machine be forwarded over
@@ -732,6 +753,7 @@ host:port.  Multiple forwardings may be specified, and additional
 forwardings can be given on the command line.  Only the root can
 forward privileged ports.
 .ne 3
+
 .TP
 .B NumberOfPasswordPrompts
 Specifies number of password prompts before giving up. The argument to
@@ -739,17 +761,20 @@ must be integer. Note that server also limits number of attempts
 (currently 5), so setting this larger doesn't have any effect. Default
 value is one.
 .ne 3
+
 .TP
 .B PasswordAuthentication
 Specifies whether to use password authentication.  The argument to
 this keyword must be
 .YN
 .ne 3
+
 .TP
 .B Port
 Specifies the port number to connect on the remote host.  Default is
 22.
 .ne 3
+
 .TP
 .B ProxyCommand
 Specifies the command to use to connect to the server.  The command
@@ -769,6 +794,7 @@ Note that
 can also be configured to support the SOCKS system using the
 --with-socks4 or --with-socks5 compile-time configuration option.
 .ne 3
+
 .TP
 .B RemoteForward
 Specifies that a TCP/IP port on the remote machine be forwarded over
@@ -778,6 +804,7 @@ host:port.  Multiple forwardings may be specified, and additional
 forwardings can be given on the command line.  Only the root can
 forward privileged ports.
 .ne 3
+
 .TP
 .B RhostsAuthentication
 Specifies whether to try rhosts based authentication.  Note that this
@@ -789,6 +816,7 @@ is not secure (see RhostsRSAAuthentication).  The argument to this
 keyword must be
 .YN
 .ne 3
+
 .TP
 .B RhostsRSAAuthentication
 Specifies whether to try rhosts based authentication with RSA host
@@ -796,6 +824,7 @@ authentication.  This is the primary authentication method for most
 sites.  The argument must be
 .YN
 .ne 3
+
 .TP
 .B RSAAuthentication
 Specifies whether to try RSA authentication.  The argument to this
@@ -805,6 +834,7 @@ RSA authentication will only be
 attempted if the identity file exists, or an authentication agent is
 running.
 .ne 3
+
 .TP
 .B StrictHostKeyChecking
 If this flag is set to "yes", 
@@ -826,22 +856,33 @@ automatically in either case.
 The argument must be
 "\fByes\fR", "\fBno\fR" or "\fBask\fR".
 .ne 3
+
+.TP
+.B TISAuthentication
+Specifies whether to try TIS authentication.  The argument to this
+keyword must be
+.YN
+.ne 3
+
 .TP
 .B UsePriviledgedPort
 Specifies whether to use priviledged port when connecting to other
 end. The default is yes if rhosts or rsarhosts authentications are
 enabled. 
 .ne 3
+
 .TP
 .B User
 Specifies the user to log in as.  This can be useful if you have a
 different user name in different machines.  This saves the trouble of
 having to remember to give the user name on the command line.
 .ne 3
+
 .TP
 .B UserKnownHostsFile
 Specifies a file to use instead of \fI$HOME/\s+2.\s0ssh/known_hosts\fR.
 .ne 3
+
 .TP
 .B UseRsh
 Specifies that rlogin/rsh should be used for this host.  It is
@@ -855,11 +896,11 @@ All other options (except
 .BR HostName )
 are ignored if this has been specified.  The argument must be
 .YN
+.ne 3
+
 .TP
-.B TISAuthentication
-Specifies whether to try TIS authentication.  The argument to this
-keyword must be
-.YN
+.B XAuthLocation
+Specifies the path to xauth program.
 .ne 3
 
 .SH ENVIRONMENT
@@ -901,7 +942,7 @@ or
 .IR /etc/default/login ".
 .ne 3
 .TP
-.B SSH_AUTHENTICATION_SOCKET
+.B SSH_AUTH_SOCK
 if exists, is used to indicate the path of a unix-domain socket used
 to communicate with the authentication agent (or its local
 representative).

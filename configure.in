@@ -8,8 +8,18 @@
 #
 # Created: Wed Mar 22 18:02:48 1995 ylo
 #
-# $Id: configure.in,v 1.48 1997/05/13 22:31:34 kivinen Exp $
+# $Id: configure.in,v 1.51 1998/01/14 16:40:03 kivinen Exp $
 # $Log: configure.in,v $
+# Revision 1.51  1998/01/14 16:40:03  kivinen
+# 	Added check that getespwnam function exists for osf/1.
+#
+# Revision 1.50  1998/01/03 06:40:30  kivinen
+# 	Fixed prot.h check/local copy generation.
+#
+# Revision 1.49  1998/01/02 06:17:02  kivinen
+# 	Added automatic prot.h fixiging for dunix 4.0. Added
+# 	sys/resource.h checking.
+#
 # Revision 1.48  1997/05/13 22:31:34  kivinen
 # 	Fixed RSAREF code.
 #
@@ -478,7 +488,7 @@ case "$host" in
   alpha-dec-osf*)
     AC_DEFINE(TTY_GROUP, "terminal")
     AC_CHECK_LIB(security, set_auth_parameters)
-    AC_CHECK_FUNCS(setluid)
+    AC_CHECK_FUNCS(setluid getespwnam)
     no_utmpx=yes
     AC_MSG_CHECKING(for OSF/1 C2 security package)
     osfc2sec=`/usr/sbin/setld -i | grep '^OSFC2SEC' | grep 'installed'`
@@ -490,10 +500,12 @@ case "$host" in
       CFLAGS="$CFLAGS -I."
       AC_TRY_COMPILE([#include <sys/types.h>
 #include <sys/security.h>
-#include <prot.h>], , , AC_MSG_ERROR([Could not include <prot.h> file.
+#include <prot.h>], , , [
+        AC_MSG_WARN([Could not include <prot.h> file.
 The digital unix 4.0 prot.h tries to include <acl.h> instead of <sys/acl.h>.
-Fix the /usr/include/prot.h to include correct file. You can also copy
-/usr/include/prot.h to this directory and fix that copy of prot.h.]))
+Making a local copy of prot.h and patching it.])
+        sed 's@<acl.h>@<sys/acl.h>@g' </usr/include/prot.h >prot.h
+      ])
       CFLAGS="$OLD_CFLAGS"
     else
       AC_MSG_RESULT(no)
@@ -680,7 +692,9 @@ AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
 AC_CHECK_HEADERS(unistd.h rusage.h sys/time.h lastlog.h utmp.h shadow.h)
 AC_CHECK_HEADERS(sgtty.h sys/select.h sys/ioctl.h machine/endian.h)
-AC_CHECK_HEADERS(paths.h usersec.h utime.h netinet/in_systm.h netinet/in_system.h netinet/ip.h netinet/tcp.h ulimit.h)
+AC_CHECK_HEADERS(paths.h usersec.h utime.h netinet/in_systm.h)
+AC_CHECK_HEADERS(netinet/in_system.h netinet/ip.h netinet/tcp.h ulimit.h)
+AC_CHECK_HEADERS(sys/resource.h)
 AC_HEADER_TIME
 AC_HEADER_DIRENT
 AC_HEADER_STAT

@@ -9,8 +9,12 @@
 .\"
 .\" Created: Sat Apr 23 20:10:43 1995 ylo
 .\"
-.\" $Id: ssh-agent.1,v 1.6 1997/04/27 21:48:50 kivinen Exp $
+.\" $Id: ssh-agent.1,v 1.7 1998/01/02 06:21:20 kivinen Exp $
 .\" $Log: ssh-agent.1,v $
+.\" Revision 1.7  1998/01/02 06:21:20  kivinen
+.\" 	Documented -k option. Renamed SSH_AUTHENCATION_SOCKET to
+.\" 	SSH_AUTH_SOCK.
+.\"
 .\" Revision 1.6  1997/04/27 21:48:50  kivinen
 .\" 	Added F-SECURE stuff.
 .\"
@@ -56,6 +60,9 @@ ssh-agent \- authentication agent
 
 .B eval `ssh-agent
 [\c
+.BR \-k \c
+]
+[\c
 .BR \-s \c
 ]
 [\c
@@ -82,7 +89,7 @@ If the ssh-agent is started without any arguments (no command) it will
 fork and start agent as background process. The agent also prints
 command that can be evaluated in sh or csh like shells, that will set
 the
-.B \s-1SSH_AUTHENTICATION_SOCKET\s0
+.B \s-1SSH_AUTH_SOCK\s0
 and
 .B \s-1SSH_AGENT_PID\s0
 environment variables.
@@ -102,6 +109,17 @@ the environment variable SHELL might not contain the
 actual value of the shell executing the evaluation.
 If ALTSHELL is set to YES in /etc/default/login, the SHELL
 environment variable is set to the login shell of the user.
+.LP
+The
+.BI \-k
+option can be used to kill agent automatically. It kills the agent (it
+uses the
+.B \s-1SSH_AGENT_PID\s0
+to find it) and prints shell commands to stdout that will unset the
+.B \s-1SSH_AUTH_SOCKET\s0
+and
+.B \s-1SSH_AGENT_PID\s0
+enviroment variables.
 .LP
 The agent initially does not have any private keys.  Keys are added
 using
@@ -132,7 +150,7 @@ unix-domain socket is created
 (\fI/tmp/ssh-$USER/agent-socket-<pid>\fR), where the %d is the process
 id of the listener (agent or sshd proxying the agent). The name of
 this socket is stored in the
-.B \s-1SSH_AUTHENTICATION_SOCKET\s0
+.B \s-1SSH_AUTH_SOCK\s0
 environment variable.  The socket is made accessible only to the
 current user.  This method is easily abused by root or another
 instance of the same user. Older versions of ssh used inherited

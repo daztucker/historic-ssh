@@ -39,17 +39,49 @@ script accepts several options
   --exec_prefix=PREFIX	where to install executables (default: same as prefix)
   --srcdir=DIR		find sources in DIR (default: where configure is)
  Specific options:
-  --with-rsh=PATH	Use rsh specified by PATH when needed
-  --with-etcdir=PATH    Store system files in the given dir (default: /etc)
-  --with-path=PATH	Default path to pass to user shell.
-  --with-rsaref		Use rsaref2 from rsaref2 subdirectory (see below).
-  --with-libwrap[=PATH] Use libwrap (tcp_wrappers) and identd (see below).
-  --with-socks4[=PATH]	Include SOCKS (firewall traversal) support.
-  --with-socks5[=PATH]	Include SOCKS5 (firewall traversal) support.
-  --without-idea	Don't include IDEA (see below).
-  --with-securid[=PATH] Support for the SecurID card (see README.SECURID).
-  --with-tis=PATH       Support for the Tis authsrv (see README.TIS).
-  --enable-warnings	Adds -Wall to CFLAGS if using gcc.
+  --enable-deprecated-linux-pw-encrypt
+                          Enable using of deprecated linx pw_encrypt function.
+  --enable-warnings       Enable -Wall if using gcc.
+  --with-x                use the X Window System
+  --with-idea             Use IDEA (default).
+  --without-idea          Don't use IDEA: avoids patent problems in commercial use
+  --with-blowfish         Include blowfish (default).
+  --without-blowfish      Don't include blowfish
+  --with-des              Include single-DES support.
+  --without-des           Don't allow single DES (default)
+  --with-arcfour          Include arcfour (DO NOT ENABLE, unless you know the security implications of this settings. See README.CIPHERS for more info).
+  --without-arcfour       Don't include arcfour (default)
+  --with-tss              Include TSS encryption algorithm.
+  --without-tss           Don't include TSS (default)
+  --with-none             Include support for unencrypted connections
+  --without-none          Don't allow unencrypted connections (default)
+  --with-login[=PATH]     Use login -f to finish login connections. 
+  --with-rsh=PATH         Specify where to find rsh.
+  --without-rsh           Do not use rsh under any conditions. 
+  --with-path=PATH        Default path passed to user shell by sshd.
+  --with-etcdir=PATH      Directory containing ssh system files (default /etc).
+  --with-securid[=PATH]   Enable support for Security Dynamics SecurID card.
+  --with-tis[=DIR]        Enable support for TIS authentication server.
+  --with-kerberos5=[KRB_PREFIX] Compile in Kerberos5 support.
+  --enable-kerberos-tgt-passing  Pass Kerberos ticket-granting-ticket.
+  --with-libwrap[=PATH]   Compile in libwrap (tcp_wrappers) support.
+  --with-socks            Compile with SOCKS firewall traversal support.
+  --with-socks5[=PATH]    Compile with SOCKS5 firewall traversal support.
+  --with-socks4[=PATH]    Compile with SOCKS4 firewall traversal support.
+  --with-rsaref[=PATH]    Use RSAREF (try to avoid patent problems in U.S.)
+  --without-rsaref        Use normal RSA routines (default). 
+  --enable-group-writeability   Allow group writeability in auth-rsa. 
+  --disable-server-port-forwardings
+                          Disable all port forwardings in server (except X11)
+  --disable-client-port-forwardings
+                          Disable all port forwardings in client (except X11)
+  --disable-server-x11-forwarding
+                          Disable X11 forwarding in server
+  --disable-client-x11-forwarding
+                          Disable X11 forwarding in client
+  --enable-suid-ssh       Install ssh as suid root (default)
+  --disable-suid-ssh      Install ssh without suid bit
+  --disable-asm           Disable assembly language optimizations. 
 
 You may also want to configure the following variables:
   CC=compiler		specify name of the C compiler (default: gcc or cc)
@@ -94,14 +126,16 @@ This software has been used at least in the following environments.
 
 	386BSD 0.1; i386
 	AIX 3.2.5, 4.1, 4.2; RS6000, PowerPC
+	A/UX 3.1.1
 	BSD 4.4; several platforms
 	BSD/OS 1.1, 2.0.1, 3.0; i486
 	BSD/386 1.1; i386
-	BSDI 2.1; x86 (using gnu make)
+	BSDI 2.1, 3.0; x86 (using gnu make)
 	ConvexOS 10.1; Convex
 	Digital Unix 4.0, 4.0A, 4.0B; Alpha
 	DGUX 5.4R2.10; DGUX
-	FreeBSD 1.x, 2.x; Pentium
+	DolphinOS 3.8
+	FreeBSD 1.x, 2.x, 3.0; Pentium
 	HPUX 7.x, 9.x, 10.0; HPPA
 	IRIX 5.2, 5.3, 6.2; SGI Indy
 	IRIX 6.0.1; Mips-R8000
@@ -113,14 +147,14 @@ This software has been used at least in the following environments.
 	Mach3/Lites; i386
 	Machten 2.2VM (m68k); Macintosh
 	NCR Unix 3.00; NCR S40
-	NetBSD 1.0A, 1.1, 1.2; Pentium, Sparc, Mac68k, Alpha
+	NetBSD 1.0A, 1.1, 1.2, 1.3; Pentium, Sparc, Mac68k, Alpha
 	OpenBSD 2.0; x86, mac68k.
 	NextSTEP 3.3; 68040
 	OSF/1 3.0, 3.2, 3.2; Alpha
 	Sequent Dynix/ptx 3.2.0 V2.1.0; i386
 	SCO Unix; i386 (client only)
 	SINIX 5.42; Mips R4000
-	Solaris 2.3, 2.4, 2.5, 2.5.1; Sparc, i386
+	Solaris 2.3, 2.4, 2.5, 2.5.1, 2.6; Sparc, i386
 	Sony NEWS-OS 3.3 (BSD 4.3); m68k
 	SunOS 4.1.1, 4.1.2, 4.1.3, 4.1.4; Sparc, Sun3
 	SysV 4.x; several platforms

@@ -1,3 +1,58 @@
+Sat Jan  3 07:11:58 1998  Tero Kivinen  <kivinen@ssh.fi>
+
+	* Fixed bug in {Allow,Deny}ForwardingTo host name handling. The
+	host name was not nul terminated properly. 
+	
+	* Added {Allow,Deny}groups patch from Jason Ackley
+	<jason@viaccess.net>.
+
+Fri Jan  2 04:51:21 1998  Tero Kivinen  <kivinen@ssh.fi>
+
+	* (F-SECURE): Added support for {Allow,Deny}Forwarding{To,Port}
+ 	options in authorized_keys file.
+	
+	* Fixed ssh-agent dying when it received SIGPIPE when user
+	pressed Ctrl-C in middle of login process. 
+	
+	* Changed authorized_keys file options to be case insensitive. 
+	
+	* Confirmed that ssh is Y2K compliant. The HAVE_USERSEC_H code in
+ 	login_permitted function in sshd.c file is the only code that has
+ 	some Y2K problems. The expiration format returned by getuserattr
+ 	is only yymmddhhmm, and when login_permitted converts it to
+ 	normalized format that assumes that if yy < 70 then it must be
+ 	20yy, otherwise assume it to be 19yy. This means that you cannot
+ 	now have users whose account expires after year 2070.
+
+	* Confirmed that on enviroments where time_t is 32 bit unsigned
+ 	long or 64 bit value ssh should also be Y2038 complient.
+	
+	* GMP configure patch for FreeBSD/ELF system from Ollivier Robert
+	<reberto@keltia.freenix.fr>.
+	
+	* Added CheckMail patch from Aaron Gowatch <aarong@wired.com>. 
+	
+	* Added patch from Nick Nibma <nick.hibma@jrc.it> that will change
+	password from from "foo's password" to foo@bar's password.
+	
+	* Implemented -k option for ssh-agent (kill agent) suggested by
+	Charles M. Hannum <mycroft@mit.edu>
+
+	* Fixed agent socket opening code for suid versions.
+	
+	* Renamed SSH_AUTHENCATION_SOCKET to SSH_AUTH_SOCK, because some
+	environments have limit for environment variable lengths. 
+	
+	* Added XAuthLocation and kerberos 5 patch from Harry G. McGavran
+ 	Jr. <hgm@lanl.gov>.
+	
+	* Added OSF C2 user account locked and expired checks and user
+ 	default resource limits patch from Joao Castro
+ 	<jcastro@ist.utl.pt>.
+	
+	* Adde BSDI /etc/login.conf and password expiration warning
+ 	patches from Jason Ackley <jason@ackley.net>.
+	
 Mon Apr 28 00:53:04 1997  Tero Kivinen  <kivinen@ssh.fi>
 
 	* (F-SECURE): Added {Allow,Deny}Forwarding{To,Port} feature. 

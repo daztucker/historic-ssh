@@ -14,8 +14,11 @@ The authentication agent program.
 */
 
 /*
- * $Id: ssh-agent.c,v 1.5 1995/08/29 22:25:22 ylo Exp $
+ * $Id: ssh-agent.c,v 1.6 1995/09/21 17:13:31 ylo Exp $
  * $Log: ssh-agent.c,v $
+ * Revision 1.6  1995/09/21  17:13:31  ylo
+ * 	Support AF_UNIX_SIZE.
+ *
  * Revision 1.5  1995/08/29  22:25:22  ylo
  * 	Added compatibility support for various authentication
  * 	protocol versions.

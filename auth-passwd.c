@@ -15,8 +15,18 @@ the password is valid for the user.
 */
 
 /*
- * $Id: auth-passwd.c,v 1.3 1995/07/13 01:12:34 ylo Exp $
+ * $Id: auth-passwd.c,v 1.6 1995/08/21 23:20:29 ylo Exp $
  * $Log: auth-passwd.c,v $
+ * Revision 1.6  1995/08/21  23:20:29  ylo
+ * 	Fixed a typo.
+ *
+ * Revision 1.5  1995/08/19  13:15:56  ylo
+ * 	Changed securid code to initialize itself only once.
+ *
+ * Revision 1.4  1995/08/18  22:42:51  ylo
+ * 	Added General Dynamics SecurID support from Donald McKillican
+ * 	<dmckilli@qc.bell.ca>.
+ *
  * Revision 1.3  1995/07/13  01:12:34  ylo
  * 	Removed the "Last modified" header.
  *
@@ -38,6 +48,19 @@ the password is valid for the user.
 #include "packet.h"
 #include "ssh.h"
 
+#ifdef HAVE_SECURID
+/* Support for Security Dynamics SecurID card.
+   Contributed by Donald McKillican <dmckilli@qc.bell.ca>. */
+#define SECURID_USERS "/etc/securid.users"
+#include "sdi_athd.h"
+#include "sdi_size.h"
+#include "sdi_type.h"
+#include "sdacmvls.h"
+#include "sdconf.h"
+union config_record configure;
+static int securid_initialized = 0;
+#endif /* HAVE_SECURID */
+
 /* Tries to authenticate the user using password.  Returns true if
    authentication succeeds. */
 
@@ -52,6 +75,66 @@ int auth_password(const char *server_user, const char *password)
   pw = getpwnam(server_user);
   if (!pw)
     return 0;
+#ifdef HAVE_SECURID
+  /* Support for Security Dynamics SecurId card.
+     Contributed by Donald McKillican <dmckilli@qc.bell.ca>. */
+  {
+    /*
+     * the way we decide if this user is a securid user or not is
+     * to check to see if they are included in /etc/securid.users
+     */
+    int found = 0;
+    FILE *securid_users = fopen(SECURID_USERS, "r");
+    char *c;
+    char su_user[257];
+    
+    if (securid_users)
+      {
+	while (fgets(su_user, sizeof(su_user), securid_users))
+	  {
+	    if (c = strchr(su_user, '\n')) 
+	      *c = '\0';
+	    if (strcmp(su_user, server_user) == 0) 
+	      { 
+		found = 1; 
+		break; 
+	      }
+	  }
+      }
+    fclose(securid_users);
+
+    if (found)
+      {
+	/* The user has a SecurID card. */
+	struct SD_CLIENT sd_dat, *sd;
+	log("SecurID authentication for %.100s required.", server_user);
+
+	/*
+	 * if no pass code has been supplied, fail immediately: passing
+	 * a null pass code to sd_check causes a core dump
+	 */
+	if (*password == '\0') 
+	  {
+	    log("No pass code given, authentication rejected.");
+	    return 0;
+	  }
+
+	sd = &sd_dat;
+	if (!securid_initialized)
+	  {
+	    memset(&sd_dat, 0, sizeof(sd_dat));   /* clear struct */
+	    creadcfg();		/*  accesses sdconf.rec  */
+	    if (sd_init(sd)) 
+	      packet_disconnect("Cannot contact securid server.");
+	    securid_initialized = 1;
+	  }
+	return sd_check(password, server_user, sd) == ACM_OK;
+      }
+  }
+  /* If the user has no SecurID card specified, we fall to normal 
+     password code. */
+#endif /* HAVE_SECURID */
+
   /* Save the encrypted password. */
   strncpy(correct_passwd, pw->pw_passwd, sizeof(correct_passwd));
 

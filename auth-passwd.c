@@ -15,8 +15,14 @@ the password is valid for the user.
 */
 
 /*
- * $Id: auth-passwd.c,v 1.17 1998/06/11 00:03:38 kivinen Exp $
+ * $Id: auth-passwd.c,v 1.19 1998/07/08 01:44:46 kivinen Exp $
  * $Log: auth-passwd.c,v $
+ * Revision 1.19  1998/07/08 01:44:46  kivinen
+ * 	Added one missing space.
+ *
+ * Revision 1.18  1998/07/08 00:36:44  kivinen
+ * 	Changed to use PASSWD_PATH. Better HPUX TCB AUTH support.
+ *
  * Revision 1.17  1998/06/11 00:03:38  kivinen
  * 	Added username to /bin/password commands.
  *
@@ -713,8 +719,9 @@ int auth_password(const char *server_user, const char *password)
       if (options.forced_passwd_change)
 	{
 	  extern char *forced_command;
-	  forced_command = xmalloc(20 + strlen(server_user));
-	  sprintf(forced_command, "/bin/passwd %s", server_user);
+	  forced_command = xmalloc(sizeof(PASSWD_PATH) +
+				   strlen(server_user) + 1);
+	  sprintf(forced_command, "%s %s", PASSWD_PATH, server_user);
 	  packet_send_debug("Password expired, forcing it to be changed.");
 	}
       else
@@ -731,8 +738,24 @@ int auth_password(const char *server_user, const char *password)
     struct pr_passwd *pr = getprpwnam(saved_pw_name);
     pr = getprpwnam(saved_pw_name);
     if (pr)
-      strncpy(correct_passwd, pr->ufld.fd_encrypt, sizeof(correct_passwd));
-    endprpwent();
+      {
+        strncpy(correct_passwd, pr->ufld.fd_encrypt, sizeof(correct_passwd));
+        endprpwent();
+        if ( (!pr->uflg.fg_nullpw || !pr->ufld.fd_nullpw)
+	     && !pr->uflg.fg_pw_admin_num
+	     && strcmp(correct_passwd,"")==0 )
+          {
+	    debug("User %.100s not permitted to login with null passwd",
+                  saved_pw_name);
+	    packet_send_debug("\n\tNot permitted null passwd.");
+	    return 0;
+          }
+      }
+    else
+      {       
+	endprpwent();
+	return 0;
+      }
   }
 #else /* defined(HAVE_SCO_ETC_SHADOW) || defined(HAVE_HPUX_TCB_AUTH) */
 #ifdef HAVE_ETC_SHADOW
@@ -807,8 +830,9 @@ int auth_password(const char *server_user, const char *password)
       if (options.forced_empty_passwd_change)
 	{
 	  extern char *forced_command;
-	  forced_command = xmalloc(20 + strlen(server_user));
-	  sprintf(forced_command, "/bin/passwd %s", server_user);
+	  forced_command = xmalloc(sizeof(PASSWD_PATH) +
+				   strlen(server_user) + 1);
+	  sprintf(forced_command, "%s %s", PASSWD_PATH, server_user);
           packet_send_debug("Password if forced to be set at first login.");
 	}
       else

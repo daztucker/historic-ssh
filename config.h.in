@@ -11,8 +11,14 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 /*
  * $Log: config.h.in,v $
- * Revision 1.5  1996/06/03 19:26:26  ylo
- * *** empty log message ***
+ * Revision 1.11  1996/09/28 17:43:54  ttsalo
+ * 	Socks5-defines corrected
+ *
+ * Revision 1.5  1996/09/05 19:07:41  ttsalo
+ * 	Added checking of setpgid()
+ *
+ * Revision 1.4  1996/07/12 07:34:14  ttsalo
+ * 	Added defines SCO5, HAVE_GETPSEUDOTTY, HAVE_DEV_PTYP10
  *
  * Revision 1.3  1996/04/26 00:37:21  ylo
  * 	Added HPSUX7_KLUDGES.
@@ -126,8 +132,14 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 /*
  * $Log: config.h.in,v $
- * Revision 1.5  1996/06/03 19:26:26  ylo
- * *** empty log message ***
+ * Revision 1.11  1996/09/28 17:43:54  ttsalo
+ * 	Socks5-defines corrected
+ *
+ * Revision 1.5  1996/09/05 19:07:41  ttsalo
+ * 	Added checking of setpgid()
+ *
+ * Revision 1.4  1996/07/12 07:34:14  ttsalo
+ * 	Added defines SCO5, HAVE_GETPSEUDOTTY, HAVE_DEV_PTYP10
  *
  * Revision 1.3  1996/04/26 00:37:21  ylo
  * 	Added HPSUX7_KLUDGES.
@@ -339,6 +351,42 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 #undef HAVE_SCO_ETC_SHADOW
 #undef SCO
 
+/* Additionally define this if on SCO 3.2v5 Unix */
+#undef SCO5
+
+/* Define this if you have getpseudotty() (DYNIX/ptx 2.1) */
+#undef HAVE_GETPSEUDOTTY
+
+/* Define this if you have sco-style pty:s (ptyp0, ..., ptyp9, ptyp10...) */
+#undef HAVE_DEV_PTYP10
+
+/* Define this for HP-UX 10.x shadow passwords */
+#undef HAVE_HPUX_TCB_AUTH
+
+/* The code in sshconnect.c is written for SOCKS4. If SOCKS5 should be used
+   these needs redefining */
+#undef Rconnect
+#undef Rgetsockname
+#undef Rgetpeername
+#undef Rbind
+#undef Raccept
+#undef Rlisten
+#undef Rselect
+#undef Rrecvfrom
+#undef Rsendto
+#undef Rrecv
+#undef Rsend
+#undef Rread
+#undef Rwrite
+#undef Rrresvport
+#undef Rshutdown
+#undef Rlisten
+#undef Rclose
+#undef Rdup
+#undef Rdup2
+#undef Rfclose
+#undef Rgethostbyname
+
 /* The number of bytes in a int.  */
 #undef SIZEOF_INT
 
@@ -396,6 +444,12 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define if you have the setluid function.  */
 #undef HAVE_SETLUID
 
+/* Define if you have the setpgid function.  */
+#undef HAVE_SETPGID
+
+/* Define if you have the setpgrp function.  */
+#undef HAVE_SETPGRP
+
 /* Define if you have the setsid function.  */
 #undef HAVE_SETSID
 
@@ -420,6 +474,9 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define if you have the <lastlog.h> header file.  */
 #undef HAVE_LASTLOG_H
 
+/* Define if you have the <machine/endian.h> header file.  */
+#undef HAVE_MACHINE_ENDIAN_H
+
 /* Define if you have the <ndir.h> header file.  */
 #undef HAVE_NDIR_H
 
@@ -434,6 +491,9 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 /* Define if you have the <sgtty.h> header file.  */
 #undef HAVE_SGTTY_H
+
+/* Define if you have the <shadow.h> header file.  */
+#undef HAVE_SHADOW_H
 
 /* Define if you have the <sys/dir.h> header file.  */
 #undef HAVE_SYS_DIR_H

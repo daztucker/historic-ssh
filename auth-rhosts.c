@@ -16,8 +16,11 @@ the login based on rhosts authentication.  This file also processes
 */
 
 /*
- * $Id: auth-rhosts.c,v 1.9 1998/05/23 20:20:04 kivinen Exp $
+ * $Id: auth-rhosts.c,v 1.10 1998/07/08 00:38:32 kivinen Exp $
  * $Log: auth-rhosts.c,v $
+ * Revision 1.10  1998/07/08 00:38:32  kivinen
+ * 	Fixed typo (privileged).
+ *
  * Revision 1.9  1998/05/23  20:20:04  kivinen
  * 	Added num_deny_shosts/num_allow_shosts option support.
  *
@@ -340,14 +343,14 @@ int auth_rhosts(struct passwd *pw, const char *client_user,
   port = get_remote_port();
 
   /* Check that the connection comes from a privileged port.
-     Rhosts authentication only makes sense for priviledged programs.
+     Rhosts authentication only makes sense for privileged programs.
      Of course, if the intruder has root access on his local machine,
      he can connect from any port.  So do not use .rhosts
      authentication from machines that you do not trust. */
   if (port >= IPPORT_RESERVED ||
       port < IPPORT_RESERVED / 2)
     {
-      log_msg("Connection from %.100s from nonpriviledged port %d",
+      log_msg("Connection from %.100s from nonprivileged port %d",
 	  hostname, port);
       packet_send_debug("Your ssh client is not running as root.");
       return 0;

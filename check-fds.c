@@ -12,8 +12,11 @@ Created: Sat Apr  8 00:25:04 1995 ylo
 */
 
 /*
- * $Id: check-fds.c,v 1.3 1995/09/09 21:26:40 ylo Exp $
+ * $Id: check-fds.c,v 1.1.1.1 1996/02/18 21:38:13 ylo Exp $
  * $Log: check-fds.c,v $
+ * Revision 1.1.1.1  1996/02/18 21:38:13  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.3  1995/09/09  21:26:40  ylo
  * /m/shadows/u2/users/ylo/ssh/README
  *

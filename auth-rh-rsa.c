@@ -15,8 +15,11 @@ authentication.
 */
 
 /*
- * $Id: auth-rh-rsa.c,v 1.2 1996/10/29 22:34:10 kivinen Exp $
+ * $Id: auth-rh-rsa.c,v 1.3 1998/03/27 16:53:36 kivinen Exp $
  * $Log: auth-rh-rsa.c,v $
+ * Revision 1.3  1998/03/27 16:53:36  kivinen
+ * 	Added ignore_root_rhosts support.
+ *
  * Revision 1.2  1996/10/29 22:34:10  kivinen
  * 	log -> log_msg.
  *
@@ -42,13 +45,15 @@ authentication.
 
 /* Tries to authenticate the user using the .rhosts file and the host using
    its host key.  Returns true if authentication succeeds. 
-   .rhosts and .shosts will be ignored if ignore_rhosts is non-zero. */
+   .rhosts and .shosts will be ignored if ignore_rhosts is non-zero,
+   unless the user is root and ignore_root_rhosts is zero. */
 
 int auth_rhosts_rsa(RandomState *state,
 		    struct passwd *pw, const char *client_user,
 		    unsigned int client_host_key_bits,
 		    MP_INT *client_host_key_e, MP_INT *client_host_key_n,
-		    int ignore_rhosts, int strict_modes)
+		    int ignore_rhosts, int ignore_root_rhosts,
+		    int strict_modes)
 {
   char *user_hostfile;
   const char *canonical_hostname;
@@ -56,7 +61,8 @@ int auth_rhosts_rsa(RandomState *state,
   debug("Trying rhosts with RSA host authentication for %.100s", client_user);
 
   /* Check if we would accept it using rhosts authentication. */
-  if (!auth_rhosts(pw, client_user, ignore_rhosts, strict_modes))
+  if (!auth_rhosts(pw, client_user, ignore_rhosts, ignore_root_rhosts,
+		   strict_modes))
     return 0;
 
   canonical_hostname = get_canonical_hostname();

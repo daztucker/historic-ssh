@@ -18,8 +18,17 @@ agent connections.
 */
 
 /*
- * $Id: sshd.c,v 1.36 1997/03/27 05:59:50 kivinen Exp $
+ * $Id: sshd.c,v 1.38 1997/04/05 22:03:38 kivinen Exp $
  * $Log: sshd.c,v $
+ * Revision 1.38  1997/04/05 22:03:38  kivinen
+ * 	Added check that userfile_get_des_1_magic_phrase succeeded,
+ * 	before using the passphrase. Moved closing of pty after the
+ * 	pty_release.
+ *
+ * Revision 1.37  1997/04/05 17:28:31  ylo
+ * 	Added a workaround for the Windows SSH problem with X11
+ * 	forwarding.
+ *
  * Revision 1.36  1997/03/27 05:59:50  kivinen
  * 	Fixed bug in HAVE_USERSEC_H code.
  *
@@ -706,12 +715,15 @@ int main(int ac, char **av)
       char *passphrase;
 
       passphrase = userfile_get_des_1_magic_phrase(geteuid());
-      done = load_private_key(geteuid(), options.host_key_file,
-			      passphrase, &sensitive_data.host_key, &comment);
-      if (done)
-	debug ("Using SUN-DES-1 magic phrase to decrypt host key.");
-      memset(passphrase, 0, strlen(passphrase));
-      xfree(passphrase);
+      if (passphrase != NULL)
+	{
+	  done = load_private_key(geteuid(), options.host_key_file,
+				  passphrase, &sensitive_data.host_key, &comment);
+	  if (done)
+	    debug ("Using SUN-DES-1 magic phrase to decrypt host key.");
+	  memset(passphrase, 0, strlen(passphrase));
+	  xfree(passphrase);
+	}
     }
 #endif
   if (!done)
@@ -2319,7 +2331,8 @@ void do_authenticated(struct passwd *pw)
 	  /* Process the request. */
 	  proto = packet_get_string(NULL);
 	  data = packet_get_string(NULL);
-	  if (packet_get_protocol_flags() & SSH_PROTOFLAG_SCREEN_NUMBER)
+	  if (packet_get_protocol_flags() & SSH_PROTOFLAG_SCREEN_NUMBER ||
+	      packet_get_len() > 0)
 	    screen = packet_get_int();
 	  else
 	    screen = 0;
@@ -2543,6 +2556,7 @@ void do_exec_no_pty(const char *command, struct passwd *pw,
   /* Enter the interactive session. */
   server_loop(pid, pin[1], pout[0], perr[0]);
 
+  /* Close the server side of the socket pairs. */
   close(pin[1]);
   close(pout[0]);
   close(perr[0]);
@@ -2555,6 +2569,7 @@ void do_exec_no_pty(const char *command, struct passwd *pw,
      the case that fdin and fdout are the same. */
   server_loop(pid, inout[1], inout[1], err[1]);
   
+  /* Close the server side of the socket pairs. */
   close(inout[1]);
   close(err[1]);
 #endif /* USE_PIPES */
@@ -2744,10 +2759,6 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
   /* Enter interactive session. */
   server_loop(pid, ptyfd, fdout, -1);
   
-  close(ptyfd);
-  close(fdout);
-
-
   /* Cancel the cleanup function. */
   fatal_remove_cleanup(pty_cleanup_proc, (void *)&cleanup_context);
 
@@ -2756,6 +2767,12 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
 
   /* Release the pseudo-tty. */
   pty_release(ttyname);
+  
+  /* Close the server side of the socket pairs.  We must do this after the
+     pty cleanup, so that another process doesn't get this pty while we're
+     still cleaning up. */
+  close(ptyfd);
+  close(fdout);
 }
 
 /* Sets the value of the given variable in the environment.  If the variable

@@ -8,7 +8,6 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Fri Mar  3 22:07:06 1995 ylo
-Last modified: Wed Jul 12 00:27:59 1995 ylo
 
 Description of the RSA algorithm can be found e.g. from the following sources:
 
@@ -36,6 +35,16 @@ Description of the RSA algorithm can be found e.g. from the following sources:
     ,$_)while read(STDIN,$m,($w=2*$d-1+length($n||die"$0 [-d] k n\n")&~1)/2)
 
 */
+
+/*
+ * $Id: rsa.c,v 1.2 1995/07/13 01:31:25 ylo Exp $
+ * $Log: rsa.c,v $
+ * Revision 1.2  1995/07/13  01:31:25  ylo
+ * 	Removed "Last modified" header.
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
 
 #include "includes.h"
 #include <gmp.h>

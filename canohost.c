@@ -14,32 +14,37 @@ Functions for returning the canonical host name of the remote site.
 */
 
 /*
- * $Id: canohost.c,v 1.4 1998/05/23 20:21:01 kivinen Exp $
+ * $Id: canohost.c,v 1.5 1999/02/21 19:51:58 ylo Exp $
  * $Log: canohost.c,v $
- * Revision 1.4  1998/05/23  20:21:01  kivinen
- * 	Changed () -> (void).
+ * Revision 1.5  1999/02/21 19:51:58  ylo
+ * 	Intermediate commit of ssh1.2.27 stuff.
+ * 	Main change is sprintf -> snprintf; however, there are also
+ * 	many other changes.
+ *
+ * Revision 1.4  1998/05/23 20:21:01  kivinen
+ *      Changed () -> (void).
  *
  * Revision 1.3  1997/03/19  15:59:45  kivinen
- * 	Limit hostname to 255 characters.
+ *      Limit hostname to 255 characters.
  *
  * Revision 1.2  1996/10/29 22:35:11  kivinen
- * 	log -> log_msg.
+ *      log -> log_msg.
  *
  * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
- * 	Imported ssh-1.2.13.
+ *      Imported ssh-1.2.13.
  *
  * Revision 1.5  1995/09/21  17:08:24  ylo
- * 	Added get_remote_port.
+ *      Added get_remote_port.
  *
  * Revision 1.4  1995/09/06  15:57:59  ylo
- * 	Fixed serious bugs.
+ *      Fixed serious bugs.
  *
  * Revision 1.3  1995/08/29  22:20:12  ylo
- * 	Added code to get ip number as string.
+ *      Added code to get ip number as string.
  *
  * Revision 1.2  1995/07/13  01:19:18  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
+ *      Removed "Last modified" header.
+ *      Added cvs log.
  *
  * $Endlog$
  */
@@ -71,7 +76,7 @@ char *get_remote_hostname(int socket)
   
   /* Map the IP address to a host name. */
   hp = gethostbyaddr((char *)&from.sin_addr, sizeof(struct in_addr),
-		     from.sin_family);
+                     from.sin_family);
   if (hp)
     {
       /* Got host name. */
@@ -79,38 +84,38 @@ char *get_remote_hostname(int socket)
       name[sizeof(name) - 1] = '\0';
       
       /* Convert it to all lowercase (which is expected by the rest of this
-	 software). */
+         software). */
       for (i = 0; name[i]; i++)
-	if (isupper(name[i]))
-	  name[i] = tolower(name[i]);
+        if (isupper(name[i]))
+          name[i] = tolower(name[i]);
 
       /* Map it back to an IP address and check that the given address actually
-	 is an address of this host.  This is necessary because anyone with
-	 access to a name server can define arbitrary names for an IP address.
-	 Mapping from name to IP address can be trusted better (but can still
-	 be fooled if the intruder has access to the name server of the
-	 domain). */
+         is an address of this host.  This is necessary because anyone with
+         access to a name server can define arbitrary names for an IP address.
+         Mapping from name to IP address can be trusted better (but can still
+         be fooled if the intruder has access to the name server of the
+         domain). */
       hp = gethostbyname(name);
       if (!hp)
-	{
-	  log_msg("reverse mapping checking gethostbyname for %.700s failed - POSSIBLE BREAKIN ATTEMPT!", name);
-	  strcpy(name, inet_ntoa(from.sin_addr));
-	  goto check_ip_options;
-	}
+        {
+          log_msg("reverse mapping checking gethostbyname for %.700s failed - POSSIBLE BREAKIN ATTEMPT!", name);
+          strcpy(name, inet_ntoa(from.sin_addr));
+          goto check_ip_options;
+        }
       /* Look for the address from the list of addresses. */
       for (i = 0; hp->h_addr_list[i]; i++)
-	if (memcmp(hp->h_addr_list[i], &from.sin_addr, sizeof(from.sin_addr))
-	    == 0)
-	  break;
+        if (memcmp(hp->h_addr_list[i], &from.sin_addr, sizeof(from.sin_addr))
+            == 0)
+          break;
       /* If we reached the end of the list, the address was not there. */
       if (!hp->h_addr_list[i])
-	{
-	  /* Address not found for the host name. */
-	  log_msg("Address %.100s maps to %.600s, but this does not map back to the address - POSSIBLE BREAKIN ATTEMPT!",
-	      inet_ntoa(from.sin_addr), name);
-	  strcpy(name, inet_ntoa(from.sin_addr));
-	  goto check_ip_options;
-	}
+        {
+          /* Address not found for the host name. */
+          log_msg("Address %.100s maps to %.600s, but this does not map back to the address - POSSIBLE BREAKIN ATTEMPT!",
+              inet_ntoa(from.sin_addr), name);
+          strcpy(name, inet_ntoa(from.sin_addr));
+          goto check_ip_options;
+        }
       /* Address was found for the host name.  We accept the host name. */
     }
   else
@@ -143,16 +148,18 @@ char *get_remote_hostname(int socket)
       ipproto = IPPROTO_IP;
     option_size = sizeof(options);
     if (getsockopt(socket, ipproto, IP_OPTIONS, (char *)options,
-		   &option_size) >= 0 && option_size != 0)
+                   &option_size) >= 0 && option_size != 0)
       {
-	cp = text;
-	/* Note: "text" buffer must be at least 3x as big as options. */
-	for (ucp = options; option_size > 0; ucp++, option_size--, cp += 3)
-	  sprintf(cp, " %2.2x", *ucp);
-	log_msg("Connection from %.100s with IP options:%.800s",
-	    inet_ntoa(from.sin_addr), text);
-	packet_disconnect("Connection from %.100s with IP options:%.800s", 
-			  inet_ntoa(from.sin_addr), text);
+        cp = text;
+        if (option_size > 256)
+          option_size = 256;
+        /* Note: "text" buffer must be at least 3x as big as options. */
+        for (ucp = options; option_size > 0; ucp++, option_size--, cp += 3)
+          sprintf(cp, " %2.2x", *ucp);
+        log_msg("Connection from %.100s with IP options:%.800s",
+            inet_ntoa(from.sin_addr), text);
+        packet_disconnect("Connection from %.100s with IP options:%.800s", 
+                          inet_ntoa(from.sin_addr), text);
       }
   }
 #endif
@@ -184,18 +191,18 @@ const char *get_canonical_hostname(void)
       fromlen = sizeof(from);
       memset(&from, 0, sizeof(from));
       if (getpeername(packet_get_connection_in(), (struct sockaddr *)&from, 
-		      &fromlen) < 0)
-	goto no_ip_addr;
+                      &fromlen) < 0)
+        goto no_ip_addr;
 
       tolen = sizeof(to);
       memset(&to, 0, sizeof(to));
       if (getpeername(packet_get_connection_out(), (struct sockaddr *)&to, 
-		      &tolen) < 0)
-	goto no_ip_addr;
+                      &tolen) < 0)
+        goto no_ip_addr;
       
       if (from.sin_family == AF_INET && to.sin_family == AF_INET &&
-	  memcmp(&from, &to, sizeof(from)) == 0)
-	goto return_ip_addr;
+          memcmp(&from, &to, sizeof(from)) == 0)
+        goto return_ip_addr;
 
     no_ip_addr:
       canonical_host_name = xstrdup("UNKNOWN");
@@ -229,18 +236,18 @@ const char *get_remote_ipaddr(void)
       fromlen = sizeof(from);
       memset(&from, 0, sizeof(from));
       if (getpeername(packet_get_connection_in(), (struct sockaddr *)&from, 
-		      &fromlen) < 0)
-	goto no_ip_addr;
+                      &fromlen) < 0)
+        goto no_ip_addr;
 
       tolen = sizeof(to);
       memset(&to, 0, sizeof(to));
       if (getpeername(packet_get_connection_out(), (struct sockaddr *)&to, 
-		      &tolen) < 0)
-	goto no_ip_addr;
+                      &tolen) < 0)
+        goto no_ip_addr;
       
       if (from.sin_family == AF_INET && to.sin_family == AF_INET &&
-	  memcmp(&from, &to, sizeof(from)) == 0)
-	goto return_ip_addr;
+          memcmp(&from, &to, sizeof(from)) == 0)
+        goto return_ip_addr;
 
     no_ip_addr:
       canonical_host_ip = xstrdup("UNKNOWN");
@@ -303,18 +310,18 @@ int get_remote_port(void)
       fromlen = sizeof(from);
       memset(&from, 0, sizeof(from));
       if (getpeername(packet_get_connection_in(), (struct sockaddr *)&from, 
-		      &fromlen) < 0)
-	goto no_ip_addr;
+                      &fromlen) < 0)
+        goto no_ip_addr;
 
       tolen = sizeof(to);
       memset(&to, 0, sizeof(to));
       if (getpeername(packet_get_connection_out(), (struct sockaddr *)&to, 
-		      &tolen) < 0)
-	goto no_ip_addr;
+                      &tolen) < 0)
+        goto no_ip_addr;
       
       if (from.sin_family == AF_INET && to.sin_family == AF_INET &&
-	  memcmp(&from, &to, sizeof(from)) == 0)
-	goto return_port;
+          memcmp(&from, &to, sizeof(from)) == 0)
+        goto return_port;
 
     no_ip_addr:
       return 65535;

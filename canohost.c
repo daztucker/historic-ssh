@@ -14,8 +14,14 @@ Functions for returning the canonical host name of the remote site.
 */
 
 /*
- * $Id: canohost.c,v 1.2 1995/07/13 01:19:18 ylo Exp $
+ * $Id: canohost.c,v 1.4 1995/09/06 15:57:59 ylo Exp $
  * $Log: canohost.c,v $
+ * Revision 1.4  1995/09/06  15:57:59  ylo
+ * 	Fixed serious bugs.
+ *
+ * Revision 1.3  1995/08/29  22:20:12  ylo
+ * 	Added code to get ip number as string.
+ *
  * Revision 1.2  1995/07/13  01:19:18  ylo
  * 	Removed "Last modified" header.
  * 	Added cvs log.
@@ -28,8 +34,8 @@ Functions for returning the canonical host name of the remote site.
 #include "xmalloc.h"
 #include "ssh.h"
 
-static struct sockaddr_in canonical_host_addr;
 static char *canonical_host_name = NULL;
+static char *canonical_host_ip = NULL;
 
 /* Return the canonical name of the host in the other side of the current
    connection (as returned by packet_get_connection).  The host name is
@@ -42,6 +48,10 @@ const char *get_canonical_hostname()
   struct hostent *hp;
   char name[512];
 
+  /* Check if we have previously retrieved this same name. */
+  if (canonical_host_name != NULL)
+    return canonical_host_name;
+
   /* Get client socket. */
   socket = packet_get_connection();
 
@@ -52,18 +62,6 @@ const char *get_canonical_hostname()
     {
       error("getpeername failed");
       return NULL;
-    }
-
-  /* Check if we have previously retrieved this same name. */
-  if (canonical_host_name != NULL)
-    {
-      /* Return the cached name if they match. */
-      if (memcmp(&canonical_host_addr, &from, sizeof(from)) == 0)
-	return canonical_host_name;
-
-      /* Otherwise free the cached value. */
-      xfree(canonical_host_name);
-      canonical_host_name = NULL;
     }
   
   /* Map the IP address to a host name. */
@@ -104,7 +102,7 @@ const char *get_canonical_hostname()
 	  /* Address not found for the host name. */
 	  log("Address %.100s maps to %.600s, but this does not map back to the address - POSSIBLE BREAKIN ATTEMPT!",
 	      inet_ntoa(from.sin_addr), name);
-	  return 0;
+	  return NULL;
 	}
       /* Address was found for the host name.  We accept the host name. */
     }
@@ -151,6 +149,36 @@ const char *get_canonical_hostname()
 #endif
 
   canonical_host_name = xstrdup(name);
-  memcpy(&canonical_host_addr, &from, sizeof(from));
   return canonical_host_name;
+}
+
+/* Returns the IP-address of the remote host as a string.  The returned
+   string need not be freed. */
+
+const char *get_remote_ipaddr()
+{
+  struct sockaddr_in from;
+  int fromlen, socket;
+
+  /* Check if we have previously retrieved this same name. */
+  if (canonical_host_ip != NULL)
+    return canonical_host_ip;
+
+  /* Get client socket. */
+  socket = packet_get_connection();
+
+  /* Get IP address of client. */
+  fromlen = sizeof(from);
+  memset(&from, 0, sizeof(from));
+  if (getpeername(socket, (struct sockaddr *)&from, &fromlen) < 0)
+    {
+      error("getpeername failed");
+      return NULL;
+    }
+
+  /* Get the IP address in ascii. */
+  canonical_host_ip = xstrdup(inet_ntoa(from.sin_addr));
+
+  /* Return ip address string. */
+  return canonical_host_ip;
 }

@@ -16,8 +16,19 @@ of X11, TCP/IP, and authentication connections.
 */
 
 /*
- * $Id: ssh.c,v 1.26 1998/01/02 06:22:47 kivinen Exp $
+ * $Id: ssh.c,v 1.29 1998/04/17 00:40:07 kivinen Exp $
  * $Log: ssh.c,v $
+ * Revision 1.29  1998/04/17 00:40:07  kivinen
+ * 	Fixed -f code so that it will also use setpgid/setpgrp if
+ * 	setsid is not available.
+ *
+ * Revision 1.28  1998/03/27 17:27:34  kivinen
+ * 	Removed TSS. Take copy of pw struct immediately.
+ *
+ * Revision 1.27  1998/03/27 17:02:23  kivinen
+ * 	Added -g option. Combined getpwuid calls to get around linux
+ * 	nis bug. Added gateway ports support.
+ *
  * Revision 1.26  1998/01/02 06:22:47  kivinen
  * 	Added xauthlocation option support.
  *
@@ -270,9 +281,6 @@ void usage()
 #ifdef WITH_DES
 	  "``des'', "
 #endif /* WITH_DES */
-#ifdef WITH_TSS
-	  "``tss'', "
-#endif /* WITH_TSS */
 #ifdef WITH_ARCFOUR
 	  "``arcfour'', "
 #endif /* WITH_ARCFOUR */
@@ -295,6 +303,7 @@ void usage()
   fprintf(stderr, "              forward them to the other side by connecting to host:port.\n");
 #endif
   fprintf(stderr, "  -C          Enable compression.\n");
+  fprintf(stderr, "  -g          Allow remote hosts to connect to local port forwardings\n");
   fprintf(stderr, "  -o 'option' Process the option as if it was read from a configuration file.\n");
   exit(1);
 }
@@ -397,17 +406,28 @@ int main(int ac, char **av)
   /* Set signals and core limits so that we cannot dump core.  */
   signals_prevent_core();
 
+  pw = getpwuid(original_real_uid);
+  if (!pw)
+    {
+      fprintf(stderr, "You don't exist, go away!\n");
+      exit(1);
+    }
+  
+  /* Take a copy of the returned structure. */
+  memset(&pwcopy, 0, sizeof(pwcopy));
+  pwcopy.pw_name = xstrdup(pw->pw_name);
+  pwcopy.pw_passwd = xstrdup(pw->pw_passwd);
+  pwcopy.pw_uid = pw->pw_uid;
+  pwcopy.pw_gid = pw->pw_gid;
+  pwcopy.pw_dir = xstrdup(pw->pw_dir);
+  pwcopy.pw_shell = xstrdup(pw->pw_shell);
+  pw = &pwcopy;
+  
   /* Start reading files as the specified user.  However, if we are not running
      suid root, all access can be done locally, and there is no need to
      initialize explicitly. */
   if (original_real_uid != original_effective_uid)
     {
-      pw = getpwuid(original_real_uid);
-      if (!pw)
-	{
-	  fprintf(stderr, "You don't exist, go away!\n");
-	  exit(1);
-	}
       userfile_init(pw->pw_name, pw->pw_uid, pw->pw_gid, NULL, NULL);
     }
 
@@ -639,6 +659,9 @@ int main(int ac, char **av)
 	  use_priviledged_port = 0;
 	  break;
 
+	case 'g':
+	  options.gateway_ports = 1;
+
 	default:
 	  usage();
 	}
@@ -685,24 +708,6 @@ int main(int ac, char **av)
 	fprintf(stderr, "Pseudo-terminal will not be allocated because stdin is not a terminal.\n");
       tty_flag = 0;
     }
-
-  /* Get user data. */
-  pw = getpwuid(original_real_uid);
-  if (!pw)
-    {
-      fprintf(stderr, "You don't exist, go away!\n");
-      exit(1);
-    }
-  
-  /* Take a copy of the returned structure. */
-  memset(&pwcopy, 0, sizeof(pwcopy));
-  pwcopy.pw_name = xstrdup(pw->pw_name);
-  pwcopy.pw_passwd = xstrdup(pw->pw_passwd);
-  pwcopy.pw_uid = pw->pw_uid;
-  pwcopy.pw_gid = pw->pw_gid;
-  pwcopy.pw_dir = xstrdup(pw->pw_dir);
-  pwcopy.pw_shell = xstrdup(pw->pw_shell);
-  pw = &pwcopy;
 
   /* Initialize "log" output.  Since we are the client all output actually
      goes to the terminal. */
@@ -992,7 +997,8 @@ int main(int ac, char **av)
 	    options.local_forwards[i].host_port);
       channel_request_local_forwarding(options.local_forwards[i].port,
 				       options.local_forwards[i].host,
-				       options.local_forwards[i].host_port);
+				       options.local_forwards[i].host_port,
+				       options.gateway_ports);
     }
 
   /* Initiate remote TCP/IP port forwardings. */
@@ -1021,7 +1027,17 @@ int main(int ac, char **av)
 	exit(0);
 #ifdef HAVE_SETSID
       setsid();
+#else /* HAVE_SETSID */
+#ifdef HAVE_SETPGID
+      setpgid(0, 0);
+#else
+      setpgrp(0, 0);
+#endif /* HAVE_SETPGID */
 #endif /* HAVE_SETSID */
+      if(tty_flag) {	/* user did combination of -f and -t */
+        debug("Stopped using local pty.");
+        tty_flag = 0;	/* no longer have a tty... */
+      }
     }
 
   /* If a command was specified on the command line, execute the command now.

@@ -14,6 +14,9 @@ Created: Tue Aug 22 17:21:32 1995 ylo
 
 /*
  * $Log: fdlim.h,v $
+ * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.4  1995/09/06  15:59:56  ylo
  * 	Added support for machines that don't have RLIM_INFINITY.
  *

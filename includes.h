@@ -14,8 +14,16 @@ This file includes most of the needed system headers.
 */
 
 /*
- * $Id: includes.h,v 1.7 1995/08/18 22:54:59 ylo Exp $
+ * $Id: includes.h,v 1.9 1995/09/13 11:57:21 ylo Exp $
  * $Log: includes.h,v $
+ * Revision 1.9  1995/09/13  11:57:21  ylo
+ * 	Changed the code so that "short" gets used as word32 on Cray.
+ * 	Some of the code depends on that.  (BTW, "short" has really
+ * 	weird semantics on Cray...)
+ *
+ * Revision 1.8  1995/09/11  17:35:27  ylo
+ * 	Define word32 properly if any int type is 32 bits.
+ *
  * Revision 1.7  1995/08/18  22:54:59  ylo
  * 	Added using netinet/in_system.h if netinet/in_systm.h does not
  * 	exist (some old linux versions, at least).
@@ -54,10 +62,18 @@ This file includes most of the needed system headers.
 
 typedef unsigned short word16;
 
-#if SIZEOF_LONG == 8
+#if SIZEOF_LONG == 4
+typedef unsigned long word32;
+#else
+#if SIZEOF_INT == 4
 typedef unsigned int word32;
 #else
-typedef unsigned long word32;
+#if SIZEOF_SHORT >= 4
+typedef unsigned short word32;
+#else
+YOU_LOSE
+#endif
+#endif
 #endif
 
 #if defined(__mips)
@@ -255,6 +271,13 @@ char *getpass(const char *);
 
 #ifdef sony_news
 #undef HAVE_VHANGUP
+#endif
+
+#if USE_STRLEN_FOR_AF_UNIX
+#define AF_UNIX_SIZE(unaddr) \
+  (sizeof((unaddr).sun_family) + strlen((unaddr).sun_path) + 1)
+#else
+#define AF_UNIX_SIZE(unaddr) sizeof(unaddr)
 #endif
 
 #endif /* INCLUDES_H */

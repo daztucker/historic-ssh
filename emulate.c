@@ -42,7 +42,12 @@ int check_emulation(int her_major_version, int her_minor_version,
 			 -1 : 0));
   int total_diff = (major_diff ? major_diff
 		    : minor_diff);
-  
+
+  if (her_major_version <= 1 && her_minor_version <= 4)
+    {
+      emulation_information |= EMULATE_OLD_AGENT_BUG;
+      debug("Agent forwarding will be disabled because of protocol version mismatch");
+    }
   switch (total_diff)
     {
     case -1:

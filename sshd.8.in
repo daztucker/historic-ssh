@@ -9,8 +9,11 @@
 .\"
 .\" Created: Sat Apr 22 21:55:14 1995 ylo
 .\"
-.\" $Id: sshd.8.in,v 1.2 1996/08/13 00:25:15 ylo Exp $
+.\" $Id: sshd.8.in,v 1.3 1996/10/29 22:47:36 kivinen Exp $
 .\" $Log: sshd.8.in,v $
+.\" Revision 1.3  1996/10/29 22:47:36  kivinen
+.\" 	Documented ListenAddress.
+.\"
 .\" Revision 1.2  1996/08/13 00:25:15  ylo
 .\" 	Documented that $HOME/.ssh/rc is run with user's shell,
 .\" 	/etc/sshrc with /bin/sh.
@@ -294,6 +297,10 @@ decrypting captured sessions by later breaking into the machine and
 stealing the keys.  The key is never stored anywhere.  If the value is
 0, the key is never regenerated.  The default is 3600
 (seconds).
+.TP
+.B ListenAddress
+Specifies the ip address of the interface where the sshd server socket
+is bind.
 .TP
 .B LoginGraceTime
 The server disconnects after this time if the user has not

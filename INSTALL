@@ -96,20 +96,21 @@ This software has been used at least in the following environments.
 	BSD 4.4; several platforms
 	BSD/OS 1.1, 2.0.1; i486
 	BSD/386 1.1; i386
+	BSDI 2.1; x86
 	ConvexOS 10.1; Convex
 	DGUX 5.4R2.10; DGUX
 	FreeBSD 1.x, 2.x; Pentium
 	HPUX 7.x, 9.x, 10.0; HPPA
 	IRIX 5.2, 5.3; SGI Indy
 	IRIX 6.0.1; Mips-R8000
-	Linux 1.2.x, 2.0.x Slackware 2.x, 3.x, RedHat 2.1, 3.0; i486
+	Linux 1.2.x, 2.0.x Slackware 2.x, 3.x, RedHat 2.1, 3.0; i486, Sparc
 	Linux/Mach3, Macintosh(PowerPC)
 	Mach3; Mips
 	Mach3/Lites; i386
 	Machten 2.2VM (m68k); Macintosh
 	NCR Unix 3.00; NCR S40
 	NetBSD 1.0A, 1.1, 1.2; Pentium, Sparc, Mac68k, Alpha
-	NextSTEP 3.3; i486
+	NextSTEP 3.3; 68040
 	OSF/1 3.0, 3.2, 3.2; Alpha
 	Sequent Dynix/ptx 3.2.0 V2.1.0; i386
 	SCO Unix; i386 (client only)
@@ -137,10 +138,18 @@ following ways:
   - Configure ssh with "CFLAGS=-O ./configure" (i.e., without debug info).
 More information on this problem is available in
 ftp://ftp.netcom.com/pub/ze/zenon/linux.
+(This is pretty obsolete, no one seems to use gcc 2.7.0 anymore.
+Since autodetecting this problem started to cause other problems
+on new RedHat distributions, I removed the autodetection. -ttsalo)
+
+RedHat Linux (and other group naming scheme) note: In order for 
+RSA authentication to work, users' home and .ssh directories must 
+not be group writeable.
 
 BSDI BSD/OS note: Apparently the gcc that comes with BSD/OS is
 broken.  Use "CC=cc ./configure" or "setenv CC cc; ./configure" when
-configuring to force it to use cc instead of gcc.
+configuring to force it to use cc instead of gcc. (Note: BSDI 2.1
+comes with good gcc.)
 
 ConvexOS note: Convex "make" is broken.  Install GNU make first if you
 have trouble compiling ssh.
@@ -354,7 +363,7 @@ Opening connections is too slow
   to use shorter host key (512 bits) and server key (384 bits),
   login time dropped to about a second.  A symptom of this problem is
   that "ssh -v hostname" waits for a long time after printing "Sent
-  encrypted session key". 
+  encrypted session key".
 
   Shorter host keys can be generated with "ssh-keygen -b 512", giving
   /etc/ssh_host_key as the file in which to save the key (with empty

@@ -1,3 +1,86 @@
+Wed Oct 30 00:11:34 1996  Tero Kivinen  <kivinen@ssh.fi>
+
+	* Added username to password prompt.
+
+	* Made checks even more strict in
+	auth_input_request_forwarding(). 
+	
+	* Renamed log() function to log_msg().
+	
+	* Upgraded from gmp-2.0.2 to gmp-2.0.2-ssh-2 (gmp 2.0.2 with
+	autoconf scripts made by Tatu Ylonen)
+
+	* Cleaned up TODO file. 
+
+	* Changed protocol version to 1.5 so new ssh client and server
+ 	can detect old (erroneous) agent forwarding protocol, and
+ 	disable agent forwarding. 
+
+	* Do not define SSH_AUTHENTICATION_SOCKET environment variable
+        if the agent could not be started.
+	
+Tue Oct 29 12:34:29 1996  Tomi Salo  <ttsalo@piippu.ssh.fi>
+
+	* Improved the security of auth_input_request_forwarding().
+
+	* Agent's behaviour improved: socket is created and listened to
+ 	before forking, and if creation fails, parent still executes
+ 	the specified command (without forking the child).
+
+Mon Oct 28 18:31:03 1996  Tatu Ylonen  <ylo@pilari.ssh.fi>
+
+	* Added Cray T90. Fixed recognition of mc88110.
+
+Thu Oct 24 14:05:44 1996  Tomi Salo  <ttsalo@piippu.ssh.fi>
+
+	* Cleaning up old fd-auth trash.
+	
+Wed Oct 23 16:00:19 1996  Tomi Salo  <ttsalo@piippu.ssh.fi>
+
+	* Renamed BINDIR from Makefile to SSH_BINDIR.
+
+Mon Oct 21 16:28:43 1996  Tomi Salo  <ttsalo@piippu.ssh.fi>
+
+	* Window resizing fix for ultrix & NeXT from Corey Satten
+
+	* New agent code. Many changes, agent stuff should now work as
+	defined in the specs.
+
+Sat Oct 19 02:02:24 1996  Tatu Ylonen  <ylo@pilari.ssh.fi>
+
+	* Upgraded to the latest config.guess (from autoconf-2.10).
+        Included recent patches by ttsalo (for openbsd).
+        m68k-apple-sysv is now called m68k-apple-aux*.
+	
+Mon Oct 14 14:17:14 1996  Tomi Salo  <ttsalo@piippu.ssh.fi>
+
+	* Install X_PROGRAMS too.
+
+	* Configuring for OpenBSD (from Thorsten Lockert
+	<tholo@SigmaSoft.COM> 
+
+Fri Oct 11 13:01:56 1996  Tomi Salo  <ttsalo@piippu.ssh.fi>
+
+	* Fixed the checking of existence of authorized_keys.
+	
+Tue Oct  8 13:50:44 1996  Tomi Salo  <ttsalo@piippu.ssh.fi>
+
+	* Allow long passwords for HP-UX TCB authentication.
+	
+Mon Oct  7 14:40:45 1996  Tomi Salo  <ttsalo@piippu.ssh.fi>
+
+	* Configuring for hurd, a small fix to do_popen(),
+	check in minfd.c, conditional use of TCP_NODELAY in
+	packet.c from "Charles M. Hannum" <mycroft@gnu.ai.mit.edu> 
+	added.
+
+Sat Oct  5 12:21:03 1996  Tatu Ylonen  <ylo@pilari.ssh.fi>
+
+	* (yesterday) Released ssh-1.2.16.
+	
+	* (yesterday) Fixed a bug in RSA authentication caused by
+	  previous changes.
+	
 Fri Oct  4 05:57:59 1996  Tatu Ylonen  <ylo@pilari.ssh.fi>
 
 	* Released ssh-1.2.15.

@@ -8,8 +8,37 @@
 #
 # Created: Wed Mar 22 17:37:49 1995 ylo
 #
-# $Id: Makefile.in,v 1.14 1996/09/29 22:46:09 kivinen Exp $
+# $Id: Makefile.in,v 1.23 1996/10/30 04:21:58 kivinen Exp $
 # $Log: Makefile.in,v $
+# Revision 1.23  1996/10/30 04:21:58  kivinen
+# 	Changed to tar to use p flag.
+#
+# Revision 1.22  1996/10/29 22:39:38  kivinen
+# 	Changed gmp-2.0.2 to gmp-2.0.2-ssh-2.
+#
+# Revision 1.21  1996/10/24 14:04:40  ttsalo
+#       Removed check-fds.c from DISTFILES
+#
+# Revision 1.20  1996/10/23 16:00:19  ttsalo
+#       BINDIR (in .c.o) is back, this time named SSH_BINDIR
+#
+# Revision 1.19  1996/10/22 13:15:16  ttsalo
+#       Removed permanent-fd stuff
+#
+# Revision 1.18  1996/10/20 02:59:29  ylo
+# 	Removed BINDIR.  It is not used anywhere, and causes problems
+# 	on DGUX.
+#
+# Revision 1.17  1996/10/14 17:32:59  ttsalo
+#       Don't pack minfd.h in distribution
+#
+# Revision 1.16  1996/10/14 14:17:14  ttsalo
+#         Install X_PROGRAMS too
+#
+# Revision 1.15  1996/10/08 14:05:16  ttsalo
+# 	Make distclean in gmp-dir instead of just make clean
+# 	when making dist.
+#
 # Revision 1.14  1996/09/29 22:46:09  kivinen
 # 	Updated gmp-2.0 to gmp-2.0.2. Added tags target.
 #
@@ -158,7 +187,7 @@ SERVER_CONFIG_FILE = $(etcdir)/sshd_config
 
 SHELL = /bin/sh
 
-GMPDIR 		= gmp-2.0.2
+GMPDIR 		= gmp-2.0.2-ssh-2
 GMPLIBS 	= -L$(GMPDIR) -lgmp
 GMPDEP 		= $(GMPDIR)/gmp.h $(GMPDIR)/libgmp.a
 
@@ -179,7 +208,7 @@ XLIBS		= $(X_LIBS) $(X_PRE_LIBS) -lX11 $(X_EXTRA_LIBS)
 COMMON_OBJS = $(LIBOBJS) $(CONFOBJS) \
 	rsa.o randoms.o md5.o buffer.o emulate.o packet.o compress.o \
 	xmalloc.o ttymodes.o newchannels.o bufaux.o authfd.o authfile.o crc32.o \
-	rsaglue.o tss.o cipher.o des.o match.o arcfour.o mpaux.o minfd.o \
+	rsaglue.o tss.o cipher.o des.o match.o arcfour.o mpaux.o \
 	userfile.o signals.o blowfish.o
 SSHD_OBJS = sshd.o auth-rhosts.o auth-passwd.o auth-rsa.o auth-rh-rsa.o pty.o \
 	log-server.o login.o hostfile.o canohost.o servconf.o tildexpand.o \
@@ -191,17 +220,16 @@ KEYGEN_OBJS = ssh-keygen.o log-client.o readpass.o rsa.o randoms.o md5.o \
 	bufaux.o userfile.o signals.o blowfish.o $(LIBOBJS) $(CONFOBJS)
 AGENT_OBJS = ssh-agent.o log-client.o rsa.o randoms.o md5.o buffer.o \
 	xmalloc.o bufaux.o authfd.o authfile.o rsaglue.o tss.o cipher.o \
-	des.o arcfour.o mpaux.o minfd.o userfile.o signals.o blowfish.o \
+	des.o arcfour.o mpaux.o userfile.o signals.o blowfish.o \
 	$(LIBOBJS) $(CONFOBJS)
 ADD_OBJS = ssh-add.o log-client.o readpass.o rsa.o randoms.o md5.o buffer.o \
 	xmalloc.o bufaux.o authfd.o authfile.o tss.o cipher.o blowfish.o \
-	des.o arcfour.o mpaux.o minfd.o userfile.o signals.o $(LIBOBJS) \
+	des.o arcfour.o mpaux.o userfile.o signals.o $(LIBOBJS) \
 	$(CONFOBJS)
 SCP_OBJS = scp.o xmalloc.o
-GEN_MINFD_OBJS = gen_minfd.o $(LIBOBJS)
 EDD_OBJS = rsa.o randoms.o md5.o buffer.o xmalloc.o bufaux.o authfd.o \
 	authfile.o crc32.o rsaglue.o tss.o cipher.o des.o match.o arcfour.o \
-	mpaux.o minfd.o userfile.o signals.o idea.o blowfish.o \
+	mpaux.o userfile.o signals.o idea.o blowfish.o \
         readpass.o edd.o edd-block.o
 SSH_ASKPASS_OBJS = ssh-askpass.o xmalloc.o
 
@@ -210,7 +238,6 @@ USER_SHELLS = sh jsh ksh csh tcsh bash zsh ash
 SRCS = $(SSHD_OBJS:.o=.c) $(SSH_OBJS:.o=.c) $(KEYGEN_OBJS:.o=.c) \
 	$(AGENT_OBJS:.o=.c) $(ADD_OBJS:.o=.c) \
 	$(SCP_OBJS:.o=.c) \
-	$(GEN_MINFD_OBJS:.o=.c) \
 	$(SSH_ASKPASS_OBJS:.o=.c)
 EXTRA_SRCS = memmove.c strerror.c remove.c random.c putenv.c crypt.c osfc2.c \
 	socketpair.c
@@ -223,7 +250,7 @@ MAN8SOURCES = sshd.8.in
 DISTFILES = COPYING README README.SECURID INSTALL TODO libdes-README \
 	libdes-COPYING libdes-ARTISTIC gnu-COPYING-GPL OVERVIEW \
 	configure configure.in config.guess config.sub Makefile.in \
-	check-fds.c host_config.sample config.sample \
+	host_config.sample config.sample \
 	acconfig.h config.h.in server_config.sample \
 	$(MAN1SOURCES) $(MAN8SOURCES) $(SRCS) $(EXTRA_SRCS) *.h install-sh \
 	make-ssh-known-hosts.pl RFC.nroff RFC rfc-pg.c \
@@ -248,7 +275,7 @@ rfc-pg: rfc-pg.c
 	$(CC) -o rfc-pg rfc-pg.c
 
 .c.o:
-	$(CC) -c -I. -I$(srcdir)/$(GMPDIR) -I$(srcdir)/$(ZLIBDIR) $(DEFS) -DHOST_KEY_FILE=\"$(HOST_KEY_FILE)\" -DHOST_CONFIG_FILE=\"$(HOST_CONFIG_FILE)\" -DSERVER_CONFIG_FILE=\"$(SERVER_CONFIG_FILE)\" -DSSH_PROGRAM=\"$(SSH_PROGRAM)\" -DETCDIR=\"$(etcdir)\" -DPIDDIR=\"$(piddir)\" -DBINDIR=\"$(bindir)\" $(CFLAGS) $(X_CFLAGS) $<
+	$(CC) -c -I. -I$(srcdir)/$(GMPDIR) -I$(srcdir)/$(ZLIBDIR) $(DEFS) -DHOST_KEY_FILE=\"$(HOST_KEY_FILE)\" -DHOST_CONFIG_FILE=\"$(HOST_CONFIG_FILE)\" -DSERVER_CONFIG_FILE=\"$(SERVER_CONFIG_FILE)\" -DSSH_PROGRAM=\"$(SSH_PROGRAM)\" -DETCDIR=\"$(etcdir)\" -DPIDDIR=\"$(piddir)\" -DSSH_BINDIR=\"$(bindir)\" $(CFLAGS) $(X_CFLAGS) $<
 
 sshd: $(SSHD_OBJS) $(GMPDEP) $(RSAREFDEP) $(ZLIBDEP)
 	-rm -f sshd
@@ -283,15 +310,6 @@ make-ssh-known-hosts: make-ssh-known-hosts.pl
 	sed "s#&PERL&#$(PERL)#" <$(srcdir)/make-ssh-known-hosts.pl >make-ssh-known-hosts
 	chmod +x make-ssh-known-hosts
 
-gen_minfd: $(GEN_MINFD_OBJS)
-	$(CC) $(LDFLAGS) -o gen_minfd $(GEN_MINFD_OBJS)
-
-minfd.o: minfd.h
-minfd.h: gen_minfd
-	rm -f minfd.h minfd.h~
-	./gen_minfd $(USER_SHELLS) > minfd.h~
-	mv -f minfd.h~ minfd.h
-
 GMP_COPY_SOURCES = mpz_gcd.c mpz_powm.c mpz_pow_ui.c mpz_add.c mpz_sub.c \
 		mpz_mul.c mpz_cmp.c mpz_sqrtrem.c
 $(GMPDIR)/libgmp.a:
@@ -308,7 +326,7 @@ $(ZLIBDEP):
 
 $(RSAREFSRCDIR)/librsaref.a:
 	-if test '!' -d $(RSAREFDIR); then \
-	  (cd $(srcdir); tar cf - $(RSAREFSRCDIR)) | tar xf -; fi
+	  (cd $(srcdir); tar pcf - $(RSAREFSRCDIR)) | tar pxf -; fi
 	cd $(RSAREFSRCDIR); $(MAKE) -f ../../Makefile librsaref.a
 
 RSAREFSRCS = desc.c digit.c md2c.c md5c.c nn.c prime.c r_dh.c r_encode.c \
@@ -373,7 +391,7 @@ install: $(PROGRAMS) make-dirs generate-host-key install-configs
 	  rm -f $(install_prefix)$(bindir)/`echo slogin | sed '$(transform)'`;\
 	  $(LN_S) ssh \
 	    $(install_prefix)$(bindir)/`echo slogin | sed '$(transform)'`; fi
-	-for p in $(NORMAL_PROGRAMS); do \
+	-for p in $(NORMAL_PROGRAMS) $(X_PROGRAMS); do \
 	  $(INSTALL_PROGRAM) -m 0755 $$p $(install_prefix)$(bindir)/$$p; \
 	  if test "`echo $$p | sed '$(transform)'`" '!=' $$p; then \
 	    rm -f $(install_prefix)$(bindir)/`echo $$p | sed '$(transform)'`; \
@@ -461,7 +479,7 @@ uninstall:
 	done
 
 clean:
-	-rm -f *.o minfd.h gmon.out *core $(PROGRAMS) gen_minfd rfc-pg
+	-rm -f *.o gmon.out *core $(PROGRAMS) rfc-pg
 	cd $(GMPDIR); $(MAKE) clean
 #	cd $(RSAREFSRCDIR); rm -f *.o *.a
 	cd $(ZLIBDIR); $(MAKE) clean
@@ -477,13 +495,13 @@ dist:
 	-mkdir $(DISTNAME)
 	cp $(DISTFILES) $(DISTNAME)
 	-rm $(DISTNAME)/config.h
-	tar cf - $(GMPDIR) | (cd $(DISTNAME); tar xf -)
-	cd $(DISTNAME)/$(GMPDIR); $(MAKE) clean
+	tar pcf - $(GMPDIR) | (cd $(DISTNAME); tar pxf -)
+	cd $(DISTNAME)/$(GMPDIR); $(MAKE) distclean
 #	tar cf - $(RSAREFDIR) | (cd $(DISTNAME); tar xf -)
 #	cd $(DISTNAME)/$(RSAREFSRCDIR); rm -f *.o *.a
-	tar cf - $(ZLIBDIR) | (cd $(DISTNAME); tar xf -)
+	tar pcf - $(ZLIBDIR) | (cd $(DISTNAME); tar pxf -)
 	cd $(DISTNAME)/$(ZLIBDIR); rm -f *.o *.a
-	tar cf $(DISTNAME).tar $(DISTNAME)
+	tar pcf $(DISTNAME).tar $(DISTNAME)
 	-rm -f $(DISTNAME).tar.gz
 	gzip $(DISTNAME).tar
 	rm -rf $(DISTNAME)

@@ -335,8 +335,9 @@ void compute_dimensions()
 
   w_height += relief * 2 + margin * 2;
   status = XGetGeometry(display, DefaultRootWindow(display),
-			&root, &dummy, &dummy, &d_width,
-			&d_height, &dummy, &dummy);
+                        &root, &dummy, &dummy, (unsigned int *)&d_width,
+                        (unsigned int *)&d_height, (unsigned int *)&dummy, 
+			(unsigned int *)&dummy);
   w_x = (d_width - w_width) / 2;
   w_y = (d_height - w_height) / 2;
 }

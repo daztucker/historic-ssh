@@ -1,7 +1,3 @@
-Compiling without X11 breaks for ssh-askpass.
-
-SunOS has utmp problems (slot 0?).
-
 The first part of README is too long.
 
 Merge rdist into the ssh distribution. -> ssh-1.3.1
@@ -53,8 +49,6 @@ information about encryption status.
 Host key fingerprints (ssh-keygen, shown when mismatch or new).
 Thomas.Koenig@ciw.uni-karlsruhe.de.
 
-Add "tags" target in Makefile.in.
-
 Consider using snprintf instead of sprintf.
 
 debug() should append \r\n when in raw mode.
@@ -71,25 +65,14 @@ scp sometimes gives Z_DATA_ERROR in inflate (alpha?).  (bortzmeyer@pasteur.fr)
 
 Fix (note not always the suggested fix):
 > rfc-pg.c:56:exit used without including <stdlib.h>
-> osfc2.c:76:log used without including <math.h>
 > remove.c:5:unlink used without including <unistd.h>
 > scp.c:265:tolocal begins with to, which is reserved for <ctype.h>
 > scp.c:266:toremote begins with to, which is reserved for <ctype.h>
-> authfd.c:130:sin used without including <math.h>
-> ssh-agent.c:142:log used without including <math.h>
-> ssh-agent.c:428:sin used without including <math.h>
-> check-fds.c:38:fcntl used without including <unistd.h>
-> check-fds.c:48:ttyname used without including <unistd.h>
-> check-fds.c:52:exit used without including <stdlib.h>
-
-ssh pilarista tranceen -> Received Signal 13
 
 Store IP-address in utmp if host name too long?
 From: Holger Trapp <Holger.Trapp@Informatik.TU-Chemnitz.DE>
 
 Makefile.in: Warn if installing as non-root
-
-Document ListenAddress in sshd.8.in.
 
 RSAPrivateDecrypt sometimes fails on Alpha (keys < 1024 bytes).
 Brad Karp <karp@eecs.harvard.edu>
@@ -103,8 +86,6 @@ Should somehow process password changes...
 
 Client should prompt for password multiple times.
 
-Client should show e.g. "kivinen's password: " when prompting for password.
-
 Check operation with RSAREF on alpha.
 
 Test compiling with Solaris 2.4 native compiler (v 3.0).
@@ -117,5 +98,4 @@ several accounts with the same uid.
 
 Check that log messages from tcp_wrappers with ssh get logged.
 
-Put similar permission checks for authorized_keys that now exist for rhosts.
 

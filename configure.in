@@ -8,8 +8,40 @@
 #
 # Created: Wed Mar 22 18:02:48 1995 ylo
 #
-# $Id: configure.in,v 1.23 1996/10/03 13:53:17 ttsalo Exp $
+# $Id: configure.in,v 1.31 1996/10/30 04:24:23 kivinen Exp $
 # $Log: configure.in,v $
+# Revision 1.31  1996/10/30 04:24:23  kivinen
+# 	Changed to require 2.10.
+# 	Changed cflags to have -Ae instead of -Aa for hpux.
+# 	Added checks if prot.h is broken. Give error message if so.
+# 	Export CC and CFLAGS to subdirectories.
+# 	Fixed bug in ac_cv_header_shadow_h checking.
+#
+# Revision 1.30  1996/10/29 22:36:48  kivinen
+# 	Added --disable-asm help text. Updated gmp-2.0.2 to
+# 	gmp-2.0.2-ssh-2.
+#
+# Revision 1.29  1996/10/22 13:59:22  ttsalo
+#       Fixed a bug
+#
+# Revision 1.28  1996/10/19 02:03:47  ylo
+# 	Use m68k-apple-aux* for A/UX (instead of old
+# 	m68k-apple-sysv).  This is now the name used by GNU.
+#
+# Revision 1.27  1996/10/17 08:16:19  ttsalo
+#       Check for xauth when configuring with X
+#
+# Revision 1.26  1996/10/14 16:15:47  ttsalo
+#       Configuring for OpenBSD (from Thorsten Lockert <tholo@SigmaSoft.COM>
+#
+# Revision 1.25  1996/10/07 13:00:47  ttsalo
+# 	HP-UX shadow password detection removed from "*-*-hpux7.*"
+#       	section and placed in "*-*-hpux*".
+#
+# Revision 1.24  1996/10/07 11:40:19  ttsalo
+# 	Configuring for hurd and a small fix to do_popen()
+# 	from "Charles M. Hannum" <mycroft@gnu.ai.mit.edu> added.
+#
 # Revision 1.23  1996/10/03 13:53:17  ttsalo
 # 	Configuring for m68k-apple-sysv added
 #
@@ -220,7 +252,7 @@
 
 AC_INIT(sshd.c)
 AC_CONFIG_HEADER(config.h)
-AC_PREREQ(2.7)
+AC_PREREQ(2.10)
 
 if test -f /etc/krb.conf; then
   AC_MSG_WARN(Ssh does not yet support Kerberos!)
@@ -300,6 +332,12 @@ case "$host" in
       CFLAGS="$CFLAGS -Aa -D_HPUX_SOURCE"
     fi
     AC_DEFINE(HPSUX_NONSTANDARD_X11_KLUDGE)
+    ;;
+  *-*-hpux*)
+    # HPUX flags from jgotts@engin.umich.edu
+    if test -z "$GCC"; then
+      CFLAGS="$CFLAGS -Ae -D_HPUX_SOURCE"
+    fi
     AC_MSG_CHECKING(for HPUX tcb auth option)
     if test -f /tcb/files/auth/system/pw_id_map; then
       AC_MSG_RESULT(yes)
@@ -307,12 +345,6 @@ case "$host" in
       LIBS="$LIBS -lsec"
     else
       AC_MSG_RESULT(no)
-    fi
-    ;;
-  *-*-hpux*)
-    # HPUX flags from jgotts@engin.umich.edu
-    if test -z "$GCC"; then
-      CFLAGS="$CFLAGS -Aa -D_HPUX_SOURCE"
     fi
     AC_DEFINE(HPSUX_NONSTANDARD_X11_KLUDGE)
     no_utmpx=yes
@@ -328,6 +360,15 @@ case "$host" in
       AC_MSG_RESULT(yes)
       AC_DEFINE(HAVE_OSF1_C2_SECURITY)
       CONFOBJS="$CONFOBJS osfc2.o"
+      OLD_CFLAGS="$CFLAGS"
+      CFLAGS="$CFLAGS -I."
+      AC_TRY_COMPILE([#include <sys/types.h>
+#include <sys/security.h>
+#include <prot.h>], , , AC_MSG_ERROR([Could not include <prot.h> file.
+The digital unix 4.0 prot.h tries to include <acl.h> instead of <sys/acl.h>.
+Fix the /usr/include/prot.h to include correct file. You can also copy
+/usr/include/prot.h to this directory and fix that copy of prot.h.]))
+      CFLAGS="$OLD_CFLAGS"
     else
       AC_MSG_RESULT(no)
     fi
@@ -362,7 +403,7 @@ case "$host" in
     # From snabb@niksula.hut.fi
     no_vhangup=yes
     ;;
-  m68k-apple-sysv)
+  m68k-apple-aux*)
     # Macintosh A/UX tweaks - prune LIB = -L/usr/local/lib, exceeds ld capacity
     #   add -lposix to it, needed for termio stuff
     LIBS="-lposix"
@@ -417,7 +458,7 @@ case "$host" in
     # pw_passwd automatically when running as root.
     no_shadow_password_checking=yes
     ;;
-  *-*-netbsd*)
+  *-*-netbsd*|*-*-openbsd*)
     # From Ollivier Robert: FreeBSD and NetBSD use master.passwd, but set
     # pw_passwd automatically when running as root.
     no_shadow_password_checking=yes
@@ -425,6 +466,8 @@ case "$host" in
   *)
     ;;
 esac
+
+export CFLAGS CC
 
 # Socket pairs appear to be broken on several systems.  I don't know exactly
 # where, so I'll use pipes everywhere for now.
@@ -482,7 +525,7 @@ AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
 AC_CHECK_HEADERS(unistd.h rusage.h sys/time.h lastlog.h utmp.h shadow.h)
 AC_CHECK_HEADERS(sgtty.h sys/select.h sys/ioctl.h machine/endian.h)
-AC_CHECK_HEADERS(paths.h usersec.h utime.h netinet/in_systm.h ulimit.h)
+AC_CHECK_HEADERS(paths.h usersec.h utime.h netinet/in_systm.h netinet/in_system.h netinet/ip.h netinet/tcp.h ulimit.h)
 AC_HEADER_TIME
 AC_HEADER_DIRENT
 AC_HEADER_STAT
@@ -534,7 +577,7 @@ AC_PROGRAMS_CHECK(MAKEDEP, makedepend makedep, makedepend)
 
 AC_PATH_XTRA
 
-if test "$no_x" = yes; then
+if test "x$no_x" = "x"; then
   X_PROGRAMS=""
 else
   X_PROGRAMS="ssh-askpass"
@@ -545,6 +588,16 @@ AC_PATH_PROG(XAUTH_PATH, xauth)
 if test -n "$XAUTH_PATH"; then
   AC_DEFINE_UNQUOTED(XAUTH_PATH, "$XAUTH_PATH")
 fi
+
+if test "$no_x" = yes; then
+  X_PROGRAMS=""
+else
+  if test "x$XAUTH_PATH" = "x"; then
+    AC_MSG_ERROR(configuring with X but xauth not found - aborting)
+  fi
+  X_PROGRAMS="ssh-askpass"
+fi
+AC_SUBST(X_PROGRAMS)
 
 AC_PATH_PROGS(PERL, perl5 perl, not found)
 if test "x$PERL" = "xnot found" || $PERL -e 'exit ($] >= 5)'; then
@@ -593,7 +646,7 @@ if test -z "$no_shadows_password_checking"; then
   if test -f /etc/shadow; then
       # If we don't have shadow.h, this might be some nonstandard
       # kludging... So better check it out.
-    if test -n "$ac_cv_header_shadow_h"; then
+    if test "x$ac_cv_header_shadow_h" = "xyes"; then
       AC_DEFINE(HAVE_ETC_SHADOW)
       AC_MSG_RESULT(/etc/shadow)
       # SunOS C2 security uses this style of shadow passwords, but does not
@@ -976,6 +1029,12 @@ AC_ARG_WITH(rsaref,
   AC_MSG_RESULT(no)
 )
 
+# We include this here only to make it visible in --help; this is only used
+# in the gmp subdirectory.
+AC_ARG_ENABLE(asm,
+  [  --disable-asm           Disable assembly language optimizations. ],
+  [])
+
 PIDDIR="/var/run"
 AC_MSG_CHECKING(where to put sshd.pid)
 if test '!' -d $PIDDIR; then
@@ -983,7 +1042,7 @@ if test '!' -d $PIDDIR; then
 fi
 AC_MSG_RESULT($PIDDIR)
 
-AC_CONFIG_SUBDIRS(gmp-2.0.2)
+AC_CONFIG_SUBDIRS(gmp-2.0.2-ssh-2)
 
 AC_ARG_PROGRAM
 

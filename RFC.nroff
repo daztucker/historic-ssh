@@ -1,7 +1,10 @@
 .\" -*- nroff -*-
 .\"
-.\" $Id: RFC.nroff,v 1.2 1996/06/20 23:50:13 ylo Exp $
+.\" $Id: RFC.nroff,v 1.3 1996/10/29 22:33:30 kivinen Exp $
 .\" $Log: RFC.nroff,v $
+.\" Revision 1.3  1996/10/29 22:33:30  kivinen
+.\" 	Updated protocol version to 1.5.
+.\"
 .\" Revision 1.2  1996/06/20 23:50:13  ylo
 .\" 	Fixed a typo.
 .\"
@@ -396,7 +399,7 @@ according to the lower of the protocol versions.
 By convention, changes which keep the protocol compatible with
 previous versions keep the same major protocol version; changes that
 are not compatible increment the major version (which will hopefully
-never happen).  The version described in this document is 1.3.
+never happen).  The version described in this document is 1.5.
 
 .ti 0
 Key Exchange and Server Host Authentication

@@ -407,7 +407,7 @@ Internet-Draft  SSH (Secure Shell) Remote Login Protocol15 November 1995
    By convention, changes which keep the protocol compatible with previ-
    ous versions keep the same major protocol version; changes that are
    not compatible increment the major version (which will hopefully
-   never happen).  The version described in this document is 1.3.
+   never happen).  The version described in this document is 1.5.
 
 Key Exchange and Server Host Authentication
 

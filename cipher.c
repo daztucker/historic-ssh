@@ -12,8 +12,27 @@ Created: Wed Apr 19 17:41:39 1995 ylo
 */
 
 /*
- * $Id: cipher.c,v 1.3 1996/09/28 12:01:04 ylo Exp $
+ * $Id: cipher.c,v 1.9 1997/03/26 07:03:04 kivinen Exp $
  * $Log: cipher.c,v $
+ * Revision 1.9  1997/03/26 07:03:04  kivinen
+ * 	Added check that warning about arcfour is given only once.
+ *
+ * Revision 1.8  1997/03/25 05:38:50  kivinen
+ * 	#ifndef WITH_IDEA -> #ifdef WITH_IDEA.
+ *
+ * Revision 1.7  1997/03/19 22:26:38  kivinen
+ * 	Removed WITH_3DES ifdefs, as it is mandatory.
+ *
+ * Revision 1.6  1997/03/19 22:17:11  kivinen
+ * 	Enabled none encryption internally anyway, because it is
+ * 	required to read host keys.
+ *
+ * Revision 1.5  1997/03/19 21:29:45  kivinen
+ * 	Added missing }.
+ *
+ * Revision 1.4  1997/03/19 17:34:56  kivinen
+ * 	Made all ciphers optional.
+ *
  * Revision 1.3  1996/09/28 12:01:04  ylo
  * 	Removed TSS (put inside #ifdef WITH_TSS).
  *
@@ -52,17 +71,32 @@ static char *cipher_names[] =
 unsigned int cipher_mask()
 {
   unsigned int mask = 0;
+  
+#ifdef WITH_NONE
   mask |= 1 << SSH_CIPHER_NONE;
-#ifndef WITHOUT_IDEA
+#endif /* WITH_NONE */
+  
+#ifdef WITH_IDEA
   mask |= 1 << SSH_CIPHER_IDEA;
-#endif /* WITHOUT_IDEA */
+#endif /* WITH_IDEA */
+  
+#ifdef WITH_DES
   mask |= 1 << SSH_CIPHER_DES;
+#endif /* WITH_DES */
+
   mask |= 1 << SSH_CIPHER_3DES;
+  
 #ifdef WITH_TSS
   mask |= 1 << SSH_CIPHER_TSS;
 #endif /* WITH_TSS */
+  
+#ifdef WITH_ARCFOUR
   mask |= 1 << SSH_CIPHER_ARCFOUR;
+#endif /* WITH_ARCFOUR */
+  
+#ifdef WITH_BLOWFISH
   mask |= 1 << SSH_CIPHER_BLOWFISH;
+#endif /* WITH_BLOWFISH */
   return mask;
 }
 
@@ -81,14 +115,35 @@ const char *cipher_name(int cipher)
 int cipher_number(const char *name)
 {
   int i;
+  static int warning_given = 0;
 
   /* Recognize other nam for backward compatibility. */
   if (name[0] == 'r' && name[1] == 'c' && name[2] == '4' && name[3] == '\0')
-    return SSH_CIPHER_ARCFOUR;
+    {
+#if defined(WITH_ARCFOUR) || !defined(WITH_BLOWFISH)
+      return SSH_CIPHER_ARCFOUR;
+#else
+      if (!warning_given)
+	log_msg("Arcfour cipher is disabled in this host, using blowfish cipher instead");
+      warning_given = 1;
+      return SSH_CIPHER_BLOWFISH;
+#endif
+    }
 
   for (i = 0; i < sizeof(cipher_names) / sizeof(cipher_names[0]); i++)
     if (strcmp(cipher_names[i], name) == 0)
-      return i;
+      {
+#if !defined(WITH_ARCFOUR) && defined(WITH_BLOWFISH)
+	if (i == SSH_CIPHER_ARCFOUR)
+	  {
+	    if (!warning_given)
+	      log_msg("Arcfour cipher is disabled in this host, using blowfish cipher instead");
+	    warning_given = 1;
+	    return SSH_CIPHER_BLOWFISH;
+	  }
+#endif
+	return i;
+      }
   return -1;
 }
 
@@ -135,15 +190,16 @@ void cipher_set_key(CipherContext *context, int cipher,
     case SSH_CIPHER_NONE:
       break;
 
-#ifndef WITHOUT_IDEA
+#ifdef WITH_IDEA
     case SSH_CIPHER_IDEA:
       if (keylen < 16)
 	error("Key length %d is insufficient for IDEA.", keylen);
       idea_set_key(&context->u.idea.key, padded);
       memset(context->u.idea.iv, 0, sizeof(context->u.idea.iv));
       break;
-#endif /* WITHOUT_IDEA */
+#endif /* WITH_IDEA */
 
+#ifdef WITH_DES
     case SSH_CIPHER_DES:
       /* Note: the least significant bit of each byte of key is parity, 
 	 and must be ignored by the implementation.  8 bytes of key are
@@ -153,6 +209,7 @@ void cipher_set_key(CipherContext *context, int cipher,
       des_set_key(padded, &context->u.des.key);
       memset(context->u.des.iv, 0, sizeof(context->u.des.iv));
       break;
+#endif /* WITH_DES */
 
     case SSH_CIPHER_3DES:
       /* Note: the least significant bit of each byte of key is parity, 
@@ -179,16 +236,19 @@ void cipher_set_key(CipherContext *context, int cipher,
       break;
 #endif /* WITH_TSS */
 
+#ifdef WITH_ARCFOUR
     case SSH_CIPHER_ARCFOUR:
       arcfour_init(&context->u.arcfour, key, keylen);
       break;
+#endif /* WITH_ARCFOUR */
 
+#ifdef WITH_BLOWFISH
     case SSH_CIPHER_BLOWFISH:
       if (keylen < 8)
 	error("Key length %d is insufficient for Blowfish", keylen);
       blowfish_set_key(&context->u.blowfish, key, keylen, for_encryption);
       break;
-      
+#endif /* WITH_BLOWFISH */
     default:
       fatal("cipher_set_key: unknown cipher: %d", cipher);
     }
@@ -206,16 +266,18 @@ void cipher_encrypt(CipherContext *context, unsigned char *dest,
       memcpy(dest, src, len);
       break;
 
-#ifndef WITHOUT_IDEA
+#ifdef WITH_IDEA
     case SSH_CIPHER_IDEA:
       idea_cfb_encrypt(&context->u.idea.key, context->u.idea.iv, 
 		       dest, src, len);
       break;
-#endif /* WITHOUT_IDEA */
+#endif /* WITH_IDEA */
 
+#ifdef WITH_DES
     case SSH_CIPHER_DES:
       des_cbc_encrypt(&context->u.des.key, context->u.des.iv, dest, src, len);
       break;
+#endif /* WITH_DES */
 
     case SSH_CIPHER_3DES:
       des_3cbc_encrypt(&context->u.des3.key1, context->u.des3.iv1,
@@ -231,13 +293,17 @@ void cipher_encrypt(CipherContext *context, unsigned char *dest,
       break;
 #endif /* WITH_TSS */
 
+#ifdef WITH_ARCFOUR
     case SSH_CIPHER_ARCFOUR:
       arcfour_encrypt(&context->u.arcfour, dest, src, len);
       break;
+#endif /* WITH_ARCFOUR */
 
+#ifdef WITH_BLOWFISH
     case SSH_CIPHER_BLOWFISH:
       blowfish_cbc_encrypt(&context->u.blowfish, dest, src, len);
       break;
+#endif /* WITH_BLOWFISH */
       
     default:
       fatal("cipher_encrypt: unknown cipher: %d", context->type);
@@ -255,16 +321,18 @@ void cipher_decrypt(CipherContext *context, unsigned char *dest,
       memcpy(dest, src, len);
       break;
 
-#ifndef WITHOUT_IDEA
+#ifdef WITH_IDEA
     case SSH_CIPHER_IDEA:
       idea_cfb_decrypt(&context->u.idea.key, context->u.idea.iv, 
 		       dest, src, len);
       break;
-#endif /* WITHOUT_IDEA */
+#endif /* WITH_IDEA */
 
+#ifdef WITH_DES
     case SSH_CIPHER_DES:
       des_cbc_decrypt(&context->u.des.key, context->u.des.iv, dest, src, len);
       break;
+#endif /* WITH_DES */
 
     case SSH_CIPHER_3DES:
       des_3cbc_decrypt(&context->u.des3.key1, context->u.des3.iv1,
@@ -280,13 +348,17 @@ void cipher_decrypt(CipherContext *context, unsigned char *dest,
       break;
 #endif /* WITH_TSS */
 
+#ifdef WITH_ARCFOUR
     case SSH_CIPHER_ARCFOUR:
       arcfour_decrypt(&context->u.arcfour, dest, src, len);
       break;
+#endif /* WITH_ARCFOUR */
 
+#ifdef WITH_BLOWFISH
     case SSH_CIPHER_BLOWFISH:
       blowfish_cbc_decrypt(&context->u.blowfish, dest, src, len);
       break;
+#endif /* WITH_BLOWFISH */
       
     default:
       fatal("cipher_decrypt: unknown cipher: %d", context->type);

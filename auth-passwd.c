@@ -15,9 +15,18 @@ the password is valid for the user.
 */
 
 /*
- * $Id: auth-passwd.c,v 1.15 1998/05/11 21:27:47 kivinen Exp $
+ * $Id: auth-passwd.c,v 1.17 1998/06/11 00:03:38 kivinen Exp $
  * $Log: auth-passwd.c,v $
- * Revision 1.15  1998/05/11 21:27:47  kivinen
+ * Revision 1.17  1998/06/11 00:03:38  kivinen
+ * 	Added username to /bin/password commands.
+ *
+ * Revision 1.16  1998/05/23  20:19:40  kivinen
+ * 	Removed #define uint32 rpc_unt32, because md5 uint32 is now
+ * 	md5_uint32. Changed () -> (void). Changed osf1c2_getprpwent
+ * 	function to return true/false. Added
+ * 	forced_empty_passwd_change support.
+ *
+ * Revision 1.15  1998/05/11  21:27:47  kivinen
  * 	Set correct_passwd to contain 255...255 so even if some
  * 	function doesn't set it, it cannot contain empty password.
  *
@@ -143,7 +152,6 @@ the password is valid for the user.
 static uid_t uid_keylogged = 0;
 
 #ifdef SECURE_NFS
-#define uint32 rpc_uint32       /* conflicts with md5.h */
 #include <nfs/export.h>
 #include <nfs/nfs.h>
 #include <nfs/nfssys.h>
@@ -156,12 +164,11 @@ void nfs_revauth(uid_t uid)
   _nfssysarg.uid      = uid;
   _nfssys (NFS_REVAUTH,&_nfssysarg);
 }
-#undef uint32 /* conflicted with md5.h */
 #endif /* SECURE_NFS */
 
 /* do /usr/bin/keylogout's job */
 /* caller sets effective uid!  */
-void keylogout()
+void keylogout(void)
 {
   char secret [HEXKEYBYTES];
   
@@ -181,7 +188,7 @@ void keylogout()
   uid_keylogged = 0;
 }
 
-void keylogout_atexit ()
+void keylogout_atexit (void)
 {
   if (!uid_keylogged || seteuid(uid_keylogged))
     return;
@@ -700,21 +707,20 @@ int auth_password(const char *server_user, const char *password)
 #endif /* SECURE_RPC */
 
 #ifdef HAVE_OSF1_C2_SECURITY
-  switch (osf1c2_getprpwent(correct_passwd, saved_pw_name,
-			    sizeof(correct_passwd)))
-    {    /* jcastro@ist.utl.pt Sep 1997 */
-    case 0: /* All ok */ break;
-    case 1:
-      packet_disconnect("\n\tYour account is locked ...\n");
-      return 0;
-      break;
-    case 2:
-      {
-	extern char *forced_command;
-	forced_command = "/bin/passwd";
-	packet_send_debug("Password expired, forcing it to be changed.");
-	break;
-      }
+  if (osf1c2_getprpwent(correct_passwd, saved_pw_name,
+			sizeof(correct_passwd)))
+    {
+      if (options.forced_passwd_change)
+	{
+	  extern char *forced_command;
+	  forced_command = xmalloc(20 + strlen(server_user));
+	  sprintf(forced_command, "/bin/passwd %s", server_user);
+	  packet_send_debug("Password expired, forcing it to be changed.");
+	}
+      else
+	{
+	  packet_send_debug("\n\tYour password has expired.");
+	}
     }
 #else /* HAVE_OSF1_C2_SECURITY */
   /* If we have shadow passwords, lookup the real encrypted password from
@@ -798,10 +804,11 @@ int auth_password(const char *server_user, const char *password)
   /* Check for users with no password. */
   if (strcmp(password, "") == 0 && strcmp(correct_passwd, "") == 0)
     {
-      if (options.forced_passwd_change)
+      if (options.forced_empty_passwd_change)
 	{
 	  extern char *forced_command;
-          forced_command = "/bin/passwd";
+	  forced_command = xmalloc(20 + strlen(server_user));
+	  sprintf(forced_command, "/bin/passwd %s", server_user);
           packet_send_debug("Password if forced to be set at first login.");
 	}
       else

@@ -17,8 +17,12 @@ suitable code.
 */
 
 /*
- * $Id: ttymodes.c,v 1.5 1995/09/27 02:19:11 ylo Exp $
+ * $Id: ttymodes.c,v 1.6 1995/10/02 01:29:44 ylo Exp $
  * $Log: ttymodes.c,v $
+ * Revision 1.6  1995/10/02  01:29:44  ylo
+ * 	Changed warning message to make it less likely people will
+ * 	report it as a bug because it is not.
+ *
  * Revision 1.5  1995/09/27  02:19:11  ylo
  * 	Use SPEED_T_IN_STDTYPES_H.
  *

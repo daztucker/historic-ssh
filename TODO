@@ -1,30 +1,16 @@
-merge netgroup patches
+When run without arguments, should ssh use its won name as the host
+name (that way, you can make link by host name... This works with
+rsh.)
 
-identd shows remote user as root (uidswap problem?)
+Consider changing AllowHosts/DenyHosts semantic to match that used in tcp_wrappers.
 
-Rewrite client main loop.
-
-Make ssh_login take the client option structure instead of individual fields.
-
-sunos 4.1.3, cray: scp: ssh hangs at sending end, sshd, tcsh, scp hang at
-receiving end
-
-Screen number is not passed in X11 forwarding.
-
-Server option to prevent login if client host is not found from known_hosts.
+Some way to disable password and passphrase queries from scripts.
 
 Compression before encryption (optional).
-
-Add host name to "Waiting for forwarded connections to terminate" message.
-
-Permit user names in /etc/hosts.equiv.
-
-Should check for changed window size after coming back to foreground.
-
-Replace PermitRootLogin by PermitRootLoginFrom
 
 Could probably safely forward INET X11 connection in every case, as we
 now check the fake cookie in the client.
 
-socks support?  (Or some other form of firewall traversing support)
-  - problems, socks does not seem to support getpeername
+Some problems with NIS+?
+
+libwrap shows remote user as root.

@@ -9,7 +9,7 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Tue Aug 22 17:25:30 1995 ylo
-Last modified: Sat Sep  9 20:33:53 1995 ylo
+Last modified: Sat Sep 30 17:18:05 1995 ylo
 
 */
 
@@ -89,7 +89,7 @@ _get_permanent_fd(const char *shellpath)
       if (fdlim_set(fd + 1) < 0)
 	return -1;
       if (fcntl(fd, F_GETFL, NULL) < 0)
-	return fd;
+	break;
       fd++;
     }
   return fd;

@@ -1,5 +1,146 @@
+Sun Oct  1 04:16:07 1995  Tatu Ylonen  <ylo@shadows.cs.hut.fi>
+
+	* configure.in: When checking that the compiler works, check that
+	  it understands ANSI C prototypes.
+
+	* Made uidswap error message a debug() to avoid confusing errors
+	  on AIX (AIX geteuid is brain-damaged and fails even for root).
+
+	* Fixed an error in sshd.8 (FacistLogging -> FascistLogging).
+
+	* Fixed distribution in Makefile.in (missing manual page .in files).
+
+Sat Sep 30 17:38:46 1995  Tatu Ylonen  <ylo@shadows.cs.hut.fi>
+
+	* auth-rhosts.c: Fixed serious security problem in
+	  /etc/hosts.equiv authentication.
+
+Fri Sep 29 00:41:02 1995  Tatu Ylonen  <ylo@shadows.cs.hut.fi>
+
+	* Include machine/endian.h on Paragon.
+
+	* ssh-add.c (add_file): Made ssh-add keep asking for the
+	  passphrase until the user just types return or cancels.
+	  Make the dialog display the comment of the key.
+
+	* Read use shosts.equiv in addition to /etc/hosts.equiv.
+
+	* sshd.8 is now sshd.8.in and is processed by configure to
+	  substitute the proper paths for various files.  Ditto for ssh.1.
+	  Ditto for make-ssh-known-hosts.1.
+	
+	* configure.in: Moved /etc/sshd_pid to PIDDIR/sshd.pid.  PIDDIR
+	  will be /var/run if it exists, and ETCDIR otherwise.
+
+Thu Sep 28 21:52:42 1995  Tatu Ylonen  <ylo@shadows.cs.hut.fi>
+
+	* On Ultrix, check if sys/syslog.h needs to be included in
+	  addition to syslog.h.
+
+	* make-ssh-known-hosts.pl: Merged Kivinen's fixes for HPUX.
+
+	* configure.in: Put -lwrap, -lsocks, etc. at the head of LIBS.
+
+	* Fixed case-insensitivity in auth-rhosts.c.
+
+	* Added missing socketpair.c to EXTRA_SRCS (needed on SCO), plus
+	  other SCO fixes.
+
+	* Makefile.in: Fixed missing install_prefixes.
+
+Wed Sep 27 03:57:00 1995  Tatu Ylonen  <ylo@shadows.cs.hut.fi>
+
+	* ssh-1.2.9.
+
+	* Added SOCKS support.
+
+	* Fixed default setting of IgnoreRhosts option.
+
+	* Pass the magic cookie to xauth in stdin instead of command line;
+	  the command line is visible in ps.
+
+	* Added processing $HOME/.ssh/rc and /etc/sshrc.
+
+	* Added a section to sshd.8 on what happens at login time.
+
+Tue Sep 26 01:27:40 1995  Tatu Ylonen  <ylo@shadows.cs.hut.fi>
+
+	* Don't define speed_t on SunOS 4.1.1; it conflicts with system 
+	  headers.
+
+	* Added support for .hushlogin.
+
+	* Added --with-etcdir.
+
+	* Read $HOME/.environment after /etc/environment.
+
+Mon Sep 25 03:26:06 1995  Tatu Ylonen  <ylo@shadows.cs.hut.fi>
+
+	* Merged patches for SCO Unix (from Michael Henits).
+
+Sun Sep 24 22:28:02 1995  Tatu Ylonen  <ylo@shadows.cs.hut.fi>
+
+	* Added ssh option ConnectionAttempts.
+
+Sat Sep 23 12:30:15 1995  Tatu Ylonen  <ylo@shadows.cs.hut.fi>
+
+	* sshd.c: Don't print last login time and /etc/motd if a command
+	  has been specified (with ssh -t host command).
+
+	* Added support for passing the screen number in X11 forwarding.
+	  It is implemented as a compatible protocol extension, signalled
+	  by SSH_PROTOFLAG_SCREEN_NUMBER by the child.
+
+	* clientloop.c: Fixed bugs in the order in which things were
+	  processed.  This may solve problems with some data not getting
+	  sent to the server as soon as possible (probably solves the TCP
+	  forwarding delayed close problem).  Also, it looked like window
+	  changes might not get transmitted as early as possible in some
+	  cases.
+	
+	* clientloop.c: Changed to detect window size change that
+	  happened while ssh was suspended.
+
+	* ssh.c: Moved the do_session function (client main loop) to
+	  clientloop.c.  Divided it into smaller functions.  General cleanup.
+
+	* ssh-1.2.8
+
+Fri Sep 22 22:07:46 1995  Tatu Ylonen  <ylo@shadows.cs.hut.fi>
+
+	* sshconnect.c (ssh_login): Made ssh_login take the options
+	  structure as argument, instead of the individual arguments.
+
+	* auth-rhosts.c (check_rhosts_file): Added support for netgroups.
+	
+	* auth-rhosts.c (check_rhosts_file): Added support for negated 
+	  entries.
+
 Thu Sep 21 00:07:56 1995  Tatu Ylonen  <ylo@shadows.cs.hut.fi>
 
+	* auth-rhosts.c: Restructured rhosts authentication code.
+	  Hosts.equiv now has same format as .rhosts: user names are allowed.
+
+	* Added support for the Intel Paragon.
+
+	* sshd.c: Don't use X11 forwarding with spoofing if no xauth
+	  program.  Changed configure.in to not define XAUTH_PATH if
+	  there is no xauth program.
+
+	* ssh-1.2.7
+
+	* sshd.c: Rewrote the code to build the environment.  Now also reads
+	  /etc/environment.
+
+	* sshd.c: Fixed problems in libwrap code.  --with-libwrap now
+	  takes optional library name/path.
+
+	* ssh-1.2.6
+
+	* Define USE_PIPES by default.
+
+	* Added support for Univel Unixware and MachTen.
+	
 	* Added IgnoreRhosts server option.
 
 	* Added USE_STRLEN_FOR_AF_UNIX; it is needed at least on MachTen.

@@ -1,6 +1,6 @@
 .\"  -*- nroff -*-
 .\"
-.\" sshd.8
+.\" sshd.8.in
 .\"
 .\" Author: Tatu Ylonen <ylo@cs.hut.fi>
 .\"
@@ -9,8 +9,18 @@
 .\"
 .\" Created: Sat Apr 22 21:55:14 1995 ylo
 .\"
-.\" $Id: sshd.8,v 1.6 1995/08/31 09:24:31 ylo Exp $
+.\" $Id: sshd.8,v 1.9 1995/09/27 02:17:12 ylo Exp $
 .\" $Log: sshd.8,v $
+.\" Revision 1.9  1995/09/27  02:17:12  ylo
+.\" 	Added a section on what happens at login.
+.\" 	Other additions.
+.\"
+.\" Revision 1.8  1995/09/22  22:21:36  ylo
+.\" 	Added username and netgroups for hosts.equiv and rhosts.
+.\"
+.\" Revision 1.7  1995/09/21  17:14:38  ylo
+.\" 	Added /etc/environment and IgnoreRhosts.  Other minor fixes.
+.\"
 .\" Revision 1.6  1995/08/31  09:24:31  ylo
 .\" 	Minor cleanup.
 .\"
@@ -79,7 +89,7 @@ install and use as possible.
 .LP
 .B Sshd
 is the daemon that listens for connections from clients.  It is
-normally started at boot from /etc/rc or equivalent.  It forks a new
+normally started at boot from /etc/rc.local or equivalent.  It forks a new
 daemon for each incoming connection.  The forked daemons handle
 key exchange, encryption, authentication, command execution,
 and data exchange.
@@ -147,11 +157,12 @@ can be configured using command-line options or a configuration
 file.  Command-line options override values specified in the
 configuration file.
 
+
 .SH OPTIONS
 .TP
 .BI \-f \ configuration_file
 Specifies the name of the configuration file.  The default is
-.BR /etc/sshd_config ".
+.BR @ETCDIR@/sshd_config ".
 .TP
 .B \-d
 Debug mode.  The server sends verbose debug output to the system
@@ -174,7 +185,7 @@ indicates no limit.
 .TP
 .BI \-h \ host_key_file
 Specifies the file from which the host key is read (default
-/etc/ssh_host_key).  This option must be given if sshd is not run as
+@ETCDIR@/ssh_host_key).  This option must be given if sshd is not run as
 root (as the normal host file is normally not readable by anyone but root).
 .TP
 .B \-i
@@ -202,7 +213,7 @@ authentication, and termination of each connection is logged.
 .SH CONFIGURATION FILE
 
 .B Sshd
-reads configuration data from \f4/etc/sshd_config\f1 (or the file
+reads configuration data from \f4@ETCDIR@/sshd_config\f1 (or the file
 specified with -f on the command line).  The file contains
 keyword-value pairs, one per line.  Lines starting with '#' and empty
 lines are interpreted as comments.
@@ -216,7 +227,7 @@ listens on.
 .TP
 .B HostKey
 Specifies the file containing the private host key (default
-.IR /etc/ssh_host_key ").
+.IR @ETCDIR@/ssh_host_key ").
 .TP
 .B ServerKeyBits
 Defines the number of bits in the server key.  The minimum value is 512.
@@ -247,14 +258,15 @@ specified will be allowed regardless of the value of this setting.
 .TP
 .B IgnoreRhosts
 Specifies that rhosts and shosts files will not be used in
-authentication.  /etc/hosts.equiv is still used.  The argument must be
+authentication.  /etc/hosts.equiv and @ETCDIR@/shosts.equiv are still
+used.  The argument must be
 .YN
 .TP
 .B QuietMode
 Specifies whether the system runs in quiet mode.  In quiet mode,
 nothing is logged in the system log, except fatal errors.
 .TP
-.B FacistLogging
+.B FascistLogging
 Specifies whether to use verbose logging.  Verbose logging violates
 the privacy of users and is not recommended.  The argument must be
 .YN
@@ -302,6 +314,39 @@ This keyword can be followed by any number of host name patterns,
 separated by spaces.  If specified, login is disallowed from the hosts
 whose name matches any of the patterns.
 
+.SH LOGIN
+
+When a user successfully logs in,
+.B ssh
+does the following:
+.IP 1.
+If the login is on a tty, and no command has been specified,
+prints last login time and /etc/motd (unless prevented in the
+configuration file or by \s+2.\s0hushlogin; see below).
+.IP 2.
+If the login is on a tty, records login time.
+.IP 3.
+Checks /etc/nologin; if it exists, prints contents and quits
+(unless root).
+.IP 4.
+Changes to run with normal user privileges.
+.IP 5.
+Sets up basic environment.
+.IP 6.
+Reads /etc/environment if it exists.
+.IP 7.
+Reads $HOME/.environment if it exists.
+.IP 8.
+Changes to user's home directory.
+.IP 9.
+If $HOME/.ssh/rc exists, runs it; else if @ETCDIR@/sshrc exists, runs
+it; otherwise runs xauth.  The "rc" files are given the X11
+authentication protocol and cookie in standard input.
+.IP 10.
+Runs user's shell or command.
+.RT
+
+
 .SH INSTALLATION
 .LP
 .B Sshd 
@@ -317,7 +362,7 @@ immediately to <ssh-bugs@cs.hut.fi>.
 .LP
 .B Sshd 
 is normally started from 
-.I /etc/rc
+.I /etc/rc.local
 or equivalent at system boot.
 
 .SH AUTHORIZED_KEYS FILE FORMAT
@@ -407,14 +452,14 @@ command="dump /home",no-pty,no-port-forwarding 1024 33 23.\|.\|.\|2323 backup.hu
 .SH SSH_KNOWN_HOSTS FILE FORMAT
 .LP
 The 
-.I /etc/ssh_known_hosts
+.I @ETCDIR@/ssh_known_hosts
 and 
 .I \&$HOME/\s+2.\s0ssh/known_hosts
 files contain host public keys for all known hosts.  The global file should
 be prepared by the admistrator (optional), and the per-user file is
 maintained automatically: whenever the user connects an unknown host
 its key is added to the per-user file.  The recommended way to create
-.I /etc/ssh_known_hosts
+.I @ETCDIR@/ssh_known_hosts
 is to use the
 .B make-ssh-known-hosts
 script.
@@ -434,7 +479,7 @@ Bits, exponent, and modulus are taken directly from the host key; they
 can be obtained
 .I e.g.
 from
-.IR /etc/ssh_host_key.pub ".
+.IR @ETCDIR@/ssh_host_key.pub ".
 The optional comment field continues to the end of the line, and is not used.
 .LP
 Lines starting with '#' and empty lines are ignored as comments.
@@ -452,7 +497,7 @@ long, and you definitely don't want to type in the host keys by hand.
 Rather, generate them by a script (see 
 .BR make-ssh-known-hosts (1))
 or by taking 
-.I /etc/ssh_host_key.pub
+.I @ETCDIR@/ssh_host_key.pub
 and adding the host names at the front.
 
 .SS Examples
@@ -460,18 +505,18 @@ and adding the host names at the front.
 closenet,closenet.hut.fi,.\|.\|.\|,130.233.208.41 1024 37 159.\|.\|.93 closenet.hut.fi
 
 .SH FILES
-.I /etc/sshd_config
+.I @ETCDIR@/sshd_config
 Contains configuration data for
 .B sshd.
 .TP
-.I /etc/ssh_host_key
+.I @ETCDIR@/ssh_host_key
 Contains the private part of the host key.  This file is normally
 created automatically by "make install", but can also be created
 manually using
 .BR ssh-keygen (1).
 This file should only be readable by root.
 .TP
-.I /etc/ssh_host_key.pub
+.I @ETCDIR@/ssh_host_key.pub
 Contains the public part of the host key.  This file is normally
 created automatically by "make install", but can also be created
 manually.  This file should be world-readable.  Its contents should match
@@ -479,11 +524,11 @@ the private part.  This file is not really used for anything; it is
 only provided for the convenience of the user so its contents can be
 copied to known hosts files.
 .TP
-.I /etc/ssh_random_seed
+.I @ETCDIR@/ssh_random_seed
 This file contains a seed for the random number generator.  This file
 should only be readable by root.
 .TP
-.I /etc/sshd_pid
+.I @PIDDIR@/sshd.pid
 Contains the process id of the
 .B sshd
 listening for connections (if there are several daemons running
@@ -497,13 +542,13 @@ This file must be readable by root (which may imply it being
 world-readable if the user's home directory resides on an NFS volume).
 The format of this file is described above.
 .TP
-.I "/etc/ssh_known_hosts\fR and \fI$HOME/\s+2.\s0ssh/known_hosts\fR
+.I "@ETCDIR@/ssh_known_hosts\fR and \fI$HOME/\s+2.\s0ssh/known_hosts\fR
 These files are consulted when using rhosts with RSA host
 authentication to check the public key of the host.  The key must be
 listed in one of these files to be accepted.  (The client uses the
 same files to verify that the remote host is the one we intended to
 connect.)  These files should be readable by root, and
-.I /etc/ssh_known_hosts
+.I @ETCDIR@/ssh_known_hosts
 should be world-readable.
 .TP
 .I /etc/nologin
@@ -523,6 +568,10 @@ and rshd in that it requires RSA host authentication in addition to
 validating the host name retrieved from domain name servers (unless
 compiled with the \-\-with\-rhosts configuration option).  The file must
 be readable by root.
+
+If is also possible to use netgroups in the file.  Either host or user
+name may be of the form +@groupname to specify all hosts or all users
+in the group.
 .TP
 .I \&$HOME/\s+2.\s0shosts
 For
@@ -533,11 +582,70 @@ not used by rlogin and rshd, so using this permits access using
 only.
 .TP
 .I /etc/hosts.equiv
-This file is used during \s+2.\s0rhosts authentication.  It contains
-canonical hosts names, one per line.  If the client host is found in
-this file, login is automatically permitted provided client and server
-user names are the same.  Additionally, successful RSA host
-authentication is normally required.  This file must be readable by root.
+This file is used during \s+2.\s0rhosts authentication.  In the
+simplest form, this file contains host names, one per line.  Users on
+those hosts are permitted to log in without a password, provided they
+have the same user name on both machines.  The host name may also be
+followed by a user name; such users are permitted to log in as
+.B any
+user on this machine (except root).  Additionally, the syntax +@group
+can be used to specify netgroups.  Negated entries start with '-'.
+
+If the client host/user is successfully matched in this file, login is
+automatically permitted provided the client and server user names are the
+same.  Additionally, successful RSA host authentication is normally
+required.  This file must be readable by root.
+
+\fBWarning: It is almost never a good idea to use user names in 
+hosts.equiv.\fR
+Beware that it really means that the named user(s) can log in as
+\fBanybody\fR,
+which includes bin, daemon, adm, and other accounts that own critical
+binaries and directories.  Using a user name practically grants the
+user root access.  The only valid use for user names that I can think
+of is in negative entries.
+\fBNote that this warning also applies to rsh/rlogin.\fR
+.TP
+.I @ETCDIR@/shosts.equiv
+This is processed exactly as
+.I /etc/hosts.equiv.
+However, this file may be useful in environments that want to run both
+rsh/rlogin and
+.B ssh.
+.TP
+.I /etc/environment
+This file is read into the environment at login (if it exists).  It
+can only contain empty lines, comment lines (that start with '#'), and
+assignment lines of the form name=value.  This file is processed in
+all environments (normal rsh/rlogin only process it on AIX and
+potentially some other systems).
+.TP
+.I \&$HOME/\s+2.\s0environment
+This file is read into the environment after /etc/environment.  It has
+the same format.
+.TP
+.I \&$HOME/\s+2.\s0ssh/rc
+If this file exists, it is run with /bin/sh after reading the
+environment files but before starting the user's shell or command.  If
+X11 spoofing is in use, this will receive the "proto cookie" pair in
+standard input (and DISPLAY in environment).  This must call xauth in
+that case. 
+
+The primary purpose of this file is to run any initialization routines
+which may be needed before the user's home directory becomes
+accessible; AFS is a particular example of such an environment.
+
+This file will probably contain some initialization code followed by
+something similar to: "if read proto cookie; then echo add $DISPLAY
+$proto $cookie | xauth -q -; fi".
+
+If this file does not exist, @ETCDIR@/sshrc is run, and if that
+does not exist either, xauth is used to store the cookie.
+.TP
+.I @ETCDIR@/sshrc
+Like $HOME/\s+2.\s0ssh/rc.  This can be used to specify
+machine-specific login-time initializations globally.
+
 
 .SH AUTHOR
 .LP

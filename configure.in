@@ -8,8 +8,31 @@
 #
 # Created: Wed Mar 22 18:02:48 1995 ylo
 #
-# $Id: configure.in,v 1.21 1995/09/13 11:55:30 ylo Exp $
+# $Id: configure.in,v 1.25 1995/09/27 03:13:24 ylo Exp $
 # $Log: configure.in,v $
+# Revision 1.25  1995/09/27  03:13:24  ylo
+# 	Fixed a syntax error.
+#
+# Revision 1.24  1995/09/27  02:48:20  ylo
+# 	Added SOCKS support.
+# 	Added some checking... and result printings.
+#
+# Revision 1.23  1995/09/27  02:13:44  ylo
+# 	Define SPEED_T_IN_STDTYPES_H on sunos 4.1.1 and NextStep.
+# 	Added support for SCO unix.
+# 	Added --with-etcdir=PATH.
+#
+# Revision 1.22  1995/09/21  17:10:59  ylo
+# 	Fixed bsdi support.
+# 	Added svr4 (univel unixware) support.
+# 	Added machten support.
+# 	Always define USE_PIPES; socketpairs appear to be broken on
+# 	many systems.
+# 	Check innetgr.
+# 	Don't define XAUTH_PATH if no xauth program.
+# 	--with-libwrap can take library name as argument.
+# 	Fixed checking for libwrap library.
+#
 # Revision 1.21  1995/09/13  11:55:30  ylo
 # 	Added Cray and BSDI support.  Don't use -pipe on BSDI (bundled
 # 	compiler is broken).
@@ -114,13 +137,18 @@ AC_PROG_CC
 AC_C_CROSS
 
 AC_MSG_CHECKING([that the compiler works])
-AC_TRY_RUN([ main() { return 0; } ],
+AC_TRY_RUN([ main(int ac, char **av) { return 0; } ],
     AC_MSG_RESULT(yes),
     AC_MSG_RESULT(no)
-    AC_MSG_ERROR(Could not compile and run even a trivial program - check CC.),
-    AC_MSG_ERROR(Could not compile and run even a trivial program - check CC.))
+    AC_MSG_ERROR(Could not compile and run even a trivial ANSI C program - check CC.),
+    AC_MSG_ERROR(Could not compile and run even a trivial ANSI C program - check CC.))
 
 case "$host" in
+  *-*-sunos4.1.1*)
+    os_sunos=yes
+    # Tim Adam <tma@osa.com.au> says speed_t is defined in stdtypes.h
+    AC_DEFINE(SPEED_T_IN_STDTYPES_H)
+    ;;
   *-*-sunos*)
     os_sunos=yes
     ;;
@@ -156,6 +184,10 @@ case "$host" in
     # Please let me know how to do it if you know.
     AC_DEFINE(O_NONBLOCK_BROKEN)
     no_setsid=yes
+    AC_TRY_COMPILE([#include <syslog.h>],
+		   [int foo = LOG_DAEMON; ],
+		   ,
+		   AC_DEFINE(NEED_SYS_SYSLOG_H))
     ;;
   *-*-hpux*)
     # HPUX flags from jgotts@engin.umich.edu
@@ -182,6 +214,7 @@ case "$host" in
   *-*-nextstep*)
     # Nextstep support contributed by a person who wants to remain anonymous
     no_termios=yes
+    AC_DEFINE(SPEED_T_IN_STDTYPES_H)
     ;;
   *-*-linux*)
     # Linux shadow password support (Andrew.Macpherson.1248566@bnr.co.uk)
@@ -213,6 +246,13 @@ case "$host" in
     ;;
   *-*-machten*)
     AC_DEFINE(USE_STRLEN_FOR_AF_UNIX)
+    ;;
+  i*86-unknown-sco*)
+    LIBS="$LIBS -L/usr/lib/libp"
+    AC_DEFINE(HAVE_SCO_ETC_SHADOW)
+    AC_DEFINE(SCO)
+    AC_CHECK_LIB(prot, accept_pw)
+    AC_CHECK_LIB(x, chsize)
     ;;
   *)
     ;;
@@ -250,8 +290,8 @@ if test -z "$no_setsid"; then
 fi
 
 AC_CHECK_FUNCS(gettimeofday times getrusage popen)
-AC_CHECK_FUNCS(strchr memcpy setlogin openpty _getpty clock)
-AC_CHECK_FUNCS(gethostname seteuid getdtablesize umask)
+AC_CHECK_FUNCS(strchr memcpy setlogin openpty _getpty clock fchmod)
+AC_CHECK_FUNCS(gethostname seteuid getdtablesize umask innetgr initgroups)
 
 AC_TYPE_SIGNAL
 AC_TYPE_SIZE_T
@@ -294,15 +334,17 @@ if test -z "$no_libsun"; then
   AC_CHECK_LIB(sun, getpwnam)
 fi
 
-AC_REPLACE_FUNCS(strerror memmove remove random putenv crypt)
+AC_REPLACE_FUNCS(strerror memmove remove random putenv crypt socketpair)
 
 AC_PROG_LN_S
 AC_PROG_INSTALL
 AC_PROG_RANLIB
 AC_PROGRAMS_CHECK(MAKEDEP, makedepend makedep, makedepend)
 AC_PATH_PROG(WISH, wish, /usr/local/bin/wish)
-AC_PATH_PROG(XAUTH_PATH, xauth, xauth)
-AC_DEFINE_UNQUOTED(XAUTH_PATH, "$XAUTH_PATH")
+AC_PATH_PROG(XAUTH_PATH, xauth)
+if test -n "$XAUTH_PATH"; then
+  AC_DEFINE_UNQUOTED(XAUTH_PATH, "$XAUTH_PATH")
+fi
 
 AC_MSG_CHECKING(for pseudo ttys)
 if test -c /dev/ptmx && test -c /dev/pts/0
@@ -481,53 +523,128 @@ AC_ARG_WITH(path,
   AC_MSG_RESULT(use system default)
 )
 
+AC_MSG_CHECKING(etcdir)
+AC_ARG_WITH(etcdir,
+[  --with-etcdir=PATH      Directory containing ssh system files (default /etc)],
+[ case "$withval" in
+  no)
+    AC_MSG_ERROR(Need ETCDIR.)
+    ;;
+  yes)
+    ETCDIR="/etc"
+    AC_MSG_RESULT(/etc)
+    ;;
+  *)
+    ETCDIR="$withval"
+    AC_MSG_RESULT($withval)
+    ;;
+  esac ],
+  ETCDIR="/etc"
+  AC_MSG_RESULT(/etc)
+)
+
+AC_MSG_CHECKING(whether to support SecurID)
 AC_ARG_WITH(securid,
 [  --with-securid[=PATH]   Enable support for Security Dynamics SecurID card.],
 [ case "$withval" in
   no)
+    AC_MSG_RESULT(no)
     ;;
   yes)
-    AC_MSG_RESULT(Enabling support for Security Dynamics SecurID card.)
+    AC_MSG_RESULT(yes)
     if test '!' -f /usr/ace/sdiclient.a; then
       AC_ERROR(SecurID sdiclient.a not found in /usr/ace: you must supply the path.)
     fi
+    AC_MSG_RESULT(yes)
     AC_MSG_RESULT(Assuming SecurID headers and libraries are in /usr/ace.)
     AC_DEFINE(HAVE_SECURID)
     CFLAGS="$CFLAGS -I/usr/ace"
-    LIBS="$LIBS /usr/ace/sdiclient.a"
+    LIBS="/usr/ace/sdiclient.a $LIBS"
     ;;
   *)
-    AC_MSG_RESULT(Enabling support for Security Dynamics SecurID card.)
+    AC_MSG_RESULT(yes)
     if test '!' -f $withval/sdiclient.a; then
       AC_ERROR(SecurID sdiclient.a not found in $withval: please supply the correct path.)
     fi
     AC_MSG_RESULT(Assuming SecurID headers and libraries are in $withval.)
     AC_DEFINE(HAVE_SECURID)
     CFLAGS="$CFLAGS -I$withval"
-    LIBS="$LIBS $withval/sdiclient.a"
+    LIBS="$withval/sdiclient.a $LIBS"
     ;;
-  esac ]
+  esac ],
+  AC_MSG_RESULT(no)
 )
 
+AC_MSG_CHECKING(whether to use libwrap)
 AC_ARG_WITH(libwrap,
-[  --with-libwrap          Compile in libwrap (tcp_wrappers) support.],
+[  --with-libwrap[=LIB]    Compile in libwrap (tcp_wrappers) support.],
 [ case "$withval" in
   no)
+    AC_MSG_RESULT(no)
+    ;;
+  yes)
+    AC_MSG_RESULT(yes)
+    AC_DEFINE(LIBWRAP)
+    LIBS="-lwrap $LIBS"
+    AC_TRY_LINK([ int allow_severity; int deny_severity; ],
+                [ hosts_access(); ],
+		[],
+		[ AC_MSG_ERROR(Could not find the libwrap.a library.  You must first install tcp_wrappers.) ])
     ;;
   *)
-    AC_MSG_RESULT(Enabling support for tcp_wrappers.)
+    AC_MSG_RESULT(yes)
     AC_DEFINE(LIBWRAP)
-    AC_CHECK_LIB(wrap, hosts_access,
-		 LIBS="$LIBS -lwrap",
-		 AC_MSG_ERROR(Could not find the libwrap.a library.  You must first install tcp_wrappers.))
+    LIBS="$withval $LIBS"
+    AC_TRY_LINK([ int allow_severity; int deny_severity; ],
+                [ hosts_access(); ],
+		[],
+		[ AC_MSG_ERROR(Could not find the $withval library.  You must first install tcp_wrappers.) ])
     ;;
-  esac ]
+  esac ],
+  AC_MSG_RESULT(no)
 )
 
+AC_MSG_CHECKING(whether to support SOCKS)
+AC_ARG_WITH(socks,
+[  --with-socks[=PATH]     Compile with SOCKS firewall traversal support.],
+[ case "$withval" in
+  no)
+    AC_MSG_RESULT(no)
+    ;;
+  *)
+    AC_MSG_RESULT(yes)
+    AC_DEFINE(SOCKS)
+    AC_DEFINE(connect, Rconnect)
+    AC_DEFINE(getsockname, Rgetsockname)
+    AC_DEFINE(bind, Rbind)
+    AC_DEFINE(accept, Raccept)
+    AC_DEFINE(listen, Rlisten)
+    AC_DEFINE(select, Rselect)
+    if test "x$withval" = "xyes"; then
+      withval="-lsocks"
+    fi
+    LIBS="$withval $LIBS"
+    AC_TRY_LINK([],
+                [ Rconnect(); ],
+		[],
+		[ AC_MSG_ERROR(Could not find the $withval library.  You must first install socks.) ])
+    ;;
+  esac ],
+  AC_MSG_RESULT(no)
+)
+
+PIDDIR="/var/run"
+AC_MSG_CHECKING(where to put sshd.pid)
+if test '!' -d $PIDDIR; then
+  PIDDIR="$ETCDIR"
+fi
+AC_MSG_RESULT($PIDDIR)
 
 AC_ARG_PROGRAM
 
+AC_SUBST(ETCDIR)
+AC_SUBST(PIDDIR)
 AC_SUBST(RSAREFDEP)
 AC_SUBST(CONFOBJS)
 
-AC_OUTPUT(Makefile)
+AC_OUTPUT(Makefile sshd.8 ssh.1 make-ssh-known-hosts.1)

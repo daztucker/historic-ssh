@@ -32,6 +32,9 @@ to the system log.
 
 #include "includes.h"
 #include <syslog.h>
+#ifdef NEED_SYS_SYSLOG_H
+#include <sys/syslog.h>
+#endif /* NEED_SYS_SYSLOG_H */
 #include "packet.h"
 #include "ssh.h"
 

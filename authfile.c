@@ -183,7 +183,7 @@ int load_public_key(const char *filename, RSAPublicKey *pub,
 
   /* Make sure it begins with the id string.  Consume the id string from
      the buffer. */
-  for (i = 0; i < strlen(AUTHFILE_ID_STRING) + 1; i++)
+  for (i = 0; i < (unsigned int)strlen(AUTHFILE_ID_STRING) + 1; i++)
     if (buffer_get_char(&buffer) != (unsigned char)AUTHFILE_ID_STRING[i])
       {
 	debug("Bad key file %.200s.", filename);
@@ -254,7 +254,7 @@ int load_private_key(const char *filename, const char *passphrase,
 
   /* Make sure it begins with the id string.  Consume the id string from
      the buffer. */
-  for (i = 0; i < strlen(AUTHFILE_ID_STRING) + 1; i++)
+  for (i = 0; i < (unsigned int)strlen(AUTHFILE_ID_STRING) + 1; i++)
     if (buffer_get_char(&buffer) != (unsigned char)AUTHFILE_ID_STRING[i])
       {
 	debug("Bad key file %.200s.", filename);

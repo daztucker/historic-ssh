@@ -1,7 +1,10 @@
 .\" -*- nroff -*-
 .\"
-.\" $Id: RFC.nroff,v 1.6 1995/09/06 19:52:11 ylo Exp $
+.\" $Id: RFC.nroff,v 1.7 1995/09/24 23:57:48 ylo Exp $
 .\" $Log: RFC.nroff,v $
+.\" Revision 1.7  1995/09/24  23:57:48  ylo
+.\" 	Added passing of screen number to server.
+.\"
 .\" Revision 1.6  1995/09/06  19:52:11  ylo
 .\" 	Added a note that X11 forwarding with spoofing is optional.
 .\"
@@ -806,6 +809,19 @@ closed, all file descriptors to the program will be closed and the
 server will exit.  If the program runs on a tty, the kernel sends it
 the SIGHUP signal when the pty master side is closed.
 
+.ti 0
+Protocol Flags
+
+Both the server and the client pass 32 bits of protocol flags to the
+other side.  The flags are intended for compatible protocol extension;
+the server first announces which added capabilities it supports, and
+the client then sends the capabilities that it supports.
+
+The following flags are currently defined (the values are bit masks):
+.IP "1 SSH_PROTOFLAG_SCREEN_NUMBER"
+This flag can only be sent by the client.  It indicates that the X11
+forwarding requests it sends will include the screen number.
+.RT
 
 .ti 0
 Detailed Description of Packet Types and Formats
@@ -814,6 +830,10 @@ The supported packet types and the corresponding message numbers are
 given in the following table.  Messages with _MSG_ in their name may
 be sent by either side.  Messages with _CMSG_ are only sent by the
 client, and messages with _SMSG_ only by the server.
+
+It is permissible that a packet may contain additional data after the
+arguments specified below.  Any such data should be ignored by the
+receiver.  (This helps build compatible extensions.)
 .IP "0 SSH_MSG_NONE"
 This code is reserved.  This message type is never sent.
 .IP "1 SSH_MSG_DISCONNECT"
@@ -842,7 +862,7 @@ mp-int	host_key_public_modulus
 .TE
 Sent as the first message by the server.  This message gives the
 server's host key, server key, protocol flags (intended for compatible
-protocol extension, currently 0), supported_ciphers_mask (which is the
+protocol extension), supported_ciphers_mask (which is the
 bitwise or of (1 << cipher_number), where << is the left shift
 operator, for all supported ciphers), and
 supported_authentications_mask (which is the bitwise or of (1 <<
@@ -864,7 +884,7 @@ Sent by the client as the first message in the session.  Selects the
 cipher to use, and sends the encrypted session key to the server.  The
 anti_spoofing_cookie must be the same bytes that were sent by the
 server.  Protocol_flags is intended for negotiating compatible
-protocol extensions; currently it should be 0.
+protocol extensions.
 .IP "4 SSH_CMSG_USER"
 .TS
 ;
@@ -1142,8 +1162,11 @@ channel was already closed.  When this message is sent or received,
 the channel is freed.
 .IP "26 SSH_CMSG_X11_REQUEST_FORWARDING"
 
-(no arguments)
-
+.TS
+;
+l l.
+32-bit int	screen number (if SSH_PROTOFLAG_SCREEN_NUMBER)
+.TE
 Sent by the client during the preparatory phase, this message requests
 that the server create a fake X11 display and set the DISPLAY
 environment variable accordingly.  Whenever a connection is made to
@@ -1255,6 +1278,7 @@ last message sent by the client.
 l l.
 string	x11_authentication_protocol
 string	x11_authentication_data
+32-bit int	screen number (if SSH_PROTOFLAG_SCREEN_NUMBER)
 .TE
 Sent by the client during the preparatory phase, this message requests
 that the server create a fake X11 display and set the DISPLAY

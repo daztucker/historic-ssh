@@ -462,7 +462,7 @@ void server_loop(int pid, int fdin_arg, int fdout_arg, int fderr_arg)
   if (fderr == -1)
     fderr_eof = 1;
 
-  /* Main loop of the server for the interactive mode. */
+  /* Main loop of the server for the interactive session mode. */
   for (;;)
     {
       fd_set readset, writeset;
@@ -606,7 +606,7 @@ void server_loop(int pid, int fdin_arg, int fdout_arg, int fderr_arg)
 
   /* Check if the program terminated due to a signal. */
   if (WIFSIGNALED(wait_status))
-    packet_disconnect("Session terminated on signal %d.", 
+    packet_disconnect("Command terminated on signal %d.", 
 		      WTERMSIG(wait_status));
 
   /* Some weird exit cause.  Just exit. */

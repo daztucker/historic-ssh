@@ -92,27 +92,31 @@ void add_file(const char *filename)
   RSAPrivateKey key;
   RSAPublicKey public_key;
   AuthenticationConnection *ac;
-  char *saved_comment, *comment;
+  char *saved_comment, *comment, *pass;
   
   if (!load_public_key(filename, &public_key, &saved_comment))
     {
       printf("Bad key file %s: %s\n", filename, strerror(errno));
       return;
     }
+  rsa_clear_public_key(&public_key);
   
-  if (!load_private_key(filename, "", &key, &comment))
+  pass = xstrdup("");
+  while (!load_private_key(filename, pass, &key, &comment))
     {
       char buf[1024];
       char *pass;
       FILE *f;
       
-      printf("Need passphrase for %s (%s).\n", filename, saved_comment);
+      /* Free the old passphrase. */
+      memset(pass, 0, strlen(pass));
+      xfree(pass);
+
+      /* Ask for a passphrase. */
       if (getenv("DISPLAY") && !isatty(fileno(stdin)))
 	{
-	  printf("Executing ssh-askpass to query the password...\n");
-	  fflush(stdout);
-	  fflush(stderr);
-	  f = popen("ssh-askpass", "r");
+	  sprintf(buf, "ssh-askpass 'Enter passphrase for %.100s'", comment);
+	  f = popen(buf, "r");
 	  if (!fgets(buf, sizeof(buf), f))
 	    {
 	      pclose(f);
@@ -126,8 +130,8 @@ void add_file(const char *filename)
 	}
       else
 	{
-	  sprintf(buf, "Enter passphrase: ");
-	  pass = read_passphrase(buf, 1);
+	  printf("Need passphrase for %s (%s).\n", filename, saved_comment);
+	  pass = read_passphrase("Enter passphrase: ", 1);
 	}
 	  
       if (!load_private_key(filename, pass, &key, &comment))

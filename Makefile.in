@@ -8,8 +8,14 @@
 #
 # Created: Wed Mar 22 17:37:49 1995 ylo
 #
-# $Id: Makefile.in,v 1.15 1995/09/10 23:25:10 ylo Exp $
+# $Id: Makefile.in,v 1.17 1995/09/27 02:09:12 ylo Exp $
 # $Log: Makefile.in,v $
+# Revision 1.17  1995/09/27  02:09:12  ylo
+# 	Made etcdir configurable with --with-etcdir=PATH.
+#
+# Revision 1.16  1995/09/24  23:56:51  ylo
+# 	New file clientloop.c.
+#
 # Revision 1.15  1995/09/10  23:25:10  ylo
 # 	Added osfc2.c to EXTRA_SRCS.
 #
@@ -70,7 +76,8 @@ sbindir		= $(exec_prefix)/sbin
 mandir		= $(prefix)/man
 man1dir		= $(mandir)/man1
 man8dir		= $(mandir)/man8
-etcdir		= /etc
+etcdir		= @ETCDIR@
+piddir		= @PIDDIR@
 
 CC 		= @CC@
 CFLAGS 		= @CFLAGS@
@@ -113,7 +120,7 @@ SSHD_OBJS = sshd.o auth-rhosts.o auth-passwd.o auth-rsa.o auth-rh-rsa.o pty.o \
 	log-server.o login.o hostfile.o canohost.o servconf.o tildexpand.o \
 	uidswap.o serverloop.o $(COMMON_OBJS)
 SSH_OBJS = ssh.o sshconnect.o log-client.o readconf.o hostfile.o readpass.o \
-	tildexpand.o uidswap.o $(COMMON_OBJS)
+	tildexpand.o uidswap.o clientloop.o $(COMMON_OBJS)
 KEYGEN_OBJS = ssh-keygen.o log-client.o readpass.o rsa.o randoms.o md5.o \
 	buffer.o xmalloc.o authfile.o tss.o cipher.o des.o rc4.o mpaux.o \
 	bufaux.o $(LIBOBJS) $(CONFOBJS)
@@ -132,16 +139,19 @@ SRCS = $(SSHD_OBJS:.o=.c) $(SSH_OBJS:.o=.c) $(KEYGEN_OBJS:.o=.c) \
 	$(AGENT_OBJS:.o=.c) $(ADD_OBJS:.o=.c) \
 	$(SCP_OBJS:.o=.c) \
 	$(GEN_MINFD_OBJS:.o=.c)
-EXTRA_SRCS = memmove.c strerror.c remove.c random.c putenv.c crypt.c osfc2.c
-MAN1PAGES = ssh.1 ssh-keygen.1 ssh-agent.1 ssh-add.1 scp.1
+EXTRA_SRCS = memmove.c strerror.c remove.c random.c putenv.c crypt.c osfc2.c \
+	socketpair.c
+MAN1PAGES = ssh.1 ssh-keygen.1 ssh-agent.1 ssh-add.1 scp.1 make-ssh-known-hosts.1
+MAN1SOURCES = ssh.1.in ssh-keygen.1 ssh-agent.1 ssh-add.1 scp.1 make-ssh-known-hosts.1.in
 MAN8PAGES = sshd.8
+MAN8SOURCES = sshd.8.in
 
 DISTFILES = COPYING README README.SECURID INSTALL TODO libdes-README \
 	libdes-COPYING libdes-ARTISTIC gnu-COPYING-GPL \
 	configure configure.in config.guess config.sub Makefile.in \
 	ssh-askpass.wish check-fds.c host_config.sample config.sample \
 	acconfig.h config.h.in server_config.sample \
-	$(MAN1PAGES) $(MAN8PAGES) $(SRCS) $(EXTRA_SRCS) *.h install-sh \
+	$(MAN1SOURCES) $(MAN8SOURCES) $(SRCS) $(EXTRA_SRCS) *.h install-sh \
 	make-ssh-known-hosts.pl make-ssh-known-hosts.1 RFC.nroff RFC rfc-pg.c \
 	ChangeLog
 
@@ -161,7 +171,7 @@ rfc-pg: rfc-pg.c
 	$(CC) -o rfc-pg rfc-pg.c
 
 .c.o:
-	$(CC) -c -I. -I$(srcdir)/$(GMPDIR) $(DEFS) -DHOST_KEY_FILE=\"$(HOST_KEY_FILE)\" -DHOST_CONFIG_FILE=\"$(HOST_CONFIG_FILE)\" -DSERVER_CONFIG_FILE=\"$(SERVER_CONFIG_FILE)\" -DSSH_PROGRAM=\"$(SSH_PROGRAM)\" -DETCDIR=\"$(etcdir)\" $(CFLAGS) $<
+	$(CC) -c -I. -I$(srcdir)/$(GMPDIR) $(DEFS) -DHOST_KEY_FILE=\"$(HOST_KEY_FILE)\" -DHOST_CONFIG_FILE=\"$(HOST_CONFIG_FILE)\" -DSERVER_CONFIG_FILE=\"$(SERVER_CONFIG_FILE)\" -DSSH_PROGRAM=\"$(SSH_PROGRAM)\" -DETCDIR=\"$(etcdir)\" -DPIDDIR=\"$(piddir)\" $(CFLAGS) $<
 
 sshd: $(SSHD_OBJS) $(GMPDEP) $(RSAREFDEP)
 	-rm -f sshd
@@ -286,6 +296,8 @@ install: $(PROGRAMS) make-dirs generate-host-key
 	    $(LN_S) $$p \
 	      $(install_prefix)$(bindir)/`echo $$p | sed '$(transform)'`; fi; \
 	done
+# Remove $(etcdir)/sshd_pid as it is now $(bindir)/sshd.pid
+	-rm -f $(install_prefix)$(etcdir)/sshd_pid
 # Remove $(bindir)/sshd to avoid confusion since it is now in $(sbindir)
 	-rm -f $(install_prefix)$(bindir)/sshd
 	-rm -f $(install_prefix)$(bindir)/`echo sshd | sed '$(transform)'`
@@ -311,10 +323,10 @@ install: $(PROGRAMS) make-dirs generate-host-key
 	    $(LN_S) $$p \
 	      $(install_prefix)$(man8dir)/`echo $$p | sed '$(transform)'`; fi;\
 	done
-	-if test '!' -f $(HOST_CONFIG_FILE); then \
+	-if test '!' -f $(install_prefix)$(HOST_CONFIG_FILE); then \
 	  $(INSTALL_DATA) $(srcdir)/host_config.sample \
 	    $(install_prefix)$(HOST_CONFIG_FILE); fi
-	-if test '!' -f $(SERVER_CONFIG_FILE); then \
+	-if test '!' -f $(install_prefix)$(SERVER_CONFIG_FILE); then \
 	  cat $(srcdir)/server_config.sample | \
 	  sed "s#_ETCDIR_#$(etcdir)#g" >/tmp/ssh_inst.$$; \
 	  $(INSTALL_DATA) /tmp/ssh_inst.$$ \

@@ -1,6 +1,6 @@
 .\"  -*- nroff -*-
 .\"
-.\" ssh.1
+.\" ssh.1.in
 .\"
 .\" Author: Tatu Ylonen <ylo@cs.hut.fi>
 .\"
@@ -9,8 +9,11 @@
 .\"
 .\" Created: Sat Apr 22 21:55:14 1995 ylo
 .\"
-.\" $Id: ssh.1,v 1.7 1995/08/31 09:23:03 ylo Exp $
+.\" $Id: ssh.1,v 1.8 1995/09/25 00:00:49 ylo Exp $
 .\" $Log: ssh.1,v $
+.\" Revision 1.8  1995/09/25  00:00:49  ylo
+.\" 	Added ConnectionAttempts.
+.\"
 .\" Revision 1.7  1995/08/31  09:23:03  ylo
 .\" 	Minor cleanup.
 .\"
@@ -114,6 +117,8 @@ his/her identity to the remote machine using one of several methods.
 .LP
 First, if the machine the user logs in from is listed in
 .I /etc/hosts.equiv
+or
+.I @ETCDIR@/shosts.equiv
 on the remote machine, and the user names are
 the same on both sides, the user is immediately permitted to log in.
 Second, if 
@@ -134,14 +139,17 @@ method combined with RSA-based host authentication.  It
 means that if the login would be permitted by
 .I \&\s+2.\s0rhosts\c
 \|,
-.I \&\s+2.\s0shosts
+.I \&\s+2.\s0shosts\c
+\|,
+.IR /etc/hosts.equiv\c
+\|,
 or
-.IR /etc/hosts.equiv ",
+.IR @ETCDIR@/shosts.equiv ",
 and additionally it can verify the client's
 host key (see 
 .I \&$HOME/\s+2.\s0ssh/known_hosts
 and
-.I /etc/ssh_known_hosts
+.I @ETCDIR@/ssh_known_hosts
 in the
 .B \s-1FILES\s0
 section), only then login is
@@ -258,7 +266,7 @@ identifications for all hosts it has ever been used with.  The
 database is stored in 
 .I \&\s+2.\s0ssh/known_hosts
 in the user's home directory.  Additionally, the file 
-.I /etc/ssh_known_hosts
+.I @ETCDIR@/ssh_known_hosts
 is automatically checked for known hosts.  Any new hosts are
 automatically added to the user's file.  If a host's identification
 ever changes,
@@ -413,7 +421,7 @@ configuration file.  Only root can forward privileged ports.
 obtains configuration data from the following sources (in this order):
 command line options, user's configuration file
 (\fI\&$HOME/\s+2.\s0ssh/config\fR), and system-wide configuration file
-(\fI/etc/ssh_config\fR).  For each parameter, the first obtained value
+(\fI@ETCDIR@/ssh_config\fR).  For each parameter, the first obtained value
 will be used.  The configuration files contain sections bracketed by
 "Host" specifications, and that section is only applied for hosts that
 match one of the patterns given in the specification.  The matched
@@ -484,6 +492,11 @@ specifications).
 .B Port
 Specifies the port number to connect on the remote host.  Default is
 22.
+.ne 3
+.TP
+.B ConnectionAttempts
+Specifies the number of tries (one per second) to make before falling
+back to rsh or exiting.  The argument must be an integer.
 .ne 3
 .TP
 .B User
@@ -586,7 +599,7 @@ forward privileged ports.
 .ne 3
 .TP
 .B GlobalKnownHostsFile
-Specifies a file to use instead of /etc/ssh_known_hosts.
+Specifies a file to use instead of @ETCDIR@/ssh_known_hosts.
 .ne 3
 .TP
 .B UserKnownHostsFile
@@ -599,7 +612,7 @@ is normally installed as suid root.  It needs root privileges only for
 rhosts authentication (rhosts authentication requires that the
 connection must come from a privileged port, and allocating such a
 port requires root privileges).  It also needs to be able to read
-\fI/etc/ssh_host_key\fR to perform
+\fI@ETCDIR@/ssh_host_key\fR to perform
 .B \s-1RSA\s0
 host authentication.  It is possible to use
 .B ssh
@@ -614,7 +627,7 @@ remote host has been made.
 .TP
 .I \&$HOME/\s+2.\s0ssh/known_hosts
 Records host keys for all hosts the user has logged into (that are not
-in \fI/etc/ssh_known_hosts\fR).  See
+in \fI@ETCDIR@/ssh_known_hosts\fR).  See
 .B sshd
 manual page.
 .ne 3
@@ -663,7 +676,7 @@ modulus, public exponent, modulus, and comment fields, separated by
 spaces).
 .ne 3
 .TP
-.I /etc/ssh_known_hosts
+.I @ETCDIR@/ssh_known_hosts
 Systemwide list of known host keys.  This file should be prepared by the
 system administrator to contain the public host keys of all machines in the
 organization.  This file should be world-readable.  This file contains
@@ -684,7 +697,7 @@ checking the key, because someone with access to the name servers
 would then be able to fool host authentication.
 .ne 3
 .TP
-.I /etc/ssh_config
+.I @ETCDIR@/ssh_config
 Systemwide configuration file.  This file provides defaults for those
 values that are not specified in the user's configuration file, and
 for those users who do not have a configuration file.  This file must
@@ -708,7 +721,7 @@ Note that by default
 will be installed so that it requires successful RSA host
 authentication before permitting \s+2.\s0rhosts authentication.  If your
 server machine does not have the client's host key in
-\fI/etc/ssh_known_hosts\fR, you can store it in
+\fI@ETCDIR@/ssh_known_hosts\fR, you can store it in
 \fI$HOME/\s+2.\s0ssh/known_hosts\fR.  The easiest way to do this is to
 connect back to the client from the server machine using ssh; this
 will automatically add the host key in \fI$HOME/\s+2.\s0ssh/known_hosts\fR.
@@ -723,10 +736,20 @@ without permitting login with rlogin or rsh.
 .TP
 .I /etc/hosts.equiv
 This file is used during \s+2.\s0rhosts authentication.  It contains
-canonical hosts names, one per line.  If the client host is found in
+canonical hosts names, one per line (the full format is described on
+the
+.B sshd
+manual page).  If the client host is found in
 this file, login is automatically permitted provided client and server
 user names are the same.  Additionally, successful RSA host
-authentication is normally required.  This file must be readable by root.
+authentication is normally required.  This file must be readable by
+root.
+.TP
+.I @ETCDIR@/shosts.equiv
+This file is processed exactly as /etc/hosts.equiv.  This file may be
+useful to permit logins using
+.B ssh
+but not using rsh/rlogin.
 
 .SH AUTHOR
 .LP

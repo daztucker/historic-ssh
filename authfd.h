@@ -8,15 +8,26 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Wed Mar 29 01:17:41 1995 ylo
-Last modified: Thu Jul 13 04:11:41 1995 ylo
 
 Functions to interface with the SSH_AUTHENTICATION_FD socket.
 
 */
 
 /*
- * $Id: authfd.h,v 1.2 1995/07/13 01:11:42 ylo Exp $
+ * $Id: authfd.h,v 1.5 1995/08/29 22:19:30 ylo Exp $
  * $Log: authfd.h,v $
+ * Revision 1.5  1995/08/29  22:19:30  ylo
+ * 	Removed Last Modified line.
+ *
+ * Revision 1.4  1995/08/29  22:19:12  ylo
+ * 	Added remove_all_identities.
+ *
+ * Revision 1.3  1995/08/21  23:21:33  ylo
+ * 	Added session_id and reponse_type arguments to
+ * 	ssh_decrypt_challenge.
+ *
+ * 	Deleted ssh_authenticate.
+ *
  * Revision 1.2  1995/07/13  01:11:42  ylo
  * 	Added cvs log.
  *
@@ -40,7 +51,7 @@ Functions to interface with the SSH_AUTHENTICATION_FD socket.
 #define SSH_AGENT_SUCCESS			6
 #define SSH_AGENTC_ADD_RSA_IDENTITY		7
 #define SSH_AGENTC_REMOVE_RSA_IDENTITY		8
-
+#define SSH_AGENTC_REMOVE_ALL_RSA_IDENTITIES	9
 
 typedef struct
 {
@@ -90,13 +101,9 @@ int ssh_get_next_identity(AuthenticationConnection *connection,
    the agent claims it was able to decrypt it. */
 int ssh_decrypt_challenge(AuthenticationConnection *auth,
 			  int bits, MP_INT *e, MP_INT *n, MP_INT *challenge,
+			  unsigned char session_id[16], 
+			  unsigned int response_type,
 			  unsigned char response[16]);
-
-/* Authenticates that the authentication agent really has the private
-   key corresponding to <e,n>.  Returns true if the agent has successfully
-   demonstrated its authority, zero otherwise. */
-int ssh_authenticate(AuthenticationConnection *connection,
-		     int bits, MP_INT *e, MP_INT *n, RandomState *state);
 
 /* Adds an identity to the authentication server.  This call is not meant to
    be used by normal applications.  This returns true if the identity
@@ -109,6 +116,11 @@ int ssh_add_identity(AuthenticationConnection *connection,
    identity was successfully added. */
 int ssh_remove_identity(AuthenticationConnection *connection,
 			RSAPublicKey *key);
+
+/* Removes all identities from the authentication agent.  This call is not
+   meant to be used by normal applications.  This returns true if the
+   operation was successful. */
+int ssh_remove_all_identities(AuthenticationConnection *connection);
 
 /* Closes the connection to the authentication agent. */
 void ssh_close_authentication(AuthenticationConnection *connection);

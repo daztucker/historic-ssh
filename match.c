@@ -14,8 +14,11 @@ Simple pattern matching, with '*' and '?' as wildcards.
 */
 
 /*
- * $Id: match.c,v 1.2 1995/07/13 01:27:07 ylo Exp $
+ * $Id: match.c,v 1.1.1.1 1996/02/18 21:38:12 ylo Exp $
  * $Log: match.c,v $
+ * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.2  1995/07/13  01:27:07  ylo
  * 	Removed "Last modified" header.
  * 	Added cvs log.

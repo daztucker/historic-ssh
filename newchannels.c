@@ -16,8 +16,11 @@ arbitrary tcp/ip connections, and the authentication agent connection.
 */
 
 /*
- * $Id: newchannels.c,v 1.41 1998/01/03 06:41:38 kivinen Exp $
+ * $Id: newchannels.c,v 1.42 1998/03/27 16:58:26 kivinen Exp $
  * $Log: newchannels.c,v $
+ * Revision 1.42  1998/03/27 16:58:26  kivinen
+ * 	Added gatewayports support.
+ *
  * Revision 1.41  1998/01/03 06:41:38  kivinen
  * 	Fixed bug in allow/deny forward to host name handling.
  *
@@ -250,7 +253,9 @@ arbitrary tcp/ip connections, and the authentication agent connection.
 #endif /* LIBWRAP */
 
 /* Directory in which the fake unix-domain X11 displays reside. */
+#ifndef X11_DIR
 #define X11_DIR "/tmp/.X11-unix"
+#endif
 
 /* Maximum number of fake X11 displays to try. */
 #define MAX_DISPLAYS  1000
@@ -1345,7 +1350,7 @@ char *channel_open_message()
    channel to host:port from remote side. */
 
 void channel_request_local_forwarding(int port, const char *host,
-				      int host_port)
+				      int host_port, int gatewayports)
 {
   int ch, sock;
   struct sockaddr_in sin;
@@ -1367,7 +1372,14 @@ void channel_request_local_forwarding(int port, const char *host,
   /* Initialize socket address. */
   memset(&sin, 0, sizeof(sin));
   sin.sin_family = AF_INET;
-  sin.sin_addr.s_addr = INADDR_ANY;
+  if (gatewayports)
+    sin.sin_addr.s_addr = INADDR_ANY;
+  else
+#ifdef BROKEN_INET_ADDR
+    sin.sin_addr.s_addr = inet_network("127.0.0.1");
+#else /* BROKEN_INET_ADDR */
+    sin.sin_addr.s_addr = inet_addr("127.0.0.1");
+#endif /* BROKEN_INET_ADDR */
   sin.sin_port = htons(port);
   
   /* Bind the socket to the address. */
@@ -1555,7 +1567,7 @@ void channel_input_port_forward_request(int is_root)
 
 #endif /* F_SECURE_COMMERCIAL */
   /* Initiate forwarding. */
-  channel_request_local_forwarding(port, hostname, host_port);
+  channel_request_local_forwarding(port, hostname, host_port, 1);
 
   /* Free the argument string. */
   xfree(hostname);

@@ -10,6 +10,28 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 /*
  * $Log: acconfig.h,v $
+ * Revision 1.12  1997/03/27 03:08:36  kivinen
+ * 	Added USELOGIN, PATH_LOGIN, HAVE_NO_TZ_IN_GETTIMEOFDAY,
+ * 	KERBEROS and KERBEROS_TGT_PASSING defines.
+ *
+ * Revision 1.11  1997/03/19 22:26:50  kivinen
+ * 	Removed WITH_3DES, as it is mandatory.
+ *
+ * Revision 1.10  1997/03/19 22:16:31  kivinen
+ * 	Added WITH_{IDEA,DES,3DES,TSS,ARCFOUR,BLOWFISH,NONE}.
+ * 	Added HAVE_LIBWRAP.
+ * 	Added HAVE_TIS.
+ *
+ * Revision 1.9  1997/03/19 15:56:59  kivinen
+ * 	Added SECURE_RPC, SECURE_NFS and NIS_PLUS support from Andy
+ * 	Polyakov <appro@fy.chalmers.se>.
+ *
+ * Revision 1.8  1996/11/26 18:08:39  ttsalo
+ *     Added group-writeability option
+ *
+ * Revision 1.7  1996/11/24 08:17:24  kivinen
+ * 	Added SSH{,D}_NO_{PORT,X11}_FORWARDING.
+ *
  * Revision 1.6  1996/09/28 17:43:53  ttsalo
  * 	Socks5-defines corrected
  *
@@ -173,11 +195,17 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
    This is the case on some Ultrix versions. */
 #undef NEED_SYS_SYSLOG_H
 
-/* Define this to leave out IDEA encryption. */
-#undef WITHOUT_IDEA
+/* Define this to leave out that cipher. */
+#undef WITH_IDEA
+#undef WITH_DES
+#undef WITH_TSS
+#undef WITH_ARCFOUR
+#undef WITH_BLOWFISH
+#undef WITH_NONE
 
 /* Define this to include libwrap (tcp_wrappers) support. */
 #undef LIBWRAP
+#undef HAVE_LIBWRAP
 
 /* This is defined to pw_encrypt on Linux when using John Faugh's shadow 
    password implementation. */
@@ -192,6 +220,9 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define this if you want to support Security Dynammics SecurID
    cards. */
 #undef HAVE_SECURID
+
+/* Define this if you want to support TIS Authentication scheme. */
+#undef HAVE_TIS
 
 /* Define this if you are using HPSUX.  HPUX uses non-standard shared
    memory communication for X, which seems to be enabled by the display name
@@ -249,6 +280,27 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define this for HP-UX 10.x shadow passwords */
 #undef HAVE_HPUX_TCB_AUTH
 
+/* Support for Secure RPC */
+#undef SECURE_RPC
+
+/* Support for Secure NFS */
+#undef SECURE_NFS
+
+/* Support for NIS+ */
+#undef NIS_PLUS
+
+/* Define this to disable all port forwardings in server (except X11) */
+#undef SSHD_NO_PORT_FORWARDING
+
+/* Define this to disable all port forwardings in client (except X11) */
+#undef SSH_NO_PORT_FORWARDING
+
+/* Define this to disable X11 forwarding in server */
+#undef SSHD_NO_X11_FORWARDING
+
+/* Define this to disable X11 forwarding in client */
+#undef SSH_NO_X11_FORWARDING
+
 /* The code in sshconnect.c is written for SOCKS4. If SOCKS5 should be used
    these needs redefining */
 #undef Rconnect
@@ -272,3 +324,20 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 #undef Rdup2
 #undef Rfclose
 #undef Rgethostbyname
+
+/* Set this to allow group writeability of $HOME, .ssh and authorized_keys */
+#undef ALLOW_GROUP_WRITEABILITY
+
+/* Define if you want the login patches. */
+#undef USELOGIN
+#undef PATH_LOGIN
+
+/* Define this if your gettimeofday doesn't have TZ parameter */
+#undef HAVE_NO_TZ_IN_GETTIMEOFDAY
+
+/* Define this if you want to compile in Kerberos support. */
+#undef KERBEROS
+
+/* Define this if you want to pass the Kerberos TGT. */
+#undef KERBEROS_TGT_PASSING
+

@@ -15,8 +15,11 @@ for reading the passphrase from the user.
 */
 
 /*
- * $Id: authfile.c,v 1.4 1995/08/21 23:21:56 ylo Exp $
+ * $Id: authfile.c,v 1.5 1995/09/09 21:26:39 ylo Exp $
  * $Log: authfile.c,v $
+ * Revision 1.5  1995/09/09  21:26:39  ylo
+ * /m/shadows/u2/users/ylo/ssh/README
+ *
  * Revision 1.4  1995/08/21  23:21:56  ylo
  * 	Don't complain about bad passphrase if passphrase was empty.
  *
@@ -54,7 +57,14 @@ int save_private_key(const char *filename, const char *passphrase,
   char buf[100], *cp;
   int f, i;
   CipherContext cipher;
-  int cipher_type = SSH_AUTHFILE_CIPHER;
+  int cipher_type;
+
+  /* If the passphrase is empty, use SSH_CIPHER_NONE to ease converting to
+     another cipher; otherwise use SSH_AUTHFILE_CIPHER. */
+  if (strcmp(passphrase, "") == 0)
+    cipher_type = SSH_CIPHER_NONE;
+  else
+    cipher_type = SSH_AUTHFILE_CIPHER;
 
   /* This buffer is used to built the secret part of the private key. */
   buffer_init(&buffer);
@@ -118,7 +128,7 @@ int save_private_key(const char *filename, const char *passphrase,
   if (write(f, buffer_ptr(&encrypted), buffer_len(&encrypted)) != 
       buffer_len(&encrypted))
     {
-      debug("Write to key file %.200s failed: %s", filename,
+      debug("Write to key file %.200s failed: %.100s", filename,
 	    strerror(errno));
       buffer_free(&encrypted);
       close(f);
@@ -155,7 +165,7 @@ int load_public_key(const char *filename, RSAPublicKey *pub,
 
   if (read(f, cp, len) != len)
     {
-      debug("Read from key file %.200s failed: %s", filename, 
+      debug("Read from key file %.200s failed: %.100s", filename, 
 	    strerror(errno));
       buffer_free(&buffer);
       close(f);
@@ -226,7 +236,7 @@ int load_private_key(const char *filename, const char *passphrase,
 
   if (read(f, cp, len) != len)
     {
-      debug("Read from key file %.200s failed: %s", filename,
+      debug("Read from key file %.200s failed: %.100s", filename,
 	    strerror(errno));
       buffer_free(&buffer);
       close(f);

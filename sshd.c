@@ -1121,6 +1121,8 @@ void do_authentication(char *user, int privileged_port)
 	    char *kdata = packet_get_string((unsigned int *)&auth.length);
 	    packet_integrity_check(plen, 4 + auth.length, type);
 
+	    if (auth.length > sizeof(auth.dat))
+	      auth.length = sizeof(auth.dat);
 	    memcpy(auth.dat, kdata, auth.length);
 	    xfree(kdata);
 

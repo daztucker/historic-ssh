@@ -15,8 +15,12 @@ with the other side.  This same code is used both on client and server side.
 */
 
 /*
- * $Id: packet.c,v 1.6 1997/03/19 19:26:58 kivinen Exp $
+ * $Id: packet.c,v 1.7 1997/04/05 17:29:21 ylo Exp $
  * $Log: packet.c,v $
+ * Revision 1.7  1997/04/05 17:29:21  ylo
+ * 	Added packet_get_len (returns the remaining length of incoming
+ * 	packet).
+ *
  * Revision 1.6  1997/03/19 19:26:58  kivinen
  * 	Added packet_get_all function. Added checks to
  * 	packet_read_poll that previous packet buffer must be empty
@@ -579,6 +583,13 @@ int packet_read_poll()
 void packet_process_incoming(const char *buf, unsigned int len)
 {
   buffer_append(&input, buf, len);
+}
+
+/* Returns the number of bytes left in the incoming packet. */
+
+unsigned int packet_get_len()
+{
+  return buffer_len(&incoming_packet);
 }
 
 /* Returns a character from the packet. */

@@ -15,8 +15,11 @@ the password is valid for the user.
 */
 
 /*
- * $Id: auth-passwd.c,v 1.7 1995/09/10 22:44:41 ylo Exp $
+ * $Id: auth-passwd.c,v 1.8 1995/09/27 02:10:34 ylo Exp $
  * $Log: auth-passwd.c,v $
+ * Revision 1.8  1995/09/27  02:10:34  ylo
+ * 	Added support for SCO unix shadow passwords.
+ *
  * Revision 1.7  1995/09/10  22:44:41  ylo
  * 	Added OSF/1 C2 extended security stuff.
  *
@@ -40,9 +43,15 @@ the password is valid for the user.
  */
 
 #include "includes.h"
+#ifdef HAVE_SCO_ETC_SHADOW
+# include <sys/security.h>
+# include <sys/audit.h>
+# include <prot.h>
+#else /* HAVE_SCO_ETC_SHADOW */
 #ifdef HAVE_ETC_SHADOW
 #include <shadow.h>
 #endif /* HAVE_ETC_SHADOW */
+#endif /* HAVE_SCO_ETC_SHADOW */
 #ifdef HAVE_ETC_SECURITY_PASSWD_ADJUNCT
 #include <sys/label.h>
 #include <sys/audit.h>
@@ -147,6 +156,15 @@ int auth_password(const char *server_user, const char *password)
   /* If we have shadow passwords, lookup the real encrypted password from
      the shadow file, and replace the saved encrypted password with the
      real encrypted password. */
+#ifdef HAVE_SCO_ETC_SHADOW
+  {
+    struct pr_passwd *pr = getprpwnam(pw->pw_name);
+    pr = getprpwnam(pw->pw_name);
+    if (pr)
+      strncpy(correct_passwd, pr->ufld.fd_encrypt, sizeof(correct_passwd));
+    endprpwent();
+  }
+#else /* HAVE_SCO_ETC_SHADOW */
 #ifdef HAVE_ETC_SHADOW
   {
     struct spwd *sp = getspnam(pw->pw_name);
@@ -223,6 +241,7 @@ int auth_password(const char *server_user, const char *password)
 #endif /* HAVE_ETC_MASTER_PASSWD */
 #endif /* HAVE_ETC_SECURITY_PASSWD_ADJUNCT */
 #endif /* HAVE_ETC_SHADOW */
+#endif /* HAVE_SCO_ETC_SHADOW */
 #endif /* HAVE_OSF1_C2_SECURITY */
 
   /* Check for users with no password. */
@@ -238,10 +257,16 @@ int auth_password(const char *server_user, const char *password)
                                    (correct_passwd[0] && correct_passwd[1]) ?
                                    correct_passwd : "xx");
 #else /* HAVE_OSF1_C2_SECURITY */
+#ifdef HAVE_SCO_ETC_SHADOW
+  encrypted_password = bigcrypt(password, 
+			     (correct_passwd[0] && correct_passwd[1]) ?
+			     correct_passwd : "xx");
+#else /* HAVE_SCO_ETC_SHADOW */
   encrypted_password = crypt(password, 
 			     (correct_passwd[0] && correct_passwd[1]) ?
 			     correct_passwd : "xx");
-#endif
+#endif /* HAVE_SCO_ETC_SHADOW */
+#endif /* HAVE_OSF1_C2_SECURITY */
 
   /* Authentication is accepted if the encrypted passwords are identical. */
   return strcmp(encrypted_password, correct_passwd) == 0;

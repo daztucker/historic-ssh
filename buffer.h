@@ -14,8 +14,11 @@ Code for manipulating FIFO buffers.
 */
 
 /*
- * $Id: buffer.h,v 1.2 1995/07/13 01:18:55 ylo Exp $
+ * $Id: buffer.h,v 1.1.1.1 1996/02/18 21:38:11 ylo Exp $
  * $Log: buffer.h,v $
+ * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.2  1995/07/13  01:18:55  ylo
  * 	Removed "Last modified" header.
  * 	Added cvs log.

@@ -16,8 +16,11 @@ validity of the host key.
 */
 
 /*
- * $Id: auth-rsa.c,v 1.3 1996/10/04 00:51:36 ylo Exp $
+ * $Id: auth-rsa.c,v 1.4 1996/10/04 12:51:26 ylo Exp $
  * $Log: auth-rsa.c,v $
+ * Revision 1.4  1996/10/04 12:51:26  ylo
+ * 	Fixed a bug in the last fix in RSA authentication.
+ *
  * Revision 1.3  1996/10/04 00:51:36  ylo
  * 	Check existence of authorized_keys BEFORE checking its
  * 	permissions to avoid bogus warnings.
@@ -162,6 +165,9 @@ int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state,
   unsigned long linenum = 0;
   struct stat st;
 
+  /* Check permissions & owner of user's .ssh directory */
+  sprintf(line, "%.500s/%.100s", pw->pw_dir, SSH_USER_DIR);
+
   /* Open the file containing the authorized keys. */
   if (userfile_stat(pw->pw_uid, line, &st) < 0)
     return 0;
@@ -174,9 +180,6 @@ int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state,
       packet_send_debug("Bad file modes for %.200s", pw->pw_dir);
       return 0;
     }
-
-  /* Check permissions & owner of user's .ssh directory */
-  sprintf(line, "%.500s/%.100s", pw->pw_dir, SSH_USER_DIR);
 
   if (strict_modes && !userfile_check_owner_permissions(pw, line))
     {

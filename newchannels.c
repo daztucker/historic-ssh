@@ -16,8 +16,12 @@ arbitrary tcp/ip connections, and the authentication agent connection.
 */
 
 /*
- * $Id: newchannels.c,v 1.36 1997/04/05 21:48:54 kivinen Exp $
+ * $Id: newchannels.c,v 1.37 1997/04/17 04:01:22 kivinen Exp $
  * $Log: newchannels.c,v $
+ * Revision 1.37  1997/04/17 04:01:22  kivinen
+ * 	Removed extra port variable. Added return -1 to
+ * 	channel_allocate to get rid of warning.
+ *
  * Revision 1.36  1997/04/05 21:48:54  kivinen
  * 	Fixed some debug messages (removed extra newline at the end).
  * 	Added clearing of input buffer after output have closed.
@@ -428,6 +432,7 @@ int channel_allocate(int type, int sock, char *remote_name)
       i++;
     }
   fatal ("Internal bug in channel_allocate.");
+  return -1;
 }
 
 /* Free the channel and close its socket. */
@@ -811,7 +816,7 @@ void channel_prepare_select(fd_set *readset, fd_set *writeset)
 void channel_after_select(fd_set *readset, fd_set *writeset)
 {
   struct sockaddr addr;
-  int addrlen, newsock, i, newch, len, port, temp;
+  int addrlen, newsock, i, newch, len, temp;
   Channel *ch;
   char buf[16384], *remote_hostname;
   

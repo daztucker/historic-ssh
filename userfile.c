@@ -13,6 +13,19 @@ Created: Wed Jan 24 20:19:53 1996 ylo
 
 /*
  * $Log: userfile.c,v $
+ * Revision 1.15  1997/03/26 07:10:04  kivinen
+ * 	Changed uid 0 to UID_ROOT.
+ *
+ * Revision 1.14  1997/03/25 05:47:00  kivinen
+ * 	Changed USERFILE_GET_DES_1_MAGIC_PHRASE to call
+ * 	userfile_get_des_1_magic_phrase.
+ *
+ * Revision 1.13  1997/03/19 17:53:46  kivinen
+ * 	Added USERFILE_GET_DES_1_MAGIC_PHRASE.
+ *
+ * Revision 1.12  1996/11/27 14:30:07  ttsalo
+ *     Added group-writeability #ifdef
+ *
  * Revision 1.11  1996/10/29 22:48:23  kivinen
  * 	Removed USERFILE_LOCAL_SOCK and USERFILE_SEND.
  *
@@ -132,6 +145,11 @@ Created: Wed Jan 24 20:19:53 1996 ylo
        20 USERFILE_PCLOSE_REPLY
 	  int32		return value
 
+       21 USERFILE_GET_DES_1_MAGIC_PHRASE
+
+       22 USERFILE_GET_DES_1_MAGIC_PHRASE_REPLY
+	  string	data
+	  
 	  */
 
 #include "includes.h"
@@ -142,6 +160,11 @@ Created: Wed Jan 24 20:19:53 1996 ylo
 #include "bufaux.h"
 #include "xmalloc.h"
 #include "ssh.h"
+
+#ifdef SECURE_RPC
+#include <rpc/rpc.h>
+#endif
+
 
 /* Protocol message types. */
 #define USERFILE_OPEN		1
@@ -164,6 +187,8 @@ Created: Wed Jan 24 20:19:53 1996 ylo
 #define USERFILE_POPEN_REPLY   18
 #define USERFILE_PCLOSE	       19
 #define USERFILE_PCLOSE_REPLY  20
+#define USERFILE_GET_DES_1_MAGIC_PHRASE	       21
+#define USERFILE_GET_DES_1_MAGIC_PHRASE_REPLY  22
 
 
 /* Flag indicating whether we have forked. */
@@ -518,6 +543,24 @@ static void userfile_child_server()
 	  buffer_put_int(&packet, ret);
 	  userfile_packet_send();
 
+	  break;
+
+	case USERFILE_GET_DES_1_MAGIC_PHRASE:
+	  {
+	    char *buf = NULL;
+#ifdef SECURE_RPC
+	    buf = userfile_get_des_1_magic_phrase(geteuid());
+#endif
+	    userfile_packet_start(USERFILE_GET_DES_1_MAGIC_PHRASE_REPLY);
+	    if (buf == NULL)
+	      buffer_put_string(&packet, "", 0);
+	    else
+	      {
+		buffer_put_string(&packet, buf, strlen(buf));
+		memset(buf, 0, strlen(buf));
+	      }
+	    userfile_packet_send();
+	  }
 	  break;
 
 	default:
@@ -1057,15 +1100,72 @@ int userfile_pclose(UserFile uf)
     }
 }
 
+/* Get sun des 1 magic phrase */
+char *userfile_get_des_1_magic_phrase(uid_t uid)
+{
+  char *phrase = NULL;
+#ifndef SECURE_RPC
+  return phrase;
+#else
+  /* Perform directly if with current effective uid. */
+  if (uid == geteuid())
+    {
+      char buf[MAXNETNAMELEN + 1];
+      des_block block;
+      
+      memset(buf, 0, sizeof(buf));
+      sprintf(buf, "ssh.%04X", geteuid());
+      memcpy(block.c, buf, sizeof(block.c));
+      if (getnetname(buf))
+	{
+	  if (key_encryptsession(buf, &block) == 0)
+	    {
+	      sprintf(buf, "%08X%08X", ntohl(block.key.high),
+		      ntohl(block.key.low));
+	      memset(block.c, 0, sizeof(block.c));
+	      phrase = xstrdup(buf);
+	      memset(buf, 0, sizeof(buf));
+	    }
+	}
+      return phrase;
+    }
+  
+  if (!userfile_initialized)
+    fatal("userfile_get_des_1_magic_phrase with uid %d", (int)uid);
+  
+  if (uid != userfile_uid)
+    fatal("userfile_get_des_1_magic_phrase with wrong uid %d", (int)uid);
+
+  userfile_packet_start(USERFILE_GET_DES_1_MAGIC_PHRASE);
+  userfile_packet_send();
+
+  userfile_packet_read(USERFILE_GET_DES_1_MAGIC_PHRASE_REPLY);
+  phrase =  buffer_get_string(&packet, NULL);
+  if (strlen(phrase) == 0)
+    {
+      xfree(phrase);
+      return NULL;
+    }
+  return phrase;
+#endif
+}
+
+
 int userfile_check_owner_permissions(struct passwd *pw, const char *path)
 {
   struct stat st;
   if (userfile_stat(pw->pw_uid, path, &st) < 0)
     return 0;
 
-  if ((st.st_uid != 0 && st.st_uid != pw->pw_uid) ||
-      (st.st_mode & 022) != 0)
+  if ((st.st_uid != UID_ROOT && st.st_uid != pw->pw_uid) ||
+#ifdef ALLOW_GROUP_WRITEABILITY
+      (st.st_mode & 002) != 0
+#else
+      (st.st_mode & 022) != 0
+#endif
+      )
     return 0;
   else
     return 1;
 }
+

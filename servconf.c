@@ -12,8 +12,13 @@ Created: Mon Aug 21 15:48:58 1995 ylo
 */
 
 /*
- * $Id: servconf.c,v 1.9 1997/04/21 01:03:59 kivinen Exp $
+ * $Id: servconf.c,v 1.10 1997/04/27 21:51:34 kivinen Exp $
  * $Log: servconf.c,v $
+ * Revision 1.10  1997/04/27 21:51:34  kivinen
+ * 	Added F-SECURE stuff. Added {Allow,Deny}Forwarding{To,Port}
+ * 	feature. Added {Allow,Deny}Users feature from Steve Kann
+ * 	<stevek@SteveK.COM>.
+ *
  * Revision 1.9  1997/04/21 01:03:59  kivinen
  * 	Fixed allow_tcp_forwarding option default to yes.
  *
@@ -94,6 +99,14 @@ void initialize_server_options(ServerOptions *options)
   options->forced_passwd_change = -1;
   options->num_allow_hosts = 0;
   options->num_deny_hosts = 0;
+  options->num_allow_users = 0;
+  options->num_deny_users = 0;
+#ifdef F_SECURE_COMMERCIAL
+
+
+
+
+#endif /* F_SECURE_COMMERCIAL */
   options->umask = -1;
   options->idle_timeout = -1;
 }
@@ -194,7 +207,11 @@ typedef enum
   sStrictModes, sEmptyPasswd, sRandomSeedFile, sKeepAlives, sPidFile,
   sForcedPasswd, sUmask, sSilentDeny, sIdleTimeout, sUseLogin,
   sKerberosAuthentication, sKerberosOrLocalPasswd, sKerberosTgtPassing,
-  sAllowTcpForwarding
+  sAllowTcpForwarding, sAllowUsers, sDenyUsers,
+#ifdef F_SECURE_COMMERCIAL
+
+
+#endif /* F_SECURE_COMMERCIAL */
 } ServerOpCodes;
 
 /* Textual representation of the tokens. */
@@ -221,6 +238,14 @@ static struct
   { "uselogin", sUseLogin },
   { "allowhosts", sAllowHosts },
   { "denyhosts", sDenyHosts },
+  { "allowusers", sAllowUsers },
+  { "denyusers", sDenyUsers },
+#ifdef F_SECURE_COMMERCIAL
+
+
+
+
+#endif /* F_SECURE_COMMERCIAL */
   { "listenaddress", sListenAddress },
   { "printmotd", sPrintMotd },
   { "ignorerhosts", sIgnoreRhosts },
@@ -633,6 +658,90 @@ void read_server_config(ServerOptions *options, const char *filename)
 	    }
 	  break;
 
+	case sAllowUsers:
+	  while ((cp = strtok(NULL, WHITESPACE)))
+	    {
+	      if (options->num_allow_users >= MAX_ALLOW_USERS)
+		{
+		  fprintf(stderr, "%s line %d: too many allow users.\n",
+			  filename, linenum);
+		  exit(1);
+		}
+	      options->allow_users[options->num_allow_users++] = xstrdup(cp);
+	    }
+	  break;
+	  
+	case sDenyUsers:
+	  while ((cp = strtok(NULL, WHITESPACE)))
+	    {
+	      if (options->num_deny_users >= MAX_DENY_USERS)
+		{
+		  fprintf(stderr, "%s line %d: too many deny users.\n",
+			  filename, linenum);
+		  exit(1);
+		}
+	      options->deny_users[options->num_deny_users++] = xstrdup(cp);
+	    }
+	  break;
+	  
+#ifdef F_SECURE_COMMERCIAL
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#endif /* F_SECURE_COMMERCIAL */
+	  
 	default:
 	  fprintf(stderr, "%s line %d: Missing handler for opcode %s (%d)\n",
 		  filename, linenum, cp, opcode);

@@ -16,10 +16,13 @@ output to the system log.
 */
 
 /*
- * $Id: log-server.c,v 1.8 1999/11/17 17:04:46 tri Exp $
+ * $Id: log-server.c,v 1.9 2000/07/05 13:42:47 sjl Exp $
  * $Log: log-server.c,v $
+ * Revision 1.9  2000/07/05 13:42:47  sjl
+ * 	Applied patch for syslog file handle hogging by James Barlow.
+ *
  * Revision 1.8  1999/11/17 17:04:46  tri
- * 	Fixed copyright notices.
+ *      Fixed copyright notices.
  *
  * Revision 1.7  1999/02/21 19:52:24  ylo
  *      Intermediate commit of ssh1.2.27 stuff.
@@ -74,6 +77,10 @@ static int log_debug = 0;
 static int log_quiet = 0;
 static int log_on_stderr = 0;
 
+/* Initialize these for logging */
+static int log_facility = LOG_USER;
+static char *prg_name = "sshd";
+
 /* Initialize the log.
      av0        program name (should be argv[0])
      on_stderr  print also on stderr
@@ -84,8 +91,6 @@ static int log_on_stderr = 0;
 void log_init(char *av0, int on_stderr, int debug, int quiet, 
               SyslogFacility facility)
 {
-  int log_facility;
-  
   switch (facility)
     {
     case SYSLOG_FACILITY_DAEMON:
@@ -130,8 +135,11 @@ void log_init(char *av0, int on_stderr, int debug, int quiet,
   log_debug = debug;
   log_quiet = quiet;
   log_on_stderr = on_stderr;
+  prg_name = strdup(av0); /* store the program name for later use */
   closelog(); /* Close any previous log. */
+#if 0 /* don't open log here, it keeps an open handle on every ssh running */
   openlog(av0, LOG_PID, log_facility);
+#endif
 }
 
 /* Log this message (information that usually should go to the log). */
@@ -147,7 +155,9 @@ void log_msg(const char *fmt, ...)
   va_end(args);
   if (log_on_stderr)
     fprintf(stderr, "log: %s\n", buf);
+  openlog(prg_name, LOG_PID, log_facility);
   syslog(LOG_INFO, "log: %.500s", buf);
+  closelog();
 }
 
 /* Converts portable syslog severity to machine-specific syslog severity. */
@@ -188,7 +198,9 @@ void log_severity(SyslogSeverity severity, const char *fmt, ...)
   va_end(args);
   if (log_on_stderr)
     fprintf(stderr, "log: %s\n", buf);
+  openlog(prg_name, LOG_PID, log_facility);
   syslog(syslog_severity(severity), "log: %.500s", buf);
+  closelog();
 }
 
 /* Debugging messages that should not be logged during normal operation. */
@@ -204,7 +216,9 @@ void debug(const char *fmt, ...)
   va_end(args);
   if (log_on_stderr)
     fprintf(stderr, "debug: %s\n", buf);
+  openlog(prg_name, LOG_PID, log_facility);
   syslog(LOG_DEBUG, "debug: %.500s", buf);
+  closelog();
 }
 
 /* Error messages that should be logged. */
@@ -220,7 +234,9 @@ void error(const char *fmt, ...)
   va_end(args);
   if (log_on_stderr)
     fprintf(stderr, "error: %s\n", buf);
+  openlog(prg_name, LOG_PID, log_facility);
   syslog(LOG_ERR, "error: %.500s", buf);
+  closelog();
 }
 
 struct fatal_cleanup
@@ -315,7 +331,9 @@ void fatal(const char *fmt, ...)
   va_end(args);
   if (log_on_stderr)
     fprintf(stderr, "fatal: %s\n", buf);
+  openlog(prg_name, LOG_PID, log_facility);
   syslog(LOG_ERR, "fatal: %.500s", buf);
+  closelog();
 
   do_fatal_cleanups();
 
@@ -334,7 +352,9 @@ void fatal_severity(SyslogSeverity severity, const char *fmt, ...)
   va_end(args);
   if (log_on_stderr)
     fprintf(stderr, "fatal: %s\n", buf);
+  openlog(prg_name, LOG_PID, log_facility);
   syslog(syslog_severity(severity), "fatal: %.500s", buf);
+  closelog();
 
   do_fatal_cleanups();
 

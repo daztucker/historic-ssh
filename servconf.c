@@ -12,8 +12,11 @@ Created: Mon Aug 21 15:48:58 1995 ylo
 */
 
 /*
- * $Id: servconf.c,v 1.12 1998/01/03 06:41:55 kivinen Exp $
+ * $Id: servconf.c,v 1.13 1998/03/27 16:59:58 kivinen Exp $
  * $Log: servconf.c,v $
+ * Revision 1.13  1998/03/27 16:59:58  kivinen
+ * 	Added IgnoreRootRhosts option.
+ *
  * Revision 1.12  1998/01/03 06:41:55  kivinen
  * 	Added allow/deny groups option.
  *
@@ -82,6 +85,7 @@ void initialize_server_options(ServerOptions *options)
   options->key_regeneration_time = -1;
   options->permit_root_login = -1;
   options->ignore_rhosts = -1;
+  options->ignore_root_rhosts = -1;
   options->quiet_mode = -1;
   options->fascist_logging = -1;
   options->print_motd = -1;
@@ -150,6 +154,8 @@ void fill_default_server_options(ServerOptions *options)
     options->permit_root_login = 2;
   if (options->ignore_rhosts == -1)
     options->ignore_rhosts = 0;
+  if (options->ignore_root_rhosts == -1)
+    options->ignore_root_rhosts = options->ignore_rhosts;
   if (options->quiet_mode == -1)
     options->quiet_mode = 0;
   if (options->fascist_logging == -1)
@@ -227,7 +233,7 @@ typedef enum
   sForcedPasswd, sUmask, sSilentDeny, sIdleTimeout, sUseLogin,
   sKerberosAuthentication, sKerberosOrLocalPasswd, sKerberosTgtPassing,
   sAllowTcpForwarding, sAllowUsers, sDenyUsers, sXauthPath, sCheckMail,
-  sDenyGroups, sAllowGroups,
+  sDenyGroups, sAllowGroups, sIgnoreRootRhosts
 #ifdef F_SECURE_COMMERCIAL
 
 
@@ -271,6 +277,7 @@ static struct
   { "listenaddress", sListenAddress },
   { "printmotd", sPrintMotd },
   { "ignorerhosts", sIgnoreRhosts },
+  { "ignorerootrhosts", sIgnoreRootRhosts },
   { "x11forwarding", sX11Forwarding },
   { "x11displayoffset", sX11DisplayOffset },
   { "strictmodes", sStrictModes },
@@ -504,6 +511,10 @@ void read_server_config(ServerOptions *options, const char *filename)
 
 	case sIgnoreRhosts:
 	  intptr = &options->ignore_rhosts;
+	  goto parse_flag;
+	  
+	case sIgnoreRootRhosts:
+	  intptr = &options->ignore_root_rhosts;
 	  goto parse_flag;
 	  
 	case sQuietMode:

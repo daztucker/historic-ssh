@@ -14,8 +14,12 @@ Identity and host key generation and maintenance.
 */
 
 /*
- * $Id: ssh-keygen.c,v 1.8 1997/03/25 05:46:26 kivinen Exp $
+ * $Id: ssh-keygen.c,v 1.9 1997/04/05 21:59:56 kivinen Exp $
  * $Log: ssh-keygen.c,v $
+ * Revision 1.9  1997/04/05 21:59:56  kivinen
+ * 	Added checks that userfile_get_des_1_magic_phrase succeeded
+ * 	before using passphrase.
+ *
  * Revision 1.8  1997/03/25 05:46:26  kivinen
  * 	Fixed bug in SECURE_RPC code.
  *
@@ -308,14 +312,17 @@ void do_change_comment(struct passwd *pw)
   if (passphrase == NULL)
     {
       passphrase = userfile_get_des_1_magic_phrase(geteuid());
-      if (load_private_key(geteuid(), buf, passphrase,
-			   &private_key, &comment))
-	printf ("Using SUN-DES-1 magic phrase to decrypt the private key.\n");
-      else
+      if (passphrase != NULL)
 	{
-	  memset(passphrase, 0, strlen(passphrase));
-	  xfree(passphrase);
-	  passphrase = NULL;
+	  if (load_private_key(geteuid(), buf, passphrase,
+			       &private_key, &comment))
+	    printf ("Using SUN-DES-1 magic phrase to decrypt the private key.\n");
+	  else
+	    {
+	      memset(passphrase, 0, strlen(passphrase));
+	      xfree(passphrase);
+	      passphrase = NULL;
+	    }
 	}
     }
 #endif
@@ -443,14 +450,17 @@ int do_update_cipher(struct passwd *pw)
   if (passphrase == NULL)
     {
       passphrase = userfile_get_des_1_magic_phrase(geteuid());
-      if (load_private_key(geteuid(), buf, passphrase,
-			   &private_key, &comment))
-	printf ("Using SUN-DES-1 magic phrase to decrypt the private key.\n");
-      else
+      if (passphrase != NULL)
 	{
-	  memset(passphrase, 0, strlen(passphrase));
-	  xfree(passphrase);
-	  passphrase = NULL;
+	  if (load_private_key(geteuid(), buf, passphrase,
+			       &private_key, &comment))
+	    printf ("Using SUN-DES-1 magic phrase to decrypt the private key.\n");
+	  else
+	    {
+	      memset(passphrase, 0, strlen(passphrase));
+	      xfree(passphrase);
+	      passphrase = NULL;
+	    }
 	}
     }
 #endif 

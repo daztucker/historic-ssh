@@ -15,8 +15,14 @@ with the other side.  This same code is used both on client and server side.
 */
 
 /*
- * $Id: packet.c,v 1.6 1995/09/24 23:59:12 ylo Exp $
+ * $Id: packet.c,v 1.2 1996/05/28 16:42:13 ylo Exp $
  * $Log: packet.c,v $
+ * Revision 1.2  1996/05/28 16:42:13  ylo
+ * 	Workaround for Solaris select() bug while reading version id.
+ *
+ * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.6  1995/09/24  23:59:12  ylo
  * 	Added packet_get_protocol_flags.
  *
@@ -413,8 +419,12 @@ int packet_read()
 	fatal_severity(SYSLOG_SEVERITY_INFO,
 		       "Connection closed by remote host.");
       if (len < 0)
-	fatal_severity(SYSLOG_SEVERITY_INFO,
-		       "Read from socket failed: %.100s", strerror(errno));
+	{
+	  if (errno == EAGAIN)
+	    continue;
+	  fatal_severity(SYSLOG_SEVERITY_INFO,
+			 "Read from socket failed: %.100s", strerror(errno));
+	}
       /* Append it to the buffer. */
       packet_process_incoming(buf, len);
     }

@@ -13,7 +13,10 @@ Created: Wed Jan 24 20:19:53 1996 ylo
 
 /*
  * $Log: userfile.c,v $
- * Revision 1.17  1998/04/17 00:43:08  kivinen
+ * Revision 1.18  1998/05/23  20:28:26  kivinen
+ * 	Changed () -> (void).
+ *
+ * Revision 1.17  1998/04/17  00:43:08  kivinen
  * 	Freebsd login capabilities support.
  *
  * Revision 1.16  1997/05/13 22:30:05  kivinen
@@ -238,7 +241,7 @@ static void userfile_packet_start(int type)
 
 /* Sends a packet that has been constructed in "packet". */
   
-static void userfile_packet_send()
+static void userfile_packet_send(void)
 {
   unsigned char lenbuf[4];
   unsigned int len, offset;
@@ -266,7 +269,7 @@ static void userfile_packet_send()
 
 /* Reads a packet from the other side.  Returns the packet type. */
 
-static int userfile_read_raw()
+static int userfile_read_raw(void)
 {
   unsigned char buf[512];
   unsigned int len, offset;
@@ -407,7 +410,7 @@ int do_popen(const char *command, const char *type)
 
 /* This function is the main loop of the child.  This never returns. */
 
-static void userfile_child_server()
+static void userfile_child_server(void)
 {
   int type, handle, ret, ret2;
   unsigned int max_bytes, flags, len, whence;
@@ -648,7 +651,7 @@ void userfile_init(const char *username, uid_t uid, gid_t gid,
 	fatal("setgid: %s", strerror(errno));
 
 #ifdef HAVE_INITGROUPS
-      if (initgroups(username, gid) < 0)
+      if (initgroups((char *) username, gid) < 0)
 	fatal("initgroups: %s", strerror(errno));
 #endif /* HAVE_INITGROUPS */
 
@@ -664,7 +667,7 @@ void userfile_init(const char *username, uid_t uid, gid_t gid,
 /* Closes any open pipes held by userfile.  This should be called
    after a fork while the userfile is open. */
 
-void userfile_close_pipes()
+void userfile_close_pipes(void)
 {
   if (!userfile_initialized)
     return;
@@ -676,7 +679,7 @@ void userfile_close_pipes()
 /* Stops reading files as an ordinary user.  It is not an error to call
    this even if the system is not initialized. */
 
-void userfile_uninit()
+void userfile_uninit(void)
 {
   int status;
 

@@ -14,8 +14,14 @@ Generic header file for ssh.
 */
 
 /*
- * $Id: ssh.h,v 1.16 1995/10/02 01:31:13 ylo Exp $
+ * $Id: ssh.h,v 1.2 1996/04/22 23:49:45 huima Exp $
  * $Log: ssh.h,v $
+ * Revision 1.2  1996/04/22 23:49:45  huima
+ * Changed protocol version to 1.4, added calls to emulate module.
+ *
+ * Revision 1.1.1.1  1996/02/18  21:38:10  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.16  1995/10/02  01:31:13  ylo
  * 	Moved sshd.pid to PIDDIR.  Also changed file name.
  * 	Added SSH_HOSTS_EQUIV (shosts.equiv).
@@ -107,7 +113,7 @@ Generic header file for ssh.
 
 /* Minor protocol version.  Different version indicates minor incompatibility
    that does not prevent interoperation. */
-#define PROTOCOL_MINOR		3
+#define PROTOCOL_MINOR		4
 
 /* Name for the service.  The port named by this service overrides the default
    port if present. */
@@ -248,6 +254,11 @@ only by root, whereas ssh_config should be world-readable. */
 #define SSH_MSG_CHANNEL_DATA			23	/* ch,data (int,str) */
 #define SSH_MSG_CHANNEL_CLOSE			24	/* channel (int) */
 #define SSH_MSG_CHANNEL_CLOSE_CONFIRMATION	25	/* channel (int) */
+
+/* new channel protocol */
+#define SSH_MSG_CHANNEL_INPUT_EOF               24
+#define SSH_MSG_CHANNEL_OUTPUT_CLOSED           25
+
 /*      SSH_CMSG_X11_REQUEST_FORWARDING         26         OBSOLETE */
 #define SSH_SMSG_X11_OPEN			27	/* channel (int) */
 #define SSH_CMSG_PORT_FORWARD_REQUEST		28	/* p,host,hp (i,s,i) */

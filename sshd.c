@@ -18,8 +18,18 @@ agent connections.
 */
 
 /*
- * $Id: sshd.c,v 1.53 1998/06/11 00:11:24 kivinen Exp $
+ * $Id: sshd.c,v 1.55 1998/07/08 14:55:22 tri Exp $
  * $Log: sshd.c,v $
+ * Revision 1.55  1998/07/08 14:55:22  tri
+ * 	Fixed version negotiation so, that ssh 2
+ * 	compatibility is even remotedly possible.
+ *
+ * Revision 1.54  1998/07/08 00:48:46  kivinen
+ * 	Added better HPUX TCB auth support. Added SGI proj support.
+ * 	Changed to use match_host in the allow/deny checking. Changed
+ * 	to use PASSWD_PATH. Added checking that if allow/deny group is
+ * 	set then the group must exists.
+ *
  * Revision 1.53  1998/06/11 00:11:24  kivinen
  * 	Added ENABLE_SO_LINGER ifdef. Added username to /bin/password
  * 	commands. Added user@host support.
@@ -427,6 +437,11 @@ agent connections.
 #ifdef HAVE_ULIMIT_H
 #include <ulimit.h>
 #endif /* HAVE_ULIMIT_H */
+#ifdef HAVE_HPUX_TCB_AUTH
+#include <sys/types.h>
+#include <hpsecurity.h>
+#include <prot.h>
+#endif
 #ifdef HAVE_ETC_SHADOW
 #ifdef HAVE_SHADOW_H
 #include <shadow.h>
@@ -460,6 +475,12 @@ int deny_severity = LOG_WARNING;
 #include <unistd.h>
 #include <sys/category.h>
 extern char *setlimits();
+#endif
+
+#ifdef HAVE_SGI_PROJ_H
+#include <proj.h>
+#include <unistd.h>
+#include <sys/types.h>
 #endif
 
 #ifdef HAVE_TIS
@@ -1223,15 +1244,13 @@ int main(int ac, char **av)
     if (options.num_deny_hosts > 0)
       {
 	for (i = 0; i < options.num_deny_hosts; i++)
-	  if (match_pattern(hostname, options.deny_hosts[i]) ||
-	      match_pattern(ipaddr, options.deny_hosts[i]))
+	  if (match_host(hostname, ipaddr, options.deny_hosts[i]))
 	    perm_denied = 1;
       }
     if ((!perm_denied) && options.num_allow_hosts > 0)
       {
 	for (i = 0; i < options.num_allow_hosts; i++)
-	  if (match_pattern(hostname, options.allow_hosts[i]) ||
-	      match_pattern(ipaddr, options.allow_hosts[i]))
+	  if (match_host(hostname, ipaddr, options.allow_hosts[i]))
 	    break;
 	if (i >= options.num_allow_hosts)
 	  perm_denied = 1;
@@ -1253,16 +1272,20 @@ int main(int ac, char **av)
   if (!debug_flag)
     alarm(options.login_grace_time);
 
-  /* Send our protocol version identification. */
-  sprintf(buf, "SSH-%d.%d-%.50s", 
-	  PROTOCOL_MAJOR, PROTOCOL_MINOR, SSH_VERSION);
+  
+  if (ssh_remote_version_string == NULL)
+    {
+      /* Send our protocol version identification. */
+      sprintf(buf, "SSH-%d.%d-%.50s", 
+	      PROTOCOL_MAJOR, PROTOCOL_MINOR, SSH_VERSION);
 #ifdef F_SECURE_COMMERCIAL
 
 #endif /* F_SECURE_COMMERCIAL */
-  strcat(buf, "\n");
-  if (write(sock_out, buf, strlen(buf)) != strlen(buf))
-    fatal_severity(SYSLOG_SEVERITY_INFO,
-		   "Could not write ident string.");
+      strcat(buf, "\n");
+      if (write(sock_out, buf, strlen(buf)) != strlen(buf))
+	fatal_severity(SYSLOG_SEVERITY_INFO,
+		       "Could not write ident string.");
+    }
 
   if (ssh_remote_version_string == NULL)
     {
@@ -1689,8 +1712,9 @@ int login_permitted(char *user, struct passwd *pwd)
 		  user);
 	    if (options.forced_passwd_change)
 	      {
-		forced_command = xmalloc(20 + strlen(user));
-		sprintf(forced_command, "/bin/passwd %s", user);
+		forced_command = xmalloc(sizeof(PASSWD_PATH) +
+					 strlen(user) + 1);
+		sprintf(forced_command, "%s %s", PASSWD_PATH, user);
 	      }
 	    else
 	      {
@@ -1728,8 +1752,8 @@ int login_permitted(char *user, struct passwd *pwd)
 	      user);
 	if (options.forced_passwd_change)
 	  {
-	    forced_command = xmalloc(20 + strlen(user));
-	    sprintf(forced_command, "/usr/bin/passwd %s", user);
+	    forced_command = xmalloc(sizeof(PASSWD_PATH) + strlen(user) + 1);
+	    sprintf(forced_command, "%s %s", PASSWD_PATH, user);
 	  }
 	else
 	  {
@@ -1761,6 +1785,138 @@ int login_permitted(char *user, struct passwd *pwd)
       }
   }
 #endif  /* !FreeBSD */
+
+#ifdef HAVE_HPUX_TCB_AUTH
+  {
+    struct pr_passwd *pr;
+    time_t expire, warntime;
+    short  tries;
+    
+    pr = getprpwnam(user);
+    if (pr)
+      {
+	/*
+	 * Check whether lock field exists & is set, if so
+	 * deny the user access
+	 */
+	if ( pr->uflg.fg_lock && pr->ufld.fd_lock )
+	  {
+	    debug("Account %.100s is locked.",user);
+	    packet_send_debug("\n\tAdministrative lock on account");
+	    endprpwent();
+	    return 0;
+	  }
+	/*
+	 * Check whether account lifetime exceeded, if so
+	 * deny the user access
+	 */
+	if ( pr->uflg.fg_acct_expire && time(NULL) > pr->ufld.fd_acct_expire )
+	  {
+	    debug("Account %.100s lifetime exceeded.", user);
+	    packet_send_debug("\n\tAccount lifetime exceeded");
+	    endprpwent();
+	    return 0;
+	  }
+	/*
+	 * Check whether pw_admin_num is set, if so
+	 * force passwd change.
+	 */
+	if ( pr->uflg.fg_pw_admin_num && pr->ufld.fd_pw_admin_num )
+	  {
+	    debug("Account %.100s requires passwd change",user);
+	    if (options.forced_passwd_change)
+	      {
+                forced_command = xmalloc(sizeof(PASSWD_PATH) +
+					 strlen(user) + 1);
+                sprintf(forced_command, "%s %s", PASSWD_PATH, user);
+		options.permit_empty_passwd = 1;
+	      }
+	    else
+	      {
+		endprpwent();
+		return 0;
+	      }
+	  }
+	/*
+        * Check whether passwd aging is enabled for this user
+        * (either explicitly, i.e., flag set and value != 0, or
+	* system wide, sys flag set and sys value != 0).  A user
+	* flag set and value == 0 means passwd aging explicitly
+	* disabled for this user.  If passwd expired, force
+	* passwd change.
+        */
+	if ( pr->uflg.fg_expire )
+	  expire = pr->ufld.fd_expire;
+	else if ( pr->sflg.fg_expire )
+	  expire = pr->sfld.fd_expire;
+	else
+	  expire = 0;
+	if ( expire )
+	  {
+	    days_before_password_expires = expire / 86400;
+	    if ( pr->uflg.fg_pw_expire_warning )
+	      warntime = pr->ufld.fd_pw_expire_warning;
+	    else if ( pr->sflg.fg_pw_expire_warning )
+	      warntime = pr->sfld.fd_pw_expire_warning;
+	    else
+	      warntime = 7*24*60*60; /* default to 7 days warning */
+	    if ( time(NULL) > pr->ufld.fd_schange + expire )
+	      {
+		debug("Account %.100s passwd expired, requires change", user);
+		if (options.forced_passwd_change)
+		  {
+                    forced_command = xmalloc(sizeof(PASSWD_PATH) +
+					     strlen(user) + 1);
+                    sprintf(forced_command, "%s %s", PASSWD_PATH, user);
+		  }
+		else
+		  {
+		    endprpwent();
+		    return 0;
+		  }
+	      }
+	  }
+	/*
+	 * Check for inactivity.  If set to disable inactive accounts,
+	 * then we must deny access if inactive for said period of time.
+	 */
+	if ( pr->uflg.fg_max_llogin )
+	  expire = pr->ufld.fd_max_llogin;
+	else if ( pr->sflg.fg_max_llogin )
+	  expire = pr->sfld.fd_max_llogin;
+	else
+	  expire = 0;
+	if ( expire && pr->ufld.fd_slogin
+	     && time(NULL) > pr->ufld.fd_slogin + expire )
+	  {
+	    debug("Account %.100s locked due to inactivity.", user);
+	    packet_send_debug("\n\tAccount locked due to inactivity");
+	    endprpwent();
+	    return 0;
+	  }
+	/*
+	 * If configured to lock on too many unsuccessful login attempts,
+	 * then check and deny access
+	 */
+	if ( pr->uflg.fg_max_tries )
+	  tries = pr->ufld.fd_max_tries;
+	else if ( pr->sflg.fg_max_tries )
+	  tries = pr->sfld.fd_max_tries;
+	else
+	  tries = 0;
+	if ( tries &&  pr->ufld.fd_nlogins > tries )
+	  {
+	    debug("Account %.100s locked, too many unsuccessful login attempts",
+		  user);
+	    packet_send_debug("\n\tToo many unsuccessful attempts");
+	    endprpwent();
+	    return 0;
+	  }
+      }
+    endprpwent();
+  }
+#endif /* HAVE_HPUX_TCB_AUTH */  
+
   /*
    * Check if account is locked. Check if encrypted password starts
    * with "*LK*".
@@ -1847,7 +2003,7 @@ int login_permitted(char *user, struct passwd *pwd)
       for (i = 0; i < options.num_allow_groups; i++)
  	if (match_pattern(group, options.allow_groups[i]))
  	  break;
-      if (i >= options.num_allow_groups)
+      if (grp == NULL || i >= options.num_allow_groups)
  	{
  	  log_msg("Connection for %.200s not allowed from %s\n",
  		  group, get_canonical_hostname());
@@ -1860,7 +2016,7 @@ int login_permitted(char *user, struct passwd *pwd)
     {
       int i;
       for (i = 0; i < options.num_deny_groups; i++)
- 	if (match_pattern(group, options.deny_groups[i]))
+ 	if (grp && match_pattern(group, options.deny_groups[i]))
  	  {
  	    log_msg("Connection for %.200s denied from %s\n",
  		    group, get_canonical_hostname());
@@ -2517,8 +2673,7 @@ void do_authentication(char *user, int privileged_port, int cipher_type)
       hp = strtok(cap_hlist, ",");
       while(hp != NULL)
 	{
-	  if (match_pattern(hostname, hp) ||
-	      match_pattern(ipaddr, hp))
+	  if (match_host(hostname, ipaddr, hp))
 	    perm_denied = 1;
 	  hp = strtok(NULL, ",");
 	}
@@ -2530,8 +2685,7 @@ void do_authentication(char *user, int privileged_port, int cipher_type)
       hp = strtok(cap_hlist, ",");
       while(hp != NULL)
 	{
-          if(match_pattern(hostname, hp) ||
-             match_pattern(ipaddr, hp))
+          if(match_host(hostname, ipaddr, hp))
             perm_denied = 0;
           hp = strtok(NULL,",");
         }
@@ -3506,6 +3660,53 @@ int ignore_nologin(char *username)
 }
 #endif /* NOLOGIN_ALLOW */
 
+#ifdef HAVE_SGI_PROJ_H
+/*
+ On a SGI, set the account number for the current process to the user's 
+ default account. If this is not done, the process will have an account 
+ of zero and accounting will not operate correctly.
+
+ Eivind Gjelseth
+ Para//ab, High Performance Computing Centre
+ eivind@ii.uib.no
+
+*/
+int sgi_project_setup(char *username)
+{
+  int err;
+  int naccts;
+  projid_t pbuf;
+
+  /* Find default project for a particular user */
+  if ((naccts = getprojuser(username, &pbuf, 1)) < 0)
+    {
+      debug("System call getprojuser failed");
+      return(-1);
+    }
+
+  /* Create a new array session and moves the current
+     process from its original array session to the new one. */
+  if (newarraysess() < 0)
+    {
+      debug("System call newarraysess failure");
+      return(-1);
+    }
+
+  /* Change the project ID for the array session. */
+  /* Must be changed after the new array session has been created. */
+  if (naccts)
+    err = setprid(pbuf.proj_id);
+
+  if (err != 0)
+    {
+      debug("System call setprid failure");
+      return(-1);
+    }
+
+  return(0);
+}
+#endif /* HAVE_SGI_PROJ_H */
+
 /* Performs common processing for the child, such as setting up the 
    environment, closing extra file descriptors, setting the user and group 
    ids, and executing the command or shell. */
@@ -3782,7 +3983,12 @@ void do_child(const char *command, struct passwd *pw, const char *term,
 	    fatal("Failure performing Cray job setup for user %d.",
 		  (int)user_uid);
 #endif
-	  
+
+#ifdef HAVE_SGI_PROJ_H
+  if (sgi_project_setup(user_name) < 0)
+    fatal("Failure performing SGI project setup for user %d.",(int)user_uid);
+#endif
+
 #ifdef HAVE_SETLUID
 	  /* Set login uid, if we have setluid(). */
 	  if (setluid(user_uid) < 0)

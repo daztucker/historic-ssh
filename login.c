@@ -2,10 +2,11 @@
 
 login.c
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Fri Mar 24 14:51:08 1995 ylo
 
@@ -18,11 +19,14 @@ on a tty.
 */
 
 /*
- * $Id: login.c,v 1.14 1999/04/29 09:44:13 tri Exp $
+ * $Id: login.c,v 1.15 1999/11/17 17:04:46 tri Exp $
  * $Log: login.c,v $
+ * Revision 1.15  1999/11/17 17:04:46  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.14  1999/04/29 09:44:13  tri
- * 	Removed __USE_GNU from login.c and added _GNU_SOURCE to
- * 	configure.
+ *      Removed __USE_GNU from login.c and added _GNU_SOURCE to
+ *      configure.
  *
  * Revision 1.13  1999/02/21 19:52:25  ylo
  *      Intermediate commit of ssh1.2.27 stuff.

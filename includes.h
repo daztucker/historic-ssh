@@ -2,10 +2,11 @@
 
 includes.h
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Thu Mar 23 16:29:37 1995 ylo
 
@@ -14,12 +15,15 @@ This file includes most of the needed system headers.
 */
 
 /*
- * $Id: includes.h,v 1.13 1999/02/21 19:52:21 ylo Exp $
+ * $Id: includes.h,v 1.14 1999/11/17 17:04:46 tri Exp $
  * $Log: includes.h,v $
+ * Revision 1.14  1999/11/17 17:04:46  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.13  1999/02/21 19:52:21  ylo
- * 	Intermediate commit of ssh1.2.27 stuff.
- * 	Main change is sprintf -> snprintf; however, there are also
- * 	many other changes.
+ *      Intermediate commit of ssh1.2.27 stuff.
+ *      Main change is sprintf -> snprintf; however, there are also
+ *      many other changes.
  *
  * Revision 1.12  1998/04/30 01:51:53  kivinen
  *      Added linux sparc fix.

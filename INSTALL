@@ -1,3 +1,30 @@
+This is a hacked-up version of ssh-1.2.12.
+
+The GMP and DES sources are now external to the distribution. To build
+this software it is necessary to first have GMP and a DES
+implementation installed somewhere. Some systems comes with GMP and
+DES preinstalled. If your system doesn't; pick up the GMP sources from
+your favorite GNU ftp site (ftp://prep.ai.mit.edu/pub/gnu/). There is
+a free DES implementation made by Eric Young that can be found under
+the name libdes-x.x.x.tar.gz, for example at
+ftp://ftp.psy.uq.oz.au/pub/Crypto/DES/.
+
+The distribution optionally supports Kerberos version 4 authentication
+and AFS. If you want to build with Kerberos support and your system
+comes with Kerberos preinstalled add the switch --with-krb4=/usr to
+configure. Otherwise, first build and install Kerberos and then use
+--with-krb4=/usr/whatever-directory. If you don't want Kerberos
+support use --without-krb4 (the default). Kerberos can be found at
+ftp://ftp.pdc.kth.se/pub/krb/src/.
+
+Compression support is now optional. If you don't have zlib installed
+configure using --without-zlib or first install zlib. We have
+succesfully used zlib-1.0.4.tar.gz
+
+For more detailed installation instructions read the rest of this file
+and README.AFS-KERBEROS.
+
+----------------------------------------------------------------------------
 This file describes how to install the Secure Shell (ssh).  Secure Shell is
 a replacement for rlogin and rsh.  It seamlessly encrypts all communications,
 provides improved security, and has useful new features.
@@ -112,7 +139,7 @@ This software has been used at least in the following environments.
 
 Please report back any other environments where you have used ssh,
 and send back any patches you had to do so that they can be integrated
-to the distribution.  The proper address is ssh-bugs@cs.hut.fi.
+to the distribution.  The proper address is ossh-bugs@sics.se.
 Always remember to mention the ssh version number and machine type in
 your bug reports.  Please include also the output of the -v option
 from the client side, and the output of the -d option from the server,
@@ -373,12 +400,10 @@ General problem solving
 REPORTING PROBLEMS AND OTHER CONTACTS
 
 Please report any bugs, problems, and enhancements to
-ssh-bugs@cs.hut.fi.
+ossh-bugs@sics.se.
 
-There is a mailing list for ssh.  It is ssh@clinet.fi.  If you would
-like to join, send a message to majordomo@clinet.fi with "subscribe
-ssh" in body.
-
-The WWW home page for ssh is http://www.cs.hut.fi/ssh.
+There is a mailing list for ossh.  It is ossh@sics.se.  If you would
+like to join, send a message to majordomo@sics.se with "subscribe
+ossh" in body.
 
 Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland.

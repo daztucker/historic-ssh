@@ -1,11 +1,8 @@
 # This file (ssh-askpass.wish) will be used to create ssh-askpass by-*- tcl -*-
 # prepending the header line that executes wish.
-# $Id: ssh-askpass.wish,v 1.2 1995/07/13 01:39:31 ylo Exp $
-# $Log: ssh-askpass.wish,v $
-# Revision 1.2  1995/07/13  01:39:31  ylo
-# 	Added cvs log.
 #
-# $Endlog$
+# $Id: ssh-askpass.wish,v 1.2 1999/05/04 11:59:15 bg Exp $
+#
 
 global result
 

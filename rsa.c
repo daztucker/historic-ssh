@@ -36,20 +36,9 @@ Description of the RSA algorithm can be found e.g. from the following sources:
 
 */
 
-/*
- * $Id: rsa.c,v 1.3 1995/09/06 16:00:12 ylo Exp $
- * $Log: rsa.c,v $
- * Revision 1.3  1995/09/06  16:00:12  ylo
- * 	Added missing xfree in rsa_free.
- *
- * Revision 1.2  1995/07/13  01:31:25  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
-
 #include "includes.h"
+RCSID("$Id: rsa.c,v 1.2 1999/05/04 11:59:05 bg Exp $");
+
 #include <gmp.h>
 #include "xmalloc.h"
 #include "rsa.h"

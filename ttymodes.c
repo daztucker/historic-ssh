@@ -16,31 +16,9 @@ suitable code.
 
 */
 
-/*
- * $Id: ttymodes.c,v 1.6 1995/10/02 01:29:44 ylo Exp $
- * $Log: ttymodes.c,v $
- * Revision 1.6  1995/10/02  01:29:44  ylo
- * 	Changed warning message to make it less likely people will
- * 	report it as a bug because it is not.
- *
- * Revision 1.5  1995/09/27  02:19:11  ylo
- * 	Use SPEED_T_IN_STDTYPES_H.
- *
- * Revision 1.4  1995/09/09  21:26:48  ylo
- * /m/shadows/u2/users/ylo/ssh/README
- *
- * Revision 1.3  1995/08/18  22:58:34  ylo
- * 	Added support for NextStep.
- * 	Fixed typos with EXTB.
- *
- * Revision 1.2  1995/07/13  01:41:15  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
-
 #include "includes.h"
+RCSID("$Id: ttymodes.c,v 1.3 1999/05/04 11:59:25 bg Exp $");
+
 #include "packet.h"
 #include "ssh.h"
 
@@ -345,7 +323,7 @@ void tty_make_modes(int fd)
 /* Decodes terminal modes for the terminal referenced by fd in a portable
    manner from a packet being read. */
 
-void tty_parse_modes(int fd)
+void tty_parse_modes(int fd, int *n_bytes_ptr)
 {
 #ifdef USING_TERMIOS
   struct termios tio;
@@ -360,55 +338,63 @@ void tty_parse_modes(int fd)
 #endif /* TIOCGSTAT */
 #endif
   int opcode, baud;
+  int n_bytes = 0;
+  int failure = 0;
 
   /* Get old attributes for the terminal.  We will modify these flags. 
      I am hoping that if there are any machine-specific modes, they will
      initially have reasonable values. */
 #ifdef USING_TERMIOS
   if (tcgetattr(fd, &tio) < 0)
-    return;
+    failure = -1;
 #endif /* USING_TERMIOS */
 #ifdef USING_SGTTY
   if (ioctl(fd, TIOCGETP, &tio) < 0)
-    return;
+    failure = -1;
   if (ioctl(fd, TIOCGETC, &tiotc) < 0)
-    return;
+    failure = -1;
   if (ioctl(fd, TIOCLGET, &tiolm) < 0)
-    return;
+    failure = -1;
   if (ioctl(fd, TIOCGLTC, &tioltc) < 0)
-    return;
+    failure = -1;
 #ifdef TIOCGSTAT
   if (ioctl(fd, TIOCGSTAT, &tiots) < 0)
-    return;
+    failure = -1;
 #endif /* TIOCGSTAT */
 #endif /* USING_SGTTY */
 
   for (;;)
     {
-      switch (opcode = packet_get_char())
+      n_bytes += 1;
+      opcode = packet_get_char();
+      switch (opcode)
 	{
 	case TTY_OP_END:
 	  goto set;
 
 	case TTY_OP_ISPEED:
+	  n_bytes += 4;
 	  baud = packet_get_int();
-	  if (cfsetispeed(&tio, baud_to_speed(baud)) < 0)
+	  if (failure != -1 && cfsetispeed(&tio, baud_to_speed(baud)) < 0)
 	    error("cfsetispeed failed for %d", baud);
 	  break;
 
 	case TTY_OP_OSPEED:
+	  n_bytes += 4;
 	  baud = packet_get_int();
-	  if (cfsetospeed(&tio, baud_to_speed(baud)) < 0)
+	  if (failure != -1 && cfsetospeed(&tio, baud_to_speed(baud)) < 0)
 	    error("cfsetospeed failed for %d", baud);
 	  break;
 
 #ifdef USING_TERMIOS
 #define TTYCHAR(NAME, OP) 				\
 	case OP:					\
+	  n_bytes += 1;					\
 	  tio.c_cc[NAME] = packet_get_char();		\
 	  break;
 #define TTYMODE(NAME, FIELD, OP)		       	\
 	case OP:					\
+	  n_bytes += 1;					\
 	  if (packet_get_char())			\
 	    tio.FIELD |= NAME;				\
 	  else						\
@@ -424,10 +410,12 @@ void tty_parse_modes(int fd)
 #define TTYMODE(NAME, FIELD, OP)
 #define SGTTYCHAR(NAME, OP) 				\
 	case OP:					\
+	  n_bytes += 1;					\
 	  NAME = packet_get_char();			\
 	  break;
 #define SGTTYMODE(NAME, FIELD, OP)		       	\
 	case OP:					\
+	  n_bytes += 1;					\
 	  if (packet_get_char())			\
 	    FIELD |= NAME;				\
 	  else						\
@@ -435,6 +423,7 @@ void tty_parse_modes(int fd)
 	  break;
 #define SGTTYMODEN(NAME, FIELD, OP)		       	\
 	case OP:					\
+	  n_bytes += 1;					\
 	  if (packet_get_char())			\
 	    FIELD &= ~NAME;				\
 	  else						\
@@ -456,6 +445,7 @@ void tty_parse_modes(int fd)
 	  /* Opcodes 0 to 127 are defined to have a one-byte argument. */
 	  if (opcode >= 0 && opcode < 128)
 	    {
+	      n_bytes += 1;
 	      (void)packet_get_char();
 	      break;
 	    }
@@ -464,6 +454,7 @@ void tty_parse_modes(int fd)
 	      /* Opcodes 128 to 159 are defined to have an integer argument. */
 	      if (opcode >= 128 && opcode < 160)
 		{
+		  n_bytes += 4;
 		  (void)packet_get_int();
 		  break;
 		}
@@ -473,11 +464,21 @@ void tty_parse_modes(int fd)
 	     data may be left in the packet; hopefully there is nothing more
 	     coming after the mode data. */
 	  log("parse_tty_modes: unknown opcode %d", opcode);
+	  packet_integrity_check(0, 1, SSH_CMSG_REQUEST_PTY);
 	  goto set;
 	}
     }
 
  set:
+  if (*n_bytes_ptr != n_bytes)
+    {
+      *n_bytes_ptr = n_bytes;
+      return;			/* Don't process bytes passed */
+    }
+
+  if (failure == -1)
+    return;			/* Packet parsed ok but tty stuff failed */
+  
   /* Set the new modes for the terminal. */
 #ifdef USING_TERMIOS
   if (tcsetattr(fd, TCSANOW, &tio) < 0)
@@ -494,4 +495,5 @@ void tty_parse_modes(int fd)
      ) 
     log("Setting tty modes failed: %.100s", strerror(errno));
 #endif /* USING_SGTTY */
+  return;
 }

@@ -29,6 +29,7 @@ containing cryptographic materials.  Using RSAREF is not recommended
 outside the United States.  See "http://www.cs.hut.fi/crypto" if you
 have trouble finding the RSAREF library.
 
+[ IDEA is now *only* included if configured with --with-idea. ]
 The IDEA algorithm is claimed to be patented in the United States and
 several other countries.  I have been told by Ascom-Tech (the patent
 holder) that IDEA can be used freely for non-commercial use.  A copy
@@ -36,6 +37,7 @@ of their letter is at the end.  The software can be compiled without
 IDEA by specifying the --without-idea option on the configure command
 line.
 
+[ All these files are now external to the distribution. ]
 The DES implementation in this distribution is derived from the libdes
 library by Eric Young <eay@mincom.oz.au>.  It can be used under the
 Gnu General Public License (libdes-COPYING) or the Artistic License
@@ -44,14 +46,17 @@ information.  Eric Young has kindly given permission to distribute the
 derived version under these terms.  The file crypt.c is fcrypt.c from
 SSLeay-0.4.3a by Eric Young; he permits free use.
 
+[ GMP is no longer part of the distribution. ]
 The GNU Multiple Precision Library, included in this release and
 linked into the executable, is distributed under the GNU General
 Public License.  A copy can be found in gmp-1.3.2/COPYING.
 
+[ Zlib is no longer part of the distribution. ]
 The zlib compression library is copyright Jean-loup Gailly and Mark
 Adler.  Anyone is permitted to use the library for any purpose.  A
 copy of the license conditions can be found in zlib095/README.
 
+[ This script is no longer part of the distribution. ]
 The make-ssh-known-hosts script was contributed by Tero Kivinen
 <kivinen@niksula.hut.fi> and is distributed under the GNU General
 Public License.  A copy can be found in gnu-COPYING-GPL.
@@ -62,6 +67,7 @@ distributed.  License terms are included in the affected files.  The
 file scp.c is derived from code owned by the Regents of the University
 of California, and can be used freely.
 
+[ TSS has been removed from the distribution. ]
 The TSS encryption algorithm implementation in tss.c is copyright Timo
 Rinne <tri@iki.fi> and Cirion Oy.  It is used with permission, and
 permission has been given for anyone to use it for any purpose as part

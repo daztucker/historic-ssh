@@ -12,23 +12,7 @@ Created: Tue Aug 22 17:21:32 1995 ylo
 
 */
 
-/*
- * $Log: fdlim.h,v $
- * Revision 1.4  1995/09/06  15:59:56  ylo
- * 	Added support for machines that don't have RLIM_INFINITY.
- *
- * Revision 1.3  1995/08/31  09:21:14  ylo
- * 	Fixed processing of RLIMIT_INFINITY on systems with 64 bit
- * 	resource limits.
- *
- * Revision 1.2  1995/08/29  22:22:38  ylo
- * 	Ported into ssh source tree.
- *
- * Revision 1.1  1995/08/22  14:24:46  ylo
- * 	Initial version from David Mazieres.
- *
- * $EndLog$
- */
+/* RCSID("$Id: fdlim.h,v 1.2 1999/05/04 11:58:42 bg Exp $"); */
 
 #ifndef FDLIM_H
 #define FDLIM_H

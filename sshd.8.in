@@ -9,38 +9,7 @@
 .\"
 .\" Created: Sat Apr 22 21:55:14 1995 ylo
 .\"
-.\" $Id: sshd.8.in,v 1.10 1995/10/02 01:31:37 ylo Exp $
-.\" $Log: sshd.8.in,v $
-.\" Revision 1.10  1995/10/02  01:31:37  ylo
-.\" 	Make substitutions in configure.
-.\"
-.\" Revision 1.9  1995/09/27  02:17:12  ylo
-.\" 	Added a section on what happens at login.
-.\" 	Other additions.
-.\"
-.\" Revision 1.8  1995/09/22  22:21:36  ylo
-.\" 	Added username and netgroups for hosts.equiv and rhosts.
-.\"
-.\" Revision 1.7  1995/09/21  17:14:38  ylo
-.\" 	Added /etc/environment and IgnoreRhosts.  Other minor fixes.
-.\"
-.\" Revision 1.6  1995/08/31  09:24:31  ylo
-.\" 	Minor cleanup.
-.\"
-.\" Revision 1.5  1995/08/29  22:31:25  ylo
-.\" 	Improved manual pages from Andrew Macpherson.
-.\"
-.\" Revision 1.4  1995/08/21  23:29:52  ylo
-.\" 	Added documentation for the configuration file.
-.\"
-.\" Revision 1.3  1995/08/18  22:57:27  ylo
-.\" 	Removed obsolete XXX stuff.
-.\"
-.\" Revision 1.2  1995/07/13  01:36:06  ylo
-.\" 	Removed "Last modified" header.
-.\" 	Added cvs log.
-.\"
-.\" $Endlog$
+.\" $Id: sshd.8.in,v 1.7 1999/06/06 08:38:58 bg Exp $
 .\"
 .TH SSHD 8 "November 8, 1995" "SSH" "SSH"
 
@@ -114,13 +83,11 @@ the encrypted number to the server.  Both sides then start to use this
 random number as a session key which is used to encrypt all further
 communications in the session.  The rest of the session is encrypted
 using a conventional cipher.  Currently, 
+.BR \s-1Blowfish\s0 ",
 .BR \s-1IDEA\s0 ",
 .BR \s-1DES\s0 ",
 .BR \s-1\&3DES\s0 ",
-.BR \s-1RC4\s0 ", and
-.B \s-1TSS\s0
-(a fast home-grown algorithm) are supported.  
-.B \s-1IDEA\s0
+.B \s-13DES\s0
 is used by default.  The client selects the encryption algorithm to use
 from those offered by the server.
 .LP
@@ -226,6 +193,10 @@ and empty lines are interpreted as comments.
 
 The following keywords are possible.
 .TP
+.B AFSTokenPassing
+Specifies whether to accept AFS tokens passed from the client. Default
+is "yes".
+.TP
 .B AllowHosts
 This keyword can be followed by any number of host name patterns,
 separated by spaces.  If specified, login is allowed only from hosts
@@ -277,6 +248,25 @@ infinitely hanging sessions.
 
 To disable keepalives, the value should be set to "no" in both the
 server and the client configuration files.
+.TP
+.B KerberosAuthentication
+Specifies whether Kerberos authentication is allowed. This can
+be in the form of a Kerberos ticket, or if PasswordAuthentication
+is yes, the password provided by the user will be validated through
+the Kerberos KDC / AFS kaserver / DCE Security Server. Default is yes.
+.TP
+.B KerberosOrLocalPasswd
+If set then if password authentication through Kerberos fails then
+the password will be validated via any additional local mechanism
+such as /etc/passwd or SecurID. Default is no.
+.TP
+.B KerberosTgtPassing
+Specifies whether a Kerberos TGT may be forwarded to the server.
+Default is no, TGT forwarding does only work with the AFS kaserver.
+.TP
+.B KerberosTicketCleanup
+Specifies whether to automatically destroy the user's
+ticket cache file on logout. Default is yes.
 .TP
 .B KeyRegenerationInterval
 The server key is automatically regenerated after this many seconds

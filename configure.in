@@ -8,141 +8,17 @@
 #
 # Created: Wed Mar 22 18:02:48 1995 ylo
 #
-# $Id: configure.in,v 1.26 1995/10/02 01:22:16 ylo Exp $
-# $Log: configure.in,v $
-# Revision 1.26  1995/10/02  01:22:16  ylo
-# 	Check that the compiler understands at least basic ANSI C.
-# 	Check sys/syslog.h on Ultrix.
-# 	Fixes for SCO.
-# 	Fixed --with-etcdir.
-# 	Put extra libraries at head of LIBS.
-# 	Check existence of /var/run; set and substitute PIDDIR.
-#
-# Revision 1.25  1995/09/27  03:13:24  ylo
-# 	Fixed a syntax error.
-#
-# Revision 1.24  1995/09/27  02:48:20  ylo
-# 	Added SOCKS support.
-# 	Added some checking... and result printings.
-#
-# Revision 1.23  1995/09/27  02:13:44  ylo
-# 	Define SPEED_T_IN_STDTYPES_H on sunos 4.1.1 and NextStep.
-# 	Added support for SCO unix.
-# 	Added --with-etcdir=PATH.
-#
-# Revision 1.22  1995/09/21  17:10:59  ylo
-# 	Fixed bsdi support.
-# 	Added svr4 (univel unixware) support.
-# 	Added machten support.
-# 	Always define USE_PIPES; socketpairs appear to be broken on
-# 	many systems.
-# 	Check innetgr.
-# 	Don't define XAUTH_PATH if no xauth program.
-# 	--with-libwrap can take library name as argument.
-# 	Fixed checking for libwrap library.
-#
-# Revision 1.21  1995/09/13  11:55:30  ylo
-# 	Added Cray and BSDI support.  Don't use -pipe on BSDI (bundled
-# 	compiler is broken).
-# 	Eliminated references to HPSUX_BROKEN_PTYS (it is now used on
-# 	all systems).
-#
-# Revision 1.20  1995/09/11  17:37:45  ylo
-# 	Fixed hpsux pty define on aix 3.2.
-# 	Remove duplicate TTY_GROUP define on osf.
-# 	Check sizes of all integer types.
-# 	Added libwrap support.
-#
-# Revision 1.19  1995/09/10  23:26:20  ylo
-# 	Fixed osfc2.o in CONFOBJS.
-#
-# Revision 1.18  1995/09/10  22:46:19  ylo
-# 	Use HPSUX_BROKEN_PTYS on aix3.2.{0-4}.
-# 	Added OSF/1 C2 stuff.
-# 	Don't check for wait{3,4,pid} (no longer used).
-#
-# Revision 1.17  1995/09/09  21:26:42  ylo
-# /m/shadows/u2/users/ylo/ssh/README
-#
-# Revision 1.16  1995/09/06  15:59:08  ylo
-# 	Updated 64-bit irix stuff.
-# 	Added m88k-dg-dgux support.
-#
-# Revision 1.15  1995/08/31  09:20:42  ylo
-# 	Added check if compiler works.
-# 	Added support for irix6.
-# 	Don't use libsun on irix.
-# 	Define SSH_LASTLOG even if lastlog not found.
-#
-# Revision 1.14  1995/08/29  22:22:10  ylo
-# 	Reordered checks for wtmp, utmp, lastlog locations.
-# 	Check for missing crypt (replace if missing).
-#
-# Revision 1.13  1995/08/22  14:10:30  ylo
-# 	Fixed a typo.
-#
-# Revision 1.12  1995/08/22  14:08:37  ylo
-# 	Added warning if kerberos present.
-# 	Added check for seteuid (used to enable uid-swapping).
-#
-# Revision 1.11  1995/08/21  23:24:14  ylo
-# 	Fixed a typo.
-# 	Deleted --with-rhosts.
-#
-# Revision 1.10  1995/08/19  13:18:00  ylo
-# 	Changed to securid stuff.
-#
-# Revision 1.9  1995/08/18  22:53:46  ylo
-# 	Added determining the canonical host type.
-# 	Added host type specific configuration code for a number of
-# 	machines.  Eliminated kludges to do this from other parts of
-# 	configure.
-# 	Added checking for netinet/in_systm.h.
-# 	Fixed types in utmp/wtmp testing.
-# 	Added --without-idea.
-# 	Added --with-securid.
-#
-# Revision 1.8  1995/07/27  03:38:18  ylo
-# 	Fixed lastlog determination code when lastlog is directory.
-#
-# Revision 1.7  1995/07/27  03:27:10  ylo
-# 	Added AC_TYPE_MODE_T.
-# 	Added default for lastlog when not found (otherwise
-# 	directoryness test fails).
-#
-# Revision 1.6  1995/07/27  00:37:57  ylo
-# 	Added --with-path.
-# 	Added looking for utmp, wtmp, and lastlog.
-# 	Added checking for utime.h.
-#
-# Revision 1.5  1995/07/26  23:29:55  ylo
-# 	Removed checking for sys/termios.h.
-#
-# Revision 1.4  1995/07/13  17:29:44  ylo
-# 	Added --enable-warnings.  -Wall is only used if enabled by this.
-#
-# Revision 1.3  1995/07/13  09:55:07  ylo
-# 	Added AC_STRUCT_ST_BLKSIZE.
-#
-# Revision 1.2  1995/07/13  01:20:51  ylo
-# 	Removed "Last modified" header.
-# 	Added cvs log.
-#
-# $Endlog$
+# $Id: configure.in,v 1.19 1999/06/30 16:51:14 bg Exp $
 #
 
 AC_INIT(sshd.c)
 AC_CONFIG_HEADER(config.h)
 AC_PREREQ(2.4)
 
-if test -f /etc/krb.conf; then
-  AC_MSG_WARN(Ssh does not yet support Kerberos!)
-fi
-
 AC_CANONICAL_HOST
 
 AC_PROG_CC
-AC_C_CROSS
+AC_PROG_CPP
 
 case "$host" in
   *-*-sunos4.1.1*)
@@ -197,6 +73,7 @@ case "$host" in
     ;;
   alpha-dec-osf*)
     AC_DEFINE(TTY_GROUP, "terminal")
+    AC_CHECK_LIB(security, set_auth_parameters)
     AC_MSG_CHECKING(for OSF/1 C2 security package)
     osfc2sec=`/usr/sbin/setld -i | grep '^OSFC2SEC'`
     if test -n "$osfc2sec"; then
@@ -310,9 +187,49 @@ if test -z "$no_setsid"; then
   AC_CHECK_FUNCS(setsid)
 fi
 
-AC_CHECK_FUNCS(gettimeofday times getrusage popen)
-AC_CHECK_FUNCS(strchr memcpy setlogin openpty _getpty clock fchmod ulimit)
-AC_CHECK_FUNCS(gethostname seteuid getdtablesize umask innetgr initgroups)
+AC_MSG_CHECKING(where to find mandatory GMP library)
+AC_ARG_WITH(gmp,
+[  --with-gmp[=PATH]      Where to find GMP library.],
+[ case "$withval" in
+  no)
+    echo "GMP is mandatory! Aborting!"
+    exit 1
+    ;;
+  *)
+    ;;
+  esac ],
+[ with_gmp=yes ]
+)
+# gmp continued
+echo argument="$with_gmp"
+case "$with_gmp" in
+yes)
+  AC_CHECK_HEADERS(gmp.h)
+  if test "$ac_cv_header_gmp_h" != yes; then
+    echo "Can't find include file gmp.h! Aborting!"
+    echo "You must first build and install GMP, please read the file INSTALL"
+    exit 1
+  fi
+  AC_CHECK_LIB(gmp, main)
+  if test "$ac_cv_lib_gmp_main" != yes; then
+    echo "Can't find library gmp (libgmp.a)! Aborting"
+    echo "You must first build and install GMP, please read the file INSTALL"
+    exit 1
+  fi
+  GMPINCS=""
+  GMPLIBS="-lgmp"
+  ;;
+*)
+  GMPINCS="-I$with_gmp/include"
+  GMPLIBS="-L$with_gmp/lib -lgmp"
+  ;;
+esac
+AC_SUBST(GMPINCS) dnl
+AC_SUBST(GMPLIBS) dnl
+
+AC_CHECK_FUNCS(_getpty clock fchmod getdtablesize gethostname getrusage)
+AC_CHECK_FUNCS(gettimeofday initgroups innetgr memcpy openpty popen seteuid)
+AC_CHECK_FUNCS(setlogin setluid setrlimit strchr times ulimit umask vsnprintf)
 
 AC_TYPE_SIGNAL
 AC_TYPE_SIZE_T
@@ -335,7 +252,7 @@ fi
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
 AC_CHECK_HEADERS(unistd.h rusage.h sys/time.h lastlog.h utmp.h utmpx.h)
-AC_CHECK_HEADERS(sgtty.h sys/select.h sys/ioctl.h)
+AC_CHECK_HEADERS(sgtty.h sys/select.h sys/ioctl.h sys/filio.h)
 AC_CHECK_HEADERS(paths.h usersec.h utime.h netinet/in_systm.h ulimit.h)
 AC_HEADER_TIME
 AC_HEADER_DIRENT
@@ -345,6 +262,9 @@ AC_EGREP_HEADER(ut_name, utmp.h, AC_DEFINE(HAVE_NAME_IN_UTMP))
 AC_EGREP_HEADER(ut_id, utmp.h, AC_DEFINE(HAVE_ID_IN_UTMP))
 AC_EGREP_HEADER(ut_host, utmp.h, AC_DEFINE(HAVE_HOST_IN_UTMP))
 AC_EGREP_HEADER(ut_addr, utmp.h, AC_DEFINE(HAVE_ADDR_IN_UTMP))
+
+AC_EGREP_HEADER(ut_session, utmpx.h, AC_DEFINE(HAVE_UT_SESSION))
+AC_EGREP_HEADER(ut_syslen, utmpx.h, AC_DEFINE(HAVE_UT_SYSLEN))
 
 AC_CHECK_LIB(c, crypt, [true], AC_CHECK_LIB(crypt, crypt))
 AC_CHECK_LIB(nsl, main)
@@ -357,7 +277,9 @@ fi
 AC_CHECK_LIB(util, login, AC_DEFINE(HAVE_LIBUTIL_LOGIN)
 			  LIBS="$LIBS -lutil")
 
-AC_REPLACE_FUNCS(strerror memmove remove random putenv crypt socketpair)
+AC_CHECK_LIB(des, main)
+
+AC_REPLACE_FUNCS(strerror memmove remove random putenv socketpair)
 
 AC_PROG_LN_S
 AC_PROG_INSTALL
@@ -367,21 +289,14 @@ else
   RANLIB=":"
 fi
 AC_PROGRAMS_CHECK(MAKEDEP, makedepend makedep, makedepend)
-AC_PATH_PROGS(WISH, wish wishx wish4.1 true)
+AC_PATH_PROGS(WISH, wish8.0 wish wishx wish4.1 true)
 if test `basename $WISH` = "true"; then
   AC_MSG_WARN(the wish program was not found - ssh-askpass will not work.)
   WISH="/usr/local/bin/wish"
 fi
-AC_PATH_PROG(XAUTH_PATH, xauth)
+AC_PATH_PROG(XAUTH_PATH, xauth, , $PATH:/usr/X11R6/bin)
 if test -n "$XAUTH_PATH"; then
   AC_DEFINE_UNQUOTED(XAUTH_PATH, "$XAUTH_PATH")
-fi
-
-AC_PATH_PROGS(PERL, perl5 perl5.001 perl, not found)
-if test "x$PERL" = "xnot found" || $PERL -e 'exit ($] >= 5)'; then
-  unset ac_cv_path_PERL
-  PERL="/usr/local/bin/perl"
-  AC_MSG_WARN(perl version 5 not found - make-ssh-known-hosts will not work)
 fi
 
 AC_MSG_CHECKING(for pseudo ttys)
@@ -513,21 +428,62 @@ fi
 
 AC_MSG_CHECKING(whether to include the IDEA encryption algorithm)
 AC_ARG_WITH(idea,
-[  --with-idea             Use IDEA (default).
+[  --with-idea             Use IDEA (not default).
   --without-idea          Don't use IDEA: avoids patent problems in commercial use],
 [ case "$withval" in
-  no)
-    AC_MSG_RESULT(no)
-    AC_DEFINE(WITHOUT_IDEA)
-    ;;
-  *)
+  yes)
     AC_MSG_RESULT(yes)
     CONFOBJS="$CONFOBJS idea.o"
+    AC_DEFINE(WITH_IDEA)
+    ;;
+  *)
+    AC_MSG_RESULT(no)
     ;;
   esac ],
-  AC_MSG_RESULT(yes)
-  CONFOBJS="$CONFOBJS idea.o"
+  AC_MSG_RESULT(no)
 )
+
+AC_MSG_CHECKING(whether to include the RC4 encryption algorithm)
+AC_ARG_WITH(rc4,
+[  --with-rc4          Include RC4 support.
+  --without-rc4       Don't include RC4 support (default)],
+[ case "$withval" in
+  yes)
+    AC_MSG_RESULT(yes)
+    CONFOBJS="$CONFOBJS rc4.o"
+    AC_DEFINE(WITH_RC4)
+    ;;
+  *)
+    AC_MSG_RESULT(no)
+    ;;
+  esac ],
+  AC_MSG_RESULT(no)
+)
+
+AC_MSG_CHECKING(whether to include the Blowfish encryption algorithm)
+AC_ARG_WITH(blowfish,
+[  --with-blowfish          Include Blowfish support (default).
+  --without-blowfish       Don't include Blowfish support],
+[ case "$withval" in
+  no)
+    ;;
+  *)
+    with_blowfish=yes
+    ;;
+  esac ],
+  with_blowfish=yes
+)
+
+case "$with_blowfish" in
+yes)
+    AC_DEFINE(WITH_BLOWFISH)
+    CONFOBJS="$CONFOBJS bf_skey.o bf_enc.o"
+    AC_MSG_RESULT(yes)
+    ;;
+no)
+    AC_MSG_RESULT(no)
+    ;;
+esac
 
 AC_MSG_CHECKING(whether to use rsaref)
 AC_ARG_WITH(rsaref,
@@ -639,6 +595,131 @@ AC_ARG_WITH(securid,
   AC_MSG_RESULT(no)
 )
 
+AC_MSG_CHECKING(whether to include compression support)
+AC_ARG_WITH(zlib,
+[  --with-zlib            Use zlib (default).
+  --without-zlib          Don't use zlib.],
+[ case "$withval" in
+  no)
+    ;;
+  *)
+    with_zlib=yes
+    ;;
+  esac ],
+  with_zlib=yes
+)
+
+case "$with_zlib" in
+yes)
+    AC_MSG_RESULT(yes)
+    AC_CHECK_HEADERS(zlib.h)
+    if test "$ac_cv_header_zlib_h" != yes; then
+      echo "Can't find zlib.h, disable with --without-zlib"
+      exit 1
+    fi
+    AC_CHECK_LIB(z, main)
+    if test "$ac_cv_lib_z_main" != yes; then
+      echo "Can't find library z (libz.a), disable with --without-zlib"
+      exit 1
+    fi
+    CONFOBJS="$CONFOBJS compress.o"
+    AC_DEFINE(WITH_ZLIB)
+    ;;
+no)
+    AC_MSG_RESULT(no)
+    ;;
+esac
+
+AC_MSG_CHECKING(whether to use Kerberos v4)
+AC_ARG_WITH(krb4,
+[  --with-krb4[=PATH]      Compile in Kerberos v4 support.],
+[ case "$withval" in
+  yes)
+    ;;
+  no)
+    ;;
+  *)
+    ;;
+  esac ],
+[ with_krb4=default ]
+)
+# krb4 continued
+case "$with_krb4" in
+no)
+  AC_MSG_RESULT(no)
+  ;;
+yes)
+  AC_MSG_RESULT(yes)
+  AC_CHECK_HEADERS(krb.h)
+  if test "$ac_cv_header_krb_h" != yes; then
+    echo "Can't find include file krb.h! Aborting!"
+    exit 1
+  fi
+  AC_CHECK_LIB(krb, main)
+  if test "$ac_cv_lib_krb_main" != yes; then
+    echo "Can't find library krb (libkrb.a)! Aborting"
+    exit 1
+  fi
+  AC_DEFINE(KRB4)
+  KRB4_AUTH="auth-krb4.o"
+  KRB4_ROOT=""
+  KRB4_INCS=""
+  KRB4_LIBS="-lkrb -ldes"
+  AC_CHECK_LIB(resolv, dn_expand, KRB4_LIBS="$KRB4_LIBS -lresolv")
+  ;;
+default)
+  AC_CHECK_HEADERS(krb.h)
+  AC_CHECK_LIB(krb, main)
+  if test "$ac_cv_header_krb_h" = yes -a "$ac_cv_lib_krb_main" = yes; then
+    AC_MSG_RESULT(yes)
+    AC_DEFINE(KRB4)
+    KRB4_AUTH="auth-krb4.o"
+    KRB4_ROOT=""
+    KRB4_INCS=""
+    KRB4_LIBS="-lkrb -ldes"
+    AC_CHECK_LIB(resolv, dn_expand, KRB4_LIBS="$KRB4_LIBS -lresolv")
+  else
+    AC_MSG_RESULT(no)
+  fi
+  ;;
+*)
+  AC_MSG_RESULT(yes)
+  AC_DEFINE(KRB4)
+  KRB4_AUTH="auth-krb4.o"
+  KRB4_ROOT="$with_krb4"
+  KRB4_INCS="-I\$(KRB4_ROOT)/include"
+  KRB4_LIBS="-L\$(KRB4_ROOT)/lib -lkrb -ldes"
+  AC_CHECK_LIB(resolv, dn_expand, KRB4_LIBS="$KRB4_LIBS -lresolv")
+  ;;
+esac
+AC_SUBST(KRB4_AUTH) dnl
+AC_SUBST(KRB4_ROOT) dnl
+AC_SUBST(KRB4_INCS) dnl
+AC_SUBST(KRB4_LIBS) dnl
+
+AC_MSG_CHECKING(whether to use AFS)
+AC_ARG_WITH(afs,
+[  --with-afs              Compile in AFS support (requires KTH krb4).],
+if test "$with_afs" = no; then
+      AC_MSG_RESULT(no)
+    else
+      AC_MSG_RESULT(yes)
+  AC_DEFINE(AFS)
+  AC_DEFINE(KERBEROS_TGT_PASSING)
+  RADIX="radix.o"
+  if test "$with_krb4" = no; then
+    AC_MSG_RESULT(no)
+    AC_MSG_WARN("AFS requires Kerberos v4 support.")
+  else
+    KRB4_LIBS="${KRB4_LIBS} -lkafs"
+    if test -n "$os_aix"; then
+      KRB4_LIBS="${KRB4_LIBS} -lld"
+    fi
+  fi
+fi
+)
+AC_SUBST(RADIX)dnl
+
 AC_MSG_CHECKING(whether to use libwrap)
 AC_ARG_WITH(libwrap,
 [  --with-libwrap[=PATH]   Compile in libwrap (tcp_wrappers) support.],
@@ -711,4 +792,4 @@ AC_SUBST(PIDDIR)
 AC_SUBST(RSAREFDEP)
 AC_SUBST(CONFOBJS)
 
-AC_OUTPUT(Makefile sshd.8 ssh.1 make-ssh-known-hosts.1)
+AC_OUTPUT(Makefile sshd.8 ssh.1)

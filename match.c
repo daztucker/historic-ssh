@@ -13,17 +13,9 @@ Simple pattern matching, with '*' and '?' as wildcards.
 
 */
 
-/*
- * $Id: match.c,v 1.2 1995/07/13 01:27:07 ylo Exp $
- * $Log: match.c,v $
- * Revision 1.2  1995/07/13  01:27:07  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
-
 #include "includes.h"
+RCSID("$Id: match.c,v 1.2 1999/05/04 11:58:50 bg Exp $");
+
 #include "ssh.h"
 
 /* Returns true if the given string matches the pattern (which may contain

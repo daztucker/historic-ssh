@@ -11,15 +11,7 @@ Created: Fri Jul  7 02:14:16 1995 ylo
 
 */
 
-/*
- * $Id: rfc-pg.c,v 1.2 1995/07/13 01:31:15 ylo Exp $
- * $Log: rfc-pg.c,v $
- * Revision 1.2  1995/07/13  01:31:15  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
+/* RCSID("$Id: rfc-pg.c,v 1.2 1999/05/04 11:59:04 bg Exp $"); */
 
 #include <stdio.h>
 

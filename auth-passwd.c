@@ -14,35 +14,9 @@ the password is valid for the user.
 
 */
 
-/*
- * $Id: auth-passwd.c,v 1.8 1995/09/27 02:10:34 ylo Exp $
- * $Log: auth-passwd.c,v $
- * Revision 1.8  1995/09/27  02:10:34  ylo
- * 	Added support for SCO unix shadow passwords.
- *
- * Revision 1.7  1995/09/10  22:44:41  ylo
- * 	Added OSF/1 C2 extended security stuff.
- *
- * Revision 1.6  1995/08/21  23:20:29  ylo
- * 	Fixed a typo.
- *
- * Revision 1.5  1995/08/19  13:15:56  ylo
- * 	Changed securid code to initialize itself only once.
- *
- * Revision 1.4  1995/08/18  22:42:51  ylo
- * 	Added General Dynamics SecurID support from Donald McKillican
- * 	<dmckilli@qc.bell.ca>.
- *
- * Revision 1.3  1995/07/13  01:12:34  ylo
- * 	Removed the "Last modified" header.
- *
- * Revision 1.2  1995/07/13  01:09:50  ylo
- * 	Added cvs log.
- *
- * $Endlog$
- */
-
 #include "includes.h"
+RCSID("$Id: auth-passwd.c,v 1.10 1999/05/04 17:57:18 bg Exp $");
+
 #ifdef HAVE_SCO_ETC_SHADOW
 # include <sys/security.h>
 # include <sys/audit.h>
@@ -60,6 +34,7 @@ the password is valid for the user.
 #include "packet.h"
 #include "ssh.h"
 #include "servconf.h"
+#include "xmalloc.h"
 
 #ifdef HAVE_SECURID
 /* Support for Security Dynamics SecurID card.
@@ -73,6 +48,12 @@ the password is valid for the user.
 union config_record configure;
 static int securid_initialized = 0;
 #endif /* HAVE_SECURID */
+
+#ifdef KRB4
+#include <sys/param.h>
+#include <krb.h>
+extern char *ticket;
+#endif /* KRB4 */
 
 /* Tries to authenticate the user using password.  Returns true if
    authentication succeeds. */
@@ -95,9 +76,13 @@ int auth_password(const char *server_user, const char *password)
   pw = getpwnam(server_user);
   if (!pw)
     return 0;
+
 #ifdef HAVE_SECURID
   /* Support for Security Dynamics SecurId card.
      Contributed by Donald McKillican <dmckilli@qc.bell.ca>. */
+#if defined(KRB4)
+  if (options.kerberos_or_local_passwd)
+#endif /* KRB4 */
   {
     /*
      * the way we decide if this user is a securid user or not is
@@ -231,6 +216,9 @@ int auth_password(const char *server_user, const char *password)
 #endif /* HAVE_OSF1_C2_SECURITY */
 
   /* Check for users with no password. */
+#if defined(KRB4)
+  if (options.kerberos_or_local_passwd)
+#endif /* KRB4 */
   if (strcmp(password, "") == 0 && strcmp(correct_passwd, "") == 0)
     {
       packet_send_debug("Login permitted without a password because the account has no password.");
@@ -255,5 +243,101 @@ int auth_password(const char *server_user, const char *password)
 #endif /* HAVE_OSF1_C2_SECURITY */
 
   /* Authentication is accepted if the encrypted passwords are identical. */
-  return strcmp(encrypted_password, correct_passwd) == 0;
+#if defined(KRB4)
+  if (options.kerberos_or_local_passwd)
+#endif /* KRB4 */
+  if (strcmp(encrypted_password, correct_passwd) == 0)
+    return 1;			/* Success */
+
+#if defined(KRB4)
+  if (options.kerberos_authentication)
+    {
+      AUTH_DAT adata;
+      KTEXT_ST tkt;
+      struct hostent *hp;
+      unsigned long faddr;
+      char localhost[MAXHOSTNAMELEN];	/* local host name */
+      char phost[INST_SZ];		/* host instance */
+      char realm[REALM_SZ];		/* local Kerberos realm */
+      int r;
+      
+      /* Try Kerberos password authentication only for non-root
+	 users and only if Kerberos is installed. */
+      if (pw->pw_uid != 0 && krb_get_lrealm(realm, 1) == KSUCCESS) {
+
+	/* Set up our ticket file. */
+	if (!ssh_tf_init(pw->pw_uid)) {
+	  log("Couldn't initialize Kerberos ticket file for %.100s!",
+	      server_user);
+	  goto kerberos_auth_failure;
+	}
+	/* Try to get TGT using our password. */
+	r = krb_get_pw_in_tkt(server_user, "", realm, "krbtgt", realm,
+			      DEFAULT_TKT_LIFE, password);
+	if (r != INTK_OK) {
+	  packet_send_debug("Kerberos V4 password authentication for %.100s "
+			    "failed: %.100s", server_user, krb_err_txt[r]);
+	  goto kerberos_auth_failure;
+	}
+	/* Successful authentication. */
+	chown(ticket, pw->pw_uid, pw->pw_gid);
+	
+	(void) gethostname(localhost, sizeof(localhost));
+	(void) strncpy(phost, (char *)krb_get_phost(localhost), INST_SZ);
+	phost[INST_SZ-1] = 0;
+	
+	/* Now that we have a TGT, try to get a local "rcmd" ticket to
+	   ensure that we are not talking to a bogus Kerberos server. */
+	r = krb_mk_req(&tkt, KRB4_SERVICE_NAME, phost, realm, 33);
+
+	if (r == KSUCCESS) {
+	  if (!(hp = gethostbyname(localhost))) {
+	    log("Couldn't get local host address!");
+	    goto kerberos_auth_failure;
+	  }
+	  memmove((void *)&faddr, (void *)hp->h_addr, sizeof(faddr));
+
+	  /* Verify our "rcmd" ticket. */
+	  r = krb_rd_req(&tkt, KRB4_SERVICE_NAME, phost, faddr, &adata, "");
+	  if (r == RD_AP_UNDEC) {
+	    /* Probably didn't have a srvtab on localhost. Allow login. */
+	    log("Kerberos V4 TGT for %.100s unverifiable, no srvtab? "
+		"krb_rd_req: %.100s", server_user, krb_err_txt[r]);
+	  }
+	  else if (r != KSUCCESS) {
+	    log("Kerberos V4 %.100s ticket unverifiable: %.100s",
+		KRB4_SERVICE_NAME, krb_err_txt[r]);
+	    goto kerberos_auth_failure;
+	  }
+	}
+	else if (r == KDC_PR_UNKNOWN) {
+	  /* Allow login if no rcmd service exists, but log the error. */
+	  log("Kerberos V4 TGT for %.100s unverifiable: %.100s; %.100s.%.100s "
+	      "not registered, or srvtab is wrong?", server_user,
+	      krb_err_txt[r], KRB4_SERVICE_NAME, phost);
+	}
+	else {
+	  /* TGT is bad, forget it. Possibly spoofed. */
+	  packet_send_debug("WARNING: Kerberos V4 TGT possibly spoofed for"
+			    "%.100s: %.100s", server_user, krb_err_txt[r]);
+	  goto kerberos_auth_failure;
+	}
+	
+	/* Authentication succeeded. */
+	return 1;
+	
+      kerberos_auth_failure:
+	(void) dest_tkt();
+	xfree(ticket);
+	ticket = NULL;
+	if (!options.kerberos_or_local_passwd ) return 0;
+      }
+      else /* Logging in as root or no local Kerberos realm. */
+	packet_send_debug("Unable to authenticate to Kerberos.");
+      
+      /* Fall back to ordinary passwd authentication. */
+    }
+#endif /* KRB4 */
+
+  return 0;			/* Fail */
 }

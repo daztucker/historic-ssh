@@ -15,39 +15,15 @@ validity of the host key.
 
 */
 
-/*
- * $Id: auth-rsa.c,v 1.8 1995/09/21 17:08:00 ylo Exp $
- * $Log: auth-rsa.c,v $
- * Revision 1.8  1995/09/21  17:08:00  ylo
- * 	Added uidswap.h.
- *
- * Revision 1.7  1995/09/09  21:26:38  ylo
- * /m/shadows/u2/users/ylo/ssh/README
- *
- * Revision 1.6  1995/08/29  22:18:40  ylo
- * 	Permit using ip addresses in RSA authentication "from" option.
- *
- * Revision 1.5  1995/08/22  14:05:28  ylo
- * 	Added uid-swapping.
- *
- * Revision 1.4  1995/07/26  23:30:49  ylo
- * 	Added code to support protocol version 1.1.  The md hash of
- * 	RSA response must now include the session id.  Compatibility
- * 	code still handles older versions.
- *
- * Revision 1.3  1995/07/13  01:13:35  ylo
- * 	Removed the "Last modified" header.
- *
- * $Endlog$
- */
-
 #include "includes.h"
+RCSID("$Id: auth-rsa.c,v 1.4 1999/06/14 14:41:35 bg Exp $");
+
 #include "rsa.h"
 #include "randoms.h"
 #include "packet.h"
 #include "xmalloc.h"
 #include "ssh.h"
-#include "md5.h"
+#include "ssh_md5.h"
 #include "mpaux.h"
 #include "uidswap.h"
 
@@ -84,6 +60,7 @@ int auth_rsa_challenge_dialog(RandomState *state, unsigned int bits,
   unsigned char buf[32], mdbuf[16], response[16];
   struct MD5Context md;
   unsigned int i;
+  int plen;
 
   mpz_init(&encrypted_challenge);
   mpz_init(&challenge);
@@ -121,7 +98,8 @@ int auth_rsa_challenge_dialog(RandomState *state, unsigned int bits,
   mpz_clear(&aux);
   
   /* Wait for a response. */
-  packet_read_expect(SSH_CMSG_AUTH_RSA_RESPONSE);
+  packet_read_expect(&plen, SSH_CMSG_AUTH_RSA_RESPONSE);
+  packet_integrity_check(plen, 16, SSH_CMSG_AUTH_RSA_RESPONSE);
   for (i = 0; i < 16; i++)
     response[i] = packet_get_char();
 

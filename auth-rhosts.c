@@ -15,49 +15,9 @@ the login based on rhosts authentication.  This file also processes
 
 */
 
-/*
- * $Id: auth-rhosts.c,v 1.11 1995/10/02 01:19:18 ylo Exp $
- * $Log: auth-rhosts.c,v $
- * Revision 1.11  1995/10/02  01:19:18  ylo
- * 	Fixed a serious security bug in the new hosts.equiv code.
- * 	Fixed case-insensitivity in host names.
- * 	Added support for /etc/shosts.equiv.
- *
- * Revision 1.10  1995/09/27  02:11:07  ylo
- * 	Ignore "NO_PLUS".
- * 	Fixed comment processing.
- *
- * Revision 1.9  1995/09/22  22:24:51  ylo
- * 	Removed some debugging calls that revealed too much
- * 	information.
- * 	Support negative entries and netgroups in /etc/hosts.equiv and
- * 	rhosts/shosts.
- *
- * Revision 1.8  1995/09/21  17:07:42  ylo
- * 	Added uidswap.h.
- * 	Restructured rhosts authentication code.  hosts.equiv now uses
- * 	the same code to process the file; user names are now
- * 	permitted in hosts.equiv.
- *
- * Revision 1.7  1995/09/09  21:26:37  ylo
- * /m/shadows/u2/users/ylo/ssh/README
- *
- * Revision 1.6  1995/08/29  22:18:18  ylo
- * 	Permit using ip addresses in .rhosts and .shosts files.
- *
- * Revision 1.5  1995/08/22  14:05:16  ylo
- * 	Added uid-swapping.
- *
- * Revision 1.4  1995/07/27  00:37:00  ylo
- * 	Added /etc/hosts.equiv in quick test.
- *
- * Revision 1.3  1995/07/13  01:13:20  ylo
- * 	Removed the "Last modified" header.
- *
- * $Endlog$
- */
-
 #include "includes.h"
+RCSID("$Id: auth-rhosts.c,v 1.2 1999/05/04 11:58:24 bg Exp $");
+
 #include "packet.h"
 #include "ssh.h"
 #include "xmalloc.h"

@@ -12,19 +12,7 @@ Created: Tue Mar 21 15:42:09 1995 ylo
 
 */
 
-/*
- * $Id: ttymodes.h,v 1.3 1995/08/18 22:59:00 ylo Exp $
- * $Log: ttymodes.h,v $
- * Revision 1.3  1995/08/18  22:59:00  ylo
- * 	Added acknowledgement about Janne Snabb contributing the sgtty
- * 	code.
- *
- * Revision 1.2  1995/07/13  01:41:22  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
+/* RCSID("$Id: ttymodes.h,v 1.2 1999/05/04 11:59:26 bg Exp $"); */
 
 /* The tty mode description is a stream of bytes.  The stream consists of
    opcode-arguments pairs.  It is terminated by opcode TTY_OP_END (0).

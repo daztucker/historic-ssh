@@ -13,16 +13,7 @@ Replacement for strerror for systems that don't have it.
 
 */
 
-/*
- * $Id: strerror.c,v 1.2 1995/07/13 01:40:55 ylo Exp $
- * $Log: strerror.c,v $
- * Revision 1.2  1995/07/13  01:40:55  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
-
+/* RCSID("$Id: strerror.c,v 1.2 1999/05/04 11:59:24 bg Exp $"); */
 
 #include <stdio.h>
 #include <errno.h>

@@ -13,29 +13,9 @@ Allocating a pseudo-terminal, and making it the controlling tty.
 
 */
 
-/*
- * $Id: pty.c,v 1.6 1995/09/21 17:12:07 ylo Exp $
- * $Log: pty.c,v $
- * Revision 1.6  1995/09/21  17:12:07  ylo
- * 	Push ttcompat into streams pty.
- *
- * Revision 1.5  1995/09/13  11:58:18  ylo
- * 	Added Cray support.
- *
- * Revision 1.4  1995/09/09  21:26:44  ylo
- * /m/shadows/u2/users/ylo/ssh/README
- *
- * Revision 1.3  1995/07/16  01:03:28  ylo
- * 	Added pty_release.
- *
- * Revision 1.2  1995/07/13  01:28:20  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
-
 #include "includes.h"
+RCSID("$Id: pty.c,v 1.2 1999/05/04 11:58:56 bg Exp $");
+
 #include "pty.h"
 #include "ssh.h"
 

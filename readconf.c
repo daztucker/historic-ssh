@@ -13,30 +13,13 @@ Functions for reading the configuration files.
 
 */
 
-/*
- * $Id: readconf.c,v 1.7 1995/09/24 23:59:44 ylo Exp $
- * $Log: readconf.c,v $
- * Revision 1.7  1995/09/24  23:59:44  ylo
- * 	Added ConnectionAttempts.
- *
- * Revision 1.6  1995/09/09  21:26:44  ylo
- * /m/shadows/u2/users/ylo/ssh/README
- *
- * Revision 1.5  1995/09/06  19:52:36  ylo
- * 	Fixed spelling of fascist.
- *
- * Revision 1.4  1995/08/21  23:25:55  ylo
- * 	Minor cleanup.
- *
- * Revision 1.3  1995/07/27  00:39:00  ylo
- * 	Added GlobalKnownHostsFile and UserKnownHostsFile.
- *
- * Revision 1.2  1995/07/13  01:30:39  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
+#include "includes.h"
+RCSID("$Id: readconf.c,v 1.13 1999/06/14 10:20:32 bg Exp $");
+
+#include "ssh.h"
+#include "cipher.h"
+#include "readconf.h"
+#include "xmalloc.h"
 
 /* Format of the configuration file:
 
@@ -102,23 +85,26 @@ Functions for reading the configuration files.
 
 */
 
-#include "includes.h"
-#include "ssh.h"
-#include "cipher.h"
-#include "readconf.h"
-#include "xmalloc.h"
-
 /* Keyword tokens. */
 
 typedef enum
 {
   oForwardAgent, oForwardX11, oRhostsAuthentication,
   oPasswordAuthentication, oRSAAuthentication, oFallBackToRsh, oUseRsh,
+#ifdef KRB4
+  oKerberosAuthentication,
+#endif /* KRB4 */
+#ifdef KERBEROS_TGT_PASSING
+  oKerberosTgtPassing,
+#endif
+#ifdef AFS
+  oAFSTokenPassing,
+#endif
   oIdentityFile, oHostName, oPort, oCipher, oRemoteForward, oLocalForward, 
   oUser, oHost, oEscapeChar, oRhostsRSAAuthentication, oProxyCommand,
   oGlobalKnownHostsFile, oUserKnownHostsFile, oConnectionAttempts,
   oBatchMode, oStrictHostKeyChecking, oCompression, oCompressionLevel,
-  oKeepAlives
+  oKeepAlives, oTISAuthentication
 } OpCodes;
 
 /* Textual representations of the tokens. */
@@ -129,32 +115,42 @@ static struct
   OpCodes opcode;
 } keywords[] =
 {
-  { "ForwardAgent", oForwardAgent },
-  { "ForwardX11", oForwardX11 },
-  { "RhostsAuthentication", oRhostsAuthentication },
-  { "PasswordAuthentication", oPasswordAuthentication },
-  { "RSAAuthentication", oRSAAuthentication },
-  { "FallBackToRsh", oFallBackToRsh },
-  { "UseRsh", oUseRsh },
-  { "IdentityFile", oIdentityFile },
-  { "HostName", oHostName },
-  { "ProxyCommand", oProxyCommand },
-  { "Port", oPort },
-  { "Cipher", oCipher },
-  { "RemoteForward", oRemoteForward },
-  { "LocalForward", oLocalForward },
-  { "User", oUser },
-  { "Host", oHost },
-  { "EscapeChar", oEscapeChar },
-  { "RhostsRSAAuthentication", oRhostsRSAAuthentication },
-  { "GlobalKnownHostsFile", oGlobalKnownHostsFile },
-  { "UserKnownHostsFile", oUserKnownHostsFile },
-  { "ConnectionAttempts", oConnectionAttempts },
-  { "BatchMode", oBatchMode },
-  { "StrictHostKeyChecking", oStrictHostKeyChecking },
-  { "Compression", oCompression },
-  { "CompressionLevel", oCompressionLevel },
-  { "KeepAlive", oKeepAlives },
+  { "forwardagent", oForwardAgent },
+  { "forwardx11", oForwardX11 },
+  { "rhostsauthentication", oRhostsAuthentication },
+  { "passwordauthentication", oPasswordAuthentication },
+  { "rsaauthentication", oRSAAuthentication },
+#ifdef KRB4
+  { "kerberosauthentication", oKerberosAuthentication },
+#endif /* KRB4 */
+#ifdef KERBEROS_TGT_PASSING
+  { "kerberostgtpassing", oKerberosTgtPassing },
+#endif
+#ifdef AFS
+  { "afstokenpassing", oAFSTokenPassing },
+#endif
+  { "fallbacktorsh", oFallBackToRsh },
+  { "usersh", oUseRsh },
+  { "identityfile", oIdentityFile },
+  { "hostname", oHostName },
+  { "proxycommand", oProxyCommand },
+  { "port", oPort },
+  { "cipher", oCipher },
+  { "remoteforward", oRemoteForward },
+  { "localforward", oLocalForward },
+  { "user", oUser },
+  { "host", oHost },
+  { "escapechar", oEscapeChar },
+  { "rhostsrsaauthentication", oRhostsRSAAuthentication },
+  { "globalknownhostsfile", oGlobalKnownHostsFile },
+  { "userknownhostsfile", oUserKnownHostsFile },
+  { "connectionattempts", oConnectionAttempts },
+  { "batchmode", oBatchMode },
+  { "stricthostkeychecking", oStrictHostKeyChecking },
+  { "compression", oCompression },
+  { "compressionlevel", oCompressionLevel },
+  { "keepalive", oKeepAlives },
+  { "tisauthentication", oTISAuthentication },
   { NULL, 0 }
 };
 
@@ -227,6 +223,13 @@ void process_config_line(Options *options, const char *host,
 
   /* Get the keyword. (Each line is supposed to begin with a keyword). */
   cp = strtok(cp, WHITESPACE);
+  {
+    char *t = cp;
+    for (; *t != 0; t++)
+      if ('A' <= *t && *t <= 'Z')
+	*t = *t - 'A' + 'a';	/* tolower */
+      
+  }
   opcode = parse_token(cp, filename, linenum);
 
   switch (opcode)
@@ -237,17 +240,14 @@ void process_config_line(Options *options, const char *host,
     parse_flag:
       cp = strtok(NULL, WHITESPACE);
       if (!cp)
-	fatal("%.200s line %d: Missing yes/no argument.",
-	      filename, linenum);
+	fatal("%.200s line %d: Missing yes/no argument.", filename, linenum);
       value = 0; /* To avoid compiler warning... */
-      if (strcmp(cp, "yes") == 0)
+      if (strcmp(cp, "yes") == 0 || strcmp(cp, "true") == 0)
 	value = 1;
+      else if (strcmp(cp, "no") == 0 || strcmp(cp, "false") == 0)
+	value = 0;
       else
-	if (strcmp(cp, "no") == 0)
-	  value = 0;
-	else
-	  fatal("%.200s line %d: Bad yes/no argument.", 
-		filename, linenum);
+	fatal("%.200s line %d: Bad yes/no argument.", filename, linenum);
       if (*activep && *intptr == -1)
 	*intptr = value;
       break;
@@ -271,6 +271,24 @@ void process_config_line(Options *options, const char *host,
     case oRhostsRSAAuthentication:
       intptr = &options->rhosts_rsa_authentication;
       goto parse_flag;
+
+#ifdef KRB4
+    case oKerberosAuthentication:
+      intptr = &options->kerberos_authentication;
+      goto parse_flag;
+#endif /* KRB4 */
+
+#ifdef KERBEROS_TGT_PASSING
+    case oKerberosTgtPassing:
+      intptr = &options->kerberos_tgt_passing;
+      goto parse_flag;
+#endif
+
+#ifdef AFS
+    case oAFSTokenPassing:
+      intptr = &options->afs_token_passing;
+      goto parse_flag;
+#endif
       
     case oFallBackToRsh:
       intptr = &options->fallback_to_rsh;
@@ -286,19 +304,47 @@ void process_config_line(Options *options, const char *host,
 
     case oStrictHostKeyChecking:
       intptr = &options->strict_host_key_checking;
-      goto parse_flag;
+      cp = strtok(NULL, WHITESPACE);
+      if (!cp)
+	fatal("%.200s line %d: Missing yes/no argument.",
+	      filename, linenum);
+      value = 0; /* To avoid compiler warning... */
+      if (strcmp(cp, "yes") == 0 || strcmp(cp, "true") == 0)
+	value = 1;
+      else if (strcmp(cp, "no") == 0 || strcmp(cp, "false") == 0)
+	value = 0;
+      else if (strcmp(cp, "ask") == 0)
+	value = 2;
+      else
+	fatal("%.200s line %d: Bad yes/no/ask argument.", filename, linenum);
+      if (*activep && *intptr == -1)
+	*intptr = value;
+      break;
       
+#ifdef WITH_ZLIB
     case oCompression:
       intptr = &options->compression;
       goto parse_flag;
+#endif /* WITH_ZLIB */
 
     case oKeepAlives:
       intptr = &options->keepalives;
       goto parse_flag;
 
+    case oTISAuthentication:
+      cp = strtok(NULL, WHITESPACE);
+      if (cp != 0 && (strcmp(cp, "yes") == 0 || strcmp(cp, "true") == 0))
+	fprintf(stderr,
+		"%.99s line %d: Warning, TIS is not supported.\n",
+		filename,
+		linenum);
+      break;
+
+#ifdef WITH_ZLIB
     case oCompressionLevel:
       intptr = &options->compression_level;
       goto parse_int;
+#endif /* WITH_ZLIB */
 
     case oIdentityFile:
       cp = strtok(NULL, WHITESPACE);
@@ -358,7 +404,16 @@ void process_config_line(Options *options, const char *host,
 	fatal("%.200s line %d: Missing argument.", filename, linenum);
       if (cp[0] < '0' || cp[0] > '9')
 	fatal("%.200s line %d: Bad number.", filename, linenum);
+#if 0
       value = atoi(cp);
+#else
+      {
+	char *ptr;
+	value = strtol(cp, &ptr, 0); /* Octal, decimal, or hex format? */
+	if (cp == ptr)
+	  fatal("%.200s line %d: Bad number.", filename, linenum);	    
+      }
+#endif
       if (*activep && *intptr == -1)
 	*intptr = value;
       break;
@@ -506,15 +561,28 @@ void initialize_options(Options *options)
   options->forward_x11 = -1;
   options->rhosts_authentication = -1;
   options->rsa_authentication = -1;
+#ifdef KRB4
+  options->kerberos_authentication = -1;
+#endif
+#ifdef KERBEROS_TGT_PASSING
+  options->kerberos_tgt_passing = -1;
+#endif
+#ifdef AFS
+  options->afs_token_passing = -1;
+#endif
   options->password_authentication = -1;
   options->rhosts_rsa_authentication = -1;
   options->fallback_to_rsh = -1;
   options->use_rsh = -1;
   options->batch_mode = -1;
   options->strict_host_key_checking = -1;
+#ifdef WITH_ZLIB
   options->compression = -1;
+#endif /* WITH_ZLIB */
   options->keepalives = -1;
+#ifdef WITH_ZLIB
   options->compression_level = -1;
+#endif /* WITH_ZLIB */
   options->port = -1;
   options->connection_attempts = -1;
   options->cipher = -1;
@@ -542,6 +610,18 @@ void fill_default_options(Options *options)
     options->rhosts_authentication = 1;
   if (options->rsa_authentication == -1)
     options->rsa_authentication = 1;
+#ifdef KRB4
+  if (options->kerberos_authentication == -1)
+    options->kerberos_authentication = 1;
+#endif
+#ifdef KERBEROS_TGT_PASSING
+  if (options->kerberos_tgt_passing == -1)
+    options->kerberos_tgt_passing = 1;
+#endif
+#ifdef AFS
+  if (options->afs_token_passing == -1)
+    options->afs_token_passing = 1;
+#endif
   if (options->password_authentication == -1)
     options->password_authentication = 1;
   if (options->rhosts_rsa_authentication == -1)
@@ -553,13 +633,17 @@ void fill_default_options(Options *options)
   if (options->batch_mode == -1)
     options->batch_mode = 0;
   if (options->strict_host_key_checking == -1)
-    options->strict_host_key_checking = 0;
+    options->strict_host_key_checking = 2; /* 2 is default */
+#ifdef WITH_ZLIB
   if (options->compression == -1)
     options->compression = 0;
+#endif /* WITH_ZLIB */
   if (options->keepalives == -1)
     options->keepalives = 1;
+#ifdef WITH_ZLIB
   if (options->compression_level == -1)
     options->compression_level = 6;
+#endif /* WITH_ZLIB */
   if (options->port == -1)
     options->port = 0; /* Filled in ssh_connect. */
   if (options->connection_attempts == -1)

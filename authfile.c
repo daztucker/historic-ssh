@@ -14,28 +14,9 @@ for reading the passphrase from the user.
 
 */
 
-/*
- * $Id: authfile.c,v 1.6 1995/10/02 01:19:48 ylo Exp $
- * $Log: authfile.c,v $
- * Revision 1.6  1995/10/02  01:19:48  ylo
- * 	Added some casts to avoid compiler warnings.
- *
- * Revision 1.5  1995/09/09  21:26:39  ylo
- * /m/shadows/u2/users/ylo/ssh/README
- *
- * Revision 1.4  1995/08/21  23:21:56  ylo
- * 	Don't complain about bad passphrase if passphrase was empty.
- *
- * Revision 1.3  1995/07/13  01:16:38  ylo
- * 	Removed "Last modified" header.
- *
- * Revision 1.2  1995/07/13  01:11:52  ylo
- * 	Added cvs log.
- *
- * $Endlog$
- */
-
 #include "includes.h"
+RCSID("$Id: authfile.c,v 1.2 1999/05/04 11:58:28 bg Exp $");
+
 #include <gmp.h>
 #include "xmalloc.h"
 #include "idea.h"

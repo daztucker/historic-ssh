@@ -509,15 +509,15 @@ COPYING for more information.
 
 MAILING LISTS AND OTHER INFORMATION
 
-There is a mailing list for ssh.  It is ssh@clinet.fi.  If you would
-like to join, send a message to majordomo@clinet.fi with "subscribe
+There is a mailing list for ossh.  It is ossh@sics.se.  If you would
+like to join, send a message to majordomo@sics.se with "subscribe
 ssh" in body.
 
 The WWW home page for ssh is http://www.cs.hut.fi/ssh.  It contains an
 archive of the mailing list, and detailed information about new
 releases, mailing lists, and other relevant issues.
 
-Bug reports should be sent to ssh-bugs@cs.hut.fi.
+Bug reports should be sent to ossh-bugs@sics.se.
 
 
 ABOUT THE AUTHOR

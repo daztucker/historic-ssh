@@ -14,20 +14,13 @@ precision integers.
 
 */
 
-/*
- * $Id: mpaux.c,v 1.1 1995/07/27 03:28:15 ylo Exp $
- * $Log: mpaux.c,v $
- * Revision 1.1  1995/07/27  03:28:15  ylo
- * 	Auxiliary functions for manipulating mp-ins.
- *
- * $Endlog$
- */
-
 #include "includes.h"
+RCSID("$Id: mpaux.c,v 1.3 1999/05/04 11:58:51 bg Exp $");
+
 #include <gmp.h>
 #include "getput.h"
 #include "xmalloc.h"
-#include "md5.h"
+#include "ssh_md5.h"
 
 /* Converts a multiple-precision integer into bytes to be stored in the buffer.
    The buffer will contain the value of the integer, msb first. */

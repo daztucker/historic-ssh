@@ -14,14 +14,7 @@ precision integers.
 
 */
 
-/*
- * $Id: mpaux.h,v 1.1 1995/07/27 03:28:03 ylo Exp $
- * $Log: mpaux.h,v $
- * Revision 1.1  1995/07/27  03:28:03  ylo
- * 	Auxiliary functions for manipulating mp-ints.
- *
- * $Endlog$
- */
+/* RCSID("$Id: mpaux.h,v 1.2 1999/05/04 11:58:52 bg Exp $"); */
 
 #ifndef MPAUX_H
 #define MPAUX_H

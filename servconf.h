@@ -13,11 +13,7 @@ Definitions for server configuration data and for the functions reading it.
 
 */
 
-/*
- * $Id$
- * $Log$
- * $EndLog$
- */
+/* RCSID("$Id: servconf.h,v 1.6 1999/05/04 11:59:10 bg Exp $"); */
 
 #ifndef SERVCONF_H
 #define SERVCONF_H
@@ -46,6 +42,19 @@ typedef struct
   int rhosts_authentication;	/* If true, permit rhosts authentication. */
   int rhosts_rsa_authentication;/* If true, permit rhosts RSA authentication.*/
   int rsa_authentication;	/* If true, permit RSA authentication. */
+#ifdef KRB4
+  int kerberos_authentication;	/* If true, permit Kerberos authentication. */
+  int kerberos_or_local_passwd;
+#endif
+#if defined(KRB4) || defined(AFS)
+  int kerberos_ticket_cleanup;	/* If true, destroy ticket file on logout. */
+#endif
+#ifdef KERBEROS_TGT_PASSING
+  int kerberos_tgt_passing;	/* If true, permit Kerberos tgt passing. */
+#endif
+#ifdef AFS
+  int afs_token_passing;	/* If true, permit AFS token passing. */
+#endif
   int password_authentication;  /* If true, permit password authentication. */
   int permit_empty_passwd;      /* If false, do not permit empty passwords. */
   unsigned int num_allow_hosts;

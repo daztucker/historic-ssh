@@ -14,30 +14,9 @@ with the other side.  This same code is used both on client and server side.
 
 */
 
-/*
- * $Id: packet.c,v 1.6 1995/09/24 23:59:12 ylo Exp $
- * $Log: packet.c,v $
- * Revision 1.6  1995/09/24  23:59:12  ylo
- * 	Added packet_get_protocol_flags.
- *
- * Revision 1.5  1995/09/09  21:26:43  ylo
- * /m/shadows/u2/users/ylo/ssh/README
- *
- * Revision 1.4  1995/07/27  03:59:37  ylo
- * 	Fixed a bug in new rc4 keying.
- *
- * Revision 1.3  1995/07/27  02:17:11  ylo
- * 	Changed keying for RC4 to avoid using the same key for both
- * 	directions.
- *
- * Revision 1.2  1995/07/13  01:27:33  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
-
 #include "includes.h"
+RCSID("$Id: packet.c,v 1.7 1999/06/14 14:41:39 bg Exp $");
+
 #include "xmalloc.h"
 #include "randoms.h"
 #include "buffer.h"
@@ -47,7 +26,10 @@ with the other side.  This same code is used both on client and server side.
 #include "crc32.h"
 #include "cipher.h"
 #include "getput.h"
+
+#ifdef WITH_ZLIB
 #include "compress.h"
+#endif /* WITH_ZLIB */
 
 /* This variable contains the file descriptors used for communicating with
    the other side.  connection_in is used for reading; connection_out
@@ -83,8 +65,10 @@ static Buffer incoming_packet;
 /* Scratch buffer for packet compression/decompression. */
 static Buffer compression_buffer;
 
+#ifdef WITH_ZLIB
 /* Flag indicating whether packet compression/decompression is enabled. */
 static int packet_compression = 0;
+#endif /* WITH_ZLIB */
 
 /* Pointer to the random number generator state. */
 static RandomState *random_state;
@@ -179,11 +163,13 @@ void packet_close()
   buffer_free(&output);
   buffer_free(&outgoing_packet);
   buffer_free(&incoming_packet);
+#ifdef WITH_ZLIB
   if (packet_compression)
     {
       buffer_free(&compression_buffer);
       buffer_compress_uninit();
     }
+#endif /* WITH_ZLIB */
 }
 
 /* Sets remote side protocol flags. */
@@ -201,6 +187,7 @@ unsigned int packet_get_protocol_flags()
   return remote_protocol_flags;
 }
 
+#ifdef WITH_ZLIB
 /* Starts packet compression from the next packet on in both directions. 
    Level is compression level 1 (fastest) - 9 (slow, best) as in gzip. */
 
@@ -212,6 +199,7 @@ void packet_start_compression(int level)
   buffer_init(&compression_buffer);
   buffer_compress_init(level);
 }
+#endif /* WITH_ZLIB */
 
 /* Encrypts the given number of bytes, copying from src to dest.
    bytes is known to be a multiple of 8. */
@@ -314,6 +302,7 @@ void packet_send()
   int i, padding, len;
   unsigned long checksum;
 
+#ifdef WITH_ZLIB
   /* If using packet compression, compress the payload of the outgoing
      packet. */
   if (packet_compression)
@@ -326,6 +315,7 @@ void packet_send()
       buffer_append(&outgoing_packet, buffer_ptr(&compression_buffer),
 		    buffer_len(&compression_buffer));
     }
+#endif /* WITH_ZLIB */
 
   /* Compute packet length without padding (add checksum, remove padding). */
   len = buffer_len(&outgoing_packet) + 4 - 8;
@@ -372,7 +362,7 @@ void packet_send()
    no other data is processed until this returns, so this function should
    not be used during the interactive session. */
 
-int packet_read()
+int packet_read(int *payload_len_ptr)
 {
   int type, len;
   fd_set set;
@@ -385,7 +375,12 @@ int packet_read()
   for (;;)
     {
       /* Try to read a packet from the buffer. */
-      type = packet_read_poll();
+      type = packet_read_poll(payload_len_ptr);
+      if (type == SSH_SMSG_SUCCESS
+	  || type == SSH_SMSG_FAILURE
+	  || type == SSH_CMSG_EOF
+	  || type == SSH_CMSG_EXIT_CONFIRMATION)
+	packet_integrity_check(*payload_len_ptr, 0, type);
       /* If we got a packet, return it. */
       if (type != SSH_MSG_NONE)
 	return type;
@@ -410,11 +405,11 @@ int packet_read()
 /* Waits until a packet has been received, verifies that its type matches
    that given, and gives a fatal error and exits if there is a mismatch. */
 
-void packet_read_expect(int expected_type)
+void packet_read_expect(int *payload_len_ptr, int expected_type)
 {
   int type;
 
-  type = packet_read();
+  type = packet_read(payload_len_ptr);
   if (type != expected_type)
     packet_disconnect("Protocol error: expected packet type %d, got %d",
 		      expected_type, type);
@@ -426,9 +421,18 @@ void packet_read_expect(int expected_type)
    
    SSH_MSG_DISCONNECT is handled specially here.  Also,
    SSH_MSG_IGNORE messages are skipped by this function and are never returned
-   to higher levels. */
+   to higher levels.
 
-int packet_read_poll()
+   The returned payload_len does include space consumed by:
+   Packet length
+   Padding
+   Packet type
+   Check bytes
+
+   
+   */
+
+int packet_read_poll(int *payload_len_ptr)
 {
   unsigned int len, padded_len;
   unsigned char *ucp;
@@ -481,6 +485,7 @@ int packet_read_poll()
     packet_disconnect("Corrupted check bytes on input.");
   buffer_consume_end(&incoming_packet, 4);
 
+#ifdef WITH_ZLIB
   /* If using packet compression, decompress the packet. */
   if (packet_compression)
     {
@@ -490,9 +495,13 @@ int packet_read_poll()
       buffer_append(&incoming_packet, buffer_ptr(&compression_buffer),
 		    buffer_len(&compression_buffer));
     }
+#endif /* WITH_ZLIB */
 
   /* Get packet type. */
   buffer_get(&incoming_packet, &buf[0], 1);
+
+  /* Return length of payload (without type field). */
+  *payload_len_ptr = buffer_len(&incoming_packet);
 
   /* Handle disconnect message. */
   if ((unsigned char)buf[0] == SSH_MSG_DISCONNECT)
@@ -540,9 +549,9 @@ unsigned int packet_get_int()
 /* Returns an arbitrary precision integer from the packet data.  The integer
    must have been initialized before this call. */
 
-void packet_get_mp_int(MP_INT *value)
+void packet_get_mp_int(MP_INT *value, int *length_ptr)
 {
-  buffer_get_mp_int(&incoming_packet, value);
+  *length_ptr = buffer_get_mp_int(&incoming_packet, value);
 }
 
 /* Returns a string from the packet data.  The string is allocated using
@@ -569,7 +578,7 @@ void packet_send_debug(const char *fmt, ...)
   va_list args;
   
   va_start(args, fmt);
-  vsprintf(buf, fmt, args);
+  vsnprintf(buf, sizeof(buf), fmt, args);
   va_end(args);
   
   packet_start(SSH_MSG_DEBUG);
@@ -595,7 +604,7 @@ void packet_disconnect(const char *fmt, ...)
   /* Format the message.  Note that the caller must make sure the message
      is of limited size. */
   va_start(args, fmt);
-  vsprintf(buf, fmt, args);
+  vsnprintf(buf, sizeof(buf), fmt, args);
   va_end(args);
 
   /* Send the disconnect message to the other side, and wait for it to get 

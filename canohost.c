@@ -13,26 +13,9 @@ Functions for returning the canonical host name of the remote site.
 
 */
 
-/*
- * $Id: canohost.c,v 1.5 1995/09/21 17:08:24 ylo Exp $
- * $Log: canohost.c,v $
- * Revision 1.5  1995/09/21  17:08:24  ylo
- * 	Added get_remote_port.
- *
- * Revision 1.4  1995/09/06  15:57:59  ylo
- * 	Fixed serious bugs.
- *
- * Revision 1.3  1995/08/29  22:20:12  ylo
- * 	Added code to get ip number as string.
- *
- * Revision 1.2  1995/07/13  01:19:18  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
-
 #include "includes.h"
+RCSID("$Id: canohost.c,v 1.3 1999/05/11 19:27:15 bg Exp $");
+
 #include "packet.h"
 #include "xmalloc.h"
 #include "ssh.h"
@@ -62,8 +45,15 @@ char *get_remote_hostname(int socket)
 		     from.sin_family);
   if (hp)
     {
-      /* Got host name. */
-      strncpy(name, hp->h_name, sizeof(name));
+      /* Got host name, find canonic host name. */
+      if (strchr(hp->h_name, '.') != 0)
+	strncpy(name, hp->h_name, sizeof(name));
+      else if (hp->h_aliases != 0
+	       && hp->h_aliases[0] != 0
+	       && strchr(hp->h_aliases[0], '.') != 0)
+	strncpy(name, hp->h_aliases[0], sizeof(name));
+      else
+	strncpy(name, hp->h_name, sizeof(name));
       name[sizeof(name) - 1] = '\0';
       
       /* Convert it to all lowercase (which is expected by the rest of this

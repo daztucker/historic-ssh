@@ -12,25 +12,9 @@ Created: Tue Aug 22 17:25:30 1995 ylo
 
 */
 
-/*
- * $Log: minfd.c,v $
- * Revision 1.4  1995/10/02  01:24:36  ylo
- * 	Avoid a compiler warning.
- * 	Removed "Last modified" header.
- *
- * Revision 1.3  1995/09/09  21:26:43  ylo
- * /m/shadows/u2/users/ylo/ssh/README
- *
- * Revision 1.2  1995/08/29  22:32:33  ylo
- * 	Ported to ssh source tree.
- *
- * Revision 1.1  1995/08/22  14:26:22  ylo
- * 	Initial version from David Mazieres.
- *
- * $EndLog$
- */
-
 #include "includes.h"
+RCSID("$Id: minfd.c,v 1.2 1999/05/04 11:58:51 bg Exp $");
+
 #include <sys/resource.h> /* Needed by fdlim.h */
 #include "fdlim.h"
 #include "minfd.h"

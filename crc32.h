@@ -13,15 +13,7 @@ Functions for computing 32-bit CRC.
 
 */
 
-/*
- * $Id: crc32.h,v 1.2 1995/07/13 01:21:45 ylo Exp $
- * $Log: crc32.h,v $
- * Revision 1.2  1995/07/13  01:21:45  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
+/* RCSID("$Id: crc32.h,v 1.2 1999/05/04 11:58:41 bg Exp $"); */
 
 #ifndef CRC32_H
 #define CRC32_H

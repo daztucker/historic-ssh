@@ -72,9 +72,10 @@ void process_buffered_input_packets()
   char *data;
   unsigned int data_len;
   int row, col, xpixel, ypixel;
+  int payload_len;
 
   /* Process buffered packets from the client. */
-  while ((type = packet_read_poll()) != SSH_MSG_NONE)
+  while ((type = packet_read_poll(&payload_len)) != SSH_MSG_NONE)
     {
       switch (type)
 	{
@@ -83,6 +84,7 @@ void process_buffered_input_packets()
 	  if (fdin == -1)
 	    break; /* Ignore any data if the client has closed stdin. */
 	  data = packet_get_string(&data_len);
+	  packet_integrity_check(payload_len, (4 + data_len), type);
 	  buffer_append(&stdin_buffer, data, data_len);
 	  memset(data, 0, data_len);
 	  xfree(data);
@@ -92,11 +94,13 @@ void process_buffered_input_packets()
 	  /* Eof from the client.  The stdin descriptor to the program
 	     will be closed when all buffered data has drained. */
 	  debug("EOF received for stdin.");
+	  packet_integrity_check(payload_len, 0, type);
 	  stdin_eof = 1;
 	  break;
 
 	case SSH_CMSG_WINDOW_SIZE:
 	  debug("Window change received.");
+	  packet_integrity_check(payload_len, 4*4, type);
 	  row = packet_get_int();
 	  col = packet_get_int();
 	  xpixel = packet_get_int();
@@ -107,30 +111,34 @@ void process_buffered_input_packets()
 	  
 	case SSH_MSG_PORT_OPEN:
 	  debug("Received port open request.");
-	  channel_input_port_open();
+	  channel_input_port_open(payload_len);
 	  break;
 	  
 	case SSH_MSG_CHANNEL_OPEN_CONFIRMATION:
 	  debug("Received channel open confirmation.");
+	  packet_integrity_check(payload_len, 4 + 4, type);
 	  channel_input_open_confirmation();
 	  break;
 
 	case SSH_MSG_CHANNEL_OPEN_FAILURE:
 	  debug("Received channel open failure.");
+	  packet_integrity_check(payload_len, 4, type);
 	  channel_input_open_failure();
 	  break;
 	  
 	case SSH_MSG_CHANNEL_DATA:
-	  channel_input_data();
+	  channel_input_data(payload_len);
 	  break;
 	  
 	case SSH_MSG_CHANNEL_CLOSE:
 	  debug("Received channel close.");
+	  packet_integrity_check(payload_len, 4, type);
 	  channel_input_close();
 	  break;
 
 	case SSH_MSG_CHANNEL_CLOSE_CONFIRMATION:
 	  debug("Received channel close confirmation.");
+	  packet_integrity_check(payload_len, 4, type);
 	  channel_input_close_confirmation();
 	  break;
 
@@ -218,6 +226,9 @@ void wait_until_can_do_something(fd_set *readset, fd_set *writeset,
   struct timeval tv, *tvp;
   int ret;
 
+  /* When select fails we restart from here. */
+retry_select:
+
   /* Initialize select() masks. */
   FD_ZERO(readset);
   
@@ -277,26 +288,8 @@ void wait_until_can_do_something(fd_set *readset, fd_set *writeset,
     {
       if (errno != EINTR)
 	error("select: %.100s", strerror(errno));
-      /* At least HPSUX fails to zero these, contrary to its documentation. */
-      FD_ZERO(readset);
-      FD_ZERO(writeset);
-    }
-  
-  /* If the child has terminated and there was no data, close all descriptors
-     to it. */
-  if (ret <= 0 && child_terminated)
-    {
-      if (fdout != -1)
-	close(fdout);
-      if (fderr != -1)
-	close(fderr);
-      if (fdin != -1 && fdin != fdout)
-	close(fdin);
-      fdout = -1;
-      fdout_eof = 1;
-      fderr = -1;
-      fderr_eof = 1;
-      fdin = -1;
+      else
+	goto retry_select;
     }
 }
 
@@ -364,10 +357,7 @@ void process_output(fd_set *writeset)
 		  buffer_len(&stdin_buffer));
       if (len <= 0)
 	{
-	  if (fdin == fdout)
-	    shutdown(fdin, 1); /* We will no longer send. */
-	  else
-	    close(fdin);
+	  shutdown(fdin, 1); /* We will no longer send. */
 	  fdin = -1;
 	}
       else
@@ -487,10 +477,7 @@ void server_loop(int pid, int fdin_arg, int fdout_arg, int fderr_arg)
 	 cause a real eof by closing fdin. */
       if (stdin_eof && fdin != -1 && buffer_len(&stdin_buffer) == 0)
 	{
-	  if (fdin == fdout)
-	    shutdown(fdin, 1); /* We will no longer send. */
-	  else
-	    close(fdin);
+	  shutdown(fdin, 1); /* We will no longer send. */
 	  fdin = -1;
 	}
 
@@ -568,11 +555,16 @@ void server_loop(int pid, int fdin_arg, int fdout_arg, int fderr_arg)
 
   /* Close the file descriptors. */
   if (fdout != -1)
-    close(fdout);
-  if (fdin != -1 && fdin != fdout)
-    close(fdin);
+    shutdown(fdout, 0);
+  fdout = -1;
+  fdout_eof = 1;
   if (fderr != -1)
-    close(fderr);
+    shutdown(fderr, 0);
+  fderr = -1;
+  fderr_eof = 1;
+  if (fdin != -1)
+    shutdown(fdin, 1);
+  fdin = -1;
 
   /* Stop listening for channels; this removes unix domain sockets. */
   channel_stop_listening();
@@ -615,7 +607,8 @@ void server_loop(int pid, int fdin_arg, int fdout_arg, int fderr_arg)
 	 the confirmation when it receives the exit status. */
       do
 	{
-	  type = packet_read();
+	  int plen;
+	  type = packet_read(&plen);
 	}
       while (type != SSH_CMSG_EXIT_CONFIRMATION);
 

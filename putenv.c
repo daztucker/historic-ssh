@@ -1,5 +1,5 @@
 /*******************************************************************************
- *  The Elm Mail System  -  $Revision: 1.1 $   $State: Exp $
+ *  The Elm Mail System  -  $Revision: 1.2 $   $State: Exp $
  *
  *			Copyright (c) 1992 USENET Community Trust
  *******************************************************************************
@@ -7,15 +7,6 @@
  *
  *	Syd Weinstein, Elm Coordinator
  *	elm@DSI.COM			dsinc!elm
- *
- *******************************************************************************
- * $Log: putenv.c,v $
- * Revision 1.1  1995/07/13  22:17:30  ylo
- * 	Added putenv.c (this file was missing from the original distribution).
- *
- * Revision 5.1  1992/10/03  22:41:36  syd
- * Initial checkin as of 2.4 Release at PL0
- *
  *
  ******************************************************************************/
 
@@ -27,6 +18,7 @@
  */
 
 #include "includes.h"
+RCSID("$Id: putenv.c,v 1.2 1999/05/04 11:58:57 bg Exp $");
 
 /* peculiar return values */
 #define WORKED 0

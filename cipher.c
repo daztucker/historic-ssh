@@ -11,30 +11,155 @@ Created: Wed Apr 19 17:41:39 1995 ylo
 
 */
 
-/*
- * $Id: cipher.c,v 1.3 1995/08/18 22:48:01 ylo Exp $
- * $Log: cipher.c,v $
- * Revision 1.3  1995/08/18  22:48:01  ylo
- * 	Added code to permit compiling without idea.
- *
- * 	With triple-des, if the key length is only 16 bytes, reuse the
- * 	beginning of the key for the third DES key.
- *
- * Revision 1.2  1995/07/13  01:19:45  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
-
 #include "includes.h"
+RCSID("$Id: cipher.c,v 1.12 1999/05/28 15:21:51 bg Exp $");
+
 #include "ssh.h"
 #include "cipher.h"
+
+/*
+ * What kind of tripple DES are these 2 routines?
+ *
+ * Why is there a redundant initialization vector?
+ *
+ * If only iv3 was used, then, this would till effect have been
+ * outer-cbc. However, there is also a private iv1 == iv2 which
+ * perhaps makes differential analysis easier. On the other hand, the
+ * private iv1 probably makes the CRC-32 attack ineffective. This is a
+ * result of that there is no longer any known iv1 to use when
+ * choosing the X block.
+ */
+void
+SSH_3CBC_ENCRYPT(des_key_schedule ks1,
+		 des_key_schedule ks2, des_cblock *iv2,
+		 des_key_schedule ks3, des_cblock *iv3, 
+		 void *dest, void *src,
+		 unsigned int len)
+{
+  des_cblock iv1;
+
+  memcpy(&iv1, iv2, 8);
+
+  des_cbc_encrypt(src, dest, len, ks1, &iv1, DES_ENCRYPT);
+  memcpy(&iv1, dest + len - 8, 8);
+
+  des_cbc_encrypt(dest, dest, len, ks2, iv2, DES_DECRYPT);
+  memcpy(iv2, &iv1, 8);		/* Note how iv1 == iv2 on entry and exit. */
+
+  des_cbc_encrypt(dest, dest, len, ks3, iv3, DES_ENCRYPT);
+  memcpy(iv3, dest + len - 8, 8);
+}
+
+void
+SSH_3CBC_DECRYPT(des_key_schedule ks1,
+		 des_key_schedule ks2, des_cblock *iv2,
+		 des_key_schedule ks3, des_cblock *iv3,
+		 void *dest, void *src,
+		 unsigned int len)
+{
+  des_cblock iv1;
+
+  memcpy(&iv1, iv2, 8);
+
+  des_cbc_encrypt(src, dest, len, ks3, iv3, DES_DECRYPT);
+  memcpy(iv3, src + len - 8, 8);
+
+  des_cbc_encrypt(dest, dest, len, ks2, iv2, DES_ENCRYPT);
+  memcpy(iv2, dest + len - 8, 8);
+
+  des_cbc_encrypt(dest, dest, len, ks1, &iv1, DES_DECRYPT);
+  /* memcpy(&iv1, iv2, 8); */	/* Note how iv1 == iv2 on entry and exit. */
+}
+
+#ifdef WITH_BLOWFISH
+/*
+ * SSH uses a variation on Blowfish, all bytes must be swapped before
+ * and after encryption/decryption. Thus the swap_bytes stuff (yuk).
+ */
+static
+void
+swap_bytes(const unsigned char *src, unsigned char *dst_, int n)
+{
+  uint32 *dst = (uint32 *)dst_;	/* dst must be properly aligned. */
+  union {
+    uint32 i;
+    char c[4];
+  } t;
+
+  /* assert((n & 7) == 0); */
+
+  /* Process 8 bytes every lap. */
+  for (n = n / 8; n > 0; n--)
+    {
+      t.c[3] = *src++;
+      t.c[2] = *src++;
+      t.c[1] = *src++;
+      t.c[0] = *src++;
+      *dst++ = t.i;
+      
+      t.c[3] = *src++;
+      t.c[2] = *src++;
+      t.c[1] = *src++;
+      t.c[0] = *src++;
+      *dst++ = t.i;
+    }
+}
+#endif /* WITH_BLOWFISH */
+
+void (*cipher_attack_detected)(const char *fmt, ...) = fatal;
+
+static inline
+void
+detect_cbc_attack(const unsigned char *src,
+		  unsigned int len)
+{
+  return;
+  
+  log("CRC-32 CBC insertion attack detected");
+  cipher_attack_detected("CRC-32 CBC insertion attack detected");
+}
+
+#ifdef WITH_IDEA
+static inline
+void
+detect_cfb_attack(const unsigned char *src,
+		  unsigned int len,
+		  const unsigned char iv[8])
+{
+  return;
+
+  log("CRC-32 CFB insertion attack detected");
+  cipher_attack_detected("CRC-32 CFB insertion attack detected");
+}
+#endif /* WITH_IDEA */
 
 /* Names of all encryption algorithms.  These must match the numbers defined
    int cipher.h. */
 static char *cipher_names[] =
-{ "none", "idea", "des", "3des", "tss", "rc4" };
+{ "none",
+#ifdef WITH_IDEA
+  "idea",
+#else
+  "no idea",
+#endif
+#ifdef WITH_DES
+  "des",
+#else
+  "no des",
+#endif
+  "3des",
+  "no tss",
+#ifdef WITH_RC4
+  "rc4",
+#else
+  "no rc4",
+#endif
+#ifdef WITH_BLOWFISH
+  "blowfish"
+#else
+  "no blowfish"
+#endif
+};
 
 /* Returns a bit mask indicating which ciphers are supported by this
    implementation.  The bit mask has the corresponding bit set of each
@@ -44,13 +169,19 @@ unsigned int cipher_mask()
 {
   unsigned int mask = 0;
   mask |= 1 << SSH_CIPHER_NONE;
-#ifndef WITHOUT_IDEA
+#ifdef WITH_IDEA
   mask |= 1 << SSH_CIPHER_IDEA;
-#endif /* WITHOUT_IDEA */
+#endif /* WITH_IDEA */
+#ifdef WITH_DES
   mask |= 1 << SSH_CIPHER_DES;
-  mask |= 1 << SSH_CIPHER_3DES;
-  mask |= 1 << SSH_CIPHER_TSS;
+#endif
+  mask |= 1 << SSH_CIPHER_3DES;	/* Mandatory */
+#ifdef WITH_RC4
   mask |= 1 << SSH_CIPHER_RC4;
+#endif
+#ifdef WITH_BLOWFISH
+  mask |= 1 << SSH_CIPHER_BLOWFISH;
+#endif
   return mask;
 }
 
@@ -115,24 +246,26 @@ void cipher_set_key(CipherContext *context, int cipher,
     case SSH_CIPHER_NONE:
       break;
 
-#ifndef WITHOUT_IDEA
+#ifdef WITH_IDEA
     case SSH_CIPHER_IDEA:
       if (keylen < 16)
 	error("Key length %d is insufficient for IDEA.", keylen);
       idea_set_key(&context->u.idea.key, padded);
       memset(context->u.idea.iv, 0, sizeof(context->u.idea.iv));
       break;
-#endif /* WITHOUT_IDEA */
+#endif /* WITH_IDEA */
 
+#ifdef WITH_DES
     case SSH_CIPHER_DES:
       /* Note: the least significant bit of each byte of key is parity, 
 	 and must be ignored by the implementation.  8 bytes of key are
 	 used. */
       if (keylen < 8)
 	error("Key length %d is insufficient for DES.", keylen);
-      des_set_key(padded, &context->u.des.key);
+      des_set_key((void*)padded, context->u.des.key);
       memset(context->u.des.iv, 0, sizeof(context->u.des.iv));
       break;
+#endif /* WITH_DES */
 
     case SSH_CIPHER_3DES:
       /* Note: the least significant bit of each byte of key is parity, 
@@ -140,26 +273,28 @@ void cipher_set_key(CipherContext *context, int cipher,
 	 used (first and last keys are the same). */
       if (keylen < 16)
 	error("Key length %d is insufficient for 3DES.", keylen);
-      des_set_key(padded, &context->u.des3.key1);
-      des_set_key(padded + 8, &context->u.des3.key2);
+      des_set_key((void*)padded, context->u.des3.key1);
+      des_set_key((void*)(padded + 8), context->u.des3.key2);
       if (keylen <= 16)
-	des_set_key(padded, &context->u.des3.key3);
+	des_set_key((void*)padded, context->u.des3.key3);
       else
-	des_set_key(padded + 16, &context->u.des3.key3);
-      memset(context->u.des3.iv1, 0, sizeof(context->u.des3.iv1));
+	des_set_key((void*)(padded + 16), context->u.des3.key3);
       memset(context->u.des3.iv2, 0, sizeof(context->u.des3.iv2));
       memset(context->u.des3.iv3, 0, sizeof(context->u.des3.iv3));
       break;
 
-    case SSH_CIPHER_TSS:
-      if (keylen < 8)
-	error("Key length %d is insufficient for TSS.", keylen);
-      TSS_Init(&context->u.tss, key, keylen);
-      break;
-
+#ifdef WITH_RC4
     case SSH_CIPHER_RC4:
       rc4_init(&context->u.rc4, key, keylen);
       break;
+#endif /* WITH_RC4 */
+
+#ifdef WITH_BLOWFISH
+    case SSH_CIPHER_BLOWFISH:
+      BF_set_key(&context->u.bf.key, keylen, padded);
+      memset(context->u.bf.iv, 0, 8);
+      break;
+#endif /* WITH_BLOWFISH */
 
     default:
       fatal("cipher_set_key: unknown cipher: %d", cipher);
@@ -172,38 +307,50 @@ void cipher_set_key(CipherContext *context, int cipher,
 void cipher_encrypt(CipherContext *context, unsigned char *dest,
 		    const unsigned char *src, unsigned int len)
 {
+  assert((len & 7) == 0);
+
   switch (context->type)
     {
     case SSH_CIPHER_NONE:
       memcpy(dest, src, len);
       break;
 
-#ifndef WITHOUT_IDEA
+#ifdef WITH_IDEA
     case SSH_CIPHER_IDEA:
       idea_cfb_encrypt(&context->u.idea.key, context->u.idea.iv, 
 		       dest, src, len);
       break;
-#endif /* WITHOUT_IDEA */
+#endif /* WITH_IDEA */
 
+#ifdef WITH_DES
     case SSH_CIPHER_DES:
-      des_cbc_encrypt(&context->u.des.key, context->u.des.iv, dest, src, len);
+      des_cbc_encrypt((void*)src, (void*)dest, len,
+		      context->u.des.key, &context->u.des.iv, DES_ENCRYPT);
+      memcpy(context->u.des.iv, dest + len - 8, 8);
       break;
+#endif /* WITH_DES */
 
     case SSH_CIPHER_3DES:
-      des_3cbc_encrypt(&context->u.des3.key1, context->u.des3.iv1,
-		       &context->u.des3.key2, context->u.des3.iv2,
-		       &context->u.des3.key3, context->u.des3.iv3,
-		       dest, src, len);
+      SSH_3CBC_ENCRYPT(context->u.des3.key1,
+		       context->u.des3.key2, &context->u.des3.iv2,
+		       context->u.des3.key3, &context->u.des3.iv3,
+		       dest, (void*)src, len);
       break;
 
-    case SSH_CIPHER_TSS:
-      memcpy(dest, src, len);
-      TSS_Encrypt(&context->u.tss, dest, len);
-      break;
-
+#ifdef WITH_RC4
     case SSH_CIPHER_RC4:
       rc4_encrypt(&context->u.rc4, dest, src, len);
       break;
+#endif /* WITH_RC4 */
+
+#ifdef WITH_BLOWFISH
+    case SSH_CIPHER_BLOWFISH:
+      swap_bytes(src, dest, len);
+      BF_cbc_encrypt(dest, dest, len,
+		     &context->u.bf.key, context->u.bf.iv, BF_ENCRYPT);
+      swap_bytes(dest, dest, len);
+      break;
+#endif /* WITH_BLOWFISH */
 
     default:
       fatal("cipher_encrypt: unknown cipher: %d", context->type);
@@ -215,38 +362,55 @@ void cipher_encrypt(CipherContext *context, unsigned char *dest,
 void cipher_decrypt(CipherContext *context, unsigned char *dest,
 		    const unsigned char *src, unsigned int len)
 {
+  assert((len & 7) == 0);
+
   switch (context->type)
     {
     case SSH_CIPHER_NONE:
       memcpy(dest, src, len);
       break;
 
-#ifndef WITHOUT_IDEA
+#ifdef WITH_IDEA
     case SSH_CIPHER_IDEA:
+      detect_cfb_attack(src, len, context->u.idea.iv);
       idea_cfb_decrypt(&context->u.idea.key, context->u.idea.iv, 
 		       dest, src, len);
       break;
-#endif /* WITHOUT_IDEA */
+#endif /* WITH_IDEA */
 
+#ifdef WITH_DES
     case SSH_CIPHER_DES:
-      des_cbc_decrypt(&context->u.des.key, context->u.des.iv, dest, src, len);
+      detect_cbc_attack(src, len);
+      des_cbc_encrypt((void*)src, (void*)dest, len,
+		      context->u.des.key, &context->u.des.iv, DES_DECRYPT);
+      memcpy(context->u.des.iv, src + len - 8, 8);
       break;
+#endif /* WITH_DES */
 
     case SSH_CIPHER_3DES:
-      des_3cbc_decrypt(&context->u.des3.key1, context->u.des3.iv1,
-		       &context->u.des3.key2, context->u.des3.iv2,
-		       &context->u.des3.key3, context->u.des3.iv3,
-		       dest, src, len);
+      /* CRC-32 attack? */
+      SSH_3CBC_DECRYPT(context->u.des3.key1,
+		       context->u.des3.key2, &context->u.des3.iv2,
+		       context->u.des3.key3, &context->u.des3.iv3,
+		       dest, (void*)src, len);
       break;
 
-    case SSH_CIPHER_TSS:
-      memcpy(dest, src, len);
-      TSS_Decrypt(&context->u.tss, dest, len);
-      break;
-
+#ifdef WITH_RC4
     case SSH_CIPHER_RC4:
+      /* CRC-32 attack? */
       rc4_decrypt(&context->u.rc4, dest, src, len);
       break;
+#endif /* WITH_RC4 */
+
+#ifdef WITH_BLOWFISH
+    case SSH_CIPHER_BLOWFISH:
+      detect_cbc_attack(src, len);
+      swap_bytes(src, dest, len);
+      BF_cbc_encrypt((void*)dest, dest, len,
+		     &context->u.bf.key, context->u.bf.iv, BF_DECRYPT);
+      swap_bytes(dest, dest, len);
+      break;
+#endif /* WITH_BLOWFISH */
 
     default:
       fatal("cipher_decrypt: unknown cipher: %d", context->type);

@@ -13,18 +13,7 @@ RSA key generation, encryption and decryption.
 
 */
 
-/*
- * $Id: rsa.h,v 1.3 1995/07/13 01:33:11 ylo Exp $
- * $Log: rsa.h,v $
- * Revision 1.3  1995/07/13  01:33:11  ylo
- * 	Fixed comments and label used to protect again multiple inclusion.
- *
- * Revision 1.2  1995/07/13  01:31:43  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
+/* RCSID("$Id: rsa.h,v 1.2 1999/05/04 11:59:06 bg Exp $"); */
 
 #ifndef RSA_H
 #define RSA_H

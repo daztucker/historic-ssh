@@ -13,63 +13,7 @@ Generic header file for ssh.
 
 */
 
-/*
- * $Id: ssh.h,v 1.16 1995/10/02 01:31:13 ylo Exp $
- * $Log: ssh.h,v $
- * Revision 1.16  1995/10/02  01:31:13  ylo
- * 	Moved sshd.pid to PIDDIR.  Also changed file name.
- * 	Added SSH_HOSTS_EQUIV (shosts.equiv).
- *
- * Revision 1.15  1995/09/27  02:16:24  ylo
- * 	Added SSH_USER_RC and SSH_SYSTEM_RC.
- *
- * Revision 1.14  1995/09/25  00:02:06  ylo
- * 	Added client_loop.
- * 	Added screen number arguments.
- * 	Added connection_attempts.
- *
- * Revision 1.13  1995/09/22  22:23:41  ylo
- * 	Changed argument list of ssh_login.
- *
- * Revision 1.12  1995/09/21  17:14:08  ylo
- * 	Added original_real_uid argument to ssh_connect.
- *
- * Revision 1.11  1995/09/10  22:47:59  ylo
- * 	Added server_loop.
- * 	Added original_real_uid parameter to ssh_login.
- *
- * Revision 1.10  1995/09/09  21:26:46  ylo
- * /m/shadows/u2/users/ylo/ssh/README
- *
- * Revision 1.9  1995/08/31  09:23:42  ylo
- * 	Added support for ETCDIR.
- *
- * Revision 1.8  1995/08/29  22:33:52  ylo
- * 	Added get_remote_ipaddr, get_permanent_fd.
- * 	Deleted SSH_NUM_DUPS.
- *
- * Revision 1.7  1995/08/21  23:28:57  ylo
- * 	Added SERVER_CONFIG_FILE.
- * 	Added syslog facility definitions.
- *
- * Revision 1.6  1995/08/18  22:57:06  ylo
- * 	Now uses 3DES as the authfile cipher if IDEA is not available.
- *
- * Revision 1.5  1995/07/27  00:41:04  ylo
- * 	Added GlobalKnownHostsFile and UserKnownHostsFile.
- *
- * Revision 1.4  1995/07/26  23:28:56  ylo
- * 	Changed PROTOCOL_MINOR from 0 to 1.
- *
- * Revision 1.3  1995/07/16  01:02:26  ylo
- * 	Removed host argument from record_logout.
- *
- * Revision 1.2  1995/07/13  01:40:22  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
+/* RCSID("$Id: ssh.h,v 1.9 1999/06/06 08:35:30 bg Exp $"); */
 
 #ifndef SSH_H
 #define SSH_H
@@ -85,11 +29,7 @@ Generic header file for ssh.
 #define SSH_FALLBACK_CIPHER	SSH_CIPHER_3DES
 
 /* Cipher used for encrypting authentication files. */
-#ifdef WITHOUT_IDEA
 #define SSH_AUTHFILE_CIPHER	SSH_CIPHER_3DES
-#else
-#define SSH_AUTHFILE_CIPHER	SSH_CIPHER_IDEA
-#endif
 
 /* Default port number. */
 #define SSH_DEFAULT_PORT	22
@@ -206,12 +146,19 @@ only by root, whereas ssh_config should be world-readable. */
    protocol.)  */
 #define SSH_SESSION_KEY_LENGTH		32
 
+/* Name of Kerberos service for SSH to use. */
+#define KRB4_SERVICE_NAME		"rcmd"
+
 /* Authentication methods.  New types can be added, but old types should not
    be removed for compatibility.  The maximum allowed value is 31. */
 #define SSH_AUTH_RHOSTS		1
 #define SSH_AUTH_RSA		2
 #define SSH_AUTH_PASSWORD	3
 #define SSH_AUTH_RHOSTS_RSA	4
+				/* 5 is TIS */
+#define SSH_AUTH_KERBEROS	6
+#define SSH_PASS_KERBEROS_TGT	7
+#define SSH_PASS_AFS_TOKEN	21
 
 /* Protocol flags.  These are bit masks. */
 #define SSH_PROTOFLAG_SCREEN_NUMBER	1 /* X11 forwarding includes screen */
@@ -260,6 +207,12 @@ only by root, whereas ssh_config should be world-readable. */
 #define SSH_CMSG_AUTH_RHOSTS_RSA		35	/* user,mod (s,mpi) */
 #define SSH_MSG_DEBUG				36	/* string */
 #define SSH_CMSG_REQUEST_COMPRESSION		37	/* level 1-9 (int) */
+
+#define SSH_CMSG_AUTH_KERBEROS			42	/* (KTEXT) */
+#define SSH_SMSG_AUTH_KERBEROS_RESPONSE		43	/* (KTEXT) */
+#define SSH_CMSG_HAVE_KERBEROS_TGT		44	/* credentials (s) */
+#define SSH_CMSG_HAVE_AFS_TOKEN			65	/* token (s) */
+
 
 /* Includes that need definitions above. */
 
@@ -488,7 +441,7 @@ void channel_output_poll(void);
 /* This is called when a packet of type CHANNEL_DATA has just been received.
    The message type has already been consumed, but channel number and data
    is still there. */
-void channel_input_data(void);
+void channel_input_data(int payload_len);
 
 /* Returns true if no channel has too much buffered data. */
 int channel_not_very_much_buffered_data(void);
@@ -551,7 +504,7 @@ void channel_input_port_forward_request(int is_root);
 /* This is called after receiving PORT_OPEN message.  This attempts to connect
    to the given host:port, and sends back CHANNEL_OPEN_CONFIRMATION or
    CHANNEL_OPEN_FAILURE. */
-void channel_input_port_open(void);
+void channel_input_port_open(int payload_len);
 
 /* Creates a port for X11 connections, and starts listening for it.
    Returns the display name, or NULL if an error was encountered. */
@@ -565,7 +518,7 @@ char *x11_create_display_inet(int screen);
 /* This is called when SSH_SMSG_X11_OPEN is received.  The packet contains
    the remote channel number.  We should do whatever we want, and respond
    with either SSH_MSG_OPEN_CONFIRMATION or SSH_MSG_OPEN_FAILURE. */
-void x11_input_open(void);
+void x11_input_open(int payload_len);
 
 /* Requests forwarding of X11 connections.  This should be called on the 
    client only. */
@@ -575,6 +528,9 @@ void x11_request_forwarding(void);
    This should be called in the client only.  */
 void x11_request_forwarding_with_spoofing(RandomState *state,
 					  const char *proto, const char *data);
+
+/* Local Xauthority file (server only). */
+extern char *xauthfile;
 
 /* Sends a message to the server to request authentication fd forwarding. */
 void auth_request_forwarding(void);
@@ -623,5 +579,18 @@ struct envstring {
   struct envstring *next;
   char *s;
 };
+
+#ifdef KRB4
+#include <krb.h>
+
+int ssh_tf_init(uid_t uid);
+int auth_krb4(const char *server_user, KTEXT auth, char **client);
+int auth_kerberos_tgt(struct passwd *pw, const char *string);
+int auth_afs_token(char *server_user, uid_t uid, const char *string);
+
+int creds_to_radix(CREDENTIALS *creds, unsigned char *buf);
+int radix_to_creds(const char *buf, CREDENTIALS *creds);
+
+#endif /* KRB4 */
 
 #endif /* SSH_H */

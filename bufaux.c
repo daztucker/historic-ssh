@@ -14,20 +14,9 @@ Buffers.
 
 */
 
-/*
- * $Id: bufaux.c,v 1.3 1995/08/29 22:19:52 ylo Exp $
- * $Log: bufaux.c,v $
- * Revision 1.3  1995/08/29  22:19:52  ylo
- * 	Removed extra '&'.
- *
- * Revision 1.2  1995/07/13  01:17:49  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
-
 #include "includes.h"
+RCSID("$Id: bufaux.c,v 1.3 1999/06/14 14:41:36 bg Exp $");
+
 #include "ssh.h"
 #include "gmp.h"
 #include "bufaux.h"
@@ -82,7 +71,7 @@ void buffer_put_mp_int(Buffer *buffer, MP_INT *value)
 
 /* Retrieves an MP_INT from the buffer. */
 
-void buffer_get_mp_int(Buffer *buffer, MP_INT *value)
+int buffer_get_mp_int(Buffer *buffer, MP_INT *value)
 {
   int i, bits, bytes;
   char *hex;
@@ -107,6 +96,7 @@ void buffer_get_mp_int(Buffer *buffer, MP_INT *value)
   mpz_set_str(value, hex, 16);
   /* Free the string. */
   xfree(hex);
+  return 2 + bytes;
 }
 
 /* Returns an integer from the buffer (4 bytes, msb first). */

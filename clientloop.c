@@ -14,17 +14,9 @@ The main loop for the interactive session (client side).
 
 */
 
-/*
- * $Id: clientloop.c,v 1.1 1995/09/25 00:05:00 ylo Exp $
- * $Log: clientloop.c,v $
- * Revision 1.1  1995/09/25  00:05:00  ylo
- * 	Created.  This file contains the client main loop, which used
- * 	to be in ssh.c.
- *
- * $Endlog$
- */
-
 #include "includes.h"
+RCSID("$Id: clientloop.c,v 1.4 1999/05/04 11:58:37 bg Exp $");
+
 #include "xmalloc.h"
 #include "randoms.h"
 #include "ssh.h"
@@ -270,15 +262,17 @@ void client_process_buffered_input_packets()
   int type;
   char *data;
   unsigned int data_len;
+  int payload_len;
 
   /* Process any buffered packets from the server. */
-  while (!quit_pending && (type = packet_read_poll()) != SSH_MSG_NONE)
+  while (!quit_pending && (type = packet_read_poll(&payload_len)) != SSH_MSG_NONE)
     {
       switch (type)
 	{
 	  
 	case SSH_SMSG_STDOUT_DATA:
 	  data = packet_get_string(&data_len);
+	  packet_integrity_check(payload_len, 4 + data_len, type);
 	  buffer_append(&stdout_buffer, data, data_len);
 	  stdout_bytes += data_len;
 	  memset(data, 0, data_len);
@@ -287,6 +281,7 @@ void client_process_buffered_input_packets()
 
 	case SSH_SMSG_STDERR_DATA:
 	  data = packet_get_string(&data_len);
+	  packet_integrity_check(payload_len, 4 + data_len, type);
 	  buffer_append(&stderr_buffer, data, data_len);
 	  stdout_bytes += data_len;
 	  memset(data, 0, data_len);
@@ -294,6 +289,7 @@ void client_process_buffered_input_packets()
 	  break;
 
 	case SSH_SMSG_EXITSTATUS:
+	  packet_integrity_check(payload_len, 4, type);
 	  exit_status = packet_get_int();
 	  /* Acknowledge the exit. */
 	  packet_start(SSH_CMSG_EXIT_CONFIRMATION);
@@ -306,34 +302,39 @@ void client_process_buffered_input_packets()
 	  break;
 
 	case SSH_SMSG_X11_OPEN:
-	  x11_input_open();
+	  x11_input_open(payload_len);
 	  break;
 
 	case SSH_MSG_PORT_OPEN:
-	  channel_input_port_open();
+	  channel_input_port_open(payload_len);
 	  break;
 
 	case SSH_SMSG_AGENT_OPEN:
+	  packet_integrity_check(payload_len, 4, type);
 	  auth_input_open_request();
 	  break;
 
 	case SSH_MSG_CHANNEL_OPEN_CONFIRMATION:
+	  packet_integrity_check(payload_len, 4 + 4, type);
 	  channel_input_open_confirmation();
 	  break;
 
 	case SSH_MSG_CHANNEL_OPEN_FAILURE:
+	  packet_integrity_check(payload_len, 4, type);
 	  channel_input_open_failure();
 	  break;
 
 	case SSH_MSG_CHANNEL_DATA:
-	  channel_input_data();
+	  channel_input_data(payload_len);
 	  break;
 
 	case SSH_MSG_CHANNEL_CLOSE:
+	  packet_integrity_check(payload_len, 4, type);
 	  channel_input_close();
 	  break;
 
 	case SSH_MSG_CHANNEL_CLOSE_CONFIRMATION:
+	  packet_integrity_check(payload_len, 4, type);
 	  channel_input_close_confirmation();
 	  break;
 

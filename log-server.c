@@ -14,26 +14,9 @@ to the system log.
 
 */
 
-/*
- * $Id: log-server.c,v 1.5 1995/10/02 01:22:57 ylo Exp $
- * $Log: log-server.c,v $
- * Revision 1.5  1995/10/02  01:22:57  ylo
- * 	Include sys/syslog.h if needed.
- *
- * Revision 1.4  1995/09/09  21:26:42  ylo
- * /m/shadows/u2/users/ylo/ssh/README
- *
- * Revision 1.3  1995/08/21  23:25:00  ylo
- * 	Added support for syslog facility.
- *
- * Revision 1.2  1995/07/13  01:26:21  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
-
 #include "includes.h"
+RCSID("$Id: log-server.c,v 1.7 1999/05/04 11:58:48 bg Exp $");
+
 #include <syslog.h>
 #ifdef NEED_SYS_SYSLOG_H
 #include <sys/syslog.h>
@@ -106,52 +89,61 @@ void log_init(char *av0, int on_stderr, int debug, int quiet,
   openlog(av0, LOG_PID, log_facility);
 }
 
+#define MSGBUFSIZE 1024
+
+#ifdef HAVE_VSNPRINTF
+#define DECL_MSGBUF char msgbuf[MSGBUFSIZE]
+#else
+static char msgbuf[MSGBUFSIZE];
+#define DECL_MSGBUF
+#endif
+
 /* Log this message (information that usually should go to the log). */
 
 void log(const char *fmt, ...)
 {
-  char buf[1024];
   va_list args;
+  DECL_MSGBUF;
   if (log_quiet)
     return;
   va_start(args, fmt);
-  vsprintf(buf, fmt, args);
+  vsnprintf(msgbuf, MSGBUFSIZE, fmt, args);
   va_end(args);
   if (log_on_stderr)
-    fprintf(stderr, "log: %s\n", buf);
-  syslog(LOG_INFO, "log: %.500s", buf);
+    fprintf(stderr, "log: %s\n", msgbuf);
+  syslog(LOG_INFO, "log: %.500s", msgbuf);
 }
 
 /* Debugging messages that should not be logged during normal operation. */
 
 void debug(const char *fmt, ...)
 {
-  char buf[1024];
   va_list args;
+  DECL_MSGBUF;
   if (!log_debug || log_quiet)
     return;
   va_start(args, fmt);
-  vsprintf(buf, fmt, args);
+  vsnprintf(msgbuf, MSGBUFSIZE, fmt, args);
   va_end(args);
   if (log_on_stderr)
-    fprintf(stderr, "debug: %s\n", buf);
-  syslog(LOG_DEBUG, "debug: %.500s", buf);
+    fprintf(stderr, "debug: %s\n", msgbuf);
+  syslog(LOG_DEBUG, "debug: %.500s", msgbuf);
 }
 
 /* Error messages that should be logged. */
 
 void error(const char *fmt, ...)
 {
-  char buf[1024];
   va_list args;
+  DECL_MSGBUF;
   if (log_quiet)
     return;
   va_start(args, fmt);
-  vsprintf(buf, fmt, args);
+  vsnprintf(msgbuf, MSGBUFSIZE, fmt, args);
   va_end(args);
   if (log_on_stderr)
-    fprintf(stderr, "error: %s\n", buf);
-  syslog(LOG_ERR, "error: %.500s", buf);
+    fprintf(stderr, "error: %s\n", msgbuf);
+  syslog(LOG_ERR, "error: %.500s", msgbuf);
 }
 
 struct fatal_cleanup
@@ -200,19 +192,22 @@ void fatal_remove_cleanup(void (*proc)(void *context), void *context)
 
 void fatal(const char *fmt, ...)
 {
-  char buf[1024];
   va_list args;
   struct fatal_cleanup *cu, *next_cu;
   static int fatal_called = 0;
+#if defined(KRB4)
+  extern char *ticket;
+#endif /* KRB4 */
+  DECL_MSGBUF;
 
   if (log_quiet)
     exit(1);
   va_start(args, fmt);
-  vsprintf(buf, fmt, args);
+  vsnprintf(msgbuf, MSGBUFSIZE, fmt, args);
   va_end(args);
   if (log_on_stderr)
-    fprintf(stderr, "fatal: %s\n", buf);
-  syslog(LOG_ERR, "fatal: %.500s", buf);
+    fprintf(stderr, "fatal: %s\n", msgbuf);
+  syslog(LOG_ERR, "fatal: %.500s", msgbuf);
 
   if (fatal_called)
     exit(1);
@@ -226,6 +221,22 @@ void fatal(const char *fmt, ...)
 	    (unsigned long)cu->proc, (unsigned long)cu->context);
       (*cu->proc)(cu->context);
     }
+#if defined(KRB4)
+  /* If you forwarded a ticket you get one shot for proper
+     authentication. */
+  /* If tgt was passed unlink file */
+  if (ticket)
+    {
+      if (strcmp(ticket,"none"))
+	/* ticket -> FILE:path */
+	unlink(ticket + 5);
+      else
+	ticket = NULL;
+    }
+#endif /* KRB4 */
+
+  /* If local XAUTHORITY was created, remove it. */
+  if (xauthfile) unlink(xauthfile);
 
   exit(1);
 }

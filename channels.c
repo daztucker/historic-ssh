@@ -15,61 +15,9 @@ arbitrary tcp/ip connections, and the authentication agent connection.
 
 */
 
-/*
- * $Id: channels.c,v 1.13 1995/10/02 01:20:08 ylo Exp $
- * $Log: channels.c,v $
- * Revision 1.13  1995/10/02  01:20:08  ylo
- * 	Added a cast to avoid compiler warning.
- *
- * Revision 1.12  1995/09/24  23:58:49  ylo
- * 	Added support for screen number in X11 forwarding.
- * 	Reduced max packet size in interactive mode from 1024 bytes to
- * 	512 bytes for forwarded connections.
- *
- * Revision 1.11  1995/09/21  17:08:40  ylo
- * 	Support AF_UNIX_SIZE.
- *
- * Revision 1.10  1995/09/10  23:25:35  ylo
- * 	Fixed HPSUX DISPLAY kludge.
- *
- * Revision 1.9  1995/09/10  22:45:23  ylo
- * 	Changed Unix domain socket and umask stuff.
- *
- * Revision 1.8  1995/09/09  21:26:39  ylo
- * /m/shadows/u2/users/ylo/ssh/README
- *
- * Revision 1.7  1995/09/06  15:58:14  ylo
- * 	Added BROKEN_INET_ADDR.
- *
- * Revision 1.6  1995/08/29  22:20:40  ylo
- * 	New file descriptor code for agent forwarding.
- *
- * Revision 1.5  1995/08/21  23:22:49  ylo
- * 	Clear sockaddr_in structures before use.
- *
- * 	Reject X11 connections that don't match fake data.
- *
- * Revision 1.4  1995/08/18  22:47:11  ylo
- * 	Fixed a typo (missing parentheses in packet_is_interactive
- * 	call).
- *
- * 	Removed extra shutdown in channel_close_all().  This caused
- * 	the "accept: software caused connection abort" messages and
- * 	busy looping that made the previous version of ssh unusable on
- * 	most systems.
- *
- * Revision 1.3  1995/07/27  02:16:43  ylo
- * 	Fixed output draining on forwarded TCP/IP connections.
- * 	Use smaller packets for interactive sessions.
- *
- * Revision 1.2  1995/07/13  01:19:29  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
-
 #include "includes.h"
+RCSID("$Id: channels.c,v 1.7 1999/06/14 14:41:38 bg Exp $");
+
 #ifndef HAVE_GETHOSTNAME
 #include <sys/utsname.h>
 #endif
@@ -79,9 +27,6 @@ arbitrary tcp/ip connections, and the authentication agent connection.
 #include "buffer.h"
 #include "authfd.h"
 #include "uidswap.h"
-
-/* Directory in which the fake unix-domain X11 displays reside. */
-#define X11_DIR "/tmp/.X11-unix"
 
 /* Maximum number of fake X11 displays to try. */
 #define MAX_DISPLAYS  1000
@@ -606,7 +551,7 @@ void channel_output_poll()
    The message type has already been consumed, but channel number and data
    is still there. */
 
-void channel_input_data()
+void channel_input_data(int payload_len)
 {
   int channel;
   char *data;
@@ -625,6 +570,7 @@ void channel_input_data()
 
   /* Get the data. */
   data = packet_get_string(&data_len);
+  packet_integrity_check(payload_len, 4 + 4+data_len, SSH_MSG_CHANNEL_DATA);
   buffer_append(&channels[channel].output, data, data_len);
   xfree(data);
 }
@@ -919,6 +865,7 @@ void channel_request_local_forwarding(int port, const char *host,
 void channel_request_remote_forwarding(int port, const char *host,
 				       int remote_port)
 {
+  int payload_len;
   /* Record locally that connection to this host/port is permitted. */
   if (num_permitted_opens >= SSH_MAX_FORWARDS_PER_DIRECTION)
     fatal("channel_request_remote_forwarding: too many forwards");
@@ -936,7 +883,7 @@ void channel_request_remote_forwarding(int port, const char *host,
   
   /* Wait for response from the remote side.  It will send a disconnect
      message on failure, and we will never see it here. */
-  packet_read_expect(SSH_SMSG_SUCCESS);
+  packet_read_expect(&payload_len, SSH_SMSG_SUCCESS);
 }
 
 /* This is called after receiving CHANNEL_FORWARDING_REQUEST.  This initates
@@ -954,6 +901,11 @@ void channel_input_port_forward_request(int is_root)
   hostname = packet_get_string(NULL);
   host_port = packet_get_int();
   
+  /* Port numbers are 16 bit quantities. */
+  if ((port & 0xffff) != port)
+    packet_disconnect("Requested forwarding of nonexistent port %d.", port);
+    
+
   /* Check that an unprivileged user is not trying to forward a privileged
      port. */
   if (port < 1024 && !is_root)
@@ -971,27 +923,32 @@ void channel_input_port_forward_request(int is_root)
    to the given host:port, and sends back CHANNEL_OPEN_CONFIRMATION or
    CHANNEL_OPEN_FAILURE. */
 
-void channel_input_port_open()
+void channel_input_port_open(int payload_len)
 {
   int remote_channel, sock, newch, host_port, i;
   struct sockaddr_in sin;
   char *host, *originator_string;
   struct hostent *hp;
+  int host_len, originator_len;
 
   /* Get remote channel number. */
   remote_channel = packet_get_int();
 
   /* Get host name to connect to. */
-  host = packet_get_string(NULL);
+  host = packet_get_string(&host_len);
 
   /* Get port to connect to. */
   host_port = packet_get_int();
 
   /* Get remote originator name. */
   if (have_hostname_in_open)
-    originator_string = packet_get_string(NULL);
+    originator_string = packet_get_string(&originator_len);
   else
     originator_string = xstrdup("unknown (remote did not supply name)");
+
+  packet_integrity_check(payload_len,
+			 4 + 4 + host_len + 4 + 4 + originator_len,
+			 SSH_MSG_PORT_OPEN);
 
   /* Check if opening that port is permitted. */
   if (!all_opens_permitted)
@@ -1188,29 +1145,65 @@ char *x11_create_display_inet(int screen_number)
   return xstrdup(buf);
 }
 
+#ifndef X_UNIX_PATH
+#define X_UNIX_PATH "/tmp/.X11-unix/X"
+#endif
+
+static
+int
+connect_local_xsocket(unsigned dnr)
+{
+  static const char *const x_sockets[] = {
+    X_UNIX_PATH "%u",
+    "/var/X/.X11-unix/X" "%u",
+    "/usr/spool/sockets/X11/" "%u",
+    NULL
+  };
+  int sock;
+  struct sockaddr_un addr;
+  const char *const *path;
+
+  for (path = x_sockets; *path; ++path)
+    {
+      sock = socket(AF_UNIX, SOCK_STREAM, 0);
+      if (sock < 0)
+	error("socket: %.100s", strerror(errno));
+      memset(&addr, 0, sizeof(addr));
+      addr.sun_family = AF_UNIX;
+      sprintf(addr.sun_path, *path, dnr);
+      if (connect(sock, (struct sockaddr *)&addr, sizeof(addr)) == 0)
+	return sock;
+      close(sock);
+    }
+  error("connect %.100s: %.100s", addr.sun_path, strerror(errno));
+  return -1;
+}
+
+
 /* This is called when SSH_SMSG_X11_OPEN is received.  The packet contains
    the remote channel number.  We should do whatever we want, and respond
    with either SSH_MSG_OPEN_CONFIRMATION or SSH_MSG_OPEN_FAILURE. */
 
-void x11_input_open()
+void x11_input_open(int payload_len)
 {
   int remote_channel, display_number, sock, newch;
   const char *display;
-  struct sockaddr_un ssun;
   struct sockaddr_in sin;
   char buf[1024], *cp, *remote_host;
   struct hostent *hp;
+  int remote_len;
 
   /* Get remote channel number. */
   remote_channel = packet_get_int();
 
   /* Get remote originator name. */
   if (have_hostname_in_open)
-    remote_host = packet_get_string(NULL);
+    remote_host = packet_get_string(&remote_len);
   else
     remote_host = xstrdup("unknown (remote did not supply name)");
 
   debug("Received X11 open request.");
+  packet_integrity_check(payload_len, 4 + 4+remote_len, SSH_SMSG_X11_OPEN);
 
   /* Try to open a socket for the local X server. */
   display = getenv("DISPLAY");
@@ -1236,21 +1229,9 @@ void x11_input_open()
 	  goto fail;
 	}
       /* Create a socket. */
-      sock = socket(AF_UNIX, SOCK_STREAM, 0);
+      sock = connect_local_xsocket(display_number);
       if (sock < 0)
-	{
-	  error("socket: %.100s", strerror(errno));
-	  goto fail;
-	}
-      /* Connect it to the display socket. */
-      ssun.sun_family = AF_UNIX;
-      sprintf(ssun.sun_path, "%.80s/X%d", X11_DIR, display_number);
-      if (connect(sock, (struct sockaddr *)&ssun, AF_UNIX_SIZE(ssun)) < 0)
-	{
-	  error("connect %.100s: %.100s", ssun.sun_path, strerror(errno));
-	  close(sock);
-	  goto fail;
-	}
+	goto fail;
 
       /* OK, we now have a connection to the display. */
       goto success;

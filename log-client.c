@@ -13,20 +13,9 @@ Client-side versions of debug(), log(), etc.  These print to stderr.
 
 */
 
-/*
- * $Id: log-client.c,v 1.3 1995/08/21 23:24:44 ylo Exp $
- * $Log: log-client.c,v $
- * Revision 1.3  1995/08/21  23:24:44  ylo
- * 	Added support for log_quiet.
- *
- * Revision 1.2  1995/07/13  01:25:51  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
-
 #include "includes.h"
+RCSID("$Id: log-client.c,v 1.2 1999/05/04 11:58:47 bg Exp $");
+
 #include "xmalloc.h"
 #include "ssh.h"
 

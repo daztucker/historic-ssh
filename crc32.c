@@ -1,15 +1,9 @@
-/*
- * $Id: crc32.c,v 1.2 1995/07/13 01:21:34 ylo Exp $
- * $Log: crc32.c,v $
- * Revision 1.2  1995/07/13  01:21:34  ylo
- * 	Added cvs log.
- *
- * $Endlog$
- */
-
 /* The implementation here was originally done by Gary S. Brown.  I have
    borrowed the tables directly, and made some minor changes to the
    crc32-function (including changing the interface). //ylo */
+
+#include "includes.h"
+RCSID("$Id: crc32.c,v 1.2 1999/05/04 11:58:40 bg Exp $");
 
 #include "crc32.h"
 

@@ -13,11 +13,7 @@ Interface to packet compression for ssh.
 
 */
 
-/*
- * $Id$
- * $Log$
- * $EndLog$
- */
+/* RCSID("$Id: compress.h,v 1.2 1999/05/04 11:58:39 bg Exp $"); */
 
 #ifndef COMPRESS_H
 #define COMPRESS_H

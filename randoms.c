@@ -13,33 +13,12 @@ Cryptographically strong random number generation.
 
 */
 
-/*
- * $Id: randoms.c,v 1.6 1995/10/02 01:25:24 ylo Exp $
- * $Log: randoms.c,v $
- * Revision 1.6  1995/10/02  01:25:24  ylo
- * 	Added a cast to avoid compiler warning; also minor change in
- * 	noise collection.
- *
- * Revision 1.5  1995/09/21  17:12:23  ylo
- * 	Don't use the second argument of gettimeofday.
- *
- * Revision 1.4  1995/09/13  11:59:07  ylo
- * 	Large modifications to make this work on machines without 32
- * 	bit integer type (Cray).
- *
- * Revision 1.3  1995/08/29  22:22:50  ylo
- * 	Removed extra '&'.
- *
- * Revision 1.2  1995/07/13  01:29:20  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
-
 #include "includes.h"
+RCSID("$Id: randoms.c,v 1.3 1999/05/04 11:58:58 bg Exp $");
+
 #include "randoms.h"
 #include "getput.h"
+#include "ssh_md5.h"
 
 #ifdef HAVE_GETRUSAGE
 #include <sys/resource.h>

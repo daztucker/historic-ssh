@@ -11,20 +11,9 @@ Created: Sat Apr  8 00:25:04 1995 ylo
 
 */
 
-/*
- * $Id: check-fds.c,v 1.3 1995/09/09 21:26:40 ylo Exp $
- * $Log: check-fds.c,v $
- * Revision 1.3  1995/09/09  21:26:40  ylo
- * /m/shadows/u2/users/ylo/ssh/README
- *
- * Revision 1.2  1995/07/13  01:19:38  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
-
 #include <stdio.h>
+RCSID("$Id: check-fds.c,v 1.2 1999/05/04 11:58:34 bg Exp $");
+
 #include <sys/types.h>
 #include <fcntl.h>
 #include <sys/stat.h>

@@ -11,17 +11,9 @@ Created: Wed Jul 12 01:07:36 1995 ylo
 
 */
 
-/*
- * $Id: tildexpand.c,v 1.2 1995/07/13 01:41:03 ylo Exp $
- * $Log: tildexpand.c,v $
- * Revision 1.2  1995/07/13  01:41:03  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
-
 #include "includes.h"
+RCSID("$Id: tildexpand.c,v 1.2 1999/05/04 11:59:24 bg Exp $");
+
 #include "xmalloc.h"
 #include "ssh.h"
 

@@ -17,34 +17,9 @@ on a tty.
 
 */
 
-/*
- * $Id: login.c,v 1.7 1995/09/21 17:11:52 ylo Exp $
- * $Log: login.c,v $
- * Revision 1.7  1995/09/21  17:11:52  ylo
- * 	Added NULL second argument to gettimeofday.
- *
- * Revision 1.6  1995/09/09  21:26:43  ylo
- * /m/shadows/u2/users/ylo/ssh/README
- *
- * Revision 1.5  1995/07/27  00:38:43  ylo
- * 	Use SSH_{WTMP,UTMP,LASTLOG} instead of hard-coded default
- * 	values if path not defined in header.
- *
- * Revision 1.4  1995/07/16  01:03:11  ylo
- * 	Clear host name field in record_logout.
- * 	Test DEAD_PROCESS instead of LOGIN_PROCESS in ifdef.
- *
- * Revision 1.3  1995/07/15  13:25:17  ylo
- * 	NEXTSTEP patches from Ray Spalding.
- *
- * Revision 1.2  1995/07/13  01:26:29  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
-
 #include "includes.h"
+RCSID("$Id: login.c,v 1.3 1999/05/04 11:58:49 bg Exp $");
+
 #ifdef HAVE_UTMP_H
 #include <utmp.h>
 #ifdef HAVE_LASTLOG_H
@@ -320,12 +295,18 @@ void record_login(int pid, const char *ttyname, const char *user, uid_t uid,
     else
       ux.ut_type = USER_PROCESS;
     gettimeofday(&ux.ut_tv, NULL);
+#if HAVE_UT_SESSION
     ux.ut_session = pid;
+#endif
     strncpy(ux.ut_host, host, sizeof(ux.ut_host));
     ux.ut_host[sizeof(ux.ut_host) - 1] = 0;
+#ifdef HAVE_UT_SYSLEN
     ux.ut_syslen = strlen(ux.ut_host);
+#endif
     pututxline(&ux);
+#ifdef WTMPX_FILE
     updwtmpx(WTMPX_FILE, &ux);
+#endif
     endutxent();
   }
 #endif /* HAVE_UTMPX_H */

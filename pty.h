@@ -14,18 +14,7 @@ tty.
 
 */
 
-/*
- * $Id: pty.h,v 1.3 1995/07/16 01:03:40 ylo Exp $
- * $Log: pty.h,v $
- * Revision 1.3  1995/07/16  01:03:40  ylo
- * 	Added pty_release.
- *
- * Revision 1.2  1995/07/13  01:28:41  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
+/* RCSID("$Id: pty.h,v 1.2 1999/05/04 11:58:57 bg Exp $"); */
 
 #ifndef PTY_H
 #define PTY_H

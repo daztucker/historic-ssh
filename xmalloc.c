@@ -14,20 +14,9 @@ failure (they call fatal if they encounter an error).
 
 */
 
-/*
- * $Id: xmalloc.c,v 1.3 1995/08/29 22:36:39 ylo Exp $
- * $Log: xmalloc.c,v $
- * Revision 1.3  1995/08/29  22:36:39  ylo
- * 	Commented out malloc prototypes.
- *
- * Revision 1.2  1995/07/13  01:41:33  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
-
 #include "includes.h"
+RCSID("$Id: xmalloc.c,v 1.2 1999/05/04 11:59:28 bg Exp $");
+
 #include "ssh.h"
 
 #if 0

@@ -13,22 +13,7 @@ Interface for the packet protocol functions.
 
 */
 
-/*
- * $Id: packet.h,v 1.4 1995/09/24 23:59:20 ylo Exp $
- * $Log: packet.h,v $
- * Revision 1.4  1995/09/24  23:59:20  ylo
- * 	Added packet_get_protocol_flags.
- *
- * Revision 1.3  1995/07/27  02:17:53  ylo
- * 	Pass as argument to packet_set_encryption_key whether running
- * 	as the client or the server.
- *
- * Revision 1.2  1995/07/13  01:27:54  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
+/* RCSID("$Id: packet.h,v 1.9 1999/06/14 15:00:03 bg Exp $"); */
 
 #ifndef PACKET_H
 #define PACKET_H
@@ -99,11 +84,11 @@ void packet_put_string(const char *buf, unsigned int len);
 void packet_send(void);
 
 /* Waits until a packet has been received, and returns its type. */
-int packet_read(void);
+int packet_read(int *payload_len_ptr);
 
 /* Waits until a packet has been received, verifies that its type matches
    that given, and gives a fatal error and exits if there is a mismatch. */
-void packet_read_expect(int type);
+void packet_read_expect(int *payload_len_ptr, int type);
 
 /* Checks if a full packet is available in the data received so far via
    packet_process_incoming.  If so, reads the packet; otherwise returns
@@ -112,7 +97,7 @@ void packet_read_expect(int type);
    SSH_MSG_DISCONNECT is handled specially here.  Also,
    SSH_MSG_IGNORE messages are skipped by this function and are never returned
    to higher levels. */
-int packet_read_poll(void);
+int packet_read_poll(int *packet_len_ptr);
 
 /* Buffers the given amount of input characters.  This is intended to be
    used together with packet_read_poll. */
@@ -126,7 +111,7 @@ unsigned int packet_get_int(void);
 
 /* Returns an arbitrary precision integer from the packet data.  The integer
    must have been initialized before this call. */
-void packet_get_mp_int(MP_INT *value);
+void packet_get_mp_int(MP_INT *value, int *length_ptr);
 
 /* Returns a string from the packet data.  The string is allocated using
    xmalloc; it is the responsibility of the calling program to free it when
@@ -167,6 +152,16 @@ int packet_not_very_much_data_to_write(void);
 void tty_make_modes(int fd);
 
 /* Parses tty modes for the fd from the current packet. */
-void tty_parse_modes(int fd);
+void tty_parse_modes(int fd, int *n_bytes_ptr);
+
+#define packet_integrity_check(payload_len, expected_len, type) \
+do { \
+  int _p = (payload_len), _e = (expected_len); \
+  if (_p != _e) { \
+    log("Packet integrity error (%d != %d) at %s:%d", \
+	_p, _e, __FILE__, __LINE__); \
+    packet_disconnect("Packet integrity error. (%d)", (type)); \
+  } \
+} while (0)
 
 #endif /* PACKET_H */

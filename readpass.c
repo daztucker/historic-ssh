@@ -13,17 +13,9 @@ Functions for reading passphrases and passwords.
 
 */
 
-/*
- * $Id: readpass.c,v 1.2 1995/07/13 01:31:04 ylo Exp $
- * $Log: readpass.c,v $
- * Revision 1.2  1995/07/13  01:31:04  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
-
 #include "includes.h"
+RCSID("$Id: readpass.c,v 1.2 1999/05/04 11:59:03 bg Exp $");
+
 #include "xmalloc.h"
 #include "ssh.h"
 

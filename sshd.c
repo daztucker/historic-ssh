@@ -17,157 +17,9 @@ agent connections.
 
 */
 
-/*
- * $Id: sshd.c,v 1.31 1995/10/02 01:28:59 ylo Exp $
- * $Log: sshd.c,v $
- * Revision 1.31  1995/10/02  01:28:59  ylo
- * 	Include sys/syslog.h if NEED_SYS_SYSLOG_H.
- * 	Print proper ETCDIR in usage().
- *
- * Revision 1.30  1995/09/27  02:54:43  ylo
- * 	Fixed a minor error.
- *
- * Revision 1.29  1995/09/27  02:49:06  ylo
- * 	Fixed syntax errors.
- *
- * Revision 1.28  1995/09/27  02:18:51  ylo
- * 	Added support for SCO unix.
- * 	Added support for .hushlogin.
- * 	Read $HOME/.environment.
- * 	Pass X11 proto and cookie in stdin instead of command line.
- * 	Added support for $HOME/.ssh/rc and /etc/sshrc.
- *
- * Revision 1.27  1995/09/25  00:03:53  ylo
- * 	Added screen number.
- * 	Don't display motd and login time if executing a command.
- *
- * Revision 1.26  1995/09/22  22:22:34  ylo
- * 	Fixed a bug in the new environment code.
- *
- * Revision 1.25  1995/09/21  17:16:49  ylo
- * 	Fixes to libwrap code.
- * 	Fixed problem in wait() in key regeneration.  Now only
- * 	ackquires light noise at regeneration.
- * 	Support for ignore_rhosts.
- * 	Don't use X11 forwarding with spoofing if no xauth.
- * 	Rewrote the code to initialize the environment in the child.
- * 	Added code to read /etc/environment into child environment.
- * 	Fixed setpcred argument type.
- *
- * Revision 1.24  1995/09/11  17:35:53  ylo
- * 	Added libwrap support.
- * 	Log daemon name without path.
- *
- * Revision 1.23  1995/09/10  23:43:32  ylo
- * 	Added a newline in xauth message.
- *
- * Revision 1.22  1995/09/10  23:29:43  ylo
- * 	Renamed sigchld_handler main_sigchld_handler to avoid
- * 	conflict.
- *
- * Revision 1.21  1995/09/10  23:26:53  ylo
- * 	Child xauth line printed with fprintf instead of debug().
- *
- * Revision 1.20  1995/09/10  22:43:17  ylo
- * 	Added uid-swapping stuff.
- * 	Moved do_session to serverloop.c and renamed it server_loop.
- * 	Changed SIGCHLD handling.
- * 	Merged OSF/1 C2 security stuff.
- *
- * Revision 1.19  1995/09/09  21:26:47  ylo
- * /m/shadows/u2/users/ylo/ssh/README
- *
- * Revision 1.18  1995/09/06  19:53:19  ylo
- * 	Fixed spelling of fascist.
- *
- * Revision 1.17  1995/09/06  16:02:40  ylo
- * 	Added /usr/bin/X11 to default DEFAULT_PATH.
- * 	Fixed inetd_flag & debug_flag together.
- * 	Fixed -i.
- *
- * Revision 1.16  1995/08/31  09:43:14  ylo
- * 	Fixed LOGNAME.
- *
- * Revision 1.15  1995/08/31  09:26:22  ylo
- * 	Copy struct pw.
- * 	Use socketpairs for communicating with the shell/command.
- * 	Use same socket for stdin and stdout. (may help rdist)
- * 	Put LOGNAME in environment.
- * 	Run xauth directly, without the shell in between.
- * 	Fixed the HPSUX kludge.
- *
- * Revision 1.14  1995/08/29  22:36:12  ylo
- * 	Added SIGHUP handling.  Added SIGTERM and SIGQUIT handling.
- * 	Permit root login if forced command.
- * 	Added DenyHosts, AllowHosts.  Added PrintMotd.
- * 	New file descriptor code.
- * 	Use HPSUX and SIGCHLD kludges only on HPUX.
- *
- * Revision 1.13  1995/08/22  14:06:11  ylo
- * 	Added /usr/local/bin in default DEFAULT_PATH.
- *
- * Revision 1.12  1995/08/21  23:33:48  ylo
- * 	Added "-f conffile" option.
- * 	Added support for the server configuration file.
- * 	Added allow/deny host code.
- * 	Added code to optionally deny root logins.
- * 	Added code to configure allowed authentication methods.
- * 	Changes to log initialization arguments.
- * 	Eliminated NO_RHOSTS_AUTHENTICATION.
- *
- * Revision 1.11  1995/08/18  22:58:06  ylo
- * 	Added support for O_NONBLOCK_BROKEN.
- * 	Added support for TTY_GROUP.
- *
- * Revision 1.10  1995/07/27  02:19:09  ylo
- * 	Tell packet_set_encryption_key that we are the server.
- *
- * 	Temporary kludge to make TCP/IP port forwarding work
- * 	properly.  This kludge will increase idle CPU usage because
- * 	sshd wakes up every 300ms.
- *
- * Revision 1.9  1995/07/27  00:41:34  ylo
- * 	If DEFAULT_PATH defined by configure, use that value.
- *
- * Revision 1.8  1995/07/26  23:21:06  ylo
- * 	Removed include version.h.  Added include mpaux.h.
- *
- * 	Print software version with -d.
- *
- * 	Added support for protocol version 1.1.  Fixes minor security
- * 	problems, and updates the protocol to match the draft RFC.
- * 	Compatibility code makes it possible to use old clients with
- * 	this server.
- *
- * Revision 1.7  1995/07/16  01:01:41  ylo
- * 	Removed hostname argument from record_logout.
- * 	Added call to pty_release.
- * 	Set tty mode depending on whether we have tty group.
- *
- * Revision 1.6  1995/07/15  22:27:04  ylo
- * 	Added printing of /etc/motd.
- *
- * Revision 1.5  1995/07/15  21:41:04  ylo
- * 	Changed the HPSUX kludge (child_has_terminated).  It caused
- * 	sshd to busy-loop if the program exited but there were open
- * 	connections.
- *
- * Revision 1.4  1995/07/14  23:37:43  ylo
- * 	Limit outgoing packet size to 512 bytes for interactive
- * 	connections.
- *
- * Revision 1.3  1995/07/13  17:33:17  ylo
- * 	Only record the pid in /etc/sshd_pid if running without the
- * 	debugging flag.
- *
- * Revision 1.2  1995/07/13  01:40:47  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
-
 #include "includes.h"
+RCSID("$Id: sshd.c,v 1.20 1999/08/18 15:33:10 bg Exp $");
+
 #include <gmp.h>
 #include "xmalloc.h"
 #include "rsa.h"
@@ -213,6 +65,18 @@ int deny_severity = LOG_WARNING;
 #ifndef O_NOCTTY
 #define O_NOCTTY	0
 #endif
+
+#ifdef KRB4
+#include <sys/param.h>
+#include <krb.h>
+char *ticket = NULL;
+#ifdef AFS
+#include <kafs.h>
+#endif /* AFS */
+#endif /* KRB4 */
+
+/* Local Xauthority file. */
+char *xauthfile = NULL;
 
 /* Server configuration options. */
 ServerOptions options;
@@ -295,7 +159,6 @@ void do_exec_no_pty(const char *command, struct passwd *pw,
 void do_child(const char *command, struct passwd *pw, const char *term,
 	      const char *display, const char *auth_proto,
 	      const char *auth_data, const char *ttyname);
-
 
 /* Signal handler for SIGHUP.  Sshd execs itself when it receives SIGHUP;
    the effect is to reread the configuration file (and to regenerate
@@ -580,6 +443,9 @@ int main(int ac, char **av)
      if desired. */
   chdir("/");
   
+  /* Close connection cleanly after attack. */
+  cipher_attack_detected = packet_disconnect;
+
   /* Start listening for a socket, unless started from inetd. */
   if (inetd_flag)
     {
@@ -895,6 +761,15 @@ int main(int ac, char **av)
      came from a privileged port. */
   do_connection(get_remote_port() < 1024);
 
+#ifdef KRB4
+  /* Cleanup user's ticket cache file. */
+  if (options.kerberos_ticket_cleanup)
+    (void) dest_tkt();
+#endif /* KRB4 */
+
+  /* Cleanup user's local Xauthority file. */
+  if (xauthfile) unlink(xauthfile);
+
   /* The connection has been terminated. */
   log("Closing connection to %.100s", inet_ntoa(sin.sin_addr));
   packet_close();
@@ -913,6 +788,7 @@ void do_connection(int privileged_port)
   unsigned char check_bytes[8];
   char *user;
   unsigned int cipher_type, auth_mask, protocol_flags;
+  int plen, slen;
 
   /* Generate check bytes that the client must send back in the user packet
      in order for it to be accepted; this is used to defy ip spoofing 
@@ -954,6 +830,18 @@ void do_connection(int privileged_port)
     auth_mask |= 1 << SSH_AUTH_RHOSTS_RSA;
   if (options.rsa_authentication)
     auth_mask |= 1 << SSH_AUTH_RSA;
+#ifdef KRB4
+  if (options.kerberos_authentication && (access(KEYFILE, R_OK) == 0))
+    auth_mask |= 1 << SSH_AUTH_KERBEROS;
+#endif
+#ifdef KERBEROS_TGT_PASSING
+  if (options.kerberos_tgt_passing)
+    auth_mask |= 1 << SSH_PASS_KERBEROS_TGT;
+#endif
+#ifdef AFS
+  if (options.afs_token_passing && k_hasafs())
+    auth_mask |= 1 << SSH_PASS_AFS_TOKEN;
+#endif
   if (options.password_authentication)
     auth_mask |= 1 << SSH_AUTH_PASSWORD;
   packet_put_int(auth_mask);
@@ -966,7 +854,7 @@ void do_connection(int privileged_port)
 	public_key.bits, sensitive_data.host_key.bits);
 
   /* Read clients reply (cipher type and session key). */
-  packet_read_expect(SSH_CMSG_SESSION_KEY);
+  packet_read_expect(&plen, SSH_CMSG_SESSION_KEY);
 
   /* Get cipher type. */
   cipher_type = packet_get_char();
@@ -981,11 +869,13 @@ void do_connection(int privileged_port)
 
   /* Get the encrypted integer. */
   mpz_init(&session_key_int);
-  packet_get_mp_int(&session_key_int);
+  packet_get_mp_int(&session_key_int, &slen);
 
   /* Get protocol flags. */
   protocol_flags = packet_get_int();
   packet_set_protocol_flags(protocol_flags);
+
+  packet_integrity_check(plen, 1 + 8 + slen + 4, SSH_CMSG_SESSION_KEY);
 
   /* Decrypt it using our private server key and private host key (key with 
      larger modulus first). */
@@ -1046,10 +936,14 @@ void do_connection(int privileged_port)
   packet_write_wait();
 
   /* Get the name of the user that we wish to log in as. */
-  packet_read_expect(SSH_CMSG_USER);
+  packet_read_expect(&plen, SSH_CMSG_USER);
 
   /* Get the user name. */
-  user = packet_get_string(NULL);
+  {
+    int ulen;
+    user = packet_get_string(&ulen);
+    packet_integrity_check(plen, (4 + ulen), SSH_CMSG_USER);
+  }
 
   /* Destroy the private and public keys.  They will no longer be needed. */
   rsa_clear_public_key(&public_key);
@@ -1075,6 +969,14 @@ void do_authentication(char *user, int privileged_port)
   unsigned int client_host_key_bits;
   MP_INT client_host_key_e, client_host_key_n;
 			 
+#ifdef AFS
+  /* If machine has AFS, set process authentication group. */
+  if (k_hasafs()) {
+    k_setpag();
+    k_unlog();
+  }
+#endif /* AFS */
+       
   /* Verify that the user is a valid user. */
   pw = getpwnam(user);
   if (!pw)
@@ -1089,7 +991,8 @@ void do_authentication(char *user, int privileged_port)
       for (;;)
 	{
 	  /* Read a packet.  This will not return if the client disconnects. */
-	  (void) packet_read();
+	  int plen;
+	  (void) packet_read(&plen);
 
 	  /* Send failure.  This should be indistinguishable from a failed
 	     authentication. */
@@ -1119,10 +1022,15 @@ void do_authentication(char *user, int privileged_port)
   debug("Attempting authentication for %.100s.", user);
 
   /* If the user has no password, accept authentication immediately. */
-  if (options.password_authentication && auth_password(user, ""))
+  if (options.password_authentication &&
+#ifdef KRB4
+      options.kerberos_or_local_passwd &&
+#endif /* KRB4 */
+      auth_password(user, ""))
     {
       /* Authentication with empty password succeeded. */
       debug("Login for user %.100s accepted without authentication.", user);
+      /* authentication_type = SSH_AUTH_PASSWORD; */
       authenticated = 1;
       /* Success packet will be sent after loop below. */
     }
@@ -1137,13 +1045,84 @@ void do_authentication(char *user, int privileged_port)
   /* Loop until the user has been authenticated or the connection is closed. */
   while (!authenticated)
     {
+      int plen;
       /* Get a packet from the client. */
-      type = packet_read();
+      type = packet_read(&plen);
       
       /* Process the packet. */
       switch (type)
 	{
 
+#ifdef KERBEROS_TGT_PASSING
+	case SSH_CMSG_HAVE_KERBEROS_TGT:
+	  if (!options.kerberos_tgt_passing)
+	    {
+	      log("Kerberos tgt passing disabled.");
+	      break;
+	    }
+	  /* Accept Kerberos tgt. */
+	  {
+	    int dlen;
+	    char *data = packet_get_string(&dlen);
+	    packet_integrity_check(plen, 4 + dlen, type);
+	    if (!auth_kerberos_tgt(pw, data))
+	      debug("Kerberos tgt REFUSED for %.100s", user);
+	  }
+	  continue;
+#endif /* KERBEROS_TGT_PASSING */
+	  
+#ifdef AFS
+	case SSH_CMSG_HAVE_AFS_TOKEN:
+	  if (!options.afs_token_passing || !k_hasafs()) {
+	    /* packet_get_all(); */
+	    log("AFS token passing disabled.");
+	    break;
+	  }
+	  else {
+	    /* Accept AFS token. */
+	    int dlen;
+	    char *token_string = packet_get_string(&dlen);
+	    packet_integrity_check(plen, 4 + dlen, type);
+	    if (!auth_afs_token(user, pw->pw_uid, token_string))
+	      debug("AFS token REFUSED for %.100s", user);
+	    xfree(token_string);
+	    continue;
+	  }
+#endif /* AFS */
+	  
+#ifdef KRB4
+	case SSH_CMSG_AUTH_KERBEROS:
+	  if (!options.kerberos_authentication)
+	    {
+	      log("Kerberos authentication disabled.");
+	      break;
+	    }
+	  {
+	    /* Try Kerberos v4 authentication. */
+	    KTEXT_ST auth;
+	    char *tkt_user = NULL;
+	    char *kdata = packet_get_string((unsigned int *)&auth.length);
+	    packet_integrity_check(plen, 4 + auth.length, type);
+
+	    memcpy(auth.dat, kdata, auth.length);
+	    xfree(kdata);
+
+	    if (auth_krb4(user, &auth, &tkt_user)) {
+	      /* Client has successfully authenticated to us. */
+	      log("Kerberos authentication accepted %.100s for account "
+		  "%.100s from %.200s", tkt_user, user,
+		  get_canonical_hostname());
+	      /* authentication_type = SSH_AUTH_KERBEROS; */
+	      authenticated = 1;
+	      xfree(tkt_user);
+	      break;
+	    }
+	    log("Kerberos authentication failed for account "
+		"%.100s from %.200s", user, get_canonical_hostname());
+	  }
+	  break;
+#endif /* KRB4 */
+	  
 	case SSH_CMSG_AUTH_RHOSTS:
 	  if (!options.rhosts_authentication)
 	    {
@@ -1161,7 +1140,11 @@ void do_authentication(char *user, int privileged_port)
 	  /* Get client user name.  Note that we just have to trust the client;
 	     this is one reason why rhosts authentication is insecure. 
 	     (Another is IP-spoofing on a local network.) */
-	  client_user = packet_get_string(NULL);
+	  {
+	    int dlen;
+	    client_user = packet_get_string(&dlen);
+	    packet_integrity_check(plen, 4 + dlen, type);
+	  }
 
 	  /* Try to authenticate using /etc/hosts.equiv and .rhosts. */
 	  if (auth_rhosts(pw, client_user, options.ignore_rhosts,
@@ -1194,16 +1177,22 @@ void do_authentication(char *user, int privileged_port)
 	      break;
 	    }
 
-	  /* Get client user name.  Note that we just have to trust the client;
-	     root on the client machine can claim to be any user. */
-	  client_user = packet_get_string(NULL);
+	  {
+	    int ulen, elen, nlen;
+	    /* Get client user name.  Note that we just have to trust
+	       the client; root on the client machine can claim to be
+	       any user. */
+	    client_user = packet_get_string(&ulen);
 
-	  /* Get the client host key. */
-	  mpz_init(&client_host_key_e);
-	  mpz_init(&client_host_key_n);
-	  client_host_key_bits = packet_get_int();
-	  packet_get_mp_int(&client_host_key_e);
-	  packet_get_mp_int(&client_host_key_n);
+	    /* Get the client host key. */
+	    mpz_init(&client_host_key_e);
+	    mpz_init(&client_host_key_n);
+	    client_host_key_bits = packet_get_int();
+	    packet_get_mp_int(&client_host_key_e, &elen);
+	    packet_get_mp_int(&client_host_key_n, &nlen);
+
+	    packet_integrity_check(plen, (4 + ulen) + 4 + elen + nlen, type);
+	  }
 
 	  /* Try to authenticate using /etc/hosts.equiv and .rhosts. */
 	  if (auth_rhosts_rsa(&sensitive_data.random_state,
@@ -1235,9 +1224,13 @@ void do_authentication(char *user, int privileged_port)
 
 	  /* RSA authentication requested. */
 	  {
+	    int nlen;
 	    MP_INT n;
 	    mpz_init(&n);
-	    packet_get_mp_int(&n);
+	    packet_get_mp_int(&n, &nlen);
+
+	    packet_integrity_check(plen, nlen, type);
+	    
 	    if (auth_rsa(pw, &n, &sensitive_data.random_state))
 	      { 
 		/* Successful authentication. */
@@ -1262,7 +1255,11 @@ void do_authentication(char *user, int privileged_port)
 	  /* Read user password.  It is in plain text, but was transmitted
 	     over the encrypted channel so it is not visible to an outside
 	     observer. */
-	  password = packet_get_string(NULL);
+	  {
+	    int passw_len;
+	    password = packet_get_string(&passw_len);
+	    packet_integrity_check(plen, 4 + passw_len, type);
+	  }
 
 	  /* Try authentication with the password. */
 	  if (auth_password(user, password))
@@ -1323,7 +1320,9 @@ void do_authentication(char *user, int privileged_port)
 void do_authenticated(struct passwd *pw)
 {
   int type;
+#ifdef WITH_ZLIB
   int compression_level = 0, enable_compression_after_reply = 0;
+#endif /* WITH_ZLIB */
   int have_pty = 0, ptyfd = -1, ttyfd = -1;
   int row, col, xpixel, ypixel, screen;
   char ttyname[64];
@@ -1331,6 +1330,7 @@ void do_authenticated(struct passwd *pw)
   struct group *grp;
   gid_t tty_gid;
   mode_t tty_mode;
+  int n_bytes;
   
   /* Cancel the alarm we set to limit the time taken for authentication. */
   alarm(0);
@@ -1346,13 +1346,17 @@ void do_authenticated(struct passwd *pw)
      command. */
   while (1)
     {
+      int plen, dlen;
+
       /* Get a packet from the client. */
-      type = packet_read();
+      type = packet_read(&plen);
       
       /* Process the packet. */
       switch (type)
 	{
+#ifdef WITH_ZLIB
 	case SSH_CMSG_REQUEST_COMPRESSION:
+	  packet_integrity_check(plen, 4, type);
 	  compression_level = packet_get_int();
 	  if (compression_level < 1 || compression_level > 9)
 	    {
@@ -1363,6 +1367,7 @@ void do_authenticated(struct passwd *pw)
 	  /* Enable compression after we have responded with SUCCESS. */
 	  enable_compression_after_reply = 1;
 	  break;
+#endif /* WITH_ZLIB */
 
 	case SSH_CMSG_REQUEST_PTY:
 	  if (no_pty_flag)
@@ -1400,12 +1405,22 @@ void do_authenticated(struct passwd *pw)
 	    }
 
 	  /* Change ownership of the tty. */
-	  (void)chown(ttyname, pw->pw_uid, tty_gid);
-	  (void)chmod(ttyname, tty_mode);
+	  if (chown(ttyname, pw->pw_uid, tty_gid) < 0)
+	    fatal("chown(%.100s, %d, %d) failed: %.100s",
+		  ttyname, pw->pw_uid, tty_gid, strerror(errno));
+	  if (chmod(ttyname, tty_mode) < 0)
+	    fatal("chmod(%.100s, 0%o) failed: %.100s",
+		  ttyname, tty_mode, strerror(errno));
 
 	  /* Get TERM from the packet.  Note that the value may be of arbitrary
 	     length. */
-	  term = packet_get_string(NULL);
+
+	  term = packet_get_string(&dlen);
+	  packet_integrity_check(dlen, strlen(term), type);
+	  /* packet_integrity_check(plen, 4 + dlen + 4*4 + n_bytes, type); */
+	  /* Remaining bytes */
+	  n_bytes = plen - (4 + dlen + 4*4);
+	  
 	  if (strcmp(term, "") == 0)
 	    term = NULL;
 
@@ -1417,7 +1432,8 @@ void do_authenticated(struct passwd *pw)
 	  pty_change_window_size(ptyfd, row, col, xpixel, ypixel);
 
 	  /* Get tty modes from the packet. */
-	  tty_parse_modes(ttyfd);
+	  tty_parse_modes(ttyfd, &n_bytes);
+	  packet_integrity_check(plen, 4 + dlen + 4*4 + n_bytes, type);
 
 	  /* Indicate that we now have a pty. */
 	  have_pty = 1;
@@ -1438,8 +1454,12 @@ void do_authenticated(struct passwd *pw)
 	  debug("Received request for X11 forwarding with auth spoofing.");
 	  if (display)
 	    packet_disconnect("Protocol error: X11 display already set.");
-	  proto = packet_get_string(NULL);
-	  data = packet_get_string(NULL);
+	  {
+	    int proto_len, data_len;
+	    proto = packet_get_string(&proto_len);
+	    data = packet_get_string(&data_len);
+	    packet_integrity_check(plen, 4+proto_len + 4+data_len + 4, type);
+	  }
 	  if (packet_get_protocol_flags() & SSH_PROTOFLAG_SCREEN_NUMBER)
 	    screen = packet_get_int();
 	  else
@@ -1447,6 +1467,11 @@ void do_authenticated(struct passwd *pw)
 	  display = x11_create_display_inet(screen);
 	  if (!display)
 	    goto fail;
+
+	  /* Setup to always have a local .Xauthority. */
+	  xauthfile = xmalloc(MAXPATHLEN);
+	  sprintf(xauthfile, "/tmp/Xauth%d_%d", pw->pw_uid, getpid());
+
 	  break;
 #else /* XAUTH_PATH */
 	  /* No xauth program; we won't accept forwarding with spoofing. */
@@ -1482,6 +1507,7 @@ void do_authenticated(struct passwd *pw)
 	  if (forced_command != NULL)
 	    goto do_forced_command;
 	  debug("Forking shell.");
+	  packet_integrity_check(plen, 0, type);
 	  if (have_pty)
 	    do_exec_pty(NULL, ptyfd, ttyfd, ttyname, pw, term, display, proto,
 			data);
@@ -1497,8 +1523,12 @@ void do_authenticated(struct passwd *pw)
 	  if (forced_command != NULL)
 	    goto do_forced_command;
 	  /* Get command from the packet. */
-	  command = packet_get_string(NULL);
-	  debug("Executing command '%.500s'", command);
+	  {
+	    int dlen;
+	    command = packet_get_string(&dlen);
+	    debug("Executing command '%.500s'", command);
+	    packet_integrity_check(plen, 4 + dlen, type);
+	  }
 	  if (have_pty)
 	    do_exec_pty(command, ptyfd, ttyfd, ttyname, pw, term, display,
 			proto, data);
@@ -1519,12 +1549,14 @@ void do_authenticated(struct passwd *pw)
       packet_send();
       packet_write_wait();
 
+#ifdef WITH_ZLIB
       /* Enable compression now that we have replied if appropriate. */
       if (enable_compression_after_reply)
 	{
 	  enable_compression_after_reply = 0;
 	  packet_start_compression(compression_level);
 	}
+#endif /* WITH_ZLIB */
 
       continue;
 
@@ -1654,6 +1686,11 @@ void pty_cleanup_proc(void *context)
 
   debug("pty_cleanup_proc called");
 
+#if defined(KRB4) || defined(AFS)
+  /* Destroy user's ticket cache file. */
+  (void) dest_tkt();
+#endif /* KRB4 || AFS */
+  
   /* Record that the user has logged out. */
   record_logout(cu->pid, cu->ttyname);
 
@@ -1798,7 +1835,7 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
 
   /* Enter interactive session. */
   server_loop(pid, ptyfd, fdout, -1);
-  /* server_loop has closed ptyfd and fdout. */
+  /* server_loop has not closed ptyfd and fdout. */
 
   /* Cancel the cleanup function. */
   fatal_remove_cleanup(pty_cleanup_proc, (void *)&cleanup_context);
@@ -1808,6 +1845,12 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
 
   /* Release the pseudo-tty. */
   pty_release(ttyname);
+
+  /* Close the server side of the socket pairs.  We must do this after the
+     pty cleanup, so that another process doesn't get this pty while we're
+     still cleaning up. */
+  close(ptyfd);
+  close(fdout);
 }
 
 /* Sets the value of the given variable in the environment.  If the variable
@@ -2056,6 +2099,15 @@ void do_child(const char *command, struct passwd *pw, const char *term,
 #endif /* HAVE_INITGROUPS */
       endgrent();
 
+#ifdef HAVE_SETLUID
+      /* Initialize login UID. */
+      if (setluid(user_uid) < 0)
+	{
+	  perror("setluid");
+	  exit(1);
+	}
+#endif /* HAVE_SETLUID */
+
       /* Permanently switch to the desired uid. */
       permanently_set_uid(pw->pw_uid);
     }
@@ -2067,6 +2119,18 @@ void do_child(const char *command, struct passwd *pw, const char *term,
      and means /bin/sh. */
   shell = (pw->pw_shell[0] == '\0') ? DEFAULT_SHELL : pw->pw_shell;
 
+#ifdef AFS
+  /* Try to get AFS tokens for the local cell. */
+  if (k_hasafs()) {
+    char cell[64];
+    
+    if (k_afs_cell_of_file(pw->pw_dir, cell, sizeof(cell)) == 0)
+      krb_afslog(cell, 0);
+
+    krb_afslog(0, 0);
+  }
+#endif /* AFS */
+  
   /* Initialize the environment.  In the first part we allocate space for
      all environment variables. */
   envsize = 100;
@@ -2135,6 +2199,15 @@ void do_child(const char *command, struct passwd *pw, const char *term,
   /* Set DISPLAY if we have one. */
   if (display)
     child_set_env(&env, &envsize, "DISPLAY", display);
+
+#ifdef KRB4 /* XXX - how to make these coexist? */
+  if (ticket)
+    child_set_env(&env, &envsize, "KRBTKFILE", ticket);
+#endif /* KRB4 */
+
+  /* Set XAUTHORITY to always be a local file. */
+  if (xauthfile)
+      child_set_env(&env, &envsize, "XAUTHORITY", xauthfile);
 
   /* Set variable for forwarded authentication connection, if we have one. */
   if (get_permanent_fd(pw->pw_shell) < 0)

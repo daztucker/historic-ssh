@@ -13,54 +13,7 @@ This file includes most of the needed system headers.
 
 */
 
-/*
- * $Id: includes.h,v 1.12 1995/10/02 01:22:37 ylo Exp $
- * $Log: includes.h,v $
- * Revision 1.12  1995/10/02  01:22:37  ylo
- * 	Added machine/endian.h on Paragon.
- *
- * Revision 1.11  1995/09/27  02:14:08  ylo
- * 	Added support for SCO unix.
- *
- * Revision 1.10  1995/09/21  17:11:28  ylo
- * 	Added Paragon support.
- * 	Added definition of AF_UNIX_SIZE.
- *
- * Revision 1.9  1995/09/13  11:57:21  ylo
- * 	Changed the code so that "short" gets used as word32 on Cray.
- * 	Some of the code depends on that.  (BTW, "short" has really
- * 	weird semantics on Cray...)
- *
- * Revision 1.8  1995/09/11  17:35:27  ylo
- * 	Define word32 properly if any int type is 32 bits.
- *
- * Revision 1.7  1995/08/18  22:54:59  ylo
- * 	Added using netinet/in_system.h if netinet/in_systm.h does not
- * 	exist (some old linux versions, at least).
- *
- * 	Added support for NextStep.
- *
- * Revision 1.6  1995/07/27  03:27:46  ylo
- * 	Moved sparc HAVE_SYS_IOCTL_H stuff to the proper place.
- *
- * Revision 1.5  1995/07/26  23:35:32  ylo
- * 	Undef HAVE_VHANGUP on Sony News.
- *
- * Revision 1.4  1995/07/26  23:15:05  ylo
- * 	Include version.h.
- * 	Fixed SIZEOF_LONG test.
- * 	Added ultrix specific porting stuff.
- * 	Added sparc/sunos specific porting stuff.
- *
- * Revision 1.3  1995/07/13  01:46:00  ylo
- * 	Added snabb's patches for IRIX 4.
- *
- * Revision 1.2  1995/07/13  01:25:11  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
+/* RCSID("$Id: includes.h,v 1.3 1999/05/04 11:58:46 bg Exp $"); */
 
 #ifndef INCLUDES_H
 #define INCLUDES_H
@@ -254,6 +207,14 @@ struct	sockaddr_un {
 #if HAVE_NDIR_H
 #include <ndir.h>
 #endif
+#endif
+
+#ifdef HAVE_SETRLIMIT
+#include <sys/resource.h>
+#endif
+
+#ifndef HAVE_VSNPRINTF
+#define vsnprintf(buf, len, fmt, args) vsprintf(buf, fmt, args)
 #endif
 
 /* These POSIX macros are not defined in every system. */

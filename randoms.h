@@ -13,23 +13,12 @@ Cryptographically strong random number generator.
 
 */
 
-/*
- * $Id: randoms.h,v 1.3 1995/09/13 12:00:02 ylo Exp $
- * $Log: randoms.h,v $
- * Revision 1.3  1995/09/13  12:00:02  ylo
- * 	Changes to make this work on Cray.
- *
- * Revision 1.2  1995/07/13  01:29:28  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
+/* RCSID("$Id: randoms.h,v 1.3 1999/05/04 11:58:59 bg Exp $"); */
 
 #ifndef RANDOM_H
 #define RANDOM_H
 
-#include "md5.h"
+#include "ssh_md5.h"
 
 #define RANDOM_STATE_BITS	8192
 #define RANDOM_STATE_BYTES	(RANDOM_STATE_BITS / 8)

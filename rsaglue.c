@@ -17,24 +17,9 @@ using the --with-rsaref configure option.
 
 */
 
-/*
- * $Id: rsaglue.c,v 1.4 1995/07/26 23:29:34 ylo Exp $
- * $Log: rsaglue.c,v $
- * Revision 1.4  1995/07/26  23:29:34  ylo
- * 	Display a fatal error if key size > 1024 with RSAREF.
- *
- * Revision 1.3  1995/07/26  17:08:59  ylo
- * 	Changed to use new functions in mpaux.c for
- * 	linearizing/unlinearizing mp-ints.
- *
- * Revision 1.2  1995/07/13  01:33:27  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
-
 #include "includes.h"
+RCSID("$Id: rsaglue.c,v 1.2 1999/05/04 11:59:07 bg Exp $");
+
 #include <gmp.h>
 #include "ssh.h"
 #include "rsa.h"

@@ -19,20 +19,9 @@ following patents: PCT/CH91/00117, EP 0 482 154 B1, US Pat. 5,214,703.
 
 */
 
-/*
- * $Id: idea.c,v 1.3 1995/09/13 11:55:48 ylo Exp $
- * $Log: idea.c,v $
- * Revision 1.3  1995/09/13  11:55:48  ylo
- * 	Minor changes to make it work on Cray.
- *
- * Revision 1.2  1995/07/13  01:24:44  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
-
 #include "includes.h"
+RCSID("$Id: idea.c,v 1.2 1999/05/04 11:58:45 bg Exp $");
+
 #include "getput.h"
 #include "idea.h"
 

@@ -11,13 +11,9 @@ Created: Mon Aug 21 15:48:58 1995 ylo
 
 */
 
-/*
- * $Id$
- * $Log$
- * $EndLog$
- */
-
 #include "includes.h"
+RCSID("$Id: servconf.c,v 1.8 1999/06/12 09:22:04 bg Exp $");
+
 #include "ssh.h"
 #include "servconf.h"
 #include "xmalloc.h"
@@ -46,6 +42,19 @@ void initialize_server_options(ServerOptions *options)
   options->rhosts_authentication = -1;
   options->rhosts_rsa_authentication = -1;
   options->rsa_authentication = -1;
+#ifdef KRB4
+  options->kerberos_authentication = -1;
+  options->kerberos_or_local_passwd = -1;
+#endif
+#if defined(KRB4) || defined(AFS)
+  options->kerberos_ticket_cleanup = -1;
+#endif
+#ifdef KERBEROS_TGT_PASSING
+  options->kerberos_tgt_passing = -1;
+#endif
+#ifdef AFS
+  options->afs_token_passing = -1;
+#endif
   options->password_authentication = -1;
   options->permit_empty_passwd = -1;
   options->num_allow_hosts = 0;
@@ -99,6 +108,24 @@ void fill_default_server_options(ServerOptions *options)
     options->rhosts_rsa_authentication = 1;
   if (options->rsa_authentication == -1)
     options->rsa_authentication = 1;
+#ifdef KRB4
+  if (options->kerberos_authentication == -1)
+    options->kerberos_authentication = 1;
+  if (options->kerberos_or_local_passwd == -1)
+    options->kerberos_or_local_passwd = 0;
+#endif
+#if defined(KRB4) || defined(AFS)
+  if (options->kerberos_ticket_cleanup == -1)
+    options->kerberos_ticket_cleanup = 1;
+#endif
+#ifdef KERBEROS_TGT_PASSING
+  if (options->kerberos_tgt_passing == -1)
+    options->kerberos_tgt_passing = 0;
+#endif
+#ifdef AFS
+  if (options->afs_token_passing == -1)
+    options->afs_token_passing = 1;
+#endif
   if (options->password_authentication == -1)
     options->password_authentication = 1;
   if (options->permit_empty_passwd == -1)
@@ -113,6 +140,18 @@ typedef enum
   sPort, sHostKeyFile, sServerKeyBits, sLoginGraceTime, sKeyRegenerationTime,
   sPermitRootLogin, sQuietMode, sFascistLogging, sLogFacility,
   sRhostsAuthentication, sRhostsRSAAuthentication, sRSAAuthentication,
+#ifdef KRB4
+  sKerberosAuthentication, sKerberosOrLocalPasswd,
+#endif
+#if defined(KRB4) || defined(AFS)
+  sKerberosTicketCleanup,
+#endif
+#ifdef KERBEROS_TGT_PASSING
+  sKerberosTgtPassing,
+#endif
+#ifdef AFS
+  sAFSTokenPassing,
+#endif
   sPasswordAuthentication, sAllowHosts, sDenyHosts, sListenAddress,
   sPrintMotd, sIgnoreRhosts, sX11Forwarding,
   sStrictModes, sEmptyPasswd, sRandomSeedFile, sKeepAlives
@@ -125,29 +164,42 @@ static struct
   ServerOpCodes opcode;
 } keywords[] =
 {
-  { "Port", sPort },
-  { "HostKey", sHostKeyFile },
-  { "ServerKeyBits", sServerKeyBits },
-  { "LoginGraceTime", sLoginGraceTime },
-  { "KeyRegenerationInterval", sKeyRegenerationTime },
-  { "PermitRootLogin", sPermitRootLogin },
-  { "QuietMode", sQuietMode },
-  { "FascistLogging", sFascistLogging },
-  { "SyslogFacility", sLogFacility },
-  { "RhostsAuthentication", sRhostsAuthentication },
-  { "RhostsRSAAuthentication", sRhostsRSAAuthentication },
-  { "RSAAuthentication", sRSAAuthentication },
-  { "PasswordAuthentication", sPasswordAuthentication },
-  { "AllowHosts", sAllowHosts },
-  { "DenyHosts", sDenyHosts },
-  { "ListenAddress", sListenAddress },
-  { "PrintMotd", sPrintMotd },
-  { "IgnoreRhosts", sIgnoreRhosts },
-  { "X11Forwarding", sX11Forwarding },
-  { "StrictModes", sStrictModes },
-  { "PermitEmptyPasswords", sEmptyPasswd },
-  { "RandomSeed", sRandomSeedFile },
-  { "KeepAlive", sKeepAlives },
+  { "port", sPort },
+  { "hostkey", sHostKeyFile },
+  { "serverkeybits", sServerKeyBits },
+  { "logingracetime", sLoginGraceTime },
+  { "keyregenerationinterval", sKeyRegenerationTime },
+  { "permitrootlogin", sPermitRootLogin },
+  { "quietmode", sQuietMode },
+  { "fascistlogging", sFascistLogging },
+  { "syslogfacility", sLogFacility },
+  { "rhostsauthentication", sRhostsAuthentication },
+  { "rhostsrsaauthentication", sRhostsRSAAuthentication },
+  { "rsaauthentication", sRSAAuthentication },
+#ifdef KRB4
+  { "kerberosauthentication", sKerberosAuthentication },
+  { "kerberosorlocalpasswd", sKerberosOrLocalPasswd },
+#endif
+#if defined(KRB4) || defined(AFS)
+  { "kerberosticketcleanup", sKerberosTicketCleanup },
+#endif
+#ifdef KERBEROS_TGT_PASSING
+  { "kerberostgtpassing", sKerberosTgtPassing },
+#endif
+#ifdef AFS
+  { "afstokenpassing", sAFSTokenPassing },
+#endif
+  { "passwordauthentication", sPasswordAuthentication },
+  { "allowhosts", sAllowHosts },
+  { "denyhosts", sDenyHosts },
+  { "listenaddress", sListenAddress },
+  { "printmotd", sPrintMotd },
+  { "ignorerhosts", sIgnoreRhosts },
+  { "x11forwarding", sX11Forwarding },
+  { "strictmodes", sStrictModes },
+  { "permitemptypasswords", sEmptyPasswd },
+  { "randomseed", sRandomSeedFile },
+  { "keepalive", sKeepAlives },
   { NULL, 0 }
 };
 
@@ -213,6 +265,13 @@ void read_server_config(ServerOptions *options, const char *filename)
       if (!*cp || *cp == '#')
 	continue;
       cp = strtok(cp, WHITESPACE);
+      {
+	char *t = cp;
+	for (; *t != 0; t++)
+	  if ('A' <= *t && *t <= 'Z')
+	    *t = *t - 'A' + 'a';	/* tolower */
+      
+      }
       opcode = parse_token(cp, filename, linenum);
       switch (opcode)
 	{
@@ -325,6 +384,34 @@ void read_server_config(ServerOptions *options, const char *filename)
 	  intptr = &options->rsa_authentication;
 	  goto parse_flag;
 	  
+#ifdef KRB4
+	case sKerberosAuthentication:
+	  intptr = &options->kerberos_authentication;
+	  goto parse_flag;
+	  
+ 	case sKerberosOrLocalPasswd:
+ 	  intptr = &options->kerberos_or_local_passwd;
+ 	  goto parse_flag;
+#endif
+
+#if defined(KRB4) || defined(AFS)
+	case sKerberosTicketCleanup:
+	  intptr = &options->kerberos_ticket_cleanup;
+	  goto parse_flag;
+#endif
+	  
+#ifdef KERBEROS_TGT_PASSING
+	case sKerberosTgtPassing:
+	  intptr = &options->kerberos_tgt_passing;
+	  goto parse_flag;
+#endif
+
+#ifdef AFS
+	case sAFSTokenPassing:
+	  intptr = &options->afs_token_passing;
+	  goto parse_flag;
+#endif
+
 	case sPasswordAuthentication:
 	  intptr = &options->password_authentication;
 	  goto parse_flag;

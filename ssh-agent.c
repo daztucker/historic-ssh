@@ -13,34 +13,9 @@ The authentication agent program.
 
 */
 
-/*
- * $Id: ssh-agent.c,v 1.6 1995/09/21 17:13:31 ylo Exp $
- * $Log: ssh-agent.c,v $
- * Revision 1.6  1995/09/21  17:13:31  ylo
- * 	Support AF_UNIX_SIZE.
- *
- * Revision 1.5  1995/08/29  22:25:22  ylo
- * 	Added compatibility support for various authentication
- * 	protocol versions.
- * 	Fixed bug in deleting identity.
- * 	Added remove_all.
- * 	New file descriptor code.
- *
- * Revision 1.4  1995/08/21  23:27:31  ylo
- * 	Added support for session_id and response_type in
- * 	authentication requests.
- *
- * Revision 1.3  1995/07/26  23:29:13  ylo
- * 	Print software version with usage message.
- *
- * Revision 1.2  1995/07/13  01:38:26  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
-
 #include "includes.h"
+RCSID("$Id: ssh-agent.c,v 1.3 1999/05/04 11:59:14 bg Exp $");
+
 #include "ssh.h"
 #include "rsa.h"
 #include "randoms.h"
@@ -49,7 +24,7 @@ The authentication agent program.
 #include "bufaux.h"
 #include "xmalloc.h"
 #include "packet.h"
-#include "md5.h"
+#include "ssh_md5.h"
 #include "getput.h"
 #include "mpaux.h"
 

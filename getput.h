@@ -13,15 +13,7 @@ Macros for storing and retrieving data in msb first and lsb first order.
 
 */
 
-/*
- * $Id: getput.h,v 1.2 1995/07/13 01:24:09 ylo Exp $
- * $Log: getput.h,v $
- * Revision 1.2  1995/07/13  01:24:09  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
+/* RCSID("$Id: getput.h,v 1.2 1999/05/04 11:58:43 bg Exp $"); */
 
 #ifndef GETPUT_H
 #define GETPUT_H

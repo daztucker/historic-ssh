@@ -13,21 +13,7 @@ Functions for reading the configuration file.
 
 */
 
-/*
- * $Id: readconf.h,v 1.4 1995/09/24 23:59:57 ylo Exp $
- * $Log: readconf.h,v $
- * Revision 1.4  1995/09/24  23:59:57  ylo
- * 	Added connection_attempts.
- *
- * Revision 1.3  1995/07/27  00:39:10  ylo
- * 	Added GlobalKnownHostsFile and UserKnownHostsFile.
- *
- * Revision 1.2  1995/07/13  01:30:46  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
+/* RCSID("$Id: readconf.h,v 1.6 1999/05/04 11:59:02 bg Exp $"); */
 
 #ifndef READCONF_H
 #define READCONF_H
@@ -50,13 +36,24 @@ typedef struct
   int rhosts_authentication;	/* Try rhosts authentication. */
   int rhosts_rsa_authentication;/* Try rhosts with RSA authentication. */
   int rsa_authentication;	/* Try RSA authentication. */
+#ifdef KRB4
+  int kerberos_authentication;	/* Try Kerberos authentication. */
+#endif
+#ifdef KERBEROS_TGT_PASSING
+  int kerberos_tgt_passing;	/* Try Kerberos tgt passing. */
+#endif
+#ifdef AFS
+  int afs_token_passing;	/* Try AFS token passing. */
+#endif
   int password_authentication;	/* Try password authentication. */
   int fallback_to_rsh;		/* Use rsh if cannot connect with ssh. */
   int use_rsh;			/* Always use rsh (don\'t try ssh). */
   int batch_mode;		/* Batch mode: do not ask for passwords. */
   int strict_host_key_checking;	/* Strict host key checking. */
+#ifdef WITH_ZLIB
   int compression;		/* Compress packets in both directions. */
   int compression_level;	/* Compression level 1 (fast) to 9 (best). */
+#endif /* WITH_ZLIB */
   int keepalives;		/* Set SO_KEEPALIVE. */
 
   int port;			/* Port to connect. */

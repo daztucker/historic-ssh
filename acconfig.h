@@ -8,60 +8,8 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 */
 
-/*
- * $Log: acconfig.h,v $
- * Revision 1.16  1995/10/02  01:18:13  ylo
- * 	Added NEED_SYS_SYSLOG_H (Ultrix).
- * 	Added HAVE_SCO_ETC_SHADOW and SCO.
- *
- * Revision 1.15  1995/09/27  02:47:19  ylo
- * 	Added SOCKS stuff.
- *
- * Revision 1.14  1995/09/27  02:09:52  ylo
- * 	Added ETCDIR.
- * 	Added SPEED_T_IN_STDTYPES_H.
- *
- * Revision 1.13  1995/09/21  17:06:23  ylo
- * 	Added USE_STRLEN_FOR_AF_UNIX.
- * 	Added USE_PIPES.
- *
- * Revision 1.12  1995/09/13  12:05:51  ylo
- * 	Removed HPSUX_BROKEN_PTYS.
- *
- * Revision 1.11  1995/09/11  17:34:54  ylo
- * 	Added LIBWRAP.
- *
- * Revision 1.10  1995/09/10  22:44:21  ylo
- * 	Added HAVE_OSF1_C2_SECURITY.
- *
- * Revision 1.9  1995/09/09  21:26:37  ylo
- * /m/shadows/u2/users/ylo/ssh/README
- *
- * Revision 1.8  1995/09/06  15:57:37  ylo
- * 	Added BROKEN_INET_ADDR
- *
- * Revision 1.7  1995/08/29  22:17:54  ylo
- * 	Removed AGENT_USES_SOCKET
- * 	Added HPSUX_BROKEN_PTYS
- *
- * Revision 1.6  1995/08/21  23:20:17  ylo
- * 	Removed NO_RHOSTS_AUTHENTICATION.
- * 	Fixed a typo.
- *
- * Revision 1.5  1995/08/18  23:42:14  ylo
- * 	Added HAVE_SECURID.
- *
- * Revision 1.4  1995/08/18  22:41:46  ylo
- * 	Added O_NONBLOCK_BROKEN, WITHOUT_IDEA, crypt, __FreeBSD__, TTY_GROUP.
- *
- * Revision 1.3  1995/07/27  00:36:32  ylo
- * 	Added SSH_UTMP, SSH_WTMP, SSH_LASTLOG, DEFAUL_PATH.
- *
- * Revision 1.2  1995/07/13  01:08:48  ylo
- * 	Added cvs log.
- *
- * $Endlog$
- */
+#define RCSID(msg) \
+static /**/const char *const rcsid[] = { (char *)rcsid, "\100(#)" msg }
 
 @TOP@
 
@@ -101,6 +49,12 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 /* Define if utmp structure has pid field. */
 #undef HAVE_PID_IN_UTMP
+
+/* Define if utmpx structure has ut_session. */
+#undef HAVE_UT_SESSION
+
+/* Define if utmpx structure has ut_syslen. */
+#undef HAVE_UT_SYSLEN
 
 /* Define if /var/adm/lastlog or whatever it is called is a directory
    (e.g. SGI IRIX). */
@@ -150,8 +104,14 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
    This is the case on some Ultrix versions. */
 #undef NEED_SYS_SYSLOG_H
 
-/* Define this to leave out IDEA encryption. */
-#undef WITHOUT_IDEA
+/* Define this to include IDEA encryption. */
+#undef WITH_IDEA
+
+/* Define this to include RC4 encryption. */
+#undef WITH_RC4
+
+/* Define this to include Blowfish encryption. */
+#undef WITH_BLOWFISH
 
 /* Define this to include libwrap (tcp_wrappers) support. */
 #undef LIBWRAP
@@ -210,3 +170,17 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define these if on SCO Unix. */
 #undef HAVE_SCO_ETC_SHADOW
 #undef SCO
+
+/* Define this if you want to compile in Kerberos V4 support.
+   This can be done at configure time with the --with-krb4 argument. */
+#undef KRB4
+
+/* Define this if you want to compile in AFS support.
+   This can be done at configure time with the --with-afs argument. */
+#undef AFS
+
+/* Define this if you want to enable nonstandard krb4 TGT forwarding. */
+#undef KERBEROS_TGT_PASSING
+
+/* Define this if you want to add optional compression support. */
+#undef WITH_ZLIB

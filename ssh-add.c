@@ -13,26 +13,9 @@ Adds an identity to the authentication server, or removes an identity.
 
 */
 
-/*
- * $Id: ssh-add.c,v 1.4 1995/10/02 01:27:34 ylo Exp $
- * $Log: ssh-add.c,v $
- * Revision 1.4  1995/10/02  01:27:34  ylo
- * 	Loop asking for a proper passphrase until the user aborts or
- * 	gives an empty passphrase.  (This avoids problems of
- * 	accidentally typing the wrong passphrase without noticing it
- * 	when using ssh-add from .Xsession.real.)
- *
- * Revision 1.3  1995/08/29  22:24:21  ylo
- * 	Added delete_all.
- *
- * Revision 1.2  1995/07/13  01:38:15  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
-
 #include "includes.h"
+RCSID("$Id: ssh-add.c,v 1.2 1999/05/04 11:59:12 bg Exp $");
+
 #include "randoms.h"
 #include "rsa.h"
 #include "ssh.h"

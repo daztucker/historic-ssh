@@ -13,17 +13,9 @@ Functions for manipulating fifo buffers (that can grow if needed).
 
 */
 
-/*
- * $Id: buffer.c,v 1.2 1995/07/13 01:18:46 ylo Exp $
- * $Log: buffer.c,v $
- * Revision 1.2  1995/07/13  01:18:46  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
-
 #include "includes.h"
+RCSID("$Id: buffer.c,v 1.2 1999/05/04 11:58:31 bg Exp $");
+
 #include "xmalloc.h"
 #include "buffer.h"
 #include "ssh.h"

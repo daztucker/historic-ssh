@@ -13,17 +13,9 @@ Functions for manipulating the known hosts files.
 
 */
 
-/*
- * $Id: hostfile.c,v 1.2 1995/07/13 01:24:36 ylo Exp $
- * $Log: hostfile.c,v $
- * Revision 1.2  1995/07/13  01:24:36  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
-
 #include "includes.h"
+RCSID("$Id: hostfile.c,v 1.2 1999/05/04 11:58:44 bg Exp $");
+
 #include "packet.h"
 #include "ssh.h"
 

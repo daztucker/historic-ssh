@@ -11,28 +11,21 @@ Created: Wed Apr 19 16:50:42 1995 ylo
 
 */
 
-/*
- * $Id: cipher.h,v 1.3 1995/08/18 22:48:27 ylo Exp $
- * $Log: cipher.h,v $
- * Revision 1.3  1995/08/18  22:48:27  ylo
- * 	Made IDEA optional.
- *
- * Revision 1.2  1995/07/13  01:19:52  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
+/* RCSID("$Id: cipher.h,v 1.9 1999/05/28 15:21:52 bg Exp $"); */
 
 #ifndef CIPHER_H
 #define CIPHER_H
 
-#ifndef WITHOUT_IDEA
+#ifdef WITH_IDEA
 #include "idea.h"
-#endif /* WITHOUT_IDEA */
+#endif /* WITH_IDEA */
 #include "des.h"
-#include "tss.h"
+#ifdef WITH_RC4
 #include "rc4.h"
+#endif
+#ifdef WITH_BLOWFISH
+#include "blowfish.h"
+#endif
 
 /* Cipher types.  New types can be added, but old types should not be removed
    for compatibility.  The maximum allowed value is 31. */
@@ -43,30 +36,39 @@ Created: Wed Apr 19 16:50:42 1995 ylo
 #define SSH_CIPHER_3DES		3 /* 3DES CBC */
 #define SSH_CIPHER_TSS		4 /* TRI's Simple Stream encryption CBC */
 #define SSH_CIPHER_RC4		5 /* Alleged RC4 */
+#define SSH_CIPHER_BLOWFISH	6
 
 typedef struct {
   unsigned int type;
   union {
-#ifndef WITHOUT_IDEA
+#ifdef WITH_IDEA
     struct {
       IDEAContext key;
       unsigned char iv[8];
     } idea;
-#endif /* WITHOUT_IDEA */
+#endif /* WITH_IDEA */
+#ifdef WITH_DES
     struct {
-      DESContext key;
-      unsigned char iv[8];
+      des_key_schedule key;
+      des_cblock iv;
     } des;
+#endif /* WITH_DES */
     struct {
-      DESContext key1;
-      unsigned char iv1[8];
-      DESContext key2;
-      unsigned char iv2[8];
-      DESContext key3;
-      unsigned char iv3[8];
+      des_key_schedule key1;
+      des_key_schedule key2;
+      des_cblock iv2;
+      des_key_schedule key3;
+      des_cblock iv3;
     } des3;
-    struct tss_context tss;
+#ifdef WITH_RC4
     RC4Context rc4;
+#endif
+#ifdef WITH_BLOWFISH
+    struct {
+      struct bf_key_st key;
+      unsigned char iv[8];
+    } bf;
+#endif /* WITH_BLOWFISH */
   } u;
 } CipherContext;
 
@@ -99,5 +101,9 @@ void cipher_encrypt(CipherContext *context, unsigned char *dest,
 /* Decrypts data using the cipher. */
 void cipher_decrypt(CipherContext *context, unsigned char *dest,
 		    const unsigned char *src, unsigned int len);
+
+/* If and CRC-32 attack is detected this function is called. Defaults
+ * to fatal, changed to packet_disconnect in sshd and ssh. */
+extern void (*cipher_attack_detected)(const char *fmt, ...);
 
 #endif /* CIPHER_H */

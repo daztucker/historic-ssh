@@ -13,26 +13,9 @@ Identity and host key generation and maintenance.
 
 */
 
-/*
- * $Id: ssh-keygen.c,v 1.5 1995/08/31 09:22:50 ylo Exp $
- * $Log: ssh-keygen.c,v $
- * Revision 1.5  1995/08/31  09:22:50  ylo
- * 	Use either passphrase when only one needed.
- *
- * Revision 1.4  1995/08/29  22:33:00  ylo
- * 	Added support for -P, -N, -f, and -C.
- *
- * Revision 1.3  1995/07/26  17:11:31  ylo
- * 	Print version number in the usage string.
- *
- * Revision 1.2  1995/07/13  01:39:53  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
-
 #include "includes.h"
+RCSID("$Id: ssh-keygen.c,v 1.2 1999/05/04 11:59:17 bg Exp $");
+
 #ifndef HAVE_GETHOSTNAME
 #include <sys/utsname.h>
 #endif

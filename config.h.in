@@ -9,60 +9,8 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 */
 
-/*
- * $Log: acconfig.h,v $
- * Revision 1.16  1995/10/02  01:18:13  ylo
- * 	Added NEED_SYS_SYSLOG_H (Ultrix).
- * 	Added HAVE_SCO_ETC_SHADOW and SCO.
- *
- * Revision 1.15  1995/09/27  02:47:19  ylo
- * 	Added SOCKS stuff.
- *
- * Revision 1.14  1995/09/27  02:09:52  ylo
- * 	Added ETCDIR.
- * 	Added SPEED_T_IN_STDTYPES_H.
- *
- * Revision 1.13  1995/09/21  17:06:23  ylo
- * 	Added USE_STRLEN_FOR_AF_UNIX.
- * 	Added USE_PIPES.
- *
- * Revision 1.12  1995/09/13  12:05:51  ylo
- * 	Removed HPSUX_BROKEN_PTYS.
- *
- * Revision 1.11  1995/09/11  17:34:54  ylo
- * 	Added LIBWRAP.
- *
- * Revision 1.10  1995/09/10  22:44:21  ylo
- * 	Added HAVE_OSF1_C2_SECURITY.
- *
- * Revision 1.9  1995/09/09  21:26:37  ylo
- * /m/shadows/u2/users/ylo/ssh/README
- *
- * Revision 1.8  1995/09/06  15:57:37  ylo
- * 	Added BROKEN_INET_ADDR
- *
- * Revision 1.7  1995/08/29  22:17:54  ylo
- * 	Removed AGENT_USES_SOCKET
- * 	Added HPSUX_BROKEN_PTYS
- *
- * Revision 1.6  1995/08/21  23:20:17  ylo
- * 	Removed NO_RHOSTS_AUTHENTICATION.
- * 	Fixed a typo.
- *
- * Revision 1.5  1995/08/18  23:42:14  ylo
- * 	Added HAVE_SECURID.
- *
- * Revision 1.4  1995/08/18  22:41:46  ylo
- * 	Added O_NONBLOCK_BROKEN, WITHOUT_IDEA, crypt, __FreeBSD__, TTY_GROUP.
- *
- * Revision 1.3  1995/07/27  00:36:32  ylo
- * 	Added SSH_UTMP, SSH_WTMP, SSH_LASTLOG, DEFAUL_PATH.
- *
- * Revision 1.2  1995/07/13  01:08:48  ylo
- * 	Added cvs log.
- *
- * $Endlog$
- */
+#define RCSID(msg) \
+static /**/const char *const rcsid[] = { (char *)rcsid, "\100(#)" msg }
 
 
 /* Define to empty if the keyword does not work.  */
@@ -86,11 +34,23 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define if your C compiler doesn't accept -c and -o together.  */
 #undef NO_MINUS_C_MINUS_O
 
+/* Define if your Fortran 77 compiler doesn't accept -c and -o together. */
+#undef F77_NO_MINUS_C_MINUS_O
+
 /* Define to `long' if <sys/types.h> doesn't define.  */
 #undef off_t
 
 /* Define as the return type of signal handlers (int or void).  */
 #undef RETSIGTYPE
+
+/* Define to the type of arg1 for select(). */
+#undef SELECT_TYPE_ARG1
+
+/* Define to the type of args 2, 3 and 4 for select(). */
+#undef SELECT_TYPE_ARG234
+
+/* Define to the type of arg5 for select(). */
+#undef SELECT_TYPE_ARG5
 
 /* Define to `unsigned' if <sys/types.h> doesn't define.  */
 #undef size_t
@@ -110,61 +70,6 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define if your processor stores words with the most significant
    byte first (like Motorola and SPARC, unlike Intel and VAX).  */
 #undef WORDS_BIGENDIAN
-
-/*
- * $Log: acconfig.h,v $
- * Revision 1.16  1995/10/02  01:18:13  ylo
- * 	Added NEED_SYS_SYSLOG_H (Ultrix).
- * 	Added HAVE_SCO_ETC_SHADOW and SCO.
- *
- * Revision 1.15  1995/09/27  02:47:19  ylo
- * 	Added SOCKS stuff.
- *
- * Revision 1.14  1995/09/27  02:09:52  ylo
- * 	Added ETCDIR.
- * 	Added SPEED_T_IN_STDTYPES_H.
- *
- * Revision 1.13  1995/09/21  17:06:23  ylo
- * 	Added USE_STRLEN_FOR_AF_UNIX.
- * 	Added USE_PIPES.
- *
- * Revision 1.12  1995/09/13  12:05:51  ylo
- * 	Removed HPSUX_BROKEN_PTYS.
- *
- * Revision 1.11  1995/09/11  17:34:54  ylo
- * 	Added LIBWRAP.
- *
- * Revision 1.10  1995/09/10  22:44:21  ylo
- * 	Added HAVE_OSF1_C2_SECURITY.
- *
- * Revision 1.9  1995/09/09  21:26:37  ylo
- * /m/shadows/u2/users/ylo/ssh/README
- *
- * Revision 1.8  1995/09/06  15:57:37  ylo
- * 	Added BROKEN_INET_ADDR
- *
- * Revision 1.7  1995/08/29  22:17:54  ylo
- * 	Removed AGENT_USES_SOCKET
- * 	Added HPSUX_BROKEN_PTYS
- *
- * Revision 1.6  1995/08/21  23:20:17  ylo
- * 	Removed NO_RHOSTS_AUTHENTICATION.
- * 	Fixed a typo.
- *
- * Revision 1.5  1995/08/18  23:42:14  ylo
- * 	Added HAVE_SECURID.
- *
- * Revision 1.4  1995/08/18  22:41:46  ylo
- * 	Added O_NONBLOCK_BROKEN, WITHOUT_IDEA, crypt, __FreeBSD__, TTY_GROUP.
- *
- * Revision 1.3  1995/07/27  00:36:32  ylo
- * 	Added SSH_UTMP, SSH_WTMP, SSH_LASTLOG, DEFAUL_PATH.
- *
- * Revision 1.2  1995/07/13  01:08:48  ylo
- * 	Added cvs log.
- *
- * $Endlog$
- */
 
 /* Define if you have SYSV-style /dev/ptmx and /dev/pts/. */
 #undef HAVE_DEV_PTMX
@@ -203,6 +108,12 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 /* Define if utmp structure has pid field. */
 #undef HAVE_PID_IN_UTMP
+
+/* Define if utmpx structure has ut_session. */
+#undef HAVE_UT_SESSION
+
+/* Define if utmpx structure has ut_syslen. */
+#undef HAVE_UT_SYSLEN
 
 /* Define if /var/adm/lastlog or whatever it is called is a directory
    (e.g. SGI IRIX). */
@@ -252,8 +163,14 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
    This is the case on some Ultrix versions. */
 #undef NEED_SYS_SYSLOG_H
 
-/* Define this to leave out IDEA encryption. */
-#undef WITHOUT_IDEA
+/* Define this to include IDEA encryption. */
+#undef WITH_IDEA
+
+/* Define this to include RC4 encryption. */
+#undef WITH_RC4
+
+/* Define this to include Blowfish encryption. */
+#undef WITH_BLOWFISH
 
 /* Define this to include libwrap (tcp_wrappers) support. */
 #undef LIBWRAP
@@ -309,6 +226,20 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 #undef HAVE_SCO_ETC_SHADOW
 #undef SCO
 
+/* Define this if you want to compile in Kerberos V4 support.
+   This can be done at configure time with the --with-krb4 argument. */
+#undef KRB4
+
+/* Define this if you want to compile in AFS support.
+   This can be done at configure time with the --with-afs argument. */
+#undef AFS
+
+/* Define this if you want to enable nonstandard krb4 TGT forwarding. */
+#undef KERBEROS_TGT_PASSING
+
+/* Define this if you want to add optional compression support. */
+#undef WITH_ZLIB
+
 /* The number of bytes in a int.  */
 #undef SIZEOF_INT
 
@@ -348,11 +279,23 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define if you have the memcpy function.  */
 #undef HAVE_MEMCPY
 
+/* Define if you have the memmove function.  */
+#undef HAVE_MEMMOVE
+
 /* Define if you have the openpty function.  */
 #undef HAVE_OPENPTY
 
 /* Define if you have the popen function.  */
 #undef HAVE_POPEN
+
+/* Define if you have the putenv function.  */
+#undef HAVE_PUTENV
+
+/* Define if you have the random function.  */
+#undef HAVE_RANDOM
+
+/* Define if you have the remove function.  */
+#undef HAVE_REMOVE
 
 /* Define if you have the seteuid function.  */
 #undef HAVE_SETEUID
@@ -360,11 +303,23 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define if you have the setlogin function.  */
 #undef HAVE_SETLOGIN
 
+/* Define if you have the setluid function.  */
+#undef HAVE_SETLUID
+
+/* Define if you have the setrlimit function.  */
+#undef HAVE_SETRLIMIT
+
 /* Define if you have the setsid function.  */
 #undef HAVE_SETSID
 
+/* Define if you have the socketpair function.  */
+#undef HAVE_SOCKETPAIR
+
 /* Define if you have the strchr function.  */
 #undef HAVE_STRCHR
+
+/* Define if you have the strerror function.  */
+#undef HAVE_STRERROR
 
 /* Define if you have the times function.  */
 #undef HAVE_TIMES
@@ -378,8 +333,17 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define if you have the vhangup function.  */
 #undef HAVE_VHANGUP
 
+/* Define if you have the vsnprintf function.  */
+#undef HAVE_VSNPRINTF
+
 /* Define if you have the <dirent.h> header file.  */
 #undef HAVE_DIRENT_H
+
+/* Define if you have the <gmp.h> header file.  */
+#undef HAVE_GMP_H
+
+/* Define if you have the <krb.h> header file.  */
+#undef HAVE_KRB_H
 
 /* Define if you have the <lastlog.h> header file.  */
 #undef HAVE_LASTLOG_H
@@ -401,6 +365,9 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 /* Define if you have the <sys/dir.h> header file.  */
 #undef HAVE_SYS_DIR_H
+
+/* Define if you have the <sys/filio.h> header file.  */
+#undef HAVE_SYS_FILIO_H
 
 /* Define if you have the <sys/ioctl.h> header file.  */
 #undef HAVE_SYS_IOCTL_H
@@ -435,11 +402,23 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define if you have the <utmpx.h> header file.  */
 #undef HAVE_UTMPX_H
 
+/* Define if you have the <zlib.h> header file.  */
+#undef HAVE_ZLIB_H
+
 /* Define if you have the crypt library (-lcrypt).  */
 #undef HAVE_LIBCRYPT
 
+/* Define if you have the des library (-ldes).  */
+#undef HAVE_LIBDES
+
 /* Define if you have the gen library (-lgen).  */
 #undef HAVE_LIBGEN
+
+/* Define if you have the gmp library (-lgmp).  */
+#undef HAVE_LIBGMP
+
+/* Define if you have the krb library (-lkrb).  */
+#undef HAVE_LIBKRB
 
 /* Define if you have the nsl library (-lnsl).  */
 #undef HAVE_LIBNSL
@@ -447,8 +426,14 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define if you have the s library (-ls).  */
 #undef HAVE_LIBS
 
+/* Define if you have the security library (-lsecurity).  */
+#undef HAVE_LIBSECURITY
+
 /* Define if you have the socket library (-lsocket).  */
 #undef HAVE_LIBSOCKET
 
 /* Define if you have the sun library (-lsun).  */
 #undef HAVE_LIBSUN
+
+/* Define if you have the z library (-lz).  */
+#undef HAVE_LIBZ

@@ -11,36 +11,6 @@ and ssh has the necessary privileges.)
 */
 
 /*
- * $Id: scp.c,v 1.9 1995/10/02 01:26:02 ylo Exp $
- * $Log: scp.c,v $
- * Revision 1.9  1995/10/02  01:26:02  ylo
- * 	Fixed code for no HAVE_FCHMOD case.
- *
- * Revision 1.8  1995/09/27  02:14:56  ylo
- * 	Added support for SCO.
- *
- * Revision 1.7  1995/09/13  12:00:30  ylo
- * 	Don't use -l unless user name is explicitly given (so that
- * 	User works in .ssh/config).
- *
- * Revision 1.6  1995/08/18  22:55:53  ylo
- * 	Added utimbuf kludges for NextStep.
- * 	Added "-P port" option.
- *
- * Revision 1.5  1995/07/27  00:40:02  ylo
- * 	Include utime.h only if it exists.
- * 	Disable FallBackToRsh when running ssh from scp.
- *
- * Revision 1.4  1995/07/13  09:54:37  ylo
- * 	Added Snabb's patches for IRIX 4 (SVR3) (HAVE_ST_BLKSIZE code).
- *
- * Revision 1.3  1995/07/13  01:37:41  ylo
- * 	Added cvs log.
- *
- * $Endlog$
- */
-
-/*
  * Copyright (c) 1983, 1990, 1992, 1993, 1995
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -72,16 +42,12 @@ and ssh has the necessary privileges.)
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$Id: scp.c,v 1.9 1995/10/02 01:26:02 ylo Exp $
+ *	$Id: scp.c,v 1.6 1999/05/04 11:59:09 bg Exp $
  */
 
-#ifndef lint
-char scp_berkeley_copyright[] =
-"@(#) Copyright (c) 1983, 1990, 1992, 1993\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
 #include "includes.h"
+RCSID("$Id: scp.c,v 1.6 1999/05/04 11:59:09 bg Exp $");
+
 #include "ssh.h"
 #include "xmalloc.h"
 #ifdef HAVE_UTIME_H
@@ -112,6 +78,11 @@ struct utimbuf
 #define STDERR_FILENO 2
 #endif
 
+#if defined(KERBEROS_TGT_PASSING) || defined(AFS)
+/* This is set to non-zero to disable authentication forwarding. */
+int nofwd = 0;
+#endif
+ 
 /* This is set to non-zero to enable verbose mode. */
 int verbose = 0;
 
@@ -175,7 +146,6 @@ int do_cmd(char *host, char *remuser, char *cmd, int *fdin, int *fdout)
       i = 0;
       args[i++] = SSH_PROGRAM;
       args[i++] = "-x";
-      args[i++] = "-a";
       args[i++] = "-oFallBackToRsh no";
       if (verbose)
 	args[i++] = "-v";
@@ -183,6 +153,10 @@ int do_cmd(char *host, char *remuser, char *cmd, int *fdin, int *fdout)
 	args[i++] = "-C";
       if (batchmode)
 	args[i++] = "-oBatchMode yes";
+#if defined(KERBEROS_TGT_PASSING) || defined(AFS)
+      if (nofwd)
+	args[i++] = "-k";
+#endif
       if (cipher != NULL)
 	{
 	  args[i++] = "-c";
@@ -225,7 +199,7 @@ void fatal(const char *fmt, ...)
   char buf[1024];
 
   va_start(ap, fmt);
-  vsprintf(buf, fmt, ap);
+  vsnprintf(buf, sizeof(buf), fmt, ap);
   va_end(ap);
   fprintf(stderr, "%s\n", buf);
   exit(255);
@@ -277,7 +251,11 @@ main(argc, argv)
 	extern int optind;
 
 	fflag = tflag = 0;
-	while ((ch = getopt(argc, argv, "dfprtvBCc:i:P:")) != EOF)
+#if defined(KERBEROS_TGT_PASSING) || defined(AFS)
+	while ((ch = getopt(argc, argv, "kdfprtvBCc:i:P:")) != EOF)
+#else
+	while ((ch = getopt(argc, argv,  "dfprtvBCc:i:P:")) != EOF)
+#endif
 		switch(ch) {			/* User-visible flags. */
 		case 'p':
 			pflag = 1;
@@ -289,6 +267,11 @@ main(argc, argv)
 			iamrecursive = 1;
 			break;
 						/* Server options. */
+#if defined(KERBEROS_TGT_PASSING) || defined(AFS)
+ 	        case 'k':
+			nofwd = 1;
+			break;
+#endif
 		case 'd':
 			targetshouldbedirectory = 1;
 			break;
@@ -992,7 +975,7 @@ run_err(const char *fmt, ...)
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$Id: scp.c,v 1.9 1995/10/02 01:26:02 ylo Exp $
+ *	$Id: scp.c,v 1.6 1999/05/04 11:59:09 bg Exp $
  */
 
 char *

@@ -14,24 +14,11 @@ within ssh. See the file COPYING for full licensing informations.
 
 */
 
-/*
- * $Id: osfc2.c,v 1.3 1995/09/10 23:27:28 ylo Exp $
- * $Log: osfc2.c,v $
- * Revision 1.3  1995/09/10  23:27:28  ylo
- * 	Eliminated duplicate #includes.
- *
- * Revision 1.2  1995/09/10  23:03:56  ylo
- * 	Added copyright.
- *
- * Revision 1.1  1995/09/10  22:41:01  ylo
- * 	Support functions for OSF/1 C2 extended security
- * 	authentication.
- *
- */
-
 #include "includes.h"
+RCSID("$Id: osfc2.c,v 1.3 1999/05/04 11:58:53 bg Exp $");
+
 #include <sys/security.h>
-#include <prot.h>
+#include "/usr/include/prot.h"
 #include <sia.h>
 
 static int	c2security = -1;

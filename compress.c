@@ -13,13 +13,9 @@ Interface to packet compression for ssh.
 
 */
 
-/*
- * $Id$
- * $Log$
- * $EndLog$
- */
-
 #include "includes.h"
+RCSID("$Id: compress.c,v 1.2 1999/05/04 11:58:38 bg Exp $");
+
 #include "ssh.h"
 #include "buffer.h"
 #include "zlib.h"

@@ -13,26 +13,7 @@ Functions to interface with the SSH_AUTHENTICATION_FD socket.
 
 */
 
-/*
- * $Id: authfd.h,v 1.5 1995/08/29 22:19:30 ylo Exp $
- * $Log: authfd.h,v $
- * Revision 1.5  1995/08/29  22:19:30  ylo
- * 	Removed Last Modified line.
- *
- * Revision 1.4  1995/08/29  22:19:12  ylo
- * 	Added remove_all_identities.
- *
- * Revision 1.3  1995/08/21  23:21:33  ylo
- * 	Added session_id and reponse_type arguments to
- * 	ssh_decrypt_challenge.
- *
- * 	Deleted ssh_authenticate.
- *
- * Revision 1.2  1995/07/13  01:11:42  ylo
- * 	Added cvs log.
- *
- * $Endlog$
- */
+/* RCSID("$Id: authfd.h,v 1.2 1999/05/04 11:58:27 bg Exp $"); */
 
 #ifndef AUTHFD_H
 #define AUTHFD_H

@@ -14,15 +14,7 @@ failure (they call fatal if they encounter an error).
 
 */
 
-/*
- * $Id: xmalloc.h,v 1.2 1995/07/13 01:41:41 ylo Exp $
- * $Log: xmalloc.h,v $
- * Revision 1.2  1995/07/13  01:41:41  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
+/* RCSID("$Id: xmalloc.h,v 1.2 1999/05/04 11:59:29 bg Exp $"); */
 
 #ifndef XMALLOC_H
 #define XMALLOC_H

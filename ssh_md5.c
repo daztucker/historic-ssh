@@ -19,7 +19,7 @@
  */
 
 #include "includes.h"
-#include "md5.h"
+#include "ssh_md5.h"
 #include "getput.h"
 
 /*

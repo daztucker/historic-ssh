@@ -13,15 +13,7 @@ The IDEA encryption algorithm.
 
 */
 
-/*
- * $Id: idea.h,v 1.2 1995/07/13 01:25:00 ylo Exp $
- * $Log: idea.h,v $
- * Revision 1.2  1995/07/13  01:25:00  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
+/* RCSID("$Id: idea.h,v 1.2 1999/05/04 11:58:46 bg Exp $"); */
 
 #ifndef IDEA_H
 #define IDEA_H

@@ -9,34 +9,7 @@
 .\"
 .\" Created: Sat Apr 22 21:55:14 1995 ylo
 .\"
-.\" $Id: ssh.1.in,v 1.9 1995/10/02 01:28:11 ylo Exp $
-.\" $Log: ssh.1.in,v $
-.\" Revision 1.9  1995/10/02  01:28:11  ylo
-.\" 	Make substitutions in configure.
-.\"
-.\" Revision 1.8  1995/09/25  00:00:49  ylo
-.\" 	Added ConnectionAttempts.
-.\"
-.\" Revision 1.7  1995/08/31  09:23:03  ylo
-.\" 	Minor cleanup.
-.\"
-.\" Revision 1.6  1995/08/29  22:31:11  ylo
-.\" 	Improved manual pages from Andrew Macpherson.
-.\"
-.\" Revision 1.5  1995/08/21  23:27:44  ylo
-.\" 	Added -q.
-.\"
-.\" Revision 1.4  1995/07/27  00:40:24  ylo
-.\" 	Added GlobalKnownHostsFile and UserKnownHostsFile.
-.\"
-.\" Revision 1.3  1995/07/15  22:24:51  ylo
-.\" 	Added documentation for -o.
-.\"
-.\" Revision 1.2  1995/07/13  01:36:20  ylo
-.\" 	Removed "Last modified" header.
-.\" 	Added cvs log.
-.\" 
-.\" $Endlog$
+.\" $Id: ssh.1.in,v 1.6 1999/06/08 07:52:59 bg Exp $
 .\"
 .TH SSH 1 "November 8, 1995" "SSH" "SSH"
 
@@ -55,12 +28,11 @@ ssh \- secure shell client (remote login program)
 
 .B ssh
 [\c
-.BR \-a \c
+.BR \-k \c
 ]
 [\c
 .B \-c
-\fIidea\fR\||\|\fIdes\fR\||\|\fI3des\c
-\fR\||\|\fIrc4\fR\||\|\fItss\fR\||\|\fInone\fR\c
+\fIblowfish\fR\||\|\fIidea\fR\||\|\fIdes\fR\||\|\fI3des\fR\||\|\fInone\fR\c
 ]
 [\c
 .BI \-e \ escape_char\fR\c
@@ -91,6 +63,9 @@ ssh \- secure shell client (remote login program)
 ]
 [\c
 .BR \-x \c
+]
+[\c
+.BR \-X \c
 ]
 [\c
 .BR \-C \c
@@ -314,14 +289,9 @@ host key is not known or has changed.
 .ne 5
 .SH OPTIONS
 .TP
-.B \-a
-Disables forwarding of the authentication agent connection.  This may
-also be specified on a per-host basis in the configuration file.
-.ne 3
-.TP
-.BI \-c \ \fIidea\fR\||\|\fIdes\fR\||\|\fI3des\fR\||\|\fIrc4\fR\||\|\fItss\fR\||\|\fInone\fR
+.BI \-c \ \fIblowfish\fR\||\|\fIidea\fR\||\|\fIdes\fR\||\|\fI3des\fR\||\|\fInone\fR
 Selects the cipher to use for encrypting the session. 
-.B \s-1IDEA\s0
+.B \s-13DES\s0
 is used by default.  It is believed to be secure. 
 .B \s-1DES\s0
 is the data encryption standard, but is breakable by 
@@ -329,15 +299,7 @@ governments, large corporations, and major criminal organizations.
 .B \s-13DES\s0
 (triple-des) is encrypt-decrypt-encrypt triple with three different
 keys.  It is presumably more secure than
-DES.  It is used as default if both sites do not support IDEA.
-.B \s-1RC4\s0
-is the RC4
-algorithm posted in the Usenet News in 1995 (RC4 was
-originally a trade secret algorithm of RSA Data Security and has not
-been published; however, this implementation is widely believed to be
-equivalent).  This is the fastest algorithm currently supported.
-.B \s-1TSS\s0
-is a fast home-grown algorithm based on MD5. 
+DES.
 .B none
 disables encryption entirely; it is only intended for debugging, and
 it renders the connection insecure.
@@ -370,6 +332,11 @@ in the user's home directory.  Identity files may also be specified on
 a per-host basis in the configuration file.  It is possible to have
 multiple \-i options (and multiple identities specified in
 configuration files).
+.ne 3
+.TP
+.B \-k
+Disables forwarding of Kerberos tickets / AFS tokens. This may
+also be specified on a per-host basis in the configuration file.
 .ne 3
 .TP
 .BI -l \ login_name
@@ -426,6 +393,10 @@ debugging connection, authentication, and configuration problems.
 .B \-x
 Disables X11 forwarding.  This can also be specified on a per-host
 basis in a configuration file.
+.ne 3
+.TP
+.B \-X
+Enables X11 forwarding.
 .ne 3
 .TP
 .B \-C
@@ -509,6 +480,12 @@ argument given on the command line (i.e., the name is not converted to
 a canonicalized host name before matching).
 .ne 3
 .TP
+.B AFSTokenPassing
+Specifies whether to pass AFS tokens to remote host. The argument to 
+this keyword must be
+.YN
+.ne 3
+.TP
 .B BatchMode
 If set to "yes", passphrase/password querying will be disabled.  This
 option is useful in scripts and other batch jobs where you have no
@@ -518,15 +495,13 @@ user to supply the password.  The argument must be
 .TP
 .B Cipher
 Specifies the cipher to use for encrypting the session.  Currently,
+.IR blowfish ",
 .IR idea ",
 .IR des ",
 .IR 3des ",
-.IR rc4 ",
-.IR tss ",
 and
 .I none
-are supported.  The default is "idea" (or "3des" if "idea" is not
-supported by both hosts).  Using "none" (no encryption) is intended
+are supported.  The default is "3des". Using "none" (no encryption) is intended
 only for debugging, and will render the connection insecure.
 .ne 3
 .TP
@@ -620,6 +595,13 @@ in scripts, and many users want it too.
 To disable keepalives, the value should be set to "no" in both the
 server and the client configuration files.
 .ne 3
+.TP
+.B KerberosAuthentication
+Specifies whether Kerberos authentication will be used. 
+.TP
+.B KerberosTgtPassing
+Specifies whether a Kerberos TGT will be forwarded to the server.
+Note that TGT forwarding is normally not enabled in the server.
 .TP
 .B LocalForward
 Specifies that a TCP/IP port on the local machine be forwarded over

@@ -13,27 +13,9 @@ Code for uid-swapping.
 
 */
 
-/*
- * $Id: uidswap.c,v 1.5 1995/10/02 01:30:17 ylo Exp $
- * $Log: uidswap.c,v $
- * Revision 1.5  1995/10/02  01:30:17  ylo
- * 	Made uid-swap errors debugging messages because they happen
- * 	every time on AIX (uid-swapping does not currently work on
- * 	AIX).
- *
- * Revision 1.4  1995/09/21  17:17:05  ylo
- * 	Added include ssh.h.
- *
- * Revision 1.3  1995/09/11  17:36:26  ylo
- * 	Removed support for setreuid().  It is deprecated in bsd 4.4.  Too bad.
- *
- * Revision 1.2  1995/09/09  21:30:23  ylo
- * 	Removed Last Modified; added cvs log.
- *
- * $EndLog$
- */
-
 #include "includes.h"
+RCSID("$Id: uidswap.c,v 1.2 1999/05/04 11:59:27 bg Exp $");
+
 #include "ssh.h"
 #include "uidswap.h"
 

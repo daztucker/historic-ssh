@@ -4,16 +4,9 @@ Alleged RC4 (based on the Usenet posting in Spring-95)
 
 */
 
-/*
- * $Id: rc4.c,v 1.2 1995/07/13 01:29:59 ylo Exp $
- * $Log: rc4.c,v $
- * Revision 1.2  1995/07/13  01:29:59  ylo
- * 	Added cvs log.
- *
- * $Endlog$
- */
-
 #include "includes.h"
+RCSID("$Id: rc4.c,v 1.2 1999/05/04 11:59:00 bg Exp $");
+
 #include "rc4.h"
 
 void rc4_init(RC4Context *ctx, const unsigned char *key, unsigned int key_len)

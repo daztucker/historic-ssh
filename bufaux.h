@@ -11,15 +11,7 @@ Created: Wed Mar 29 02:18:23 1995 ylo
 
 */
 
-/*
- * $Id: bufaux.h,v 1.2 1995/07/13 01:18:07 ylo Exp $
- * $Log: bufaux.h,v $
- * Revision 1.2  1995/07/13  01:18:07  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
- *
- * $Endlog$
- */
+/* RCSID("$Id: bufaux.h,v 1.3 1999/06/14 14:41:37 bg Exp $"); */
 
 #ifndef BUFAUX_H
 #define BUFAUX_H
@@ -31,7 +23,7 @@ Created: Wed Mar 29 02:18:23 1995 ylo
 void buffer_put_mp_int(Buffer *buffer, MP_INT *value);
 
 /* Retrieves an MP_INT from the buffer. */
-void buffer_get_mp_int(Buffer *buffer, MP_INT *value);
+int buffer_get_mp_int(Buffer *buffer, MP_INT *value);
 
 /* Returns an integer from the buffer (4 bytes, msb first). */
 unsigned int buffer_get_int(Buffer *buffer);

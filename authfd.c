@@ -13,32 +13,9 @@ Functions for connecting the local authentication agent.
 
 */
 
-/*
- * $Id: authfd.c,v 1.7 1995/09/21 17:08:11 ylo Exp $
- * $Log: authfd.c,v $
- * Revision 1.7  1995/09/21  17:08:11  ylo
- * 	Support AF_UNIX_SIZE.
- *
- * Revision 1.6  1995/09/09  21:26:38  ylo
- * /m/shadows/u2/users/ylo/ssh/README
- *
- * Revision 1.5  1995/08/29  22:18:58  ylo
- * 	Added remove_all_identities.
- *
- * Revision 1.4  1995/08/21  23:21:04  ylo
- * 	Deleted ssh_authenticate().
- * 	Pass session key and response_type in agent request.
- *
- * Revision 1.3  1995/07/13  01:14:40  ylo
- * 	Removed the "Last modified" header.
- *
- * Revision 1.2  1995/07/13  01:11:31  ylo
- * 	Added cvs log.
- *
- * $Endlog$
- */
-
 #include "includes.h"
+RCSID("$Id: authfd.c,v 1.2 1999/05/04 11:58:26 bg Exp $");
+
 #include "ssh.h"
 #include "rsa.h"
 #include "authfd.h"

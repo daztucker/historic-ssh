@@ -15,8 +15,11 @@ to the system log.
 */
 
 /*
- * $Id: log-server.c,v 1.2 1995/07/13 01:26:21 ylo Exp $
+ * $Id: log-server.c,v 1.3 1995/08/21 23:25:00 ylo Exp $
  * $Log: log-server.c,v $
+ * Revision 1.3  1995/08/21  23:25:00  ylo
+ * 	Added support for syslog facility.
+ *
  * Revision 1.2  1995/07/13  01:26:21  ylo
  * 	Removed "Last modified" header.
  * 	Added cvs log.
@@ -40,13 +43,57 @@ static int log_on_stderr = 0;
      quiet	don\'t log anything
      */
 
-void log_init(char *av0, int on_stderr, int debug, int quiet)
+void log_init(char *av0, int on_stderr, int debug, int quiet, 
+	      SyslogFacility facility)
 {
+  int log_facility;
+  
+  switch (facility)
+    {
+    case SYSLOG_FACILITY_DAEMON:
+      log_facility = LOG_DAEMON;
+      break;
+    case SYSLOG_FACILITY_USER:
+      log_facility = LOG_USER;
+      break;
+    case SYSLOG_FACILITY_AUTH:
+      log_facility = LOG_AUTH;
+      break;
+    case SYSLOG_FACILITY_LOCAL0:
+      log_facility = LOG_LOCAL0;
+      break;
+    case SYSLOG_FACILITY_LOCAL1:
+      log_facility = LOG_LOCAL1;
+      break;
+    case SYSLOG_FACILITY_LOCAL2:
+      log_facility = LOG_LOCAL2;
+      break;
+    case SYSLOG_FACILITY_LOCAL3:
+      log_facility = LOG_LOCAL3;
+      break;
+    case SYSLOG_FACILITY_LOCAL4:
+      log_facility = LOG_LOCAL4;
+      break;
+    case SYSLOG_FACILITY_LOCAL5:
+      log_facility = LOG_LOCAL5;
+      break;
+    case SYSLOG_FACILITY_LOCAL6:
+      log_facility = LOG_LOCAL6;
+      break;
+    case SYSLOG_FACILITY_LOCAL7:
+      log_facility = LOG_LOCAL7;
+      break;
+    default:
+      fprintf(stderr, "Unrecognized internal syslog facility code %d\n",
+	      (int)facility);
+      exit(1);
+    }
+
   log_debug = debug;
   log_quiet = quiet;
   log_on_stderr = on_stderr;
   closelog(); /* Close any previous log. */
-  openlog(av0, LOG_PID, LOG_DAEMON);
+  openlog(av0, LOG_PID, log_facility);
 }
 
 /* Log this message (information that usually should go to the log). */

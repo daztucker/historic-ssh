@@ -15,8 +15,29 @@ within ssh. See the file COPYING for full licensing informations.
 */
 
 /*
- * $Id: osfc2.c,v 1.5 1998/01/14 16:39:10 kivinen Exp $
+ * $Id: osfc2.c,v 1.10 1998/05/11 21:26:49 kivinen Exp $
  * $Log: osfc2.c,v $
+ * Revision 1.10  1998/05/11 21:26:49  kivinen
+ * 	Moved prpasswd stuff to be inside if (pr).
+ *
+ * Revision 1.9  1998/05/11 18:53:16  kivinen
+ * 	Fixed osf1 resource code, by moving resoure limit
+ * 	initialization to initialize_osf_security function.
+ * 	osf1c2_getprpwent function is only called if password
+ * 	authentication is used, and because of this all limits
+ * 	contained zero. This caused sshd client immediately exit
+ * 	because of cpu resource limit exceeded.
+ *
+ * Revision 1.8  1998/04/30 01:53:57  kivinen
+ * 	Fixed osflim handling so that now it allows setting resource
+ * 	to 0.
+ *
+ * Revision 1.7  1998/03/30 21:39:40  kivinen
+ * 	Added system default lock check.
+ *
+ * Revision 1.6  1998/03/27 16:58:42  kivinen
+ * 	Fixed password expire code.
+ *
  * Revision 1.5  1998/01/14 16:39:10  kivinen
  * 	Added check that getespwnam function exists.
  *
@@ -53,7 +74,7 @@ within ssh. See the file COPYING for full licensing informations.
 
 static int	c2security = -1;
 static int	crypt_algo;
-unsigned long	osflim[8];
+long		osflim[8];
 
 void
 initialize_osf_security(int ac, char **av)
@@ -61,6 +82,10 @@ initialize_osf_security(int ac, char **av)
   FILE *f;
   char buf[256];
   char siad[] = "siad_ses_init=";
+  int i;
+
+  for (i = 0; i < 8; i++)
+    osflim[i] = -1;
 
   if (access(SIAIGOODFILE, F_OK) == -1)
     {
@@ -104,10 +129,6 @@ int
 osf1c2_getprpwent(char *p, char *n, int len)
 {
   time_t pschg, tnow;
-  int i;
-
-  for (i = 0; i < 8; i++)
-    osflim[i]=0;
 
   if (c2security == 1)
     {
@@ -117,57 +138,66 @@ osf1c2_getprpwent(char *p, char *n, int len)
 	{
 	  strncpy(p, pr->ufld.fd_encrypt, len);
 	  crypt_algo = pr->ufld.fd_oldcrypt;
-	}
-      /****
-       * jcastro@ist.utl.pt  Sep 1997
-       *
-       * Changed to verify prpasswd stuf such as
-       *    - account locked 
-       *    - passwd lifetime reached
-       *    - user profiles diferent from default
-       *      login resources limited !!!
-       ****/
-      if (pr->uflg.fg_lock == 1 && pr->ufld.fd_lock == 1)
-	return 1;
-      
-      tnow = time(NULL);
-      if (pr->uflg.fg_schange == 1)
-	pschg = pr->ufld.fd_schange;
-      if (pr->uflg.fg_template == 0)
-	{ /** default template, system values **/
-	  if (pr->sflg.fg_lifetime == 1)
-	    if (pschg + pr->sfld.fd_lifetime < tnow)
-	      return 2;
-	}
-      else                             /** user template, specific values **/
-	{
-#ifdef HAVE_GETESPWNAM
-	  es = getespwnam(pr->ufld.fd_template);
-	  if (es)
+
+	  /****
+	   * jcastro@ist.utl.pt  Sep 1997
+	   *
+	   * Changed to verify prpasswd stuff such as
+	   *    - account locked 
+	   *    - passwd lifetime reached
+	   *    - user profiles diferent from default
+	   *      login resources limited !!!
+	   ****/
+	  if (pr->uflg.fg_lock == 1)
 	    {
-	      if (es->uflg->fg_expire == 1) 
-		if (pschg + es->ufld->fd_expire < tnow)
-		  return 2;
-	      /** Login resources **/
-	      
-	      if (es->uflg->fg_rlim_cpu == 1) 
-		osflim[0] = es->ufld->fd_rlim_cpu;
-	      if (es->uflg->fg_rlim_fsize == 1)
-		osflim[1] = es->ufld->fd_rlim_fsize;
-	      if (es->uflg->fg_rlim_data == 1)
-		osflim[2] = es->ufld->fd_rlim_data;
-	      if (es->uflg->fg_rlim_stack== 1)
-		osflim[3] = es->ufld->fd_rlim_stack;
-	      if (es->uflg->fg_rlim_core == 1)
-		osflim[4] = es->ufld->fd_rlim_core;
-	      if (es->uflg->fg_rlim_rss == 1)
-		osflim[5] = es->ufld->fd_rlim_rss;
-	      if (es->uflg->fg_rlim_nofile == 1)
-		osflim[6] = es->ufld->fd_rlim_nofile;
-	      if (es->uflg->fg_rlim_vmem == 1)
-		osflim[7] = es->ufld->fd_rlim_vmem;
+	      if (pr->ufld.fd_lock == 1)
+		return 1;		/* Locked in user's profile */
 	    }
+	  else
+	    if (pr->sflg.fg_lock == 1 && pr->sfld.fd_lock == 1)
+	      return 1;		/* Locked in system default */
+	  
+	  tnow = time(NULL);
+	  if (pr->uflg.fg_schange == 1)
+	    pschg = pr->ufld.fd_schange;
+	  if (pr->uflg.fg_template == 0)
+	    { /** default template, system values **/
+	      if (pr->sflg.fg_lifetime == 1)
+		if (pr->sfld.fd_lifetime > 0 && 
+		    pschg + pr->sfld.fd_lifetime < tnow)
+		  return 2;
+	    }
+	  else                      /** user template, specific values **/
+	    {
+#ifdef HAVE_GETESPWNAM
+	      es = getespwnam(pr->ufld.fd_template);
+	      if (es)
+		{
+		  if (es->uflg->fg_expire == 1) 
+		    if (es->ufld->fd_expire > 0 &&
+			pschg + es->ufld->fd_expire < tnow)
+		      return 2;
+		  /** Login resources **/
+		  
+		  if (es->uflg->fg_rlim_cpu == 1) 
+		    osflim[0] = es->ufld->fd_rlim_cpu;
+		  if (es->uflg->fg_rlim_fsize == 1)
+		    osflim[1] = es->ufld->fd_rlim_fsize;
+		  if (es->uflg->fg_rlim_data == 1)
+		    osflim[2] = es->ufld->fd_rlim_data;
+		  if (es->uflg->fg_rlim_stack== 1)
+		    osflim[3] = es->ufld->fd_rlim_stack;
+		  if (es->uflg->fg_rlim_core == 1)
+		    osflim[4] = es->ufld->fd_rlim_core;
+		  if (es->uflg->fg_rlim_rss == 1)
+		    osflim[5] = es->ufld->fd_rlim_rss;
+		  if (es->uflg->fg_rlim_nofile == 1)
+		    osflim[6] = es->ufld->fd_rlim_nofile;
+		  if (es->uflg->fg_rlim_vmem == 1)
+		    osflim[7] = es->ufld->fd_rlim_vmem;
+		}
 #endif /* HAVE_GETESPWNAM */
+	    }
 	}
     }
   else

@@ -16,10 +16,15 @@ login (authentication) dialog.
 */
 
 /*
- * $Id: sshconnect.c,v 1.33 1999/11/17 17:04:58 tri Exp $
+ * $Id: sshconnect.c,v 1.34 2000/10/17 15:44:30 sjl Exp $
  * $Log: sshconnect.c,v $
+ * Revision 1.34  2000/10/17 15:44:30  sjl
+ * 	Fixed an attack against the initial key exchange with server
+ * 	and host keys with public exponent of 1. Added warning about
+ * 	the attack, known as false-split.
+ *
  * Revision 1.33  1999/11/17 17:04:58  tri
- * 	Fixed copyright notices.
+ *      Fixed copyright notices.
  *
  * Revision 1.32  1999/02/21 19:52:51  ylo
  *      Intermediate commit of ssh1.2.27 stuff.
@@ -1340,14 +1345,26 @@ void ssh_login(RandomState *state, int host_key_valid,
   packet_get_mp_int(&public_key.e);
   mpz_init(&public_key.n);
   packet_get_mp_int(&public_key.n);
-
+  if (!mpz_cmp_ui(&public_key.e, 1))
+    {
+      packet_disconnect("Protocol error: Invalid public exponent in server key.",
+                        type);
+    }
+  
+  
   /* Get the host key. */
   host_key.bits = packet_get_int();
   mpz_init(&host_key.e);
   packet_get_mp_int(&host_key.e);
   mpz_init(&host_key.n);
   packet_get_mp_int(&host_key.n);
+  if (!mpz_cmp_ui(&host_key.e, 1))
+    {
+      packet_disconnect("Protocol error: Invalid public exponent in host key.",
+                        type);
+    }
 
+  
   /* Get protocol flags. */
   protocol_flags = packet_get_int();
   packet_set_protocol_flags(protocol_flags);
@@ -1405,6 +1422,17 @@ void ssh_login(RandomState *state, int host_key_valid,
         }
 
       error("Host key not found from the list of known hosts.");
+
+#define FALSE_SPLIT_WARNING                                                      \
+do {                                                                             \
+  error("!! If host key is new or changed, ssh1 protocol is vulnerable to an "); \
+  error("!! attack known as false-split, which makes it relativily easy to ");   \
+  error("!! hijack the connection without the attack being detected. It is ");   \
+  error("!! highly advisable to turn StrictHostKeyChecking to \"yes\" and ");    \
+  error("!! manually copy host keys to known_hosts."); } while (0)
+
+      FALSE_SPLIT_WARNING;
+      
       if (options->strict_host_key_checking == 2)
         {
           if (options->batch_mode)
@@ -1433,7 +1461,9 @@ void ssh_login(RandomState *state, int host_key_valid,
       error("Please contact your system administrator.");
       error("Add correct host key in %.200s to get rid of this message.", 
             options->user_hostfile);
-      
+
+      FALSE_SPLIT_WARNING;
+
       /* If strict host key checking is in use, the user will have to edit
          the key manually and we can only abort. */
       if (options->strict_host_key_checking == 1)

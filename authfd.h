@@ -14,8 +14,11 @@ Functions to interface with the SSH_AUTHENTICATION_FD socket.
 */
 
 /*
- * $Id: authfd.h,v 1.5 1995/08/29 22:19:30 ylo Exp $
+ * $Id: authfd.h,v 1.1.1.1 1996/02/18 21:38:11 ylo Exp $
  * $Log: authfd.h,v $
+ * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.5  1995/08/29  22:19:30  ylo
  * 	Removed Last Modified line.
  *

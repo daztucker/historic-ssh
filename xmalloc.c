@@ -15,8 +15,11 @@ failure (they call fatal if they encounter an error).
 */
 
 /*
- * $Id: xmalloc.c,v 1.2 1995/07/13 01:41:33 ylo Exp $
+ * $Id: xmalloc.c,v 1.3 1995/08/29 22:36:39 ylo Exp $
  * $Log: xmalloc.c,v $
+ * Revision 1.3  1995/08/29  22:36:39  ylo
+ * 	Commented out malloc prototypes.
+ *
  * Revision 1.2  1995/07/13  01:41:33  ylo
  * 	Removed "Last modified" header.
  * 	Added cvs log.
@@ -27,9 +30,11 @@ failure (they call fatal if they encounter an error).
 #include "includes.h"
 #include "ssh.h"
 
+#if 0
 void *malloc(size_t size);
 void *realloc(void *ptr, size_t size);
 void free(void *ptr);
+#endif
 
 void *xmalloc(size_t size)
 {

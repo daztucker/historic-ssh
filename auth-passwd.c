@@ -15,8 +15,17 @@ the password is valid for the user.
 */
 
 /*
- * $Id: auth-passwd.c,v 1.3 1996/09/08 17:36:51 ttsalo Exp $
+ * $Id: auth-passwd.c,v 1.6 1996/10/30 04:22:43 kivinen Exp $
  * $Log: auth-passwd.c,v $
+ * Revision 1.6  1996/10/30 04:22:43  kivinen
+ * 	Added #ifdef HAVE_SHADOW_H around shadow.h including.
+ *
+ * Revision 1.5  1996/10/29 22:33:59  kivinen
+ * 	log -> log_msg.
+ *
+ * Revision 1.4  1996/10/08 13:50:44  ttsalo
+ * 	Allow long passwords for HP-UX TCB authentication
+ *
  * Revision 1.3  1996/09/08 17:36:51  ttsalo
  * 	Patches for HPUX 10.x shadow passwords from
  * 	vincent@ucthpx.uct.ac.za (Russell Vincent) merged.
@@ -66,7 +75,9 @@ the password is valid for the user.
 # include <prot.h>
 #else /* HAVE_HPUX_TCB_AUTH */
 #ifdef HAVE_ETC_SHADOW
+#ifdef HAVE_SHADOW_H
 #include <shadow.h>
+#endif
 #endif /* HAVE_ETC_SHADOW */
 #endif /* HAVE_HPUX_TCB_AUTH */
 #endif /* HAVE_SCO_ETC_SHADOW */
@@ -153,7 +164,7 @@ int auth_password(const char *server_user, const char *password)
       {
 	/* The user has a SecurID card. */
 	struct SD_CLIENT sd_dat, *sd;
-	log("SecurID authentication for %.100s required.", server_user);
+	log_msg("SecurID authentication for %.100s required.", server_user);
 
 	/*
 	 * if no pass code has been supplied, fail immediately: passing
@@ -161,7 +172,7 @@ int auth_password(const char *server_user, const char *password)
 	 */
 	if (*password == '\0') 
 	  {
-	    log("No pass code given, authentication rejected.");
+	    log_msg("No pass code given, authentication rejected.");
 	    return 0;
 	  }
 
@@ -289,11 +300,11 @@ int auth_password(const char *server_user, const char *password)
                                    (correct_passwd[0] && correct_passwd[1]) ?
                                    correct_passwd : "xx");
 #else /* HAVE_OSF1_C2_SECURITY */
-#ifdef HAVE_SCO_ETC_SHADOW
+#if defined(HAVE_SCO_ETC_SHADOW) || defined(HAVE_HPUX_TCB_AUTH)
   encrypted_password = bigcrypt(password, 
 			     (correct_passwd[0] && correct_passwd[1]) ?
 			     correct_passwd : "xx");
-#else /* HAVE_SCO_ETC_SHADOW */
+#else /* defined(HAVE_SCO_ETC_SHADOW) || defined(HAVE_HPUX_TCB_AUTH) */
   encrypted_password = crypt(password, 
 			     (correct_passwd[0] && correct_passwd[1]) ?
 			     correct_passwd : "xx");

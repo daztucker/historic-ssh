@@ -16,6 +16,14 @@ maximum core dump size.
 
 /*
  * $Log: signals.c,v $
+ * Revision 1.8  1998/05/04 13:37:05  kivinen
+ * 	Fixed SIGPWR code so that will check if SIGPWR is same than
+ * 	SIGINFO and only include it to switch clause if it is
+ * 	different.
+ *
+ * Revision 1.7  1998/04/30 01:56:32  kivinen
+ * 	Added SIGPWR handling.
+ *
  * Revision 1.6  1997/04/21 01:07:28  kivinen
  * 	Added HAVE_INCOMPATIBLE_SIGINFO support.
  *
@@ -90,6 +98,11 @@ void signals_prevent_core()
 #endif
 #if defined(SIGTHAW)
       case SIGTHAW:
+#endif
+#if defined(SIGPWR)
+#if !defined(SIGINFO) || (SIGINFO != SIGPWR)
+      case SIGPWR:
+#endif
 #endif
 	signal(sig, SIG_DFL);
 	break;

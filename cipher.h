@@ -12,8 +12,17 @@ Created: Wed Apr 19 16:50:42 1995 ylo
 */
 
 /*
- * $Id: cipher.h,v 1.4 1996/09/28 12:01:15 ylo Exp $
+ * $Id: cipher.h,v 1.7 1997/03/26 07:11:22 kivinen Exp $
  * $Log: cipher.h,v $
+ * Revision 1.7  1997/03/26 07:11:22  kivinen
+ * 	Fixed prototypes.
+ *
+ * Revision 1.6  1997/03/19 22:26:24  kivinen
+ * 	Removed WITH_3DES ifdefs, as it is mandatory.
+ *
+ * Revision 1.5  1997/03/19 17:35:09  kivinen
+ * 	Made all ciphers optional.
+ *
  * Revision 1.4  1996/09/28 12:01:15  ylo
  * 	Removed TSS (put inside #ifdef WITH_TSS).
  *
@@ -46,8 +55,12 @@ Created: Wed Apr 19 16:50:42 1995 ylo
 #ifdef WITH_TSS
 #include "tss.h"
 #endif /* WITH_TSS */
+#ifdef WITH_ARCFOUR
 #include "arcfour.h"
+#endif /* WITH_ARCFOUR */
+#ifdef WITH_BLOWFISH
 #include "blowfish.h"
+#endif /* WITH_BLOWFISH */
 
 /* Cipher types.  New types can be added, but old types should not be removed
    for compatibility.  The maximum allowed value is 31. */
@@ -69,10 +82,12 @@ typedef struct {
       unsigned char iv[8];
     } idea;
 #endif /* WITHOUT_IDEA */
+#ifdef WITH_DES
     struct {
       DESContext key;
       unsigned char iv[8];
     } des;
+#endif /* WITH_DES */
     struct {
       DESContext key1;
       unsigned char iv1[8];
@@ -84,15 +99,19 @@ typedef struct {
 #ifdef WITH_TSS
     struct tss_context tss;
 #endif /* WITH_TSS */
+#ifdef WITH_ARCFOUR
     ArcfourContext arcfour;
+#endif
+#ifdef WITH_BLOWFISH
     BlowfishContext blowfish;
+#endif /* WITH_BLOWFISH */
   } u;
 } CipherContext;
 
 /* Returns a bit mask indicating which ciphers are supported by this
    implementation.  The bit mask has the corresponding bit set of each
    supported cipher. */
-unsigned int cipher_mask();
+unsigned int cipher_mask(void);
 
 /* Returns the name of the cipher. */
 const char *cipher_name(int cipher);

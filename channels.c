@@ -16,7 +16,7 @@ arbitrary tcp/ip connections, and the authentication agent connection.
 */
 
 #include "includes.h"
-RCSID("$Id: channels.c,v 1.17 1999/12/30 16:25:02 bg Exp $");
+RCSID("$Id: channels.c,v 1.18 2000/02/28 17:53:27 bg Exp $");
 
 #ifndef HAVE_GETHOSTNAME
 #include <sys/utsname.h>
@@ -574,6 +574,10 @@ void channel_input_data(int payload_len)
       channels[channel].type != SSH_CHANNEL_X11_OPEN)
     return; 
 
+  /* same for protocol 1.5 if output end is no longer open */
+  if (!compat13 && channels[channel].ostate != CHAN_OUTPUT_OPEN)
+    return;
+
   /* Get the data. */
   data = packet_get_string(&data_len);
   packet_integrity_check(payload_len, 4 + 4+data_len, SSH_MSG_CHANNEL_DATA);
@@ -990,9 +994,7 @@ void channel_input_port_open(int payload_len)
 	  /* The port is not permitted. */
 	  log("Received request to connect to %.100s:%d, but the request was denied.",
 	      host, host_port);
-	  packet_start(SSH_MSG_CHANNEL_OPEN_FAILURE);
-	  packet_put_int(remote_channel);
-	  packet_send();
+	  goto fail;
 	}
     }
   

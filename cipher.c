@@ -12,7 +12,7 @@ Created: Wed Apr 19 17:41:39 1995 ylo
 */
 
 #include "includes.h"
-RCSID("$Id: cipher.c,v 1.19 2000/02/16 17:20:15 bg Exp $");
+RCSID("$Id: cipher.c,v 1.20 2000/02/28 17:37:21 bg Exp $");
 
 #include "ssh.h"
 #include "cipher.h"
@@ -123,23 +123,22 @@ void
 SSH_3CBC_ENCRYPT(des_key_schedule ks1,
 		 des_key_schedule ks2, des_cblock *iv2,
 		 des_key_schedule ks3, des_cblock *iv3, 
-		 void *_dest, void *_src,
+		 void *dest, void *src,
 		 unsigned int len)
 {
-  char *dest = _dest;
-  char *src = _src;
+  char *const _dest = dest;	/* Can't do pointer arith. on void *. */
   des_cblock iv1;
 
   memcpy(&iv1, iv2, 8);
 
   des_cbc_encrypt(src, dest, len, ks1, &iv1, DES_ENCRYPT);
-  memcpy(&iv1, dest + len - 8, 8);
+  memcpy(&iv1, _dest + len - 8, 8);
 
   des_cbc_encrypt(dest, dest, len, ks2, iv2, DES_DECRYPT);
   memcpy(iv2, &iv1, 8);		/* Note how iv1 == iv2 on entry and exit. */
 
   des_cbc_encrypt(dest, dest, len, ks3, iv3, DES_ENCRYPT);
-  memcpy(iv3, dest + len - 8, 8);
+  memcpy(iv3, _dest + len - 8, 8);
 }
 
 static
@@ -147,20 +146,20 @@ void
 SSH_3CBC_DECRYPT(des_key_schedule ks1,
 		 des_key_schedule ks2, des_cblock *iv2,
 		 des_key_schedule ks3, des_cblock *iv3,
-		 void *_dest, void *_src,
+		 void *dest, void *src,
 		 unsigned int len)
 {
-  char *dest = _dest;
-  char *src = _src;
+  char *const _dest = dest;
+  char *const _src = src;
   des_cblock iv1;
 
   memcpy(&iv1, iv2, 8);
 
   des_cbc_encrypt(src, dest, len, ks3, iv3, DES_DECRYPT);
-  memcpy(iv3, src + len - 8, 8);
+  memcpy(iv3, _src + len - 8, 8);
 
   des_cbc_encrypt(dest, dest, len, ks2, iv2, DES_ENCRYPT);
-  memcpy(iv2, dest + len - 8, 8);
+  memcpy(iv2, _dest + len - 8, 8);
 
   des_cbc_encrypt(dest, dest, len, ks1, &iv1, DES_DECRYPT);
   /* memcpy(&iv1, iv2, 8); */	/* Note how iv1 == iv2 on entry and exit. */

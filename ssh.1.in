@@ -9,7 +9,7 @@
 .\"
 .\" Created: Sat Apr 22 21:55:14 1995 ylo
 .\"
-.\" $Id: ssh.1.in,v 1.6 1999/06/08 07:52:59 bg Exp $
+.\" $Id: ssh.1.in,v 1.7 2000/03/01 17:07:37 bg Exp $
 .\"
 .TH SSH 1 "November 8, 1995" "SSH" "SSH"
 
@@ -390,13 +390,13 @@ to print debugging messages about its progress.  This is helpful in
 debugging connection, authentication, and configuration problems.
 .ne 3
 .TP
-.B \-x
-Disables X11 forwarding.  This can also be specified on a per-host
-basis in a configuration file.
+.B \-X
+Enables X11 forwarding. This can also be specified on a per-host basis
+in a configuration file. X11 forwarding is disabled by default.
 .ne 3
 .TP
-.B \-X
-Enables X11 forwarding.
+.B \-x
+Disables X11 forwarding.
 .ne 3
 .TP
 .B \-C

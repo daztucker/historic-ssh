@@ -1,3 +1,21 @@
+Wed Mar  1 18:07:53 2000  Bjoern Groenvall  <bg@mummel.sics.se>
+
+	* readconf.c (fill_default_options), ssh.1.in: Disable client X11
+ 	forwarding by default.
+
+Mon Feb 28 18:38:04 2000  Bjoern Groenvall  <bg@mummel.sics.se>
+
+	* Patches from Markus:
+	
+	* auth-rsa.c (auth_rsa): Reset flags properly after a failed RSA
+ 	authentication attempt.
+
+	* channels.c (channel_input_port_open): Continue properly after
+ 	receiving a SSH_MSG_CHANNEL_OPEN_FAILURE.
+
+	* packet.c (packet_read_poll): Don't leak memory when reciving
+ 	SSH_MSG_DEBUG.
+
 Wed Feb 16 18:14:09 2000  Bjoern Groenvall  <bg@mummel.sics.se>
 
 	* sshd.c (do_child): Xauthority file moved into protected subdir.

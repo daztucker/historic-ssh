@@ -15,7 +15,7 @@ with the other side.  This same code is used both on client and server side.
 */
 
 #include "includes.h"
-RCSID("$Id: packet.c,v 1.11 1999/11/29 13:36:44 bg Exp $");
+RCSID("$Id: packet.c,v 1.12 2000/02/28 17:53:47 bg Exp $");
 
 #include "xmalloc.h"
 #include "randoms.h"
@@ -502,7 +502,9 @@ int packet_read_poll(int *payload_len_ptr)
   /* Send debug messages as debugging output. */
   if ((unsigned char)buf[0] == SSH_MSG_DEBUG)
     {
-      debug("Remote: %.900s", packet_get_string(NULL));
+      char *msg = packet_get_string(NULL);
+      debug("Remote: %.900s", msg);
+      xfree(msg);
       goto restart;
     }
 

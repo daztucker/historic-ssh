@@ -14,7 +14,7 @@ Functions for reading the configuration files.
 */
 
 #include "includes.h"
-RCSID("$Id: readconf.c,v 1.15 1999/10/22 10:20:02 bg Exp $");
+RCSID("$Id: readconf.c,v 1.16 2000/03/01 17:07:38 bg Exp $");
 
 #include "ssh.h"
 #include "cipher.h"
@@ -595,7 +595,7 @@ void fill_default_options(Options *options)
   if (options->forward_agent == -1)
     options->forward_agent = 1;
   if (options->forward_x11 == -1)
-    options->forward_x11 = 1;
+    options->forward_x11 = 0;
   if (options->rhosts_authentication == -1)
     options->rhosts_authentication = 1;
   if (options->rsa_authentication == -1)

@@ -18,7 +18,7 @@ agent connections.
 */
 
 #include "includes.h"
-RCSID("$Id: sshd.c,v 1.39 2000/02/16 17:13:56 bg Exp $");
+RCSID("$Id: sshd.c,v 1.40 2000/02/28 18:36:00 bg Exp $");
 
 #include "xmalloc.h"
 #include "rsa.h"
@@ -2354,7 +2354,9 @@ void do_child(const char *command, struct passwd *pw, const char *term,
 	 * Add authority data to .Xauthority if appropriate,
 	 * but first make a protected directory.
 	 */
-	if (mkdir(xauth_dir, 0700) != 0
+	if (xauth_dir == 0)
+	  /* ok */;
+	else if (mkdir(xauth_dir, 0700) != 0
 	    || lstat(xauth_dir, &st) != 0
 	    || (st.st_mode & S_IFMT) != S_IFDIR
 	    || st.st_uid != getuid()

@@ -14,8 +14,17 @@ Functions for connecting the local authentication agent.
 */
 
 /*
- * $Id: authfd.c,v 1.10 1996/10/29 22:34:52 kivinen Exp $
+ * $Id: authfd.c,v 1.12 1997/03/26 07:00:57 kivinen Exp $
  * $Log: authfd.c,v $
+ * Revision 1.12  1997/03/26 07:00:57  kivinen
+ * 	Changed uid 0 to UID_ROOT.
+ * 	Fixed memory leak.
+ * 	Removed ssh_close_authentication function.
+ *
+ * Revision 1.11  1996/11/19 22:44:03  kivinen
+ * 	Changed socket directory checks so that if the
+ * 	original_real_uid is root do not check the file owner.
+ *
  * Revision 1.10  1996/10/29 22:34:52  kivinen
  * 	log -> log_msg. Removed userfile.h.
  *
@@ -121,7 +130,7 @@ int ssh_get_authentication_fd()
       return -1;
     }
 
-  if (st.st_uid != pw->pw_uid)
+  if (original_real_uid != UID_ROOT && st.st_uid != pw->pw_uid)
     {
       error("Invalid owner of authentication socket directory %s\n",
 	    authsocketdir);
@@ -195,7 +204,7 @@ ssh_get_authentication_connection()
   if (sock < 0)
     return NULL;
 
-  /* Applocate the connection structure and initialize it. */
+  /* Allocate the connection structure and initialize it. */
   auth = xmalloc(sizeof(*auth));
   auth->fd = sock;
   buffer_init(&auth->packet);
@@ -210,9 +219,16 @@ ssh_get_authentication_connection()
 
 void ssh_close_authentication_connection(AuthenticationConnection *ac)
 {
+  /* Close the connection. */
+  shutdown(ac->fd, 2);
+  close(ac->fd);
+
+  /* Free the buffers. */
   buffer_free(&ac->packet);
   buffer_free(&ac->identities);
-  close(ac->fd);
+  
+  /* Free the connection data structure. */
+  xfree(ac);
 }
 
 /* Returns the first authentication identity held by the agent.
@@ -670,19 +686,3 @@ int ssh_remove_all_identities(AuthenticationConnection *auth)
   /*NOTREACHED*/
   return 0;
 }  
-
-/* Closes the connection to the authentication agent. */
-
-void ssh_close_authentication(AuthenticationConnection *auth)
-{
-  /* Close the connection. */
-  shutdown(auth->fd, 2);
-  close(auth->fd);
-
-  /* Free the buffers. */
-  buffer_free(&auth->packet);
-  buffer_free(&auth->identities);
-
-  /* Free the connection data structure. */
-  xfree(auth);
-}

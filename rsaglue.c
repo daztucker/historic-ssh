@@ -8,7 +8,6 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Tue Apr 11 15:17:50 1995 ylo
-Last modified: Wed Jul 12 00:56:39 1995 ylo
 
 Glue code to be able to do RSA encryption/decryption with RSAREF.  The purpose
 of this file is to permit compiling this software with RSAREF.  Using RSAREF
@@ -18,11 +17,29 @@ using the --with-rsaref configure option.
 
 */
 
+/*
+ * $Id: rsaglue.c,v 1.4 1995/07/26 23:29:34 ylo Exp $
+ * $Log: rsaglue.c,v $
+ * Revision 1.4  1995/07/26  23:29:34  ylo
+ * 	Display a fatal error if key size > 1024 with RSAREF.
+ *
+ * Revision 1.3  1995/07/26  17:08:59  ylo
+ * 	Changed to use new functions in mpaux.c for
+ * 	linearizing/unlinearizing mp-ints.
+ *
+ * Revision 1.2  1995/07/13  01:33:27  ylo
+ * 	Removed "Last modified" header.
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
+
 #include "includes.h"
 #include <gmp.h>
 #include "ssh.h"
 #include "rsa.h"
 #include "getput.h"
+#include "mpaux.h"
 
 #ifdef RSAREF
 
@@ -43,39 +60,14 @@ using the --with-rsaref configure option.
 
 void gmp_to_rsaref(unsigned char *buf, unsigned int len, MP_INT *value)
 {
-  unsigned int i;
-  MP_INT aux;
-  mpz_init_set(&aux, value);
-  for (i = len; i >= 4; i -= 4)
-    {
-      unsigned int limb = mpz_get_ui(&aux);
-      PUT_32BIT(buf + i - 4, limb);
-      mpz_div_2exp(&aux, &aux, 32);
-    }
-  for (; i > 0; i--)
-    {
-      buf[i - 1] = mpz_get_ui(&aux);
-      mpz_div_2exp(&aux, &aux, 8);
-    }
+  mp_linearize_msb_first(buf, len, value);
 }
 
 /* Convert an integer from rsaref to gmp representation. */
 
-void rsaref_to_gmp(MP_INT *value, unsigned char *buf, unsigned int len)
+void rsaref_to_gmp(MP_INT *value, const unsigned char *buf, unsigned int len)
 {
-  unsigned int i;
-  mpz_set_ui(value, 0);
-  for (i = 0; i + 4 <= len; i += 4)
-    {
-      unsigned int limb = GET_32BIT(buf + i);
-      mpz_mul_2exp(value, value, 32);
-      mpz_add_ui(value, value, limb);
-    }
-  for (; i < len; i++)
-    {
-      mpz_mul_2exp(value, value, 8);
-      mpz_add_ui(value, value, buf[i]);
-    }
+  mp_unlinearize_msb_first(value, buf, len);
 }
 
 /* Convert a public key from our representation to rsaref representation. */
@@ -123,6 +115,10 @@ void rsa_public_encrypt(MP_INT *output, MP_INT *input, RSAPublicKey *key,
   R_RSA_PUBLIC_KEY public_key;
   R_RANDOM_STRUCT rands;
 
+  if (key->bits > MAX_RSA_MODULUS_BITS)
+    fatal("RSA key has too many bits for RSAREF to handle (max %d).",
+	  MAX_RSA_MODULUS_BITS);
+
   input_bits = mpz_sizeinbase(input, 2);
   input_len = (input_bits + 7) / 8;
   gmp_to_rsaref(input_data, input_len, input);
@@ -151,6 +147,10 @@ void rsa_private_decrypt(MP_INT *output, MP_INT *input, RSAPrivateKey *key)
   unsigned char output_data[MAX_RSA_MODULUS_LEN];
   unsigned int input_len, output_len, input_bits;
   R_RSA_PRIVATE_KEY private_key;
+
+  if (key->bits > MAX_RSA_MODULUS_BITS)
+    fatal("RSA key has too many bits for RSAREF to handle (max %d).",
+	  MAX_RSA_MODULUS_BITS);
   
   input_bits = mpz_sizeinbase(input, 2);
   input_len = (input_bits + 7) / 8;

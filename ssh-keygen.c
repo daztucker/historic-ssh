@@ -14,8 +14,11 @@ Identity and host key generation and maintenance.
 */
 
 /*
- * $Id: ssh-keygen.c,v 1.9 1997/04/05 21:59:56 kivinen Exp $
+ * $Id: ssh-keygen.c,v 1.10 1997/04/17 04:17:35 kivinen Exp $
  * $Log: ssh-keygen.c,v $
+ * Revision 1.10  1997/04/17 04:17:35  kivinen
+ * 	Removed extra variables.
+ *
  * Revision 1.9  1997/04/05 21:59:56  kivinen
  * 	Added checks that userfile_get_des_1_magic_phrase succeeded
  * 	before using passphrase.
@@ -415,7 +418,6 @@ int do_update_cipher(struct passwd *pw)
   RSAPrivateKey private_key;
   char *passphrase = NULL;
   struct stat st;
-  FILE *f;
 
   /* Read key file name. */
   if (identity_file)

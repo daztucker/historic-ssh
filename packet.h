@@ -14,8 +14,11 @@ Interface for the packet protocol functions.
 */
 
 /*
- * $Id: packet.h,v 1.6 1998/03/27 16:59:16 kivinen Exp $
+ * $Id: packet.h,v 1.7 1998/08/04 00:04:57 kivinen Exp $
  * $Log: packet.h,v $
+ * Revision 1.7  1998/08/04 00:04:57  kivinen
+ * 	Removed socks.h.
+ *
  * Revision 1.6  1998/03/27  16:59:16  kivinen
  * 	Added socks.h include.
  *
@@ -54,10 +57,6 @@ Interface for the packet protocol functions.
 
 #include <gmp.h>
 #include "randoms.h"
-
-#if defined(SOCKS5) && defined(HAVE_SOCKS_H)
-#include <socks.h>
-#endif
 
 /* Sets the socket used for communication.  Disables encryption until
    packet_set_encryption_key is called.  It is permissible that fd_in

@@ -14,33 +14,38 @@ Client-side versions of debug(), log_msg(), etc.  These print to stderr.
 */
 
 /*
- * $Id: log-client.c,v 1.6 1998/05/23 20:21:37 kivinen Exp $
+ * $Id: log-client.c,v 1.7 1999/02/21 19:52:22 ylo Exp $
  * $Log: log-client.c,v $
- * Revision 1.6  1998/05/23  20:21:37  kivinen
- * 	Changed () -> (void).
+ * Revision 1.7  1999/02/21 19:52:22  ylo
+ * 	Intermediate commit of ssh1.2.27 stuff.
+ * 	Main change is sprintf -> snprintf; however, there are also
+ * 	many other changes.
+ *
+ * Revision 1.6  1998/05/23 20:21:37  kivinen
+ *      Changed () -> (void).
  *
  * Revision 1.5  1996/12/04  18:16:15  ttsalo
  *     debug() can now prefix every message with local hostname
  *
  * Revision 1.4  1996/10/29 22:37:59  kivinen
- * 	log -> log_msg.
+ *      log -> log_msg.
  *
  * Revision 1.3  1996/04/26 00:40:12  ylo
- * 	Changed \n\r to \r\n.  They are always written in this order,
- * 	and deviating from this is likely to cause problems.
+ *      Changed \n\r to \r\n.  They are always written in this order,
+ *      and deviating from this is likely to cause problems.
  *
  * Revision 1.2  1996/04/22 23:46:53  huima
- * 	Changed '\n' to '\n\r'. \n alone isn't always enough.
+ *      Changed '\n' to '\n\r'. \n alone isn't always enough.
  *
  * Revision 1.1.1.1  1996/02/18  21:38:12  ylo
- * 	Imported ssh-1.2.13.
+ *      Imported ssh-1.2.13.
  *
  * Revision 1.3  1995/08/21  23:24:44  ylo
- * 	Added support for log_quiet.
+ *      Added support for log_quiet.
  *
  * Revision 1.2  1995/07/13  01:25:51  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
+ *      Removed "Last modified" header.
+ *      Added cvs log.
  *
  * $Endlog$
  */
@@ -59,7 +64,7 @@ static char local_hostname[257];
 #endif
 
 void log_init(char *av0, int on_stderr, int debug, int quiet,
-	      SyslogFacility facility)
+              SyslogFacility facility)
 {
   log_debug = debug;
   log_quiet = quiet;
@@ -152,14 +157,14 @@ void fatal_remove_cleanup(void (*proc)(void *context), void *context)
     {
       cu = *cup;
       if (cu->proc == proc && cu->context == context)
-	{
-	  *cup = cu->next;
-	  xfree(cu);
-	  return;
-	}
+        {
+          *cup = cu->next;
+          xfree(cu);
+          return;
+        }
     }
   fatal("fatal_remove_cleanup: no such cleanup function: 0x%lx 0x%lx\n",
-	(unsigned long)proc, (unsigned long)context);
+        (unsigned long)proc, (unsigned long)context);
 }
 
 /* Executes fatal() cleanups. */
@@ -175,10 +180,10 @@ static void do_fatal_cleanups(void)
 
       /* Call cleanup functions. */
       for (cu = fatal_cleanups; cu; cu = next_cu)
-	{
-	  next_cu = cu->next;
-	  (*cu->proc)(cu->context);
-	}
+        {
+          next_cu = cu->next;
+          (*cu->proc)(cu->context);
+        }
     }
 }
 

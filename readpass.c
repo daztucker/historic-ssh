@@ -14,8 +14,16 @@ Functions for reading passphrases and passwords.
 */
 
 /*
- * $Id: readpass.c,v 1.1.1.1 1996/02/18 21:38:12 ylo Exp $
+ * $Id: readpass.c,v 1.3 1997/03/26 07:15:23 kivinen Exp $
  * $Log: readpass.c,v $
+ * Revision 1.3  1997/03/26 07:15:23  kivinen
+ * 	Fixed prompt quoting so ' will be quoted only if in command
+ * 	line.
+ *
+ * Revision 1.2  1997/03/19 17:36:18  kivinen
+ * 	Quote all unprintable characters in password prompt. Also
+ * 	quote all '-characters.
+ *
  * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
  * 	Imported ssh-1.2.13.
  *
@@ -67,6 +75,8 @@ RETSIGTYPE intr_handler(int sig)
 char *read_passphrase(uid_t uid, const char *prompt, int from_stdin)
 {
   char buf[1024], *cp;
+  unsigned char quoted_prompt[512];
+  unsigned const char *p;
 #ifdef USING_TERMIOS
   struct termios tio;
 #endif
@@ -75,6 +85,7 @@ char *read_passphrase(uid_t uid, const char *prompt, int from_stdin)
 #endif
   FILE *f;
   UserFile uf;
+  int i;
   
   if (from_stdin)
     f = stdin;
@@ -88,11 +99,34 @@ char *read_passphrase(uid_t uid, const char *prompt, int from_stdin)
 	  if (getenv("DISPLAY"))
 	    {
 	      char command[512];
+	      
 	      fprintf(stderr,
 		      "Executing ssh-askpass to query the password...\n");
 	      fflush(stdout);
 	      fflush(stderr);
-	      sprintf(command, "ssh-askpass '%.400s'", prompt);
+	      for(p = prompt, i = 0;
+		  i < sizeof(quoted_prompt) - 4 && *p;
+		  i++, p++)
+		{
+		  if (*p == '\'')
+		    quoted_prompt[i++] = '\\';
+		  if (isprint(*p) || isspace(*p))
+		    quoted_prompt[i] = *p;
+		  else if (iscntrl(*p))
+		    {
+		      quoted_prompt[i++] = '^';
+		      if (*p < ' ')
+			quoted_prompt[i] = *p + '@';
+		      else
+			quoted_prompt[i] = '?';
+		    }
+		  else if (*p > 128)
+		    quoted_prompt[i] = *p;
+		}
+	      quoted_prompt[i] = '\0';
+  
+	      sprintf(command, "ssh-askpass '%.400s'", quoted_prompt);
+	      
 	      uf = userfile_popen(uid, command, "r");
 	      if (uf == NULL)
 		{
@@ -118,9 +152,26 @@ char *read_passphrase(uid_t uid, const char *prompt, int from_stdin)
 	}
     }
 
+  for(p = prompt, i = 0; i < sizeof(quoted_prompt) - 4 && *p; i++, p++)
+    {
+      if (isprint(*p) || isspace(*p))
+	quoted_prompt[i] = *p;
+      else if (iscntrl(*p))
+	{
+	  quoted_prompt[i++] = '^';
+	  if (*p < ' ')
+	    quoted_prompt[i] = *p + '@';
+	  else
+	    quoted_prompt[i] = '?';
+	}
+      else if (*p > 128)
+	quoted_prompt[i] = *p;
+    }
+  quoted_prompt[i] = '\0';
+  
   /* Display the prompt (on stderr because stdout might be redirected). */
   fflush(stdout);
-  fprintf(stderr, "%s", prompt);
+  fprintf(stderr, "%s", quoted_prompt);
   fflush(stderr);
 
   /* Get terminal modes. */

@@ -15,8 +15,11 @@ tty.
 */
 
 /*
- * $Id: pty.h,v 1.1.1.1 1996/02/18 21:38:10 ylo Exp $
+ * $Id: pty.h,v 1.2 1997/04/21 01:03:30 kivinen Exp $
  * $Log: pty.h,v $
+ * Revision 1.2  1997/04/21 01:03:30  kivinen
+ * 	Added pty_cleanup_proc prototype.
+ *
  * Revision 1.1.1.1  1996/02/18 21:38:10  ylo
  * 	Imported ssh-1.2.13.
  *
@@ -50,5 +53,9 @@ void pty_make_controlling_tty(int *ttyfd, const char *ttyname);
 /* Changes the window size associated with the pty. */
 void pty_change_window_size(int ptyfd, int row, int col,
 			    int xpixel, int ypixel);
+
+/* Function to perform cleanup if we get aborted abnormally (e.g., due to a
+   dropped connection). */
+void pty_cleanup_proc(void *context);
 
 #endif /* PTY_H */

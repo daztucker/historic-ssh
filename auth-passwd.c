@@ -15,8 +15,12 @@ the password is valid for the user.
 */
 
 /*
- * $Id: auth-passwd.c,v 1.11 1997/04/17 03:57:05 kivinen Exp $
+ * $Id: auth-passwd.c,v 1.12 1998/01/02 06:14:31 kivinen Exp $
  * $Log: auth-passwd.c,v $
+ * Revision 1.12  1998/01/02 06:14:31  kivinen
+ * 	Fixed kerberos ticket name handling. Added OSF C2 account
+ * 	locking and expiration support.
+ *
  * Revision 1.11  1997/04/17 03:57:05  kivinen
  * 	Kept FILE: prefix in kerberos ticket filename as DCE cache
  * 	code requires it (patch from Doug Engert <DEEngert@anl.gov>).
@@ -555,7 +559,8 @@ int auth_password(const char *server_user, const char *password)
 	      if (ticket)
 		{
 		  if (strcmp(ticket,"none"))
-            	    unlink(ticket);
+		    /* ticket -> FILE:path */
+		    unlink(ticket + 5);
 		  else
                     ticket = NULL;
 		}
@@ -668,7 +673,19 @@ int auth_password(const char *server_user, const char *password)
 #endif /* SECURE_RPC */
 
 #ifdef HAVE_OSF1_C2_SECURITY
-    osf1c2_getprpwent(correct_passwd, saved_pw_name, sizeof(correct_passwd));
+  switch (osf1c2_getprpwent(correct_passwd, saved_pw_name,
+			    sizeof(correct_passwd)))
+    {    /* jcastro@ist.utl.pt Sep 1997 */
+    case 0: /* All ok */ break;
+    case 1:
+      packet_disconnect("\n\tYour account is locked ...\n");
+      return 0;
+      break;
+    case 2:
+      packet_disconnect("\n\tYour password expired ...\n");
+      return 0;
+      break;
+    }
 #else /* HAVE_OSF1_C2_SECURITY */
   /* If we have shadow passwords, lookup the real encrypted password from
      the shadow file, and replace the saved encrypted password with the

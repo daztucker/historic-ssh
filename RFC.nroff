@@ -1,7 +1,10 @@
 .\" -*- nroff -*-
 .\"
-.\" $Id: RFC.nroff,v 1.11 1998/04/30 01:49:48 kivinen Exp $
+.\" $Id: RFC.nroff,v 1.12 1999/11/17 17:04:38 tri Exp $
 .\" $Log: RFC.nroff,v $
+.\" Revision 1.12  1999/11/17 17:04:38  tri
+.\" 	Fixed copyright notices.
+.\"
 .\" Revision 1.11  1998/04/30 01:49:48  kivinen
 .\" 	Fixed phone numbers.
 .\"
@@ -1866,7 +1869,7 @@ Additional Information
 Additional information (especially on the implementation and mailing
 lists) is available via WWW at http://www.cs.hut.fi/ssh.
 
-Comments should be sent to Tatu Ylonen <ylo@cs.hut.fi> or the SSH
+Comments should be sent to Tatu Ylonen <ylo@ssh.fi> or the SSH
 Mailing List <ssh@clinet.fi>.
 
 .ti 0
@@ -1882,5 +1885,5 @@ FIN-02150 Espoo, Finland
 
 Phone: +358-0-4354-3205
 Fax: +358-0-4354-3206
-EMail: ylo@cs.hut.fi
+EMail: ylo@ssh.fi
 .TE

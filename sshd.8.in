@@ -2,15 +2,19 @@
 .\"
 .\" sshd.8.in
 .\"
-.\" Author: Tatu Ylonen <ylo@cs.hut.fi>
+.\" Author: Tatu Ylonen <ylo@ssh.fi>
 .\"
-.\" Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-.\"                    All rights reserved
+.\" Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+.\" Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+.\"                         All rights reserved
 .\"
 .\" Created: Sat Apr 22 21:55:14 1995 ylo
 .\"
-.\" $Id: sshd.8.in,v 1.21 1998/07/08 00:41:22 kivinen Exp $
+.\" $Id: sshd.8.in,v 1.22 1999/11/17 17:04:58 tri Exp $
 .\" $Log: sshd.8.in,v $
+.\" Revision 1.22  1999/11/17 17:04:58  tri
+.\" 	Fixed copyright notices.
+.\"
 .\" Revision 1.21  1998/07/08 00:41:22  kivinen
 .\" 	Changed to do similar commercial #ifdef processing than other
 .\" 	files.

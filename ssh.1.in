@@ -2,15 +2,19 @@
 .\"
 .\" ssh.1.in
 .\"
-.\" Author: Tatu Ylonen <ylo@cs.hut.fi>
+.\" Author: Tatu Ylonen <ylo@ssh.fi>
 .\"
-.\" Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-.\"                    All rights reserved
+.\" Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+.\" Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+.\"                         All rights reserved
 .\"
 .\" Created: Sat Apr 22 21:55:14 1995 ylo
 .\"
-.\" $Id: ssh.1.in,v 1.18 1998/07/08 00:41:03 kivinen Exp $
+.\" $Id: ssh.1.in,v 1.19 1999/11/17 17:04:57 tri Exp $
 .\" $Log: ssh.1.in,v $
+.\" Revision 1.19  1999/11/17 17:04:57  tri
+.\" 	Fixed copyright notices.
+.\"
 .\" Revision 1.18  1998/07/08 00:41:03  kivinen
 .\" 	Changed to do similar commercial #ifdef processing than other
 .\" 	files. Fixed privileged typo.

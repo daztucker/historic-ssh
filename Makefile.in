@@ -1,15 +1,22 @@
 #
 # Makefile.in
 #
-# Author: Tatu Ylonen <ylo@cs.hut.fi>
+# Author: Tatu Ylonen <ylo@ssh.fi>
 #
-# Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
+# Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
 #                    All rights reserved
 #
 # Created: Wed Mar 22 17:37:49 1995 ylo
 #
-# $Id: Makefile.in,v 1.51 1999/04/29 07:51:59 tri Exp $
+# $Id: Makefile.in,v 1.53 2000/03/10 17:56:22 tri Exp $
 # $Log: Makefile.in,v $
+# Revision 1.53  2000/03/10 17:56:22  tri
+# 	Added fix to circumvent AIX compiler bug that makes suid
+# 	programs that has been compiled with -L flags insecure.
+#
+# Revision 1.52  1999/11/17 17:04:37  tri
+# 	Fixed copyright notices.
+#
 # Revision 1.51  1999/04/29 07:51:59  tri
 # 	Replaced OSF1/C2 security support with more complete SIA
 #         (Security Integration Architecture) support by Tom Woodburn.
@@ -301,12 +308,12 @@ TIS_MAP_FILE	= $(etcdir)/sshd_tis.map
 SHELL = /bin/sh
 
 GMPDIR 		= gmp-2.0.2-ssh-2
-GMPLIBS 	= -L$(GMPDIR) -lgmp
+GMPLIBS 	= @ssh_gmp_ldadd_options@
 GMPDEP 		= $(GMPDIR)/gmp.h $(GMPDIR)/libgmp.a
 
 ZLIBDIR		= zlib-1.0.4
 ZLIBDEP		= $(ZLIBDIR)/libz.a
-ZLIBLIBS	= -L$(ZLIBDIR) -lz
+ZLIBLIBS	= @ssh_zlib_ldadd_options@
 
 RSAREFDIR	= rsaref2
 RSAREFSRCDIR 	= $(RSAREFDIR)/source

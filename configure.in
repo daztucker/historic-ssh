@@ -1,9 +1,9 @@
 #
 # configure.in
 #
-# Author: Tatu Ylonen <ylo@cs.hut.fi>
+# Author: Tatu Ylonen <ylo@ssh.fi>
 #
-# Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
+# Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
 #                    All rights reserved
 #
 # Created: Wed Mar 22 18:02:48 1995 ylo
@@ -1327,6 +1327,25 @@ AC_MSG_RESULT($PIDDIR)
 AC_CONFIG_SUBDIRS(gmp-2.0.2-ssh-2)
 
 AC_ARG_PROGRAM
+
+if test -n "$os_aix"; then
+  # AIX compiler is broken.  It embeds -L flagged paths (even ones starting
+  # with .. into LDPATH that is used in dynamical linking.  This is 
+  # prevented by omitting -L and internal -l flags and providing path
+  # names to the libraries within ssh source tree.
+  if test -z "$GCC"; then
+    ssh_gmp_ldadd_options='-bnolibpath $(GMPDIR)/libgmp.a'
+    ssh_zlib_ldadd_options='$(ZLIBDIR)/libz.a'
+  else
+    ssh_gmp_ldadd_options='$(GMPDIR)/libgmp.a'
+    ssh_zlib_ldadd_options='$(ZLIBDIR)/libz.a'
+  fi
+else
+  ssh_gmp_ldadd_options='-L$(GMPDIR) -lgmp'
+  ssh_zlib_ldadd_options='-L$(ZLIBDIR) -lz'
+fi
+AC_SUBST(ssh_gmp_ldadd_options)
+AC_SUBST(ssh_zlib_ldadd_options)
 
 AC_SUBST(ETCDIR)
 AC_SUBST(PIDDIR)

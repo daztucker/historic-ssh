@@ -8,12 +8,23 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Mon Mar 27 03:52:05 1995 ylo
-Last modified: Tue Jul 11 14:07:29 1995 ylo
 
 This file contains functions for reading and writing identity files, and
 for reading the passphrase from the user.
 
 */
+
+/*
+ * $Id: authfile.c,v 1.3 1995/07/13 01:16:38 ylo Exp $
+ * $Log: authfile.c,v $
+ * Revision 1.3  1995/07/13  01:16:38  ylo
+ * 	Removed "Last modified" header.
+ *
+ * Revision 1.2  1995/07/13  01:11:52  ylo
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
 
 #include "includes.h"
 #include <gmp.h>

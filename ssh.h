@@ -14,8 +14,11 @@ Generic header file for ssh.
 */
 
 /*
- * $Id: ssh.h,v 1.21 1998/01/02 06:23:01 kivinen Exp $
+ * $Id: ssh.h,v 1.22 1998/03/27 17:02:55 kivinen Exp $
  * $Log: ssh.h,v $
+ * Revision 1.22  1998/03/27 17:02:55  kivinen
+ * 	Added gateway ports option. Added ignore root rhosts option.
+ *
  * Revision 1.21  1998/01/02 06:23:01  kivinen
  * 	Renamed SSH_AUTHENTICATION_SOCKET to SSH_AUTH_SOCK.
  *
@@ -438,7 +441,8 @@ void ssh_login(RandomState *state, int host_key_valid, RSAPrivateKey *host_key,
    consider .rhosts and .shosts (/etc/hosts.equiv will still be used). 
    If strict_modes is true, checks ownership and modes of .rhosts/.shosts. */
 int auth_rhosts(struct passwd *pw, const char *client_user,
-		int ignore_rhosts, int strict_modes);
+		int ignore_rhosts, int ignore_root_rhosts,
+		int strict_modes);
 
 /* Tries to authenticate the user using the .rhosts file and the host using
    its host key.  Returns true if authentication succeeds. */
@@ -446,7 +450,7 @@ int auth_rhosts_rsa(RandomState *state,
 		    struct passwd *pw, const char *client_user,
 		    unsigned int bits, MP_INT *client_host_key_e,
 		    MP_INT *client_host_key_n, int ignore_rhosts,
-		    int strict_modes);
+		    int ignore_root_rhosts, int strict_modes);
 
 /* Tries to authenticate the user using password.  Returns true if
    authentication succeeds. */
@@ -694,7 +698,8 @@ char *channel_open_message(void);
    channel to host:port from remote side.  This never returns if there
    was an error. */
 void channel_request_local_forwarding(int port, const char *host,
-				      int remote_port);
+				      int remote_port,
+				      int gateway_ports);
 
 /* Initiate forwarding of connections to port "port" on remote host through
    the secure channel to host:port from local side.  This never returns

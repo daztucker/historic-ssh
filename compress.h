@@ -2,10 +2,11 @@
 
 compress.h
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Wed Oct 25 22:12:46 1995 ylo
 
@@ -14,13 +15,16 @@ Interface to packet compression for ssh.
 */
 
 /*
- * $Id: compress.h,v 1.2 1997/03/26 07:11:32 kivinen Exp $
+ * $Id: compress.h,v 1.3 1999/11/17 17:04:42 tri Exp $
  * $Log: compress.h,v $
+ * Revision 1.3  1999/11/17 17:04:42  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.2  1997/03/26 07:11:32  kivinen
- * 	Fixed prototypes.
+ *      Fixed prototypes.
  *
  * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
- * 	Imported ssh-1.2.13.
+ *      Imported ssh-1.2.13.
  *
  * $EndLog$
  */

@@ -14,8 +14,12 @@ Server main loop for handling the interactive session.
 */
 
 /*
- * $Id: serverloop.c,v 1.11 1997/03/26 07:16:11 kivinen Exp $
+ * $Id: serverloop.c,v 1.12 1997/04/05 21:52:54 kivinen Exp $
  * $Log: serverloop.c,v $
+ * Revision 1.12  1997/04/05 21:52:54  kivinen
+ * 	Fixed closing of pty, and changed it to use shutdown first and
+ * 	close the pty only after pty have been released.
+ *
  * Revision 1.11  1997/03/26 07:16:11  kivinen
  * 	Fixed idle_time code.
  *
@@ -381,20 +385,20 @@ void wait_until_can_do_something(fd_set *readset, fd_set *writeset,
       FD_ZERO(writeset);
     }
   
-  /* If the child has terminated and there was no data, close all descriptors
-     to it. */
+  /* If the child has terminated and there was no data, shutdown all
+     descriptors to it. */
   if (ret <= 0 && child_terminated && !child_just_terminated)
     {
       if (fdout != -1)
-	close(fdout);
-      if (fderr != -1)
-	close(fderr);
-      if (fdin != -1 && fdin != fdout)
-	close(fdin);
+	shutdown(fdout, 0);
       fdout = -1;
       fdout_eof = 1;
+      if (fderr != -1)
+	shutdown(fderr, 0);
       fderr = -1;
       fderr_eof = 1;
+      if (fdin != -1)
+	shutdown(fdin, 1);
       fdin = -1;
     }
   else
@@ -490,10 +494,8 @@ void process_output(fd_set *writeset)
 	    {
 	      debug("Process_output: write to fdin failed, len = %d : %.50s",
 		    len, strerror(errno));
-	      if (fdin == fdout)
+	      if (fdin != -1)
 		shutdown(fdin, 1); /* We will no longer send. */
-	      else
-		close(fdin);
 	      fdin = -1;
 	    }
 	}
@@ -624,10 +626,8 @@ void server_loop(int pid, int fdin_arg, int fdout_arg, int fderr_arg)
 	 cause a real eof by closing fdin. */
       if (stdin_eof && fdin != -1 && buffer_len(&stdin_buffer) == 0)
 	{
-	  if (fdin == fdout)
+	  if (fdin != -1)
 	    shutdown(fdin, 1); /* We will no longer send. */
-	  else
-	    close(fdin);
 	  fdin = -1;
 	}
 

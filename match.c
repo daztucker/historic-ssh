@@ -2,10 +2,11 @@
 
 match.c
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Thu Jun 22 01:17:50 1995 ylo
 
@@ -14,32 +15,35 @@ Simple pattern matching, with '*' and '?' as wildcards.
 */
 
 /*
- * $Id: match.c,v 1.7 1998/07/08 01:08:02 kivinen Exp $
+ * $Id: match.c,v 1.8 1999/11/17 17:04:47 tri Exp $
  * $Log: match.c,v $
+ * Revision 1.8  1999/11/17 17:04:47  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.7  1998/07/08 01:08:02  kivinen
- * 	Added more conts, fixed typo.
+ *      Added more conts, fixed typo.
  *
  * Revision 1.6  1998/07/08 01:05:11  kivinen
- * 	Added consts.
+ *      Added consts.
  *
  * Revision 1.5  1998/07/08 00:44:44  kivinen
- * 	Added match_host. Changed match_user to use it.
+ *      Added match_host. Changed match_user to use it.
  *
  * Revision 1.4  1998/06/11 00:07:36  kivinen
- * 	Added match_user function.
+ *      Added match_user function.
  *
  * Revision 1.3  1997/04/27  22:19:35  kivinen
- * 	Fixed typo.
+ *      Fixed typo.
  *
  * Revision 1.2  1997/04/27 21:52:05  kivinen
- * 	Added F-SECURE stuff. Added match_port function.
+ *      Added F-SECURE stuff. Added match_port function.
  *
  * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
- * 	Imported ssh-1.2.13.
+ *      Imported ssh-1.2.13.
  *
  * Revision 1.2  1995/07/13  01:27:07  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
+ *      Removed "Last modified" header.
+ *      Added cvs log.
  *
  * $Endlog$
  */
@@ -50,7 +54,7 @@ Simple pattern matching, with '*' and '?' as wildcards.
 
 /* Returns true if the given string matches the pattern (which may contain
    ? and * as wildcards), and zero if it does not match. */
-	  
+          
 int match_pattern(const char *s, const char *pattern)
 {
   while (1)
@@ -62,43 +66,43 @@ int match_pattern(const char *s, const char *pattern)
       /* Process '*'. */
       if (*pattern == '*')
         {
-	  /* Skip the asterisk. */
-	  pattern++;
+          /* Skip the asterisk. */
+          pattern++;
 
-	  /* If at end of pattern, accept immediately. */
+          /* If at end of pattern, accept immediately. */
           if (!*pattern)
             return 1;
 
-	  /* If next character in pattern is known, optimize. */
+          /* If next character in pattern is known, optimize. */
           if (*pattern != '?' && *pattern != '*')
             {
-	      /* Look instances of the next character in pattern, and try
-		 to match starting from those. */
+              /* Look instances of the next character in pattern, and try
+                 to match starting from those. */
               for (; *s; s++)
                 if (*s == *pattern &&
                     match_pattern(s + 1, pattern + 1))
                   return 1;
-	      /* Failed. */
+              /* Failed. */
               return 0;
             }
 
-	  /* Move ahead one character at a time and try to match at each
-	     position. */
+          /* Move ahead one character at a time and try to match at each
+             position. */
           for (; *s; s++)
             if (match_pattern(s, pattern))
               return 1;
-	  /* Failed. */
+          /* Failed. */
           return 0;
         }
 
       /* There must be at least one more character in the string.  If we are
-	 at the end, fail. */
+         at the end, fail. */
       if (!*s)
         return 0;
 
       /* Check if the next character of the string is acceptable. */
       if (*pattern != '?' && *pattern != *s)
-	return 0;
+        return 0;
       
       /* Move to the next character, both in string and in pattern. */
       s++;
@@ -126,8 +130,8 @@ int match_host(const char *host, const char *ip, const char *pattern)
   for(p = pattern; *p; p++)
     if (!(isdigit(*p) || *p == '.' || *p == '?' || *p == '*'))
       {
-	is_ip_pattern = 0;
-	break;
+        is_ip_pattern = 0;
+        break;
       }
   if (is_ip_pattern)
     {
@@ -147,7 +151,7 @@ int match_host(const char *host, const char *ip, const char *pattern)
    (tridge, May 1998)
 */
 int match_user(const char *user, const char *host, const char *ip,
-	       const char *pattern)
+               const char *pattern)
 {
   int ret;
   char *p2;

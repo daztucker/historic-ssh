@@ -14,8 +14,14 @@ Definitions for server configuration data and for the functions reading it.
 */
 
 /*
- * $Id: servconf.h,v 1.7 1997/04/27 21:51:44 kivinen Exp $
+ * $Id: servconf.h,v 1.9 1998/01/03 06:42:11 kivinen Exp $
  * $Log: servconf.h,v $
+ * Revision 1.9  1998/01/03 06:42:11  kivinen
+ * 	Added allow/deny groups option.
+ *
+ * Revision 1.8  1998/01/02 06:20:45  kivinen
+ * 	Added xauthlocation and checkmail options.
+ *
  * Revision 1.7  1997/04/27 21:51:44  kivinen
  * 	Added F-SECURE stuff. Added {Allow,Deny}Forwarding{To,Port}
  * 	feature. Added {Allow,Deny}Users feature from Steve Kann
@@ -53,6 +59,8 @@ Definitions for server configuration data and for the functions reading it.
 #define MAX_DENY_HOSTS		256 /* Max # hosts on deny list. */
 #define MAX_ALLOW_USERS		256 /* Max # users on allow list. */
 #define MAX_DENY_USERS		256 /* Max # users on deny list. */
+#define MAX_ALLOW_GROUPS	256 /* Max # groups on allow list. */
+#define MAX_DENY_GROUPS		256 /* Max # groups on deny list. */
 
 #ifdef F_SECURE_COMMERCIAL
 #define MAX_ALLOW_FORWD_TO	256 /* Max # forwardingto on allow list. */
@@ -100,6 +108,7 @@ typedef struct
 				   password (first login), or password
 				   too old. */
   int umask;			/* Umask */
+  int check_mail;		/* If true, check mail spool at login */
   unsigned int num_allow_hosts;
   char *allow_hosts[MAX_ALLOW_HOSTS];
   unsigned int num_deny_hosts;
@@ -108,7 +117,13 @@ typedef struct
   char *allow_users[MAX_ALLOW_USERS];
   unsigned int num_deny_users;
   char *deny_users[MAX_DENY_USERS];
+  unsigned int num_allow_groups;
+  char *allow_groups[MAX_ALLOW_GROUPS];
+  unsigned int num_deny_groups;
+  char *deny_groups[MAX_DENY_GROUPS];
 
+  char *xauth_path;
+  
 #ifdef F_SECURE_COMMERCIAL
 
 

@@ -48,6 +48,7 @@ script accepts several options
   --with-socks5[=PATH]	Include SOCKS5 (firewall traversal) support.
   --without-idea	Don't include IDEA (see below).
   --with-securid[=PATH] Support for the SecurID card (see README.SECURID).
+  --with-tis=PATH       Support for the Tis authsrv (see README.TIS).
   --enable-warnings	Adds -Wall to CFLAGS if using gcc.
 
 You may also want to configure the following variables:
@@ -96,20 +97,24 @@ This software has been used at least in the following environments.
 	BSD 4.4; several platforms
 	BSD/OS 1.1, 2.0.1; i486
 	BSD/386 1.1; i386
-	BSDI 2.1; x86
+	BSDI 2.1; x86 (using gnu make)
 	ConvexOS 10.1; Convex
+	Digital Unix 4.0, 4.0A, 4.0B; Alpha
 	DGUX 5.4R2.10; DGUX
 	FreeBSD 1.x, 2.x; Pentium
 	HPUX 7.x, 9.x, 10.0; HPPA
 	IRIX 5.2, 5.3; SGI Indy
 	IRIX 6.0.1; Mips-R8000
 	Linux 1.2.x, 2.0.x Slackware 2.x, 3.x, RedHat 2.1, 3.0; i486, Sparc
+	Linux 3.0.3, 4.0; Alpha
 	Linux/Mach3, Macintosh(PowerPC)
+	Linux/m68k (1.2.x, 2.0.x, 2.1.x)
 	Mach3; Mips
 	Mach3/Lites; i386
 	Machten 2.2VM (m68k); Macintosh
 	NCR Unix 3.00; NCR S40
 	NetBSD 1.0A, 1.1, 1.2; Pentium, Sparc, Mac68k, Alpha
+	OpenBSD 2.0; x86.
 	NextSTEP 3.3; 68040
 	OSF/1 3.0, 3.2, 3.2; Alpha
 	Sequent Dynix/ptx 3.2.0 V2.1.0; i386

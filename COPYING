@@ -206,7 +206,7 @@ A copy can be found in gmp-2.0/COPYING.LIB.
 
 The zlib compression library is copyright Jean-loup Gailly and Mark Adler.
 Anyone is permitted to use the library for any purpose.  A copy of the
-license conditions can be found in zlib-1.0.3/README. 
+license conditions can be found in zlib-1.0.4/README. 
 
 The make-ssh-known-hosts script was contributed by Tero Kivinen
 <kivinen@niksula.hut.fi> and is distributed under the GNU General

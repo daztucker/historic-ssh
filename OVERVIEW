@@ -53,7 +53,7 @@ these programs.
   Compression Library
   
     - Ssh uses the GNU GZIP compression library (ZLIB).  It resides in
-      the zlib095 subdirectory.
+      the zlib-1.0.4 subdirectory.
 
   Encryption/Decryption
 

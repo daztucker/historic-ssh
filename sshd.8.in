@@ -9,8 +9,29 @@
 .\"
 .\" Created: Sat Apr 22 21:55:14 1995 ylo
 .\"
-.\" $Id: sshd.8.in,v 1.3 1996/10/29 22:47:36 kivinen Exp $
+.\" $Id: sshd.8.in,v 1.9 1997/03/27 03:16:41 kivinen Exp $
 .\" $Log: sshd.8.in,v $
+.\" Revision 1.9  1997/03/27 03:16:41  kivinen
+.\" 	Added kerberos patches from Glenn Machin.
+.\" 	Added USELOGIN patches from Brian Cully.
+.\"
+.\" Revision 1.8  1997/03/26 05:29:08  kivinen
+.\" 	Documented IdleTimeout option and idle-timeout setting in
+.\" 	authorized_keys.
+.\"
+.\" Revision 1.7  1997/03/25 05:43:18  kivinen
+.\" 	Updated. Changed ylo's email to @ssh.fi.
+.\"
+.\" Revision 1.6  1997/03/19 17:45:53  kivinen
+.\" 	Added TIS authentication code from Andre April
+.\" 	<Andre.April@cediti.be>.
+.\"
+.\" Revision 1.5  1996/11/27 15:45:38  ttsalo
+.\"     Added X11DisplayOffset-option
+.\"
+.\" Revision 1.4  1996/11/12 15:56:19  ttsalo
+.\"       Fixed a typo
+.\"
 .\" Revision 1.3  1996/10/29 22:47:36  kivinen
 .\" 	Documented ListenAddress.
 .\"
@@ -137,7 +158,8 @@ from those offered by the server.
 Next, the server and the client enter an authentication dialog.  The
 client tries to authenticate itself using \|\s+2.\s0rhosts
 authentication, \|\s+2.\s0rhosts authentication combined with RSA host
-authentication, RSA challenge-response authentication, or password
+authentication, RSA challenge-response authentication, TIS channenge
+response authentication, or password
 based authentication.
 .LP
 Rhosts authentication is normally disabled
@@ -236,7 +258,7 @@ reads configuration data from
 contains keyword-value pairs, one per line.  Lines starting with '#'
 and empty lines are interpreted as comments.
 
-The following keywords are possible.
+The following keywords are possible. Keywords are case insensitive. 
 .TP
 .B AllowHosts
 This keyword can be followed by any number of host name patterns,
@@ -265,6 +287,12 @@ the privacy of users and is not recommended.  The argument must be
 .B HostKey
 Specifies the file containing the private host key (default
 .IR @ETCDIR@/ssh_host_key ").
+.TP
+.B IdleTimeout time
+Sets idle timeout limit to time in seconds (s or nothing after
+number), in minutes (m), in hours (h), in days (d), or in weeks (w).
+If the connection have been idle (all channels) for that long time the
+child process is killed with SIGHUP, and connection is closed down. 
 .TP
 .B IgnoreRhosts
 Specifies that rhosts and shosts files will not be used in
@@ -376,6 +404,11 @@ with successful RSA host authentication is allowed.  The default is "yes".
 .B RSAAuthentication
 Specifies whether pure RSA authentication is allowed.  The default is "yes".
 .TP
+.B SilentDeny
+Specifies wheter denied (or not allowed) connections are denied
+silently (just close the connection, no logging etc) or are they
+closed cleanly (send error message and log connection attempt).
+.TP
 .B ServerKeyBits
 Defines the number of bits in the server key.  The minimum value is
 512, and the default is 768.
@@ -392,10 +425,44 @@ Gives the facility code that is used when logging messages from
 The possible values are: DAEMON, USER, AUTH, LOCAL0, LOCAL1, LOCAL2,
 LOCAL3, LOCAL4, LOCAL5, LOCAL6, LOCAL7.  The default is DAEMON.
 .TP
+.B TISAuthentication
+Specifies wether authentication through TIS
+.B authsrv
+(8) is allowed. The default is "no".
+.TP
+.B Umask
+Sets default umask for sshd and its childs. Remember to add 0 in front
+of the number to make it octal. Default is to not set umask at all. 
+.TP
 .B X11Forwarding
 Specifies whether X11 forwarding is permitted.  The default is "yes".
 Note that disabling X11 forwarding does not improve security in any
 way, as users can always install their own forwarders.
+.TP
+.B X11DisplayOffset
+Specifies the first display number available for sshd's X11 
+forwarding. This prevents sshd from interfering with real X11
+servers.
+.TP
+.B AllowTcpForwarding
+Specifies whether tcp forwarding is permitted.  The default is "no".
+Note that disabling tcp forwarding does not improve security in any
+way, as users can always install their own forwarders.
+.TP
+.B KerberosAuthentication
+Specifies whether Kerberos V5 authentication is allowed. This can
+be in the form of a Kerberos ticket, or if PasswordAuthentication
+is yes, the password provided by the user will be validated through
+the Kerberos KDC or DCE Security Server. Default is yes.
+.TP
+.B KerberosOrLocalPasswd
+If set then if password authentication through Kerberos fails then
+the password will be validated via any additional local mechanism
+such as /etc/passwd or SecurID. Default is no.
+.TP
+.B KerberosTgtPassing
+Specifies whether a Kerberos V5 TGT may be forwarded to the server.
+Default is yes.
 
 .SH LOGIN PROCESS
 
@@ -495,6 +562,12 @@ Specifies that the string is to be added to the environment when
 logging in using this key.  Environment variables set this way
 override other default environment values.  Multiple options of this
 type are permitted.
+.TP
+.B idle-timeout=time
+Sets idle timeout limit to time in seconds (s or nothing after
+number), in minutes (m), in hours (h), in days (d), or in weeks (w).
+If the connection have been idle (all channels) for that long time the
+child process is killed with SIGHUP, and connection is closed down. 
 .TP
 .B no-port-forwarding
 Forbids TCP/IP forwarding when this key is used for authentication.
@@ -649,7 +722,7 @@ compiled with the \-\-with\-rhosts configuration option).  The file must
 be writable only by the user; it is recommended that it not be
 accessible by others.
 
-If is also possible to use netgroups in the file.  Either host or user
+It is also possible to use netgroups in the file.  Either host or user
 name may be of the form +@groupname to specify all hosts or all users
 in the group.
 .TP
@@ -732,7 +805,13 @@ readable by anyone else.
 Like $HOME/\s+2.\s0ssh/rc, but run with /bin/sh.  This can be used to specify
 machine-specific login-time initializations globally.  This file
 should be writable only by root, and should be world-readable.
-
+.TP
+.I @ETCDIR@/sshd_tis.map
+Establishes a mapping between a local username and its corresponding
+name in the TIS database. Each line contains the local name followed
+by a ":" followed by the corresponding name. If the file does not
+exist or the user is not found, the corresponding name in the TIS
+database is supposed to be the same.
 
 .SH INSTALLATION
 .LP
@@ -754,7 +833,7 @@ immediately to <ssh-bugs@cs.hut.fi>.
 
 .SH AUTHOR
 .LP
-Tatu Ylonen <ylo@cs.hut.fi>
+Tatu Ylonen <ylo@ssh.fi>
 .LP
 Information about new releases, mailing lists, and other related
 issues can be found from the ssh WWW home page at

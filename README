@@ -313,7 +313,7 @@ there is no doubt.)
 
 The RSA private key can be protected with a passphrase.  The
 passphrase can be any string; it is hashed with MD5 to produce an
-encryption key for IDEA, which is used to encrypt the private part of
+encryption key for 3DES, which is used to encrypt the private part of
 the key file.  With passphrase, authorization requires access to the key
 file and the passphrase.  Without passphrase, authorization only
 depends on possession of the key file.
@@ -437,8 +437,11 @@ O'Sullivan, Mikael Suokas, Heikki Suonsivu, Corey Satten, Jakob
 Schlyter, Wayne Schroeder, Harlan Stenn, Tomasz Surmacz, Holger Trapp,
 Mark Treacy, Dragan Vecerina, Wietse Venema, Alvar Vinacua, Russell
 Vincent, Petri Virkkula, Michael Warfield, Brian Weaver, Peter Wemm,
-Mike Williams, and Christophe Wolfhugel.  My apologies to people whom I
-have forgotten to list.
+Mike Williams, Christophe Wolfhugel, Andre April, Arne Juul, Andy
+Polyakov, LaMont Jones, Witse Venema, Charles M. Hannum, Jay Schuster,
+Kojima Hajime, Glenn Machin, and Brian Cully.
+
+My apologies to people whom I have forgotten to list.
 
 Thanks also go to Philip Zimmermann, whose PGP software and the
 associated legal battle provided inspiration, motivation, and many

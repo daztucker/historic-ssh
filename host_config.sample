@@ -18,6 +18,7 @@
 #   RhostsAuthentication yes
 #   RhostsRSAAuthentication yes
 #   RSAAuthentication yes
+#   TISAuthentication no
 #   PasswordAuthentication yes
 #   FallBackToRsh yes
 #   UseRsh no

@@ -12,6 +12,7 @@ IgnoreRhosts no
 StrictModes yes
 QuietMode no
 X11Forwarding yes
+X11DisplayOffset 10
 FascistLogging no
 PrintMotd yes
 KeepAlive yes
@@ -21,6 +22,9 @@ RhostsRSAAuthentication yes
 RSAAuthentication yes
 PasswordAuthentication yes
 PermitEmptyPasswords yes
+UseLogin no
 # PidFile /u/zappa/.ssh/pid
 # AllowHosts *.our.com friend.other.com
 # DenyHosts lowsecurity.theirs.com *.evil.org evil.org
+# Umask 022
+# SilentDeny on

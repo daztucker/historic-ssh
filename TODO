@@ -5,11 +5,6 @@ Merge rdist into the ssh distribution. -> ssh-1.3.1
   - -P arguments
   - configure/makefile
 
-Check TIS FWTK/authsrv (and FWTK authentication in general).  Message
-from rsnyder@mobster.cit.ge.com.  ftp://ftp.tis.com/pub/firewalls/toolkit.
-Patches from Jacob Schripsema <J.Schripsema@hdxx05.unix.telecom.ptt.nl>.
-Merge into 1.2.14.
-
 Update protocol to send information about the accepted authentication
 methods for the particular user after the user has been identified.
 -> ssh-1.3.1
@@ -61,8 +56,6 @@ Add client option Verbose (same as -v option).
 
 Provide option to use system login(1) instead of ssh builtin login.
 
-scp sometimes gives Z_DATA_ERROR in inflate (alpha?).  (bortzmeyer@pasteur.fr)
-
 Fix (note not always the suggested fix):
 > rfc-pg.c:56:exit used without including <stdlib.h>
 > remove.c:5:unlink used without including <unistd.h>
@@ -79,11 +72,6 @@ Brad Karp <karp@eecs.harvard.edu>
 
 /etc/issue or equivalent.
 
-check account expirations and such immediately at the beginning of
-authentication.
-
-Should somehow process password changes...
-
 Client should prompt for password multiple times.
 
 Check operation with RSAREF on alpha.
@@ -98,4 +86,8 @@ several accounts with the same uid.
 
 Check that log messages from tcp_wrappers with ssh get logged.
 
+Change userfile_gets to allow arbitrary long input lines. 
 
+Add --with-system-gmp option to configure.
+
+Add --with-system-zlib option to configure.

@@ -1,3 +1,191 @@
+Thu Mar 27 04:49:50 1997  Tero Kivinen  <kivinen@ssh.fi>
+
+	* Added kerberos patches from Glenn Machin <gmachin@sandia.gov>.
+	
+	* Added --with-login-patch from Brian Cully <shmit@panix.com>. 
+
+Wed Mar 26 05:21:04 1997  Tero Kivinen  <kivinen@ssh.fi>
+
+	* Added IdleTimeout option for server and idle-timeout for
+	authorized_keys file that can set idle-timeout for process. 	
+	
+	* Added -P option and UsePriviledgedPort option. 
+	
+	* Sony NEWS-OS 6 patches from kjm@rins.ryukoku.ac.jp (KOJIMA
+	Hajime). 
+
+Tue Mar 25 04:18:49 1997  Tero Kivinen  <kivinen@ssh.fi>
+
+	* Patch for AIX 4.1 pty detection in configure from jay@pcc.com
+	(Jay Schuster). 
+	
+	* Config patch for NEWS-OS 4.2.1R from Makoto MATSUSHITA
+	<matusita@ics.es.osaka-u.ac.jp>.
+	
+	* Use daemon() if it exists. Patch from mycroft@gnu.ai.mit.edu
+	(Charles M. Hannum).
+	
+	* Added SilentDeny option proposed by Timo Rinne (tri@iki.fi). 
+	
+	* Changed config file option handling to allow "=" character
+	between options, now you can write -o FallBackToRsh=no in command
+	line. Also made config file options case insensitive. 
+	
+	* Added umask server option.
+	
+	* Added no_utmpx=yes for AIX 4.2, fix  from John M. Sellens
+	<jmsellen@watdragon.uwaterloo.ca>. 
+	
+	* Moved libwrap code to child, patch from wietse@wzv.win.tue.nl
+	(Wietse Venema).
+	
+	* Added HP-UX pty patch from LaMont Jones
+	<lamont@cranston.fc.hp.com>. 
+
+Wed Mar 19 17:49:36 1997  Tero Kivinen  <kivinen@ssh.fi>
+
+	* Added SSH_ORIGINAL_COMMAND environment variable setting. It
+	will have the original command from the network when using
+	forced command. It can be used to get arguments for forced
+	command. 
+
+	* Disabled x11 and port forwardings if host key have changed. 
+	
+	* Added yes/no prompt if host key is not known or changed.
+	
+	* Added local mapping of "localhost" to "127.0.0.1" to avoid dns
+	attacks for localhost (the host key checking is disabled for
+	localhost).
+
+	* Added checks that public key exponent cannot be less than 3.
+	
+	* Fixed libshadow checks in the configure.in for linux.
+
+	* Added checks if openpty can be found from libbsd.
+
+	* Fixed --with-{libwrap,socks*,rsaref} argument handling.
+
+	* Added --disable-suid-ssh option. Added support for it in
+	Makefile.in 
+	
+	* Rewrote the make dist support so it works if you are using
+	separate object directory too.
+	
+	* Updated zlib version to 1.0.4.
+	
+	* Added checks that x11 and authentication agent forwarding is
+	really requested when open requests is received.
+	
+	* Fixed SIGCHLD race condition.
+	
+	* Changed do_authentication to get cipher_type, so it can
+	disable RhostsRsa authentication if using unsecure cipher
+	(NONE, or ARCFOUR). 
+
+	* Changed order of environment variables set to child, because
+	digital unixes telnet dumps core if USER is the first
+	environment variable set.
+	
+	* Added code that will set all ip-address to xauth so it should
+	work for multihosted machines too. Dont use xauth add
+	host/unix:0 on crays, because it complains about it. Patch
+	from Arne Henrik Juul <arnej@imf.unit.no>.
+
+	* Disabled agent forwarding from client if server host key doesn't
+	match. 
+	
+	* Removed DES from as mandatory cipher in the protocol. 
+	
+	* Added README.CIPHERS to tell some words about different ciphers.
+	
+	* Made all ciphers includation configurable by configure.
+	
+	* If configured ssh program isn't found in scp, try to find ssh
+	from the same directory scp program is run. 
+	
+	* Fixed /bin/sh command syntax printed by ssh-agent.
+	
+	* Added -c and -s options to ssh-agent (tell shell style). 	
+	
+	* Added quoting of passphrace prompting prompt. 
+	
+	* Disabled arcfour (see README.CIPHERS for more information).
+	
+	* Disabled single des.
+
+	* Disabled none-encryption. 
+	
+	* Limit hostname and username to 255 characters.
+	
+	* Added SECURE_RPC, SECURE_NFS and NIS_PLUS support from Andy
+	Polyakov <appro@fy.chalmers.se>.
+	
+	* Added TIS authentication code from Andre April
+	<Andre.April@cediti.be>. 
+
+Fri Jan 10 17:15:15 EET 1997  Tomi Salo <ttsalo@ssh.fi>
+
+	* login.c: Merged a patch for SunOS/Solaris from Scott Schwartz 
+	<schwartz@galapagos.cse.psu.edu>. (Now ttyslot() is used for 
+	writing to utmp)
+
+Wed Jan  8 15:19:19 EET 1997  Tomi Salo <ttsalo@ssh.fi>
+
+	* osfc2.c: A fix for OSF/1 passwords from 
+	Steve VanDevender <stevev@hexadecimal.uoregon.edu> merged.
+	
+Fri Jan  3 16:59:57 EET 1997  Tomi Salo <ttsalo@ssh.fi>
+
+	* DYNIX/ptx2 patch from Kenneth Stailey
+	<kstailey@eagle.dol-esa.gov> merged to configure.in
+	
+Mon Dec 16 17:50:08 EET 1996  Tomi Salo <ttsalo@ssh.fi>
+
+	* New option: X11DisplayOffset, from Jari Kokko <jari@pilvi.fi>
+
+Wed Nov 20 00:43:08 1996  Tero Kivinen  <kivinen@ssh.fi>
+
+	* gmp/mpn/m68k/syntax.h: Fixed bug in ALIGN for SONY_SYNTAX.
+	
+	* gmp/configure.in: Added system specific setting for solaris when
+	using CC (add -Xs to CPP). 
+
+	* configure.in: Fixed CC for IRIX 6.2 systems (CC="cc -n32"). 
+	
+	* authfd.c: Changed socket directory checks so that if the
+	original_real_uid is root do not check the file owner. 
+
+	* Makefile.in: Added rm -f TAGS before making tags. 
+
+Tue Nov 12 17:50:08 EET 1996  Tomi Salo <ttsalo@ssh.fi>
+
+	* FreeBSD pty allocation patch from Andrey Chernov merged.
+
+Sat Nov  9 19:29:39 EET 1996  Tomi Salo <ttsalo@ssh.fi>
+
+	* Patch from mouse@Holo.Rodents.Montreal.QC.CA to ssh-keygen.c
+	(now tells the user the real assumed name of the key, not just
+	$HOME/%s)
+	
+Thu Nov  7 08:49:38 1996  Tero Kivinen  <kivinen@ssh.fi>
+
+	* Allow user@host for ssh too. Patch from peter@baileynm.com
+	(Peter da Silva).
+	
+	* Fixed foos's password: prompt to foos' password:, requested by
+ 	Peter Simons <simons@petium.rhein.de>.
+
+Tue Nov  5 00:13:52 1996  Tero Kivinen  <kivinen@ssh.fi>
+
+	* ssh.c (main): Fixed warning message of old agent to be displayed
+	only if user really tried to forward agent (agent running and
+	forwarding is not disabled). 
+
+Mon Nov  4 18:24:43 EET 1996  Tomi Salo  <ttsalo@ssh.fi>
+
+	* sshconnect.c: patch to improve error handling in code receiving
+ 	protocol version byte, from Bill Fenner <fenner@parc.xerox.com>
+
 Wed Oct 30 00:11:34 1996  Tero Kivinen  <kivinen@ssh.fi>
 
 	* Added username to password prompt.

@@ -1,7 +1,22 @@
 .\" -*- nroff -*-
 .\"
-.\" $Id: RFC.nroff,v 1.3 1996/10/29 22:33:30 kivinen Exp $
+.\" $Id: RFC.nroff,v 1.8 1997/03/27 03:39:12 kivinen Exp $
 .\" $Log: RFC.nroff,v $
+.\" Revision 1.8  1997/03/27 03:39:12  kivinen
+.\" 	Fixed typo.
+.\"
+.\" Revision 1.7  1997/03/27 03:08:04  kivinen
+.\" 	Added kerberos authentication documentation.
+.\"
+.\" Revision 1.6  1997/03/19 22:06:13  kivinen
+.\" 	Fixed typo.
+.\"
+.\" Revision 1.5  1997/03/19 19:24:18  kivinen
+.\" 	Documented TIS Authentication.
+.\"
+.\" Revision 1.4  1997/03/19 17:34:30  kivinen
+.\" 	Removed des from mandatory ciphers.
+.\"
 .\" Revision 1.3  1996/10/29 22:33:30  kivinen
 .\" 	Updated protocol version to 1.5.
 .\"
@@ -270,8 +285,8 @@ SSH_CIPHER_TSS	4	   An experimental stream cipher
 SSH_CIPHER_RC4	5	   RC4
 .TE
 
-All implementations are required to support SSH_CIPHER_DES and
-SSH_CIPHER_3DES.  Supporting SSH_CIPHER_IDEA, SSH_CIPHER_RC4, and
+All implementations are required to support SSH_CIPHER_3DES.
+Supporting SSH_CIPHER_IDEA, SSH_CIPHER_RC4, and 
 SSH_CIPHER_NONE is recommended.  Support for SSH_CIPHER_TSS is
 optional (and it is not described in this document).  Other ciphers
 may be added at a later time; support for them is optional.
@@ -1403,6 +1418,55 @@ phase.  The server responds with SSH_SMSG_FAILURE if it does not
 support limiting packet size, or with SSH_SMSG_SUCCESS if it has
 limited the maximum packet size (as determined by the value in the
 size field) to the specified value.
+.IP "39 SSH_CMSG_AUTH_TIS"
+
+(no arguments)
+
+This message starts TIS authentication. The server
+responds with SSH_SMSG_FAILURE or SSH_SMSG_AUTH_TIS_CHALLENGE.
+.IP "40 SSH_SMSG_AUTH_TIS_CHALLENGE"
+.TS
+;
+l l.
+string	tis challenge
+.TE
+Server sends TIS challenge to user and client should show it to user
+and ask for response, which is sent back using
+SSH_CMSG_AUTH_TIS_RESPONSE message.
+.IP "41 SSH_CMSG_AUTH_TIS_RESPONSE"
+.TS
+;
+l l.
+string	user response to tis challenge
+.TE
+When client receives SSH_SMSG_AUTH_TIS_CHALLENGE and ask users
+response to challenge it sends it back this message. The server
+answers with SSH_SMSG_FAILURE or SSH_SMSG_SUCCESS.
+.IP "42 SSH_CMSG_AUTH_KERBEROS"
+.TS
+;
+l l.
+string	authentication info
+.TE
+Client sends authentication info to server, which replies with
+SSH_SMSG_AUTH_KERBEROS_RESPONSE message having correct response data
+encrypted with the session key.
+.IP "43 SSH_SMSG_AUTH_KERBEROS_RESPONSE"
+.TS
+;
+l l.
+string	response data
+.TE
+Server replies to SSH_CMSG_AUTH_KERBEROS message with this message so
+that the response data is encrypted with session key.
+.IP "44 SSH_CMSG_HAVE_KERBEROS_TGT"
+.TS
+;
+l l.
+string	kerberos credentials
+.TE
+Client sends kerberos credentials to server and the server replies with
+SSH_SMSG_SUCCESS or SSH_SMSG_FAILURE.
 .RT
 
 

@@ -22,21 +22,24 @@
 ######################################################################
 #         Program: make-ssh-known-hosts.pl
 #	  $Source: /ssh/CVS/ssh/make-ssh-known-hosts.pl,v $
-#	  Author : $Author: ylo $
+#	  Author : $Author: kivinen $
 #
 #	  (C) Tero Kivinen 1995 <Tero.Kivinen@hut.fi>
 #
 #	  Creation          : 19:52 Jun 27 1995 kivinen
-#	  Last Modification : 03:14 Jan 31 1996 kivinen
-#	  Last check in     : $Date: 1996/02/18 21:38:10 $
-#	  Revision number   : $Revision: 1.1.1.1 $
+#	  Last Modification : 06:15 Mar 26 1997 kivinen
+#	  Last check in     : $Date: 1997/03/26 07:14:01 $
+#	  Revision number   : $Revision: 1.2 $
 #	  State             : $State: Exp $
-#	  Version	    : 1.331
+#	  Version	    : 1.332
 #	  Edit time	    : 235 min
 #
 #	  Description       : Make ssh-known-host file from dns data.
 #
 #	  $Log: make-ssh-known-hosts.pl,v $
+#	  Revision 1.2  1997/03/26 07:14:01  kivinen
+#	  	Added EWOULDBLOCK.
+#
 #	  Revision 1.1.1.1  1996/02/18 21:38:10  ylo
 #	  	Imported ssh-1.2.13.
 #
@@ -67,7 +70,7 @@ use POSIX;
 use Socket;
 use Fcntl;
 
-$version = ' $Id: make-ssh-known-hosts.pl,v 1.1.1.1 1996/02/18 21:38:10 ylo Exp $ ';
+$version = ' $Id: make-ssh-known-hosts.pl,v 1.2 1997/03/26 07:14:01 kivinen Exp $ ';
 
 $command_line = "$0 ";
 foreach $a (@ARGV) {
@@ -465,7 +468,7 @@ sub try_ping {
 		# connect done, read the status with sysread
 		$ret = sysread(PING, $buf, 1);
 		$err = $!;
-		if (defined($ret) || $err == EAGAIN) {
+		if (defined($ret) || $err == EAGAIN || $err == EWOULDBLOCK) {
 		    debug(60, "Select ok, read ok ($err), returning ok");
 		    # connection done, return ok
 		    shutdown(PING, 2);

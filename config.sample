@@ -48,6 +48,12 @@ Host *.com *.edu *.gov *.mil *.org *.de *.uk
   Cipher 3des
   ForwardAgent no
 
+Host firewall.mydomain.be
+  RhostsAuthentication no
+  PasswordAuthentication no
+  RSAAuthentication yes
+  TISAuthentication yes
+
 # Defaults for various options
 Host *
   ForwardAgent yes
@@ -55,6 +61,7 @@ Host *
   RhostsAuthentication yes
   PasswordAuthentication yes
   RSAAuthentication yes
+  TISAuthentication no
   FallBackToRsh no
   UseRsh no
   IdentityFile ~/.ssh/identity

@@ -251,11 +251,11 @@ Packet Encryption
           SSH_CIPHER_RC4    5      RC4
 
 
-   All implementations are required to support SSH_CIPHER_DES and
-   SSH_CIPHER_3DES.  Supporting SSH_CIPHER_IDEA, SSH_CIPHER_RC4, and
-   SSH_CIPHER_NONE is recommended.  Support for SSH_CIPHER_TSS is
-   optional (and it is not described in this document).  Other ciphers
-   may be added at a later time; support for them is optional.
+   All implementations are required to support SSH_CIPHER_3DES.  Sup-
+   porting SSH_CIPHER_IDEA, SSH_CIPHER_RC4, and SSH_CIPHER_NONE is
+   recommended.  Support for SSH_CIPHER_TSS is optional (and it is not
+   described in this document).  Other ciphers may be added at a later
+   time; support for them is optional.
 
    For encryption, the encrypted portion of the packet is considered a
    linear byte stream.  The length of the stream is always a multiple of
@@ -1613,12 +1613,12 @@ Internet-Draft  SSH (Secure Shell) Remote Login Protocol15 November 1995
         if it has limited the maximum packet size (as determined by the
         value in the size field) to the specified value.
 
+   39 SSH_CMSG_AUTH_TIS
 
-Encoding of Terminal Modes
+        (no arguments)
 
-   Terminal modes (as passed in SSH_CMSG_REQUEST_PTY) are encoded into a
-   byte stream.  It is intended that the coding be portable across dif-
-   ferent environments.
+        This message starts TIS authentication. The server responds with
+        SSH_SMSG_FAILURE or SSH_SMSG_AUTH_TIS_CHALLENGE.
 
 
 
@@ -1628,9 +1628,62 @@ Ylonen                                                         [Page 29]
 Internet-Draft  SSH (Secure Shell) Remote Login Protocol15 November 1995
 
 
+   40 SSH_SMSG_AUTH_TIS_CHALLENGE
+
+        string   tis challenge
+
+        Server sends TIS challenge to user and client should show it to
+        user and ask for response, which is sent back using
+        SSH_CMSG_AUTH_TIS_RESPONSE message.
+
+   41 SSH_CMSG_AUTH_TIS_RESPONSE
+
+        string   user response to tis challenge
+
+        When client receives SSH_SMSG_AUTH_TIS_CHALLENGE and ask users
+        response to challenge it sends it back this message. The server
+        answers with SSH_SMSG_FAILURE or SSH_SMSG_SUCCESS.
+
+   42 SSH_CMSG_AUTH_KERBEROS
+
+        string   authentication info
+
+        Client sends authentication info to server, which replies with
+        SSH_SMSG_AUTH_KERBEROS_RESPONSE message having correct response
+        data encrypted with the session key.
+
+   43 SSH_SMSG_AUTH_KERBEROS_RESPONSE
+
+        string   response data
+
+        Server replies to SSH_CMSG_AUTH_KERBEROS message with this mes-
+        sage so that the response data is encrypted with session key.
+
+   44 SSH_CMSG_HAVE_KERBEROS_TGT
+
+        string   kerberos credentials
+
+        Client sends kerberos credentials to server and the server
+        replies with SSH_SMSG_SUCCESS or SSH_SMSG_FAILURE.
+
+
+Encoding of Terminal Modes
+
+   Terminal modes (as passed in SSH_CMSG_REQUEST_PTY) are encoded into a
+   byte stream.  It is intended that the coding be portable across dif-
+   ferent environments.
+
    The tty mode description is a stream of bytes.  The stream consists
    of opcode-argument pairs.  It is terminated by opcode TTY_OP_END (0).
    Opcodes 1-127 have one-byte arguments.  Opcodes 128-159 have 32-bit
+
+
+
+Ylonen                                                         [Page 30]
+
+Internet-Draft  SSH (Secure Shell) Remote Login Protocol15 November 1995
+
+
    integer arguments (stored msb first).  Opcodes 160-255 are not yet
    defined, and cause parsing to stop (they should only be used after
    any other data).
@@ -1677,15 +1730,15 @@ Internet-Draft  SSH (Secure Shell) Remote Login Protocol15 November 1995
    8 VSTART
         Continues paused output (normally ^Q).
 
+   9 VSTOP
+        Pauses output (^S).
 
 
-Ylonen                                                         [Page 30]
+
+Ylonen                                                         [Page 31]
 
 Internet-Draft  SSH (Secure Shell) Remote Login Protocol15 November 1995
 
-
-   9 VSTOP
-        Pauses output (^S).
 
    10 VSUSP
         Suspends the current program.
@@ -1732,17 +1785,16 @@ Internet-Draft  SSH (Secure Shell) Remote Login Protocol15 November 1995
 
    37 IUCLC
 
-
-
-
-Ylonen                                                         [Page 31]
-
-Internet-Draft  SSH (Secure Shell) Remote Login Protocol15 November 1995
-
-
    38 IXON
 
    39 IXANY
+
+
+
+Ylonen                                                         [Page 32]
+
+Internet-Draft  SSH (Secure Shell) Remote Login Protocol15 November 1995
+
 
    40 IXOFF
 
@@ -1789,16 +1841,16 @@ Internet-Draft  SSH (Secure Shell) Remote Login Protocol15 November 1995
    75 ONLRET
 
 
-
-
-Ylonen                                                         [Page 32]
-
-Internet-Draft  SSH (Secure Shell) Remote Login Protocol15 November 1995
-
-
    90 CS7
 
    91 CS8
+
+
+
+Ylonen                                                         [Page 33]
+
+Internet-Draft  SSH (Secure Shell) Remote Login Protocol15 November 1995
+
 
    92 PARENB
 
@@ -1844,17 +1896,17 @@ The Authentication Agent Protocol
    protocol.
 
 
-
-
-
-Ylonen                                                         [Page 33]
-
-Internet-Draft  SSH (Secure Shell) Remote Login Protocol15 November 1995
-
-
    The following message types are currently defined:
 
    1 SSH_AGENTC_REQUEST_RSA_IDENTITIES
+
+
+
+
+Ylonen                                                         [Page 34]
+
+Internet-Draft  SSH (Secure Shell) Remote Login Protocol15 November 1995
+
 
         (no arguments)
 
@@ -1901,16 +1953,16 @@ Internet-Draft  SSH (Secure Shell) Remote Login Protocol15 November 1995
         to compute MD5 of the real challenge plus session id, and return
         the resulting 16 bytes in a SSH_AGENT_RSA_RESPONSE message.
 
-
-
-Ylonen                                                         [Page 34]
-
-Internet-Draft  SSH (Secure Shell) Remote Login Protocol15 November 1995
-
-
    4 SSH_AGENT_RSA_RESPONSE
 
         16 bytes   MD5 of decrypted challenge
+
+
+
+Ylonen                                                         [Page 35]
+
+Internet-Draft  SSH (Secure Shell) Remote Login Protocol15 November 1995
+
 
         Answers an RSA authentication challenge.  The response is 16
         bytes:  the MD5 checksum of the 32-byte challenge.
@@ -1956,17 +2008,17 @@ Internet-Draft  SSH (Secure Shell) Remote Login Protocol15 November 1995
         mp-int       public modulus
 
         Removes an RSA key from the agent.  The agent will no longer
-
-
-
-Ylonen                                                         [Page 35]
-
-Internet-Draft  SSH (Secure Shell) Remote Login Protocol15 November 1995
-
-
         accept challenges for this key and will not list it as a sup-
         ported identity.  The agent responds with SSH_AGENT_SUCCESS or
         SSH_AGENT_FAILURE.
+
+
+
+
+Ylonen                                                         [Page 36]
+
+Internet-Draft  SSH (Secure Shell) Remote Login Protocol15 November 1995
+
 
    If the agent receives a message that it does not understand, it
    responds with SSH_AGENT_FAILURE.  This permits compatible future
@@ -2013,16 +2065,16 @@ References
    [RFC0791]
         J. Postel: Internet Protocol, RFC 791, USC/ISI, September 1981.
 
-
-
-Ylonen                                                         [Page 36]
-
-Internet-Draft  SSH (Secure Shell) Remote Login Protocol15 November 1995
-
-
    [RFC0793]
         J. Postel: Transmission Control Protocol, RFC 793, USC/ISI, Sep-
         tember 1981.
+
+
+
+Ylonen                                                         [Page 37]
+
+Internet-Draft  SSH (Secure Shell) Remote Login Protocol15 November 1995
+
 
    [RFC1034]
         P. Mockapetris: Domain Names - Concepts and Facilities, RFC
@@ -2069,19 +2121,20 @@ Security Considerations
 
    o    DNS spoofing is made ineffective (by host keys).
 
+   o    Routing spoofing is made ineffective (by host keys).
+
+   o    All data is encrypted with strong algorithms to make
 
 
-Ylonen                                                         [Page 37]
+
+Ylonen                                                         [Page 38]
 
 Internet-Draft  SSH (Secure Shell) Remote Login Protocol15 November 1995
 
 
-   o    Routing spoofing is made ineffective (by host keys).
-
-   o    All data is encrypted with strong algorithms to make eavesdrop-
-        ping as difficult as possible.  This includes encrypting any
-        authentication information such as passwords.  The information
-        for decrypting session keys is destroyed every hour.
+        eavesdropping as difficult as possible.  This includes encrypt-
+        ing any authentication information such as passwords.  The
+        information for decrypting session keys is destroyed every hour.
 
    o    Strong authentication methods: .rhosts combined with RSA host
         authentication, and pure RSA authentication.
@@ -2123,20 +2176,19 @@ Internet-Draft  SSH (Secure Shell) Remote Login Protocol15 November 1995
    underlying cryptographic algorithms.  The RSA algorithm is used for
    authentication key exchange.  It is widely believed to be secure.  Of
    the algorithms used to encrypt the session, DES has a rather small
-   key these days, probably permitting governments and organized
+   key these days, probably permitting governments and organized crimi-
+   nals to break it in very short time with specialized hardware.  3DES
+   is probably safe (but slower).  IDEA is widely believed to be secure.
+   People have varying degrees of confidence in the other algorithms.
 
 
 
-Ylonen                                                         [Page 38]
+Ylonen                                                         [Page 39]
 
 Internet-Draft  SSH (Secure Shell) Remote Login Protocol15 November 1995
 
 
-   criminals to break it in very short time with specialized hardware.
-   3DES is probably safe (but slower).  IDEA is widely believed to be
-   secure.  People have varying degrees of confidence in the other algo-
-   rithms.  This program is not secure if used with no encryption at
-   all.
+   This program is not secure if used with no encryption at all.
 
 
 Additional Information
@@ -2183,5 +2235,9 @@ Author's Address
 
 
 
-Ylonen                                                         [Page 39]
+
+
+
+
+Ylonen                                                         [Page 40]
 

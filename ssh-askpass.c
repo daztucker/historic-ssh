@@ -578,6 +578,10 @@ void key_press(XKeyEvent *event)
 	case XK_KP_Enter:
 	  exiting = 1;
 	  return;
+	case XK_Escape:
+	case XK_Cancel:
+	  exiting = 2;
+	  return;
 	}
     }
 }

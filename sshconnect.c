@@ -15,8 +15,17 @@ login (authentication) dialog.
 */
 
 /*
- * $Id: sshconnect.c,v 1.20 1997/04/05 22:02:04 kivinen Exp $
+ * $Id: sshconnect.c,v 1.22 1997/04/23 00:05:01 kivinen Exp $
  * $Log: sshconnect.c,v $
+ * Revision 1.22  1997/04/23 00:05:01  kivinen
+ * 	Implemented NumberOfPasswordPrompts option.
+ *
+ * Revision 1.21  1997/04/17 04:16:32  kivinen
+ * 	Added strict_host_key_checking == 2 (== ask) support.
+ * 	Moved asking of confirmation from user to read_confirmation
+ * 	function.
+ * 	Added checks that if in batch_mode do not ask confirmations.
+ *
  * Revision 1.20  1997/04/05 22:02:04  kivinen
  * 	Removed restriction that ssh only used priviledged port if
  * 	server port was < 1024. Fixed KRB5 support.
@@ -1231,7 +1240,6 @@ void ssh_login(RandomState *state, int host_key_valid,
   unsigned char check_bytes[8];
   unsigned int supported_ciphers, supported_authentications, protocol_flags;
   HostStatus host_status;
-  char yes[50];
 #ifdef KERBEROS 
 #ifdef KRB5
   char *kuser;
@@ -1340,7 +1348,7 @@ void ssh_login(RandomState *state, int host_key_valid,
       break;
     case HOST_NEW:
       /* The host is new. */
-      if (options->strict_host_key_checking)
+      if (options->strict_host_key_checking == 1)
 	{ /* User has requested strict host key checking.  We will not
 	     add the host key automatically.  The only alternative left
 	     is to abort. */
@@ -1348,16 +1356,13 @@ void ssh_login(RandomState *state, int host_key_valid,
 	}
 
       error("Host key not found from the list of known hosts.");
-      do {
-	error("\nAre you sure you want to continue connecting (yes/no)? ");
-	if (fgets(yes, sizeof(yes), stdin) == NULL)
-	  fatal("Login aborted by user");
-	while (strlen(yes) >= 1 && isspace(yes[strlen(yes) - 1]))
-	  yes[strlen(yes) - 1] = '\0';
-	if (strcmp(yes, "no") == 0)
-	  exit(1);
-      } while (strcmp(yes, "yes") != 0);
-      
+      if (options->strict_host_key_checking == 2)
+	{
+	  if (options->batch_mode)
+	    fatal("No host key is known for %.200s and cannot confirm operation when running in batch mode.", host);
+
+	  read_confirmation("Are you sure you want to continue connecting (yes/no)? ");
+	}
       /* If not in strict mode, add the key automatically to the local
 	 known_hosts file. */
       if (!add_host_to_hostfile(original_real_uid,
@@ -1382,7 +1387,7 @@ void ssh_login(RandomState *state, int host_key_valid,
       
       /* If strict host key checking is in use, the user will have to edit
 	 the key manually and we can only abort. */
-      if (options->strict_host_key_checking)
+      if (options->strict_host_key_checking == 1)
 	fatal("Host key for %.200s has changed and you have requested strict checking.", host);
       
       /* If strict host key checking has not been requested, allow the
@@ -1407,15 +1412,14 @@ void ssh_login(RandomState *state, int host_key_valid,
 	  error("Remote port forwarding is disabled to avoid attacks by corrupted servers.");
 	  options->num_remote_forwards = 0;
 	}
-      do {
-	error("\nAre you sure you want to continue connecting (yes/no)? ");
-	if (fgets(yes, sizeof(yes), stdin) == NULL)
-	  fatal("Login aborted by user");
-	while (strlen(yes) >= 1 && isspace(yes[strlen(yes) - 1]))
-	  yes[strlen(yes) - 1] = '\0';
-	if (strcmp(yes, "no") == 0)
-	  exit(1);
-      } while (strcmp(yes, "yes") != 0);
+      
+      if (options->strict_host_key_checking == 2)
+	{
+	  if (options->batch_mode)
+	    fatal("No host key is known for %.200s and cannot confirm operation when running in batch mode.", host);
+	  
+	  read_confirmation("Are you sure you want to continue connecting (yes/no)? ");
+	}
       
       /* XXX Should permit the user to change to use the new id.  This could
          be done by converting the host key to an identifying sentence, tell
@@ -1726,20 +1730,23 @@ void ssh_login(RandomState *state, int host_key_valid,
       if (options->cipher == SSH_CIPHER_NONE)
 	log_msg("WARNING: Encryption is disabled! Password will be transmitted in clear text.");
       sprintf(prompt, "%.30s's password: ", server_user);
-      password = read_passphrase(pw->pw_uid, prompt, 0);
-      packet_start(SSH_CMSG_AUTH_PASSWORD);
-      packet_put_string(password, strlen(password));
-      memset(password, 0, strlen(password));
-      xfree(password);
-      packet_send();
-      packet_write_wait();
-  
-      type = packet_read();
-      if (type == SSH_SMSG_SUCCESS)
-	return; /* Successful connection. */
-      if (type != SSH_SMSG_FAILURE)
-	packet_disconnect("Protocol error: got %d in response to passwd auth",
-			  type);
+      for(i = 0; i < options->number_of_password_prompts; i++)
+	{
+	  password = read_passphrase(pw->pw_uid, prompt, 0);
+	  packet_start(SSH_CMSG_AUTH_PASSWORD);
+	  packet_put_string(password, strlen(password));
+	  memset(password, 0, strlen(password));
+	  xfree(password);
+	  packet_send();
+	  packet_write_wait();
+	  
+	  type = packet_read();
+	  if (type == SSH_SMSG_SUCCESS)
+	    return; /* Successful connection. */
+	  if (type != SSH_SMSG_FAILURE)
+	    packet_disconnect("Protocol error: got %d in response to passwd auth",
+			      type);
+	}
     }
 
   /* All authentication methods have failed.  Exit with an error message. */

@@ -15,9 +15,12 @@ The main loop for the interactive session (client side).
 */
 
 /*
- * $Id: clientloop.c,v 1.4 1997/03/26 07:12:28 kivinen Exp $
+ * $Id: clientloop.c,v 1.5 1998/05/23 20:21:22 kivinen Exp $
  * $Log: clientloop.c,v $
- * Revision 1.4  1997/03/26 07:12:28  kivinen
+ * Revision 1.5  1998/05/23  20:21:22  kivinen
+ * 	Changed () -> (void).
+ *
+ * Revision 1.4  1997/03/26  07:12:28  kivinen
  * 	Added HAVE_NO_TZ_IN_GETTIMEOFDAY support.
  *
  * Revision 1.3  1996/11/24 08:17:46  kivinen
@@ -97,7 +100,7 @@ static int escape_char; /* Escape character. */
 /* Returns the user\'s terminal to normal mode if it had been put in raw 
    mode. */
 
-void leave_raw_mode()
+void leave_raw_mode(void)
 {
   if (!in_raw_mode)
     return;
@@ -116,7 +119,7 @@ void leave_raw_mode()
 
 /* Puts the user\'s terminal in raw mode. */
 
-void enter_raw_mode()
+void enter_raw_mode(void)
 {
 #ifdef USING_TERMIOS
   struct termios tio;
@@ -157,7 +160,7 @@ void enter_raw_mode()
 
 /* Restores stdin to blocking mode. */
 
-void leave_non_blocking()
+void leave_non_blocking(void)
 {
   if (in_non_blocking_mode)
     {
@@ -167,7 +170,7 @@ void leave_non_blocking()
     }
 }
 
-void enter_non_blocking()
+void enter_non_blocking(void)
 {
   in_non_blocking_mode = 1;
 #if defined(O_NONBLOCK) && !defined(O_NONBLOCK_BROKEN)
@@ -206,7 +209,7 @@ RETSIGTYPE signal_handler(int sig)
 /* Returns current time in seconds from Jan 1, 1970 with the maximum available
    resolution. */
 
-double get_current_time()
+double get_current_time(void)
 {
 #ifdef HAVE_GETTIMEOFDAY
   struct timeval tv;
@@ -225,7 +228,7 @@ double get_current_time()
    is an EOF coming on stdin.  We must check this explicitly, as select()
    does not appear to wake up when redirecting from /dev/null. */
 
-void client_check_initial_eof_on_stdin()
+void client_check_initial_eof_on_stdin(void)
 {
   int len;
   char buf[1];
@@ -281,7 +284,7 @@ void client_check_initial_eof_on_stdin()
 /* Get packets from the connection input buffer, and process them as long
    as there are packets available. */
 
-void client_process_buffered_input_packets()
+void client_process_buffered_input_packets(void)
 {
   int type;
   char *data;
@@ -378,7 +381,7 @@ void client_process_buffered_input_packets()
 /* Make packets from buffered stdin data, and buffer them for sending to
    the connection. */
 
-void client_make_packets_from_stdin_data()
+void client_make_packets_from_stdin_data(void)
 {
   unsigned int len;
 
@@ -407,7 +410,7 @@ void client_make_packets_from_stdin_data()
    interrupt on Unix); this just checks the flag and sends a message if
    appropriate. */
 
-void client_check_window_change()
+void client_check_window_change(void)
 {
 #ifdef SIGWINCH
   /* Send possible window change message to the server. */
@@ -495,7 +498,7 @@ void client_wait_until_can_do_something(fd_set *readset, fd_set *writeset)
     }
 }
 
-void client_suspend_self()
+void client_suspend_self(void)
 {
 #ifdef SIGWINCH
   struct winsize oldws, newws;

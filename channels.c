@@ -16,8 +16,16 @@ arbitrary tcp/ip connections, and the authentication agent connection.
 */
 
 /*
- * $Id: channels.c,v 1.10 1995/09/10 23:25:35 ylo Exp $
+ * $Id: channels.c,v 1.12 1995/09/24 23:58:49 ylo Exp $
  * $Log: channels.c,v $
+ * Revision 1.12  1995/09/24  23:58:49  ylo
+ * 	Added support for screen number in X11 forwarding.
+ * 	Reduced max packet size in interactive mode from 1024 bytes to
+ * 	512 bytes for forwarded connections.
+ *
+ * Revision 1.11  1995/09/21  17:08:40  ylo
+ * 	Support AF_UNIX_SIZE.
+ *
  * Revision 1.10  1995/09/10  23:25:35  ylo
  * 	Fixed HPSUX DISPLAY kludge.
  *
@@ -539,7 +547,7 @@ void channel_output_poll()
 	  if (packet_is_interactive())
 	    {
 	      if (len > 1024)
-		len = 1024;
+		len = 512;
 	    }
 	  else
 	    {
@@ -1000,7 +1008,7 @@ void channel_input_port_open()
 /* Creates a port for X11 connections, and starts listening for it.
    Returns the display name, or NULL if an error was encountered. */
 
-char *x11_create_display()
+char *x11_create_display(int screen_number)
 {
   struct stat st;
   int i, sock, display_number = 0;
@@ -1071,7 +1079,7 @@ char *x11_create_display()
   strcpy(channels[i].path, ssun.sun_path);
   
   /* Return a suitable value for the DISPLAY environment variable. */
-  sprintf(buf, "unix:%d", display_number);
+  sprintf(buf, "unix:%d.%d", display_number, screen_number);
   return xstrdup(buf);
 }
 
@@ -1079,7 +1087,7 @@ char *x11_create_display()
    Returns a suitable value for the DISPLAY variable, or NULL if an error
    occurs. */
 
-char *x11_create_display_inet()
+char *x11_create_display_inet(int screen_number)
 {
   int display_number, port, sock;
   struct sockaddr_in sin;
@@ -1151,17 +1159,18 @@ char *x11_create_display_inet()
 	return NULL;
       }
     memcpy(&addr, hp->h_addr_list[0], sizeof(addr));
-    sprintf(buf, "%.100s:%d", inet_ntoa(addr), display_number);
+    sprintf(buf, "%.100s:%d.%d", inet_ntoa(addr), display_number, 
+	    screen_number);
   }
 #else /* HPSUX_NONSTANDARD_X11_KLUDGE */
 #ifdef HAVE_GETHOSTNAME
   if (gethostname(hostname, sizeof(hostname)) < 0)
     fatal("gethostname: %.100s", strerror(errno));
-  sprintf(buf, "%.400s:%d", hostname, display_number);
+  sprintf(buf, "%.400s:%d.%d", hostname, display_number, screen_number);
 #else /* HAVE_GETHOSTNAME */
   if (uname(&uts) < 0)
     fatal("uname: %s", strerror(errno));
-  sprintf(buf, "%.400s:%d", uts.nodename, display_number);
+  sprintf(buf, "%.400s:%d.%d", uts.nodename, display_number, screen_number);
 #endif /* HAVE_GETHOSTNAME */
 #endif /* HPSUX_NONSTANDARD_X11_KLUDGE */
 	    
@@ -1333,10 +1342,23 @@ void x11_input_open()
 
 void x11_request_forwarding()
 {
+  int screen_number;
+  const char *cp;
+
+  cp = getenv("DISPLAY");
+  if (cp)
+    cp = strchr(cp, ':');
+  if (cp)
+    cp = strchr(cp, '.');
+  if (cp)
+    screen_number = atoi(cp + 1);
+  else
+    screen_number = 0;
   x11_saved_proto = NULL;
   x11_saved_data = NULL;
   x11_fake_data = NULL;
   packet_start(SSH_CMSG_X11_REQUEST_FORWARDING);
+  packet_put_int(screen_number);
   packet_send();
   packet_write_wait();
 }
@@ -1347,9 +1369,21 @@ void x11_request_forwarding()
 void x11_request_forwarding_with_spoofing(RandomState *state,
 					  const char *proto, const char *data)
 {
-  unsigned int data_len = strlen(data) / 2;
+  unsigned int data_len = (unsigned int)strlen(data) / 2;
   unsigned int i, value;
   char *new_data;
+  int screen_number;
+  const char *cp;
+
+  cp = getenv("DISPLAY");
+  if (cp)
+    cp = strchr(cp, ':');
+  if (cp)
+    cp = strchr(cp, '.');
+  if (cp)
+    screen_number = atoi(cp + 1);
+  else
+    screen_number = 0;
 
   /* Save protocol name. */
   x11_saved_proto = xstrdup(proto);
@@ -1377,6 +1411,7 @@ void x11_request_forwarding_with_spoofing(RandomState *state,
   packet_start(SSH_CMSG_X11_FWD_WITH_AUTH_SPOOFING);
   packet_put_string(proto, strlen(proto));
   packet_put_string(new_data, strlen(new_data));
+  packet_put_int(screen_number);
   packet_send();
   packet_write_wait();
   xfree(new_data);

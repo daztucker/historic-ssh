@@ -14,8 +14,25 @@ The authentication agent program.
 */
 
 /*
- * $Id: ssh-agent.c,v 1.3 1996/05/28 12:44:52 ylo Exp $
+ * $Id: ssh-agent.c,v 1.8 1996/09/27 14:01:33 ttsalo Exp $
  * $Log: ssh-agent.c,v $
+ * Revision 1.8  1996/09/27 14:01:33  ttsalo
+ * 	Use AF_UNIX_SIZE(sunaddr) instead of sizeof(sunaddr)
+ *
+ * Revision 1.7  1996/09/11 17:56:52  kivinen
+ * 	Changed limit of messages from 256 kB to 30 kB.
+ * 	Added check that getpwuid succeeds.
+ *
+ * Revision 1.6  1996/09/04 12:41:51  ttsalo
+ * 	Minor fixes
+ *
+ * Revision 1.5  1996/08/29 14:51:26  ttsalo
+ * 	Agent-socket directory handling implemented
+ *
+ * Revision 1.4  1996/08/21 20:43:55  ttsalo
+ * 	Made ssh-agent use a different, more secure way of storing
+ * 	it's initial socket.
+ *
  * Revision 1.3  1996/05/28 12:44:52  ylo
  * 	Remove unix-domain socket if a killed by a signal.
  *
@@ -62,6 +79,7 @@ The authentication agent program.
 #include "md5.h"
 #include "getput.h"
 #include "mpaux.h"
+#include "userfile.h"
 
 typedef struct
 {
@@ -314,7 +332,7 @@ void process_message(SocketEntry *e)
     return; /* Incomplete message. */
   cp = (unsigned char *)buffer_ptr(&e->input);
   msg_len = GET_32BIT(cp);
-  if (msg_len > 256 * 1024)
+  if (msg_len > 30 * 1024)
     {
       shutdown(e->fd, 2);
       close(e->fd);
@@ -468,7 +486,7 @@ void after_select(fd_set *readset, fd_set *writeset)
       case AUTH_SOCKET:
 	if (FD_ISSET(sockets[i].fd, readset))
 	  {
-	    len = sizeof(sunaddr);
+	    len = AF_UNIX_SIZE(sunaddr);
 	    sock = accept(sockets[i].fd, (struct sockaddr *)&sunaddr, &len);
 	    if (sock < 0)
 	      {
@@ -533,6 +551,7 @@ void after_select(fd_set *readset, fd_set *writeset)
 }
 
 int parent_pid = -1;
+char socket_dir_name[1024];
 char socket_name[1024];
 
 RETSIGTYPE check_parent_exists(int sig)
@@ -540,6 +559,7 @@ RETSIGTYPE check_parent_exists(int sig)
   if (kill(parent_pid, 0) < 0)
     {
       remove(socket_name);
+      rmdir(socket_dir_name);
       /* printf("Parent has died - Authentication agent exiting.\n"); */
       exit(1);
     }
@@ -550,6 +570,7 @@ RETSIGTYPE check_parent_exists(int sig)
 RETSIGTYPE remove_socket_on_signal(int sig)
 {
   remove(socket_name);
+  rmdir(socket_dir_name);
   /* fprintf(stderr, "Received signal %d - Auth. agent exiting.\n", sig); */
   exit(1);
 }
@@ -561,9 +582,11 @@ int main(int ac, char **av)
   int pfd;
   int sock;
   struct sockaddr_un sunaddr;
-
+  struct passwd *pw;
+  struct stat st;
+  
   int sockets[2], i;
-  int *dups;
+  int *dups, ret;
 
   if (ac < 2)
     {
@@ -576,10 +599,49 @@ int main(int ac, char **av)
   if (pfd < 0) 
     {
       /* The agent uses SSH_AUTHENTICATION_SOCKET. */
-      
+
       parent_pid = getpid();
+      pw = getpwuid(getuid());
+      if (pw == NULL)
+	{
+	  fprintf(stderr, "Unknown user uid = %d\n", getuid());
+	  exit(1);
+	}
       
-      sprintf(socket_name, SSH_AGENT_SOCKET, parent_pid);
+      sprintf(socket_dir_name, SSH_AGENT_SOCKET_DIR, pw->pw_name);
+
+      /* Check that the per-user socket directory either doesn't exist
+	 or has good modes */
+      
+      ret = stat(socket_dir_name, &st);
+      if (ret == -1 && errno != ENOENT)
+	{
+	  perror("stat");
+	  exit(1);
+	}
+      else
+	mkdir(socket_dir_name, S_IRWXU);
+
+      if (ret == 0 && !userfile_check_owner_permissions(pw, socket_dir_name))
+	{
+	  fprintf(stderr, "Bad modes for directory \'%s\'\n", socket_dir_name);
+	  exit(1);
+	}
+
+      sprintf(socket_name,
+	      SSH_AGENT_SOCKET_DIR"/"SSH_AGENT_SOCKET,
+	      pw->pw_name, (int)getpid());
+
+      /* Check that socket doesn't exist */
+
+      ret = stat(socket_name, &st);
+      if (ret != -1 && errno != ENOENT)
+	{
+	  fprintf(stderr,
+		  "\'%s\' already exists (ssh-agent already running?)\n",
+		  socket_name);
+	  exit(1);
+	}
       
       /* Fork, and have the parent execute the command.  The child continues as
 	 the authentication agent. */
@@ -598,7 +660,7 @@ int main(int ac, char **av)
 	  perror("socket");
 	  exit(1);
 	}
-      memset(&sunaddr, 0, sizeof(sunaddr));
+      memset(&sunaddr, 0, AF_UNIX_SIZE(sunaddr));
       sunaddr.sun_family = AF_UNIX;
       strncpy(sunaddr.sun_path, socket_name, sizeof(sunaddr.sun_path));
       if (bind(sock, (struct sockaddr *)&sunaddr, AF_UNIX_SIZE(sunaddr)) < 0)

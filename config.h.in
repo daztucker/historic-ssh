@@ -11,7 +11,10 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 /*
  * $Log: config.h.in,v $
- * Revision 1.11  1996/09/28 17:43:54  ttsalo
+ * Revision 1.12  1996/10/19 02:06:23  ylo
+ * 	New defines for ip headers.
+ *
+ * Revision 1.6  1996/09/28 17:43:53  ttsalo
  * 	Socks5-defines corrected
  *
  * Revision 1.5  1996/09/05 19:07:41  ttsalo
@@ -132,7 +135,10 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 /*
  * $Log: config.h.in,v $
- * Revision 1.11  1996/09/28 17:43:54  ttsalo
+ * Revision 1.12  1996/10/19 02:06:23  ylo
+ * 	New defines for ip headers.
+ *
+ * Revision 1.6  1996/09/28 17:43:53  ttsalo
  * 	Socks5-defines corrected
  *
  * Revision 1.5  1996/09/05 19:07:41  ttsalo
@@ -480,8 +486,17 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define if you have the <ndir.h> header file.  */
 #undef HAVE_NDIR_H
 
+/* Define if you have the <netinet/in_system.h> header file.  */
+#undef HAVE_NETINET_IN_SYSTEM_H
+
 /* Define if you have the <netinet/in_systm.h> header file.  */
 #undef HAVE_NETINET_IN_SYSTM_H
+
+/* Define if you have the <netinet/ip.h> header file.  */
+#undef HAVE_NETINET_IP_H
+
+/* Define if you have the <netinet/tcp.h> header file.  */
+#undef HAVE_NETINET_TCP_H
 
 /* Define if you have the <paths.h> header file.  */
 #undef HAVE_PATHS_H

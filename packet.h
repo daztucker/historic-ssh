@@ -14,8 +14,11 @@ Interface for the packet protocol functions.
 */
 
 /*
- * $Id: packet.h,v 1.5 1997/04/05 17:29:14 ylo Exp $
+ * $Id: packet.h,v 1.6 1998/03/27 16:59:16 kivinen Exp $
  * $Log: packet.h,v $
+ * Revision 1.6  1998/03/27 16:59:16  kivinen
+ * 	Added socks.h include.
+ *
  * Revision 1.5  1997/04/05 17:29:14  ylo
  * 	Added packet_get_len (returns the remaining length of incoming
  * 	packet).
@@ -51,6 +54,10 @@ Interface for the packet protocol functions.
 
 #include <gmp.h>
 #include "randoms.h"
+
+#if defined(SOCKS5) && defined(HAVE_SOCKS_H)
+#include <socks.h>
+#endif
 
 /* Sets the socket used for communication.  Disables encryption until
    packet_set_encryption_key is called.  It is permissible that fd_in

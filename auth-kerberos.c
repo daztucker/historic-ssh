@@ -9,8 +9,12 @@
 
 */
 /*
- * $Id: auth-kerberos.c,v 1.1 1997/03/27 03:09:29 kivinen Exp $
+ * $Id: auth-kerberos.c,v 1.2 1997/04/17 03:56:51 kivinen Exp $
  * $Log: auth-kerberos.c,v $
+ * Revision 1.2  1997/04/17 03:56:51  kivinen
+ * 	Kept FILE: prefix in kerberos ticket filename as DCE cache
+ * 	code requires it (patch from Doug Engert <DEEngert@anl.gov>).
+ *
  * Revision 1.1  1997/03/27 03:09:29  kivinen
  * *** empty log message ***
  *
@@ -227,7 +231,7 @@ int auth_kerberos_tgt( char *server_user, krb5_data *krb5data)
     goto errout;
   
   ticket = xmalloc(strlen(ccname + 5) + 1);
-  (void) sprintf(ticket, "%s", ccname+5);
+  (void) sprintf(ticket, "%s", ccname);
   
   /* Successful */
   packet_start(SSH_SMSG_SUCCESS);

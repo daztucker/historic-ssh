@@ -16,9 +16,14 @@ of X11, TCP/IP, and authentication connections.
 */
 
 /*
- * $Id: ssh.c,v 1.29 1998/04/17 00:40:07 kivinen Exp $
+ * $Id: ssh.c,v 1.30 1998/05/23 20:25:44 kivinen Exp $
  * $Log: ssh.c,v $
- * Revision 1.29  1998/04/17 00:40:07  kivinen
+ * Revision 1.30  1998/05/23  20:25:44  kivinen
+ * 	Changed () -> (void). Added check that {ssh,slogin}{,1}{.old}
+ * 	are known program names, not host names. Added missing break
+ * 	to 'g' option switch clause.
+ *
+ * Revision 1.29  1998/04/17  00:40:07  kivinen
  * 	Fixed -f code so that it will also use setpgid/setpgrp if
  * 	setsid is not available.
  *
@@ -255,9 +260,9 @@ RSAPrivateKey host_private_key;
 /* Original real uid. */
 uid_t original_real_uid;
 
-/* Prints a help message to the user.  This function never returns. */
 
-void usage()
+/* Prints a help message to the user.  This function never returns. */
+void usage(void)
 {
   fprintf(stderr, "Usage: %s [options] host [command]\n", av0);
   fprintf(stderr, "Options:\n");
@@ -463,6 +468,9 @@ int main(int ac, char **av)
     cp = av0;
   if (strcmp(cp, "rsh") != 0 && strcmp(cp, "ssh") != 0 &&
       strcmp(cp, "rlogin") != 0 && strcmp(cp, "slogin") != 0 &&
+      strcmp(cp, "ssh1") != 0 && strcmp(cp, "slogin1") != 0 &&
+      strcmp(cp, "ssh.old") != 0 && strcmp(cp, "slogin.old") != 0 &&
+      strcmp(cp, "ssh1.old") != 0 && strcmp(cp, "slogin1.old") != 0 &&
       strcmp(cp, "remsh") != 0)
     host = cp;
   
@@ -661,6 +669,7 @@ int main(int ac, char **av)
 
 	case 'g':
 	  options.gateway_ports = 1;
+	  break;
 
 	default:
 	  usage();

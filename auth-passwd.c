@@ -15,8 +15,12 @@ the password is valid for the user.
 */
 
 /*
- * $Id: auth-passwd.c,v 1.9 1997/03/27 03:09:20 kivinen Exp $
+ * $Id: auth-passwd.c,v 1.10 1997/04/05 21:45:25 kivinen Exp $
  * $Log: auth-passwd.c,v $
+ * Revision 1.10  1997/04/05 21:45:25  kivinen
+ * 	Changed verify_krb_v5_tgt to take *error_code instead of
+ * 	error_code.
+ *
  * Revision 1.9  1997/03/27 03:09:20  kivinen
  * 	Added kerberos patches from Glenn Machin.
  *
@@ -282,7 +286,7 @@ extern char *ticket;
  */
 static
 int verify_krb_v5_tgt (krb5_context c, krb5_ccache ccache,
-		       krb5_error_code error_code)
+		       krb5_error_code *error_code)
 {
   char phost[BUFSIZ];
   int retval, have_keys;

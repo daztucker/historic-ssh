@@ -8,9 +8,20 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Mon Jul 10 22:08:59 1995 ylo
-Last modified: Mon Jul 10 22:48:05 1995 ylo
+
+Functions for reading passphrases and passwords.
 
 */
+
+/*
+ * $Id: readpass.c,v 1.2 1995/07/13 01:31:04 ylo Exp $
+ * $Log: readpass.c,v $
+ * Revision 1.2  1995/07/13  01:31:04  ylo
+ * 	Removed "Last modified" header.
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
 
 #include "includes.h"
 #include "xmalloc.h"

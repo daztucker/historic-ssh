@@ -2,10 +2,11 @@
 
 xmalloc.h
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (C) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Mon Mar 20 22:09:17 1995 ylo
 
@@ -15,14 +16,17 @@ failure (they call fatal if they encounter an error).
 */
 
 /*
- * $Id: xmalloc.h,v 1.1.1.1 1996/02/18 21:38:10 ylo Exp $
+ * $Id: xmalloc.h,v 1.2 1999/11/17 17:05:02 tri Exp $
  * $Log: xmalloc.h,v $
+ * Revision 1.2  1999/11/17 17:05:02  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.1.1.1  1996/02/18 21:38:10  ylo
- * 	Imported ssh-1.2.13.
+ *      Imported ssh-1.2.13.
  *
  * Revision 1.2  1995/07/13  01:41:41  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
+ *      Removed "Last modified" header.
+ *      Added cvs log.
  *
  * $Endlog$
  */

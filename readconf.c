@@ -14,8 +14,11 @@ Functions for reading the configuration files.
 */
 
 /*
- * $Id: readconf.c,v 1.6 1995/09/09 21:26:44 ylo Exp $
+ * $Id: readconf.c,v 1.7 1995/09/24 23:59:44 ylo Exp $
  * $Log: readconf.c,v $
+ * Revision 1.7  1995/09/24  23:59:44  ylo
+ * 	Added ConnectionAttempts.
+ *
  * Revision 1.6  1995/09/09  21:26:44  ylo
  * /m/shadows/u2/users/ylo/ssh/README
  *
@@ -110,7 +113,7 @@ typedef enum
   oPasswordAuthentication, oRSAAuthentication, oFallBackToRsh, oUseRsh,
   oIdentityFile, oHostName, oPort, oCipher, oRemoteForward, oLocalForward, 
   oUser, oHost, oEscapeChar, oRhostsRSAAuthentication,
-  oGlobalKnownHostsFile, oUserKnownHostsFile
+  oGlobalKnownHostsFile, oUserKnownHostsFile, oConnectionAttempts
 } OpCodes;
 
 /* Textual representations of the tokens. */
@@ -140,6 +143,7 @@ static struct
   { "RhostsRSAAuthentication", oRhostsRSAAuthentication },
   { "GlobalKnownHostsFile", oGlobalKnownHostsFile },
   { "UserKnownHostsFile", oUserKnownHostsFile },
+  { "ConnectionAttempts", oConnectionAttempts },
   { NULL, 0 }
 };
 
@@ -302,6 +306,7 @@ void process_config_line(Options *options, const char *host,
       
     case oPort:
       intptr = &options->port;
+    parse_int:
       cp = strtok(NULL, WHITESPACE);
       if (!cp)
 	fatal("%.200s line %d: Missing argument.", filename, linenum);
@@ -312,6 +317,10 @@ void process_config_line(Options *options, const char *host,
 	*intptr = value;
       break;
       
+    case oConnectionAttempts:
+      intptr = &options->connection_attempts;
+      goto parse_int;
+
     case oCipher:
       intptr = &options->cipher;
       cp = strtok(NULL, WHITESPACE);
@@ -456,6 +465,7 @@ void initialize_options(Options *options)
   options->fallback_to_rsh = -1;
   options->use_rsh = -1;
   options->port = -1;
+  options->connection_attempts = -1;
   options->cipher = -1;
   options->num_identity_files = 0;
   options->hostname = NULL;
@@ -490,6 +500,8 @@ void fill_default_options(Options *options)
     options->use_rsh = 0;
   if (options->port == -1)
     options->port = 0; /* Filled in ssh_connect. */
+  if (options->connection_attempts == -1)
+    options->connection_attempts = 4;
   if (options->cipher == -1)
     options->cipher = SSH_CIPHER_NOT_SET; /* Selected in ssh_login(). */
   if (options->num_identity_files == 0)

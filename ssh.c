@@ -16,8 +16,24 @@ of X11, TCP/IP, and authentication connections.
 */
 
 /*
- * $Id: ssh.c,v 1.3 1996/05/29 07:41:34 ylo Exp $
+ * $Id: ssh.c,v 1.8 1996/10/04 01:00:13 kivinen Exp $
  * $Log: ssh.c,v $
+ * Revision 1.8  1996/10/04 01:00:13  kivinen
+ * 	Commented userfile_uninit out because we might need userfile
+ * 	later to open agent connections.
+ *
+ * Revision 1.7  1996/09/08 17:48:12  ttsalo
+ * 	Changed authfd's type from int to UserFile
+ *
+ * Revision 1.6  1996/07/29 03:41:23  ylo
+ * 	Recognize remsh as a possible name for ssh.
+ *
+ * Revision 1.5  1996/07/15 07:19:47  ylo
+ * 	Added passing of -8 to rlogin/rsh when falling back to them.
+ *
+ * Revision 1.4  1996/07/14 23:33:20  ylo
+ * 	Pass -n to rsh/rlogin if given to ssh.
+ *
  * Revision 1.3  1996/05/29 07:41:34  ylo
  * 	Added arguments to userfile_init.
  *
@@ -115,6 +131,9 @@ int tty_flag = 0;
 /* Flag indicating that nothing should be read from stdin.  This can be set
    on the command line. */
 int stdin_null_flag = 0;
+
+/* Flag indicating whether -8 was given on the command line. */
+int binary_clean_flag = 0;
 
 /* Flag indicating that ssh should fork after authentication.  This is useful
    so that the pasphrase can be entered manually, and then ssh goes to the
@@ -222,6 +241,10 @@ void rsh_connect(char *host, char *user, Buffer *command)
       args[i++] = "-l";
       args[i++] = user;
     }
+  if (stdin_null_flag)
+    args[i++] = "-n";
+  if (binary_clean_flag)
+    args[i++] = "-8";
   if (buffer_len(command) > 0)
     {
       buffer_append(command, "\0", 1);
@@ -250,7 +273,8 @@ void rsh_connect(char *host, char *user, Buffer *command)
 
 int main(int ac, char **av)
 {
-  int i, opt, optind, type, exit_status, ok, fwd_port, fwd_host_port, authfd;
+  int i, opt, optind, type, exit_status, ok, fwd_port, fwd_host_port;
+  UserFile authfd;
   char *optarg, *cp, buf[256];
   Buffer command;
   struct stat st;
@@ -315,7 +339,8 @@ int main(int ac, char **av)
   else
     cp = av0;
   if (strcmp(cp, "rsh") != 0 && strcmp(cp, "ssh") != 0 &&
-      strcmp(cp, "rlogin") != 0 && strcmp(cp, "slogin") != 0)
+      strcmp(cp, "rlogin") != 0 && strcmp(cp, "slogin") != 0 &&
+      strcmp(cp, "remsh") != 0)
     host = cp;
   
   for (optind = 1; optind < ac; optind++)
@@ -477,7 +502,9 @@ int main(int ac, char **av)
 
 	case '8':
 	  /* Ssh is always 8-bit-clean.  This option is only
-	     recognized for backwards compatibility with ssh. */
+	     recognized for backwards compatibility with ssh, and is
+	     passed to rsh/rlogin if falling back to them. */
+	  binary_clean_flag = 1;
 	  break;
 
 	default:
@@ -731,8 +758,12 @@ int main(int ac, char **av)
       if (uf && userfile_gets(line, sizeof(line), uf) && 
 	  sscanf(line, "%*s %s %s", proto, data) == 2)
 	got_data = 1;
+      else
+	debug("Failed to get local xauth data.");
       if (uf)
 	userfile_pclose(uf);
+#else /* XAUTH_PATH */
+      debug("No xauth data: no xauth program was found at configure time.");
 #endif /* XAUTH_PATH */
       /* If we didn't get authentication data, just make up some data.  The
 	 forwarding code will check the validity of the response anyway, and
@@ -767,7 +798,7 @@ int main(int ac, char **av)
 
   /* Clear agent forwarding if we don\'t have an agent. */
   authfd = ssh_get_authentication_fd();
-  if (authfd < 0)
+  if (authfd == NULL)
     options.forward_agent = 0;
   else
     ssh_close_authentication_socket(authfd);
@@ -808,7 +839,10 @@ int main(int ac, char **av)
 
   /* We will no longer need the forked process that reads files on the
      user's uid. */
-  userfile_uninit();
+  
+  /* userfile_uninit(); This is commented out, because we might to make
+     agent connections as user later with userfile.
+     //kivinen 03:54 Oct  4 1996 */
 
   /* If requested, fork and let ssh continue in the background. */
   if (fork_after_authentication_flag)

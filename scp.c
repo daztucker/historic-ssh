@@ -1,20 +1,26 @@
 /*
 
+scp.c
+
+Authors: Timo Rinne <tri@ssh.fi>
+         Tatu Ylonen <ylo@ssh.fi>
+
 scp - secure remote copy.  This is basically patched BSD rcp which uses ssh
 to do the data transfer (instead of using rcmd).
 
 NOTE: This version should NOT be suid root.  (This uses ssh to do the transfer
 and ssh has the necessary privileges.)
-
-1995 Timo Rinne <tri@iki.fi>, Tatu Ylonen <ylo@cs.hut.fi>
      
 */
 
 /*
- * $Id: scp.c,v 1.18 1999/02/24 11:36:13 tri Exp $
+ * $Id: scp.c,v 1.19 1999/11/17 17:04:53 tri Exp $
  * $Log: scp.c,v $
+ * Revision 1.19  1999/11/17 17:04:53  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.18  1999/02/24 11:36:13  tri
- * 	A statitstics int-overflow patch.
+ *      A statitstics int-overflow patch.
  *
  * Revision 1.17  1999/02/22 08:14:04  tri
  *      Final fixes for 1.2.27.
@@ -138,7 +144,7 @@ and ssh has the necessary privileges.)
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *      $Id: scp.c,v 1.18 1999/02/24 11:36:13 tri Exp $
+ *      $Id: scp.c,v 1.19 1999/11/17 17:04:53 tri Exp $
  */
 
 #ifndef lint
@@ -1358,7 +1364,7 @@ run_err(const char *fmt, ...)
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *      $Id: scp.c,v 1.18 1999/02/24 11:36:13 tri Exp $
+ *      $Id: scp.c,v 1.19 1999/11/17 17:04:53 tri Exp $
  */
 
 char *

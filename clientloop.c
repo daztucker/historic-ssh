@@ -15,8 +15,14 @@ The main loop for the interactive session (client side).
 */
 
 /*
- * $Id: clientloop.c,v 1.2 1996/04/22 23:45:20 huima Exp $
+ * $Id: clientloop.c,v 1.4 1997/03/26 07:12:28 kivinen Exp $
  * $Log: clientloop.c,v $
+ * Revision 1.4  1997/03/26 07:12:28  kivinen
+ * 	Added HAVE_NO_TZ_IN_GETTIMEOFDAY support.
+ *
+ * Revision 1.3  1996/11/24 08:17:46  kivinen
+ * 	Added all checks that check EAGAIN to check EWOULDBLOCK too.
+ *
  * Revision 1.2  1996/04/22 23:45:20  huima
  * Added support for the revised channel protocol.
  *
@@ -204,7 +210,11 @@ double get_current_time()
 {
 #ifdef HAVE_GETTIMEOFDAY
   struct timeval tv;
+#ifdef HAVE_NO_TZ_IN_GETTIMEOFDAY
+  gettimeofday(&tv);
+#else
   gettimeofday(&tv, NULL);
+#endif
   return (double)tv.tv_sec + (double)tv.tv_usec / 1000000.0;
 #else /* HAVE_GETTIMEOFDAY */
   return (double)time(NULL);
@@ -562,7 +572,7 @@ void client_process_input(fd_set *readset)
 
       /* There is a kernel bug on Solaris that causes select to sometimes
 	 wake up even though there is no data available. */
-      if (len < 0 && errno == EAGAIN)
+      if (len < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
 	len = 0;
 
       if (len < 0)
@@ -778,7 +788,7 @@ void client_process_output(fd_set *writeset)
 		  buffer_len(&stdout_buffer));
       if (len <= 0)
 	{
-	  if (errno == EAGAIN)
+	  if (errno == EAGAIN || errno == EWOULDBLOCK)
 	    len = 0;
 	  else
 	    {
@@ -802,7 +812,7 @@ void client_process_output(fd_set *writeset)
       len = write(fileno(stderr), buffer_ptr(&stderr_buffer),
 		  buffer_len(&stderr_buffer));
       if (len <= 0)
-	if (errno == EAGAIN)
+	if (errno == EAGAIN || errno == EWOULDBLOCK)
 	  len = 0;
 	else
 	  {

@@ -2,10 +2,11 @@
 
 sshconnect.c
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Sat Mar 18 22:15:47 1995 ylo
 
@@ -15,12 +16,15 @@ login (authentication) dialog.
 */
 
 /*
- * $Id: sshconnect.c,v 1.32 1999/02/21 19:52:51 ylo Exp $
+ * $Id: sshconnect.c,v 1.33 1999/11/17 17:04:58 tri Exp $
  * $Log: sshconnect.c,v $
+ * Revision 1.33  1999/11/17 17:04:58  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.32  1999/02/21 19:52:51  ylo
- * 	Intermediate commit of ssh1.2.27 stuff.
- * 	Main change is sprintf -> snprintf; however, there are also
- * 	many other changes.
+ *      Intermediate commit of ssh1.2.27 stuff.
+ *      Main change is sprintf -> snprintf; however, there are also
+ *      many other changes.
  *
  * Revision 1.31  1998/08/04 23:52:04  kivinen
  *      Removed HAVE_SOCKS_H code.

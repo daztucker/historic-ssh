@@ -14,8 +14,14 @@ Identity and host key generation and maintenance.
 */
 
 /*
- * $Id: ssh-keygen.c,v 1.3 1995/07/26 17:11:31 ylo Exp $
+ * $Id: ssh-keygen.c,v 1.5 1995/08/31 09:22:50 ylo Exp $
  * $Log: ssh-keygen.c,v $
+ * Revision 1.5  1995/08/31  09:22:50  ylo
+ * 	Use either passphrase when only one needed.
+ *
+ * Revision 1.4  1995/08/29  22:33:00  ylo
+ * 	Added support for -P, -N, -f, and -C.
+ *
  * Revision 1.3  1995/07/26  17:11:31  ylo
  * 	Print version number in the usage string.
  *
@@ -56,6 +62,18 @@ int change_passphrase = 0;
    on the command line. */
 int change_comment = 0;
 
+/* This is set to the identity file name if given on the command line. */
+char *identity_file = NULL;
+
+/* This is set to the passphrase if given on the command line. */
+char *identity_passphrase = NULL;
+
+/* This is set to the new passphrase if given on the command line. */
+char *identity_new_passphrase = NULL;
+
+/* This is set to the new comment if given on the command line. */
+char *identity_comment = NULL;
+
 /* Perform changing a passphrase.  The argument is the passwd structure
    for the current user. */
 
@@ -67,14 +85,23 @@ void do_change_passphrase(struct passwd *pw)
   struct stat st;
 
   /* Read key file name. */
-  printf("Enter file in which the key is ($HOME/%s): ", SSH_CLIENT_IDENTITY);
-  fflush(stdout);
-  if (fgets(buf, sizeof(buf), stdin) == NULL)
-    exit(1);
-  if (strchr(buf, '\n'))
-    *strchr(buf, '\n') = 0;
-  if (strcmp(buf, "") == 0)
-    sprintf(buf, "%s/%s", pw->pw_dir, SSH_CLIENT_IDENTITY);
+  if (identity_file != NULL)
+    {
+      strncpy(buf, identity_file, sizeof(buf));
+      buf[sizeof(buf) - 1] = '\0';
+    }
+  else
+    {
+      printf("Enter file in which the key is ($HOME/%s): ", 
+	     SSH_CLIENT_IDENTITY);
+      fflush(stdout);
+      if (fgets(buf, sizeof(buf), stdin) == NULL)
+	exit(1);
+      if (strchr(buf, '\n'))
+	*strchr(buf, '\n') = 0;
+      if (strcmp(buf, "") == 0)
+	sprintf(buf, "%s/%s", pw->pw_dir, SSH_CLIENT_IDENTITY);
+    }
 
   /* Check if the file exists. */
   if (stat(buf, &st) < 0)
@@ -97,7 +124,10 @@ void do_change_passphrase(struct passwd *pw)
   if (!load_private_key(buf, "", &private_key, &comment))
     {
       /* Read passphrase from the user. */
-      old_passphrase = read_passphrase("Enter old passphrase: ", 1);
+      if (identity_passphrase)
+	old_passphrase = xstrdup(identity_passphrase);
+      else
+	old_passphrase = read_passphrase("Enter old passphrase: ", 1);
       /* Try to load using the passphrase. */
       if (!load_private_key(buf, old_passphrase, &private_key, &comment))
 	{
@@ -113,23 +143,31 @@ void do_change_passphrase(struct passwd *pw)
   printf("Key has comment '%s'\n", comment);
   
   /* Ask the new passphrase (twice). */
-  passphrase1 = 
-    read_passphrase("Enter new passphrase (empty for no passphrase): ", 1);
-  passphrase2 = read_passphrase("Enter same passphrase again: ", 1);
-
-  /* Verify that they are the same. */
-  if (strcmp(passphrase1, passphrase2) != 0)
+  if (identity_new_passphrase)
     {
-      memset(passphrase1, 0, strlen(passphrase1));
-      memset(passphrase2, 0, strlen(passphrase2));
-      xfree(passphrase1);
-      xfree(passphrase2);
-      printf("Pass phrases do not match.  Try again.\n");
-      exit(1);
+      passphrase1 = xstrdup(identity_new_passphrase);
+      passphrase2 = NULL;
     }
-  /* Destroy the other copy. */
-  memset(passphrase2, 0, strlen(passphrase2));
-  xfree(passphrase2);
+  else
+    {
+      passphrase1 = 
+	read_passphrase("Enter new passphrase (empty for no passphrase): ", 1);
+      passphrase2 = read_passphrase("Enter same passphrase again: ", 1);
+
+      /* Verify that they are the same. */
+      if (strcmp(passphrase1, passphrase2) != 0)
+	{
+	  memset(passphrase1, 0, strlen(passphrase1));
+	  memset(passphrase2, 0, strlen(passphrase2));
+	  xfree(passphrase1);
+	  xfree(passphrase2);
+	  printf("Pass phrases do not match.  Try again.\n");
+	  exit(1);
+	}
+      /* Destroy the other copy. */
+      memset(passphrase2, 0, strlen(passphrase2));
+      xfree(passphrase2);
+    }
 
   /* Save the file using the new passphrase. */
   if (!save_private_key(buf, passphrase1, &private_key, comment, &state))
@@ -163,14 +201,23 @@ void do_change_comment(struct passwd *pw)
   FILE *f;
 
   /* Read key file name. */
-  printf("Enter file in which the key is ($HOME/%s): ", SSH_CLIENT_IDENTITY);
-  fflush(stdout);
-  if (fgets(buf, sizeof(buf), stdin) == NULL)
-    exit(1);
-  if (strchr(buf, '\n'))
-    *strchr(buf, '\n') = 0;
-  if (strcmp(buf, "") == 0)
-    sprintf(buf, "%s/%s", pw->pw_dir, SSH_CLIENT_IDENTITY);
+  if (identity_file)
+    {
+      strncpy(buf, identity_file, sizeof(buf));
+      buf[sizeof(buf) - 1] = '\0';
+    }
+  else
+    {
+      printf("Enter file in which the key is ($HOME/%s): ", 
+	     SSH_CLIENT_IDENTITY);
+      fflush(stdout);
+      if (fgets(buf, sizeof(buf), stdin) == NULL)
+	exit(1);
+      if (strchr(buf, '\n'))
+	*strchr(buf, '\n') = 0;
+      if (strcmp(buf, "") == 0)
+	sprintf(buf, "%s/%s", pw->pw_dir, SSH_CLIENT_IDENTITY);
+    }
 
   /* Check if the file exists. */
   if (stat(buf, &st) < 0)
@@ -193,7 +240,13 @@ void do_change_comment(struct passwd *pw)
   else
     {
       /* Read passphrase from the user. */
-      passphrase = read_passphrase("Enter passphrase: ", 1);
+      if (identity_passphrase)
+	passphrase = xstrdup(identity_passphrase);
+      else
+	if (identity_new_passphrase)
+	  passphrase = xstrdup(identity_new_passphrase);
+	else
+	  passphrase = read_passphrase("Enter passphrase: ", 1);
       /* Try to load using the passphrase. */
       if (!load_private_key(buf, passphrase, &private_key, &comment))
 	{
@@ -205,21 +258,30 @@ void do_change_comment(struct passwd *pw)
     }
   printf("Key now has comment '%s'\n", comment);
 
-  printf("Enter new comment: ");
-  fflush(stdout);
-  if (!fgets(new_comment, sizeof(new_comment), stdin))
+  if (identity_comment)
     {
-      memset(passphrase, 0, strlen(passphrase));
-      rsa_clear_private_key(&private_key);
-      exit(1);
+      strncpy(new_comment, identity_comment, sizeof(new_comment));
+      new_comment[sizeof(new_comment) - 1] = '\0';
     }
-  
-  /* Remove terminating newline from comment. */
-  if (strchr(new_comment, '\n'))
-    *strchr(new_comment, '\n') = 0;
-
+  else
+    {
+      printf("Enter new comment: ");
+      fflush(stdout);
+      if (!fgets(new_comment, sizeof(new_comment), stdin))
+	{
+	  memset(passphrase, 0, strlen(passphrase));
+	  rsa_clear_private_key(&private_key);
+	  exit(1);
+	}
+      
+      /* Remove terminating newline from comment. */
+      if (strchr(new_comment, '\n'))
+	*strchr(new_comment, '\n') = 0;
+    }
+      
   /* Save the file using the new passphrase. */
-  if (!save_private_key(buf, passphrase, &private_key, new_comment, &state))
+  if (!save_private_key(buf, passphrase, &private_key, new_comment, 
+			&state))
     {
       printf("Saving the key failed: %s: %s.\n",
 	     buf, strerror(errno));
@@ -289,7 +351,7 @@ int main(int ac, char **av)
       error("Could not create directory '%s'.", buf);
 
   /* Parse command line arguments. */
-  while ((opt = getopt(ac, av, "pcb:")) != EOF)
+  while ((opt = getopt(ac, av, "pcb:f:P:N:C:")) != EOF)
     {
       switch (opt)
 	{
@@ -310,10 +372,26 @@ int main(int ac, char **av)
 	  change_comment = 1;
 	  break;
 
+	case 'f':
+	  identity_file = optarg;
+	  break;
+	  
+	case 'P':
+	  identity_passphrase = optarg;
+	  break;
+
+	case 'N':
+	  identity_new_passphrase = optarg;
+	  break;
+
+	case 'C':
+	  identity_comment = optarg;
+	  break;
+
 	case '?':
 	default:
 	  printf("ssh-keygen version %s\n", SSH_VERSION);
-	  printf("Usage: %s [-b bits] [-p] [-c]\n", av[0]);
+	  printf("Usage: %s [-b bits] [-p] [-c] [-f file] [-P pass] [-N new-pass] [-C comment]\n", av[0]);
 	  exit(1);
 	}
     }
@@ -359,15 +437,23 @@ int main(int ac, char **av)
  ask_file_again:
 
   /* Ask for a file to save the key in. */
-  printf("Enter file in which to save the key ($HOME/%s): ", 
-	 SSH_CLIENT_IDENTITY);
-  fflush(stdout);
-  if (fgets(buf, sizeof(buf), stdin) == NULL)
-    exit(1);
-  if (strchr(buf, '\n'))
-    *strchr(buf, '\n') = 0;
-  if (strcmp(buf, "") == 0)
-    sprintf(buf, "%s/%s", pw->pw_dir, SSH_CLIENT_IDENTITY);
+  if (identity_file)
+    {
+      strncpy(buf, identity_file, sizeof(buf));
+      buf[sizeof(buf) - 1] = '\0';
+    }
+  else
+    {
+      printf("Enter file in which to save the key ($HOME/%s): ", 
+	     SSH_CLIENT_IDENTITY);
+      fflush(stdout);
+      if (fgets(buf, sizeof(buf), stdin) == NULL)
+	exit(1);
+      if (strchr(buf, '\n'))
+	*strchr(buf, '\n') = 0;
+      if (strcmp(buf, "") == 0)
+	sprintf(buf, "%s/%s", pw->pw_dir, SSH_CLIENT_IDENTITY);
+    }
 
   /* If the file aready exists, ask the user to confirm. */
   if (stat(buf, &st) >= 0)
@@ -381,42 +467,58 @@ int main(int ac, char **av)
 	exit(1);
     }
   
- passphrase_again:
   /* Ask for a passphrase (twice). */
-  passphrase1 = 
-    read_passphrase("Enter passphrase (empty for no passphrase): ", 1);
-  passphrase2 = read_passphrase("Enter same passphrase again: ", 1);
-  if (strcmp(passphrase1, passphrase2) != 0)
-    {
-      /* The passphrases do not match.  Clear them and retry. */
-      memset(passphrase1, 0, strlen(passphrase1));
-      memset(passphrase2, 0, strlen(passphrase2));
-      xfree(passphrase1);
-      xfree(passphrase2);
-      printf("Passphrases do not match.  Try again.\n");
-      goto passphrase_again;
-    }
-  /* Clear the other copy of the passphrase. */
-  memset(passphrase2, 0, strlen(passphrase2));
-  xfree(passphrase2);
+  if (identity_passphrase)
+    passphrase1 = xstrdup(identity_passphrase);
+  else
+    if (identity_new_passphrase)
+      passphrase1 = xstrdup(identity_new_passphrase);
+    else
+      {
+      passphrase_again:
+	passphrase1 = 
+	  read_passphrase("Enter passphrase (empty for no passphrase): ", 1);
+	passphrase2 = read_passphrase("Enter same passphrase again: ", 1);
+	if (strcmp(passphrase1, passphrase2) != 0)
+	  {
+	    /* The passphrases do not match.  Clear them and retry. */
+	    memset(passphrase1, 0, strlen(passphrase1));
+	    memset(passphrase2, 0, strlen(passphrase2));
+	    xfree(passphrase1);
+	    xfree(passphrase2);
+	    printf("Passphrases do not match.  Try again.\n");
+	    goto passphrase_again;
+	  }
+	/* Clear the other copy of the passphrase. */
+	memset(passphrase2, 0, strlen(passphrase2));
+	xfree(passphrase2);
+      }
 
   /* Create default commend field for the passphrase.  The user can later
      edit this field. */
+  if (identity_comment)
+    {
+      strncpy(buf2, identity_comment, sizeof(buf2));
+      buf2[sizeof(buf2) - 1] = '\0';
+    }
+  else
+    {
 #ifdef HAVE_GETHOSTNAME
-  if (gethostname(hostname, sizeof(hostname)) < 0)
-    {
-      perror("gethostname");
-      exit(1);
-    }
-  sprintf(buf2, "%s@%s", pw->pw_name, hostname);
+      if (gethostname(hostname, sizeof(hostname)) < 0)
+	{
+	  perror("gethostname");
+	  exit(1);
+	}
+      sprintf(buf2, "%s@%s", pw->pw_name, hostname);
 #else
-  if (uname(&uts) < 0)
-    {
-      perror("uname");
-      exit(1);
-    }
-  sprintf(buf2, "%s@%s", pw->pw_name, uts.nodename);
+      if (uname(&uts) < 0)
+	{
+	  perror("uname");
+	  exit(1);
+	}
+      sprintf(buf2, "%s@%s", pw->pw_name, uts.nodename);
 #endif
+    }
 
   /* Save the key with the given passphrase and comment. */
   if (!save_private_key(buf, passphrase1, &private_key, buf2, &state))

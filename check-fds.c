@@ -12,8 +12,11 @@ Created: Sat Apr  8 00:25:04 1995 ylo
 */
 
 /*
- * $Id: check-fds.c,v 1.2 1995/07/13 01:19:38 ylo Exp $
+ * $Id: check-fds.c,v 1.3 1995/09/09 21:26:40 ylo Exp $
  * $Log: check-fds.c,v $
+ * Revision 1.3  1995/09/09  21:26:40  ylo
+ * /m/shadows/u2/users/ylo/ssh/README
+ *
  * Revision 1.2  1995/07/13  01:19:38  ylo
  * 	Removed "Last modified" header.
  * 	Added cvs log.
@@ -43,7 +46,7 @@ int main(int ac, char **av)
 		   st.st_mode, st.st_dev, st.st_rdev, st.st_ino, 
 		   (long)st.st_size);
 	    if (ttyname(i))
-	      printf("ttyname: %s\n", ttyname(i));
+	      printf("ttyname: %.100s\n", ttyname(i));
 	  }
       }
   exit(0);

@@ -14,8 +14,19 @@ The authentication agent program.
 */
 
 /*
- * $Id: ssh-agent.c,v 1.3 1995/07/26 23:29:13 ylo Exp $
+ * $Id: ssh-agent.c,v 1.5 1995/08/29 22:25:22 ylo Exp $
  * $Log: ssh-agent.c,v $
+ * Revision 1.5  1995/08/29  22:25:22  ylo
+ * 	Added compatibility support for various authentication
+ * 	protocol versions.
+ * 	Fixed bug in deleting identity.
+ * 	Added remove_all.
+ * 	New file descriptor code.
+ *
+ * Revision 1.4  1995/08/21  23:27:31  ylo
+ * 	Added support for session_id and response_type in
+ * 	authentication requests.
+ *
  * Revision 1.3  1995/07/26  23:29:13  ylo
  * 	Print software version with usage message.
  *
@@ -37,6 +48,7 @@ The authentication agent program.
 #include "packet.h"
 #include "md5.h"
 #include "getput.h"
+#include "mpaux.h"
 
 typedef struct
 {
@@ -88,7 +100,8 @@ void process_authentication_challenge(SocketEntry *e)
   MP_INT pub_e, pub_n, challenge, aux;
   Buffer msg;
   struct MD5Context md;
-  unsigned char buf[32], mdbuf[16];
+  unsigned char buf[32], mdbuf[16], session_id[16];
+  unsigned int response_type;
 
   buffer_init(&msg);
   mpz_init(&pub_e);
@@ -98,6 +111,18 @@ void process_authentication_challenge(SocketEntry *e)
   buffer_get_mp_int(&e->input, &pub_e);
   buffer_get_mp_int(&e->input, &pub_n);
   buffer_get_mp_int(&e->input, &challenge);
+  if (buffer_len(&e->input) == 0)
+    {
+      /* Compatibility code for old servers. */
+      memset(session_id, 0, 16);
+      response_type = 0;
+    }
+  else
+    {
+      /* New code. */
+      buffer_get(&e->input, (char *)session_id, 16);
+      response_type = buffer_get_int(&e->input);
+    }
   for (i = 0; i < num_identities; i++)
     if (pub_bits == identities[i].key.bits &&
 	mpz_cmp(&pub_e, &identities[i].key.e) == 0 &&
@@ -106,22 +131,42 @@ void process_authentication_challenge(SocketEntry *e)
 	/* Decrypt the challenge using the private key. */
 	rsa_private_decrypt(&challenge, &challenge, &identities[i].key);
 
-	/* Convert the decrypted data into a 32 byte buffer. */
-	mpz_init(&aux);
-	for (i = 0; i < 32; i++)
+	/* Compute the desired response. */
+	switch (response_type)
 	  {
-	    mpz_mod_2exp(&aux, &challenge, 8);
-	    buf[i] = mpz_get_ui(&aux);
-	    mpz_div_2exp(&challenge, &challenge, 8);
+	  case 0: /* As of protocol 1.0 */
+	    /* Convert the decrypted data into a 32 byte buffer. */
+	    mpz_init(&aux);
+	    for (i = 0; i < 32; i++)
+	      {
+		mpz_mod_2exp(&aux, &challenge, 8);
+		buf[i] = mpz_get_ui(&aux);
+		mpz_div_2exp(&challenge, &challenge, 8);
+	      }
+	    mpz_clear(&aux);
+	
+	    /* Compute the MD5 of the resulting buffer.  The purpose of 
+	       computing MD5 is to prevent chosen plaintext attack. */
+	    MD5Init(&md);
+	    MD5Update(&md, buf, 32);
+	    MD5Final(mdbuf, &md);
+	    break;
+
+	  case 1: /* As of protocol 1.1 */
+	    /* The response is MD5 of decrypted challenge plus session id. */
+	    mp_linearize_msb_first(buf, 32, &challenge);
+	    MD5Init(&md);
+	    MD5Update(&md, buf, 32);
+	    MD5Update(&md, session_id, 16);
+	    MD5Final(mdbuf, &md);
+	    break;
+
+	  default:
+	    fatal("process_authentication_challenge: bad response_type %d", 
+		  response_type);
+	    break;
 	  }
-	mpz_clear(&aux);
-	
-	/* Compute the MD5 of the resulting buffer.  The purpose of computing 
-	   MD5 is to prevent chosen plaintext attack. */
-	MD5Init(&md);
-	MD5Update(&md, buf, 32);
-	MD5Final(mdbuf, &md);
-	
+
 	/* Send the response. */
 	buffer_put_char(&msg, SSH_AGENT_RSA_RESPONSE);
 	for (i = 0; i < 16; i++)
@@ -155,7 +200,7 @@ void process_remove_identity(SocketEntry *e)
   buffer_get_mp_int(&e->input, &dummy);
   buffer_get_mp_int(&e->input, &n);
   
-  /* Check if we already have the key. */
+  /* Check if we have the key. */
   for (i = 0; i < num_identities; i++)
     if (mpz_cmp(&identities[i].key.n, &n) == 0)
       {
@@ -163,8 +208,9 @@ void process_remove_identity(SocketEntry *e)
 	   empty slots in the middle of the array, we actually free the
 	   key there and copy data from the last entry. */
 	rsa_clear_private_key(&identities[i].key);
+	xfree(identities[i].comment);
 	if (i < num_identities - 1)
-	  identities[i] = identities[num_identities];
+	  identities[i] = identities[num_identities - 1];
 	num_identities--;
 	mpz_clear(&dummy);
 	mpz_clear(&n);
@@ -174,7 +220,7 @@ void process_remove_identity(SocketEntry *e)
 	buffer_put_char(&e->output, SSH_AGENT_SUCCESS);
 	return;
       }
-
+  /* We did not have the key. */
   mpz_clear(&dummy);
   mpz_clear(&n);
 
@@ -182,6 +228,30 @@ void process_remove_identity(SocketEntry *e)
   buffer_put_int(&e->output, 1);
   buffer_put_char(&e->output, SSH_AGENT_FAILURE);
 }
+
+/* Removes all identities from the agent. */
+
+void process_remove_all_identities(SocketEntry *e)
+{
+  unsigned int i;
+  
+  /* Loop over all identities and clear the keys. */
+  for (i = 0; i < num_identities; i++)
+    {
+      rsa_clear_private_key(&identities[i].key);
+      xfree(identities[i].comment);
+    }
+
+  /* Mark that there are no identities. */
+  num_identities = 0;
+
+  /* Send success. */
+  buffer_put_int(&e->output, 1);
+  buffer_put_char(&e->output, SSH_AGENT_SUCCESS);
+  return;
+}
+
+/* Adds an identity to the agent. */
 
 void process_add_identity(SocketEntry *e)
 {
@@ -214,12 +284,7 @@ void process_add_identity(SocketEntry *e)
       {
 	/* We already have this key.  Clear and free the new data and
 	   return success. */
-	mpz_clear(&k->n);
-	mpz_clear(&k->e);
-	mpz_clear(&k->d);
-	mpz_clear(&k->u);
-	mpz_clear(&k->p);
-	mpz_clear(&k->q);
+	rsa_clear_private_key(k);
 	xfree(identities[num_identities].comment);
 
 	/* Send success. */
@@ -269,6 +334,9 @@ void process_message(SocketEntry *e)
       break;
     case SSH_AGENTC_REMOVE_RSA_IDENTITY:
       process_remove_identity(e);
+      break;
+    case SSH_AGENTC_REMOVE_ALL_RSA_IDENTITIES:
+      process_remove_all_identities(e);
       break;
     default:
       /* Unknown message.  Respond with failure. */
@@ -366,6 +434,7 @@ void after_select(fd_set *readset, fd_set *writeset)
 	      break; /* Incorrect message; ignore it. */
 	    /* It is a connection request message. */
 	    port = (unsigned char)buf[1] * 256 + (unsigned char)buf[2];
+	    memset(&sin, 0, sizeof(sin));
 	    sin.sin_family = AF_INET;
 	    sin.sin_addr.s_addr = htonl(0x7f000001); /* localhost */
 	    sin.sin_port = htons(port);
@@ -464,12 +533,12 @@ int main(int ac, char **av)
 {
   fd_set readset, writeset;
   char buf[1024];
-#ifdef AGENT_USES_SOCKET
+  int pfd;
   int sock;
   struct sockaddr_un sunaddr;
-#else /* AGENT_USES_SOCKET */
-  int sockets[2], dups[SSH_NUM_DUPS], i;
-#endif /* AGENT_USES_SOCKET */
+
+  int sockets[2], i;
+  int *dups;
 
   if (ac < 2)
     {
@@ -478,83 +547,102 @@ int main(int ac, char **av)
       exit(1);
     }
 
-#ifdef AGENT_USES_SOCKET
-  /* The agent uses SSH_AUTHENTICATION_SOCKET. */
-
-  parent_pid = getpid();
-
-  sprintf(socket_name, SSH_AGENT_SOCKET, parent_pid);
-  
-  /* Fork, and have the parent execute the command.  The child continues as
-     the authentication agent. */
-  if (fork() != 0)
-    { /* Parent - execute the given command. */
-      sprintf(buf, "SSH_AUTHENTICATION_SOCKET=%s", socket_name);
-      putenv(buf);
-      execvp(av[1], av + 1);
-      perror(av[1]);
-      exit(1);
-    }
-
-  sock = socket(AF_UNIX, SOCK_STREAM, 0);
-  if (sock < 0)
+  pfd = get_permanent_fd(NULL);
+  if (pfd < 0) 
     {
-      perror("socket");
-      exit(1);
+      /* The agent uses SSH_AUTHENTICATION_SOCKET. */
+      
+      parent_pid = getpid();
+      
+      sprintf(socket_name, SSH_AGENT_SOCKET, parent_pid);
+      
+      /* Fork, and have the parent execute the command.  The child continues as
+	 the authentication agent. */
+      if (fork() != 0)
+	{ /* Parent - execute the given command. */
+	  sprintf(buf, "SSH_AUTHENTICATION_SOCKET=%s", socket_name);
+	  putenv(buf);
+	  execvp(av[1], av + 1);
+	  perror(av[1]);
+	  exit(1);
+	}
+      
+      sock = socket(AF_UNIX, SOCK_STREAM, 0);
+      if (sock < 0)
+	{
+	  perror("socket");
+	  exit(1);
+	}
+      memset(&sunaddr, 0, sizeof(sunaddr));
+      sunaddr.sun_family = AF_UNIX;
+      strncpy(sunaddr.sun_path, socket_name, sizeof(sunaddr.sun_path));
+      if (bind(sock, (struct sockaddr *)&sunaddr, sizeof(sunaddr)) < 0)
+	{
+	  perror("bind");
+	  exit(1);
+	}
+      if (chmod(socket_name, 0700) < 0)
+	{
+	  perror("chmod");
+	  exit(1);
+	}
+      if (listen(sock, 5) < 0)
+	{
+	  perror("listen");
+	  exit(1);
+	}
+      new_socket(AUTH_SOCKET, sock);
+      signal(SIGALRM, check_parent_exists);
+      alarm(10);
     }
-  sunaddr.sun_family = AF_UNIX;
-  strncpy(sunaddr.sun_path, socket_name, sizeof(sunaddr.sun_path));
-  if (bind(sock, (struct sockaddr *)&sunaddr, sizeof(sunaddr)) < 0)
+  else 
     {
-      perror("bind");
-      exit(1);
+      /* The agent uses SSH_AUTHENTICATION_FD. */
+      int cnt, newfd;
+      
+      dups = xmalloc(sizeof (int) * (1 + pfd));
+      
+      if (socketpair(AF_UNIX, SOCK_STREAM, 0, sockets) < 0)
+	{
+	  perror("socketpair");
+	  exit(1);
+	}
+
+      /* Dup some descriptors to get the authentication fd to pfd,
+	 because some shells arbitrarily close descriptors below that.
+	 Don't use dup2 because maybe some systems don't have it?? */
+      for (cnt = 0;; cnt++) {
+	if ((dups[cnt] = dup(0)) < 0)
+	  fatal("auth_input_request_forwarding: dup failed");
+	if (dups[cnt] == pfd)
+	  break;
+      }
+      close(dups[cnt]);
+      
+      /* Move the file descriptor we pass to children up high where
+	 the shell won't close it. */
+      newfd = dup(sockets[1]);
+      if (newfd != pfd)
+	fatal("auth_input_request_forwarding: dup didn't return %d.", pfd);
+      close(sockets[1]);
+      sockets[1] = newfd;
+      /* Close duped descriptors. */
+      for (i = 0; i < cnt; i++)
+	close(dups[i]);
+      free(dups);
+      
+      if (fork() != 0)
+	{ /* Parent - execute the given command. */
+	  close(sockets[0]);
+	  sprintf(buf, "SSH_AUTHENTICATION_FD=%d", sockets[1]);
+	  putenv(buf);
+	  execvp(av[1], av + 1);
+	  perror(av[1]);
+	  exit(1);
+	}
+      close(sockets[1]);
+      new_socket(AUTH_FD, sockets[0]);
     }
-  if (chmod(socket_name, 0700) < 0)
-    {
-      perror("chmod");
-      exit(1);
-    }
-  if (listen(sock, 5) < 0)
-    {
-      perror("listen");
-      exit(1);
-    }
-  new_socket(AUTH_SOCKET, sock);
-  signal(SIGALRM, check_parent_exists);
-  alarm(10);
-
-#else /* AGENT_USES_SOCKET */
-
-  /* The agent uses SSH_AUTHENTICATION_FD. */
-
-  /* Dup some descriptors to get the authentication fd above 10.  This is
-     because some shells arbitrarily close descriptors below that. */
-  for (i = 0; i < SSH_NUM_DUPS; i++)
-    dups[i] = dup(0);
-
-  if (socketpair(AF_UNIX, SOCK_STREAM, 0, sockets) < 0)
-    {
-      perror("socketpair");
-      exit(1);
-    }
-  
-  /* Close duped descriptors. */
-  for (i = 0; i < SSH_NUM_DUPS; i++)
-    close(dups[i]);
-
-  if (fork() != 0)
-    { /* Parent - execute the given command. */
-      close(sockets[0]);
-      sprintf(buf, "SSH_AUTHENTICATION_FD=%d", sockets[1]);
-      putenv(buf);
-      execvp(av[1], av + 1);
-      perror(av[1]);
-      exit(1);
-    }
-  close(sockets[1]);
-  new_socket(AUTH_FD, sockets[0]);
-
-#endif /* AGENT_USES_SOCKET */
 
   signal(SIGINT, SIG_IGN);
   while (1)

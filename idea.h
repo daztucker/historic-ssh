@@ -8,9 +8,20 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Sun Jun 25 04:44:30 1995 ylo
-Last modified: Mon Jun 26 02:48:14 1995 ylo
+
+The IDEA encryption algorithm.
 
 */
+
+/*
+ * $Id: idea.h,v 1.2 1995/07/13 01:25:00 ylo Exp $
+ * $Log: idea.h,v $
+ * Revision 1.2  1995/07/13  01:25:00  ylo
+ * 	Removed "Last modified" header.
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
 
 #ifndef IDEA_H
 #define IDEA_H

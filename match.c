@@ -14,8 +14,14 @@ Simple pattern matching, with '*' and '?' as wildcards.
 */
 
 /*
- * $Id: match.c,v 1.1.1.1 1996/02/18 21:38:12 ylo Exp $
+ * $Id: match.c,v 1.3 1997/04/27 22:19:35 kivinen Exp $
  * $Log: match.c,v $
+ * Revision 1.3  1997/04/27 22:19:35  kivinen
+ * 	Fixed typo.
+ *
+ * Revision 1.2  1997/04/27 21:52:05  kivinen
+ * 	Added F-SECURE stuff. Added match_port function.
+ *
  * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
  * 	Imported ssh-1.2.13.
  *
@@ -87,3 +93,78 @@ int match_pattern(const char *s, const char *pattern)
     }
   /*NOTREACHED*/
 }
+
+#ifdef F_SECURE_COMMERCIAL
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#endif /* F_SECURE_COMMERCIAL */

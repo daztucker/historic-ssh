@@ -8,9 +8,20 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Mon Mar 20 21:13:40 1995 ylo
-Last modified: Wed Apr 19 16:53:55 1995 ylo
+
+Client-side versions of debug(), log(), etc.  These print to stderr.
 
 */
+
+/*
+ * $Id: log-client.c,v 1.2 1995/07/13 01:25:51 ylo Exp $
+ * $Log: log-client.c,v $
+ * Revision 1.2  1995/07/13  01:25:51  ylo
+ * 	Removed "Last modified" header.
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
 
 #include "includes.h"
 #include "ssh.h"

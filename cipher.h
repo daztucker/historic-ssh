@@ -12,8 +12,14 @@ Created: Wed Apr 19 16:50:42 1995 ylo
 */
 
 /*
- * $Id: cipher.h,v 1.2 1996/02/18 21:52:35 ylo Exp $
+ * $Id: cipher.h,v 1.4 1996/09/28 12:01:15 ylo Exp $
  * $Log: cipher.h,v $
+ * Revision 1.4  1996/09/28 12:01:15  ylo
+ * 	Removed TSS (put inside #ifdef WITH_TSS).
+ *
+ * Revision 1.3  1996/09/27 13:55:03  ttsalo
+ * 	Added blowfish
+ *
  * Revision 1.2  1996/02/18 21:52:35  ylo
  * 	Added comments that len must be multiple of 8.
  *
@@ -37,8 +43,11 @@ Created: Wed Apr 19 16:50:42 1995 ylo
 #include "idea.h"
 #endif /* WITHOUT_IDEA */
 #include "des.h"
+#ifdef WITH_TSS
 #include "tss.h"
+#endif /* WITH_TSS */
 #include "arcfour.h"
+#include "blowfish.h"
 
 /* Cipher types.  New types can be added, but old types should not be removed
    for compatibility.  The maximum allowed value is 31. */
@@ -49,6 +58,7 @@ Created: Wed Apr 19 16:50:42 1995 ylo
 #define SSH_CIPHER_3DES		3 /* 3DES CBC */
 #define SSH_CIPHER_TSS		4 /* TRI's Simple Stream encryption CBC */
 #define SSH_CIPHER_ARCFOUR	5 /* Arcfour */
+#define SSH_CIPHER_BLOWFISH     6 /* Bruce Schneier's Blowfish */
 
 typedef struct {
   unsigned int type;
@@ -71,8 +81,11 @@ typedef struct {
       DESContext key3;
       unsigned char iv3[8];
     } des3;
+#ifdef WITH_TSS
     struct tss_context tss;
+#endif /* WITH_TSS */
     ArcfourContext arcfour;
+    BlowfishContext blowfish;
   } u;
 } CipherContext;
 

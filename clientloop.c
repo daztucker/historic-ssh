@@ -15,7 +15,7 @@ The main loop for the interactive session (client side).
 */
 
 #include "includes.h"
-RCSID("$Id: clientloop.c,v 1.5 1999/11/29 13:35:45 bg Exp $");
+RCSID("$Id: clientloop.c,v 1.6 2000/07/05 09:20:38 bg Exp $");
 
 #include "xmalloc.h"
 #include "randoms.h"
@@ -713,9 +713,10 @@ Supported escape sequences:\r\n\
 			    /* Escape character followed by non-special
 			       character.  Append both to the input
 			       buffer. */
-			    buf[0] = escape_char;
-			    buf[1] = ch;
-			    buffer_append(&stdin_buffer, buf, 2);
+			    char ebuf[2];
+			    ebuf[0] = escape_char;
+			    ebuf[1] = ch;
+			    buffer_append(&stdin_buffer, ebuf, 2);
 			    stdin_bytes += 2;
 			    continue;
 			  }

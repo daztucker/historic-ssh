@@ -1,3 +1,7 @@
+Wed Jul 5 11:21:45 2000  Bjoern Groenvall  <bg@bg.sics.se>
+
+	* clientloop.c: Fix for escape handling from Markus.
+
 Wed Mar  1 18:07:53 2000  Bjoern Groenvall  <bg@mummel.sics.se>
 
 	* readconf.c (fill_default_options), ssh.1.in: Disable client X11

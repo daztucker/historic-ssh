@@ -2,71 +2,78 @@
 
 servconf.c
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Mon Aug 21 15:48:58 1995 ylo
 
 */
 
 /*
- * $Id: servconf.c,v 1.14 1998/05/23 20:34:11 kivinen Exp $
+ * $Id: servconf.c,v 1.16 1999/11/17 17:04:54 tri Exp $
  * $Log: servconf.c,v $
+ * Revision 1.16  1999/11/17 17:04:54  tri
+ * 	Fixed copyright notices.
+ *
+ * Revision 1.15  1999/05/16 11:10:42  tri
+ *      Added forcedemptypasswdchange to conf keywords.
+ *
  * Revision 1.14  1998/05/23 20:34:11  kivinen
- * 	Added forced_empty_passwd_change, num_deny_shosts,
- * 	num_allow_shosts, password_expire_warning_days,
- * 	account_expire_warning_days. Fixed typo in
- * 	forcedpasswordchange.
+ *      Added forced_empty_passwd_change, num_deny_shosts,
+ *      num_allow_shosts, password_expire_warning_days,
+ *      account_expire_warning_days. Fixed typo in
+ *      forcedpasswordchange.
  *
  * Revision 1.13  1998/03/27  16:59:58  kivinen
- * 	Added IgnoreRootRhosts option.
+ *      Added IgnoreRootRhosts option.
  *
  * Revision 1.12  1998/01/03 06:41:55  kivinen
- * 	Added allow/deny groups option.
+ *      Added allow/deny groups option.
  *
  * Revision 1.11  1998/01/02 06:20:33  kivinen
- * 	Added xauthlocation and checkmail options.
+ *      Added xauthlocation and checkmail options.
  *
  * Revision 1.10  1997/04/27 21:51:34  kivinen
- * 	Added F-SECURE stuff. Added {Allow,Deny}Forwarding{To,Port}
- * 	feature. Added {Allow,Deny}Users feature from Steve Kann
- * 	<stevek@SteveK.COM>.
+ *      Added F-SECURE stuff. Added {Allow,Deny}Forwarding{To,Port}
+ *      feature. Added {Allow,Deny}Users feature from Steve Kann
+ *      <stevek@SteveK.COM>.
  *
  * Revision 1.9  1997/04/21 01:03:59  kivinen
- * 	Fixed allow_tcp_forwarding option default to yes.
+ *      Fixed allow_tcp_forwarding option default to yes.
  *
  * Revision 1.8  1997/04/05 21:50:07  kivinen
- * 	Fixed bug in allow_tcp_forwarding code.
+ *      Fixed bug in allow_tcp_forwarding code.
  *
  * Revision 1.7  1997/03/27 03:14:16  kivinen
- * 	Changed sAllow_Tcp_Forwarding to sAllowTcpForwarding and
- * 	sKerberos_Or_Local_Passwd to sKerberosOrLocalPasswd.
+ *      Changed sAllow_Tcp_Forwarding to sAllowTcpForwarding and
+ *      sKerberos_Or_Local_Passwd to sKerberosOrLocalPasswd.
  *
  * Revision 1.6  1997/03/27 03:12:39  kivinen
- * 	Added kerberos patches from Glenn Machin.
- * 	Added USELOGIN patches from Brian Cully.
+ *      Added kerberos patches from Glenn Machin.
+ *      Added USELOGIN patches from Brian Cully.
  *
  * Revision 1.5  1997/03/26 05:33:16  kivinen
- * 	Added idle_timeout option.
+ *      Added idle_timeout option.
  *
  * Revision 1.4  1997/03/25 05:44:38  kivinen
- * 	Added SilentDeny and Umask options.
- * 	Added = to WHITESPACE to allow options in form foo=bar.
- * 	Changed keywords to be case insensitive.
+ *      Added SilentDeny and Umask options.
+ *      Added = to WHITESPACE to allow options in form foo=bar.
+ *      Changed keywords to be case insensitive.
  *
  * Revision 1.3  1997/03/19 17:55:04  kivinen
- * 	Added TIS authentication code from Andre April
- * 	<Andre.April@cediti.be>.
- * 	Added SECURE_RPC, SECURE_NFS and NIS_PLUS support from Andy
- * 	Polyakov <appro@fy.chalmers.se>.
+ *      Added TIS authentication code from Andre April
+ *      <Andre.April@cediti.be>.
+ *      Added SECURE_RPC, SECURE_NFS and NIS_PLUS support from Andy
+ *      Polyakov <appro@fy.chalmers.se>.
  *
  * Revision 1.2  1996/11/27 15:38:27  ttsalo
  *     Added X11DisplayOffset-option
  *
  * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
- * 	Imported ssh-1.2.13.
+ *      Imported ssh-1.2.13.
  *
  * $EndLog$
  */
@@ -144,9 +151,9 @@ void fill_default_server_options(ServerOptions *options)
 
       sp = getservbyname(SSH_SERVICE_NAME, "tcp");
       if (sp)
-	options->port = ntohs(sp->s_port);
+        options->port = ntohs(sp->s_port);
       else
-	options->port = SSH_DEFAULT_PORT;
+        options->port = SSH_DEFAULT_PORT;
       endservent();
     }
   if (options->host_key_file == NULL)
@@ -304,6 +311,7 @@ static struct
   { "strictmodes", sStrictModes },
   { "permitemptypasswords", sEmptyPasswd },
   { "forcedpasswdchange", sForcedPasswd },
+  { "forcedemptypasswdchange", sForcedEmptyPasswd },
   { "randomseed", sRandomSeedFile },
   { "keepalive", sKeepAlives },
   { "pidfile", sPidFile },
@@ -345,7 +353,7 @@ static struct
    Never returns if the token is not known. */
 
 static ServerOpCodes parse_token(const char *cp, const char *filename,
-				 int linenum)
+                                 int linenum)
 {
   unsigned int i;
 
@@ -354,7 +362,7 @@ static ServerOpCodes parse_token(const char *cp, const char *filename,
       return keywords[i].opcode;
 
   fprintf(stderr, "%s line %d: Bad configuration option: %s\n", 
-	  filename, linenum, cp);
+          filename, linenum, cp);
   exit(1);
 }
 
@@ -381,438 +389,438 @@ void read_server_config(ServerOptions *options, const char *filename)
       linenum++;
       cp = line + strspn(line, WHITESPACE);
       if (!*cp || *cp == '#')
-	continue;
+        continue;
       cp = strtok(cp, WHITESPACE);
       for(i = 0; cp[i]; i++)
-	cp[i] = tolower(cp[i]);
+        cp[i] = tolower(cp[i]);
       opcode = parse_token(cp, filename, linenum);
       switch (opcode)
-	{
-	case sPort:
-	  intptr = &options->port;
-	parse_int:
-	  cp = strtok(NULL, WHITESPACE);
-	  if (!cp)
-	    {
-	      fprintf(stderr, "%s line %d: missing integer value.\n", 
-		      filename, linenum);
-	      exit(1);
-	    }
-	  if (*cp == '0')	/* Octal or hex */
-	    {
-	      int base;
-	      
-	      cp++;
-	      if (*cp == 'x')	/* Hex */
-		{
-		  cp++;
-		  base = 16;
-		}
-	      else
-		base = 8;
-	      value = 0;
-	      while ((base == 16 && isxdigit(*cp)) ||
-		     (base == 8 && isdigit(*cp) && *cp < '8'))
-		{
-		  value *= base;
-		  if (*cp >= 'a' && *cp <= 'f')
-		    value += *cp - 'a' + 10;
-		  else if (*cp >= 'A' && *cp <= 'F')
-		    value += *cp - 'A' + 10;
-		  else
-		    value += *cp - '0';
-		  cp++;
-		}
-	    }
-	  else
-	    {
-	      value = atoi(cp);
-	    }
-	  if (*intptr == -1)
-	    *intptr = value;
-	  break;
+        {
+        case sPort:
+          intptr = &options->port;
+        parse_int:
+          cp = strtok(NULL, WHITESPACE);
+          if (!cp)
+            {
+              fprintf(stderr, "%s line %d: missing integer value.\n", 
+                      filename, linenum);
+              exit(1);
+            }
+          if (*cp == '0')       /* Octal or hex */
+            {
+              int base;
+              
+              cp++;
+              if (*cp == 'x')   /* Hex */
+                {
+                  cp++;
+                  base = 16;
+                }
+              else
+                base = 8;
+              value = 0;
+              while ((base == 16 && isxdigit(*cp)) ||
+                     (base == 8 && isdigit(*cp) && *cp < '8'))
+                {
+                  value *= base;
+                  if (*cp >= 'a' && *cp <= 'f')
+                    value += *cp - 'a' + 10;
+                  else if (*cp >= 'A' && *cp <= 'F')
+                    value += *cp - 'A' + 10;
+                  else
+                    value += *cp - '0';
+                  cp++;
+                }
+            }
+          else
+            {
+              value = atoi(cp);
+            }
+          if (*intptr == -1)
+            *intptr = value;
+          break;
 
-	case sServerKeyBits:
-	  intptr = &options->server_key_bits;
-	  goto parse_int;
+        case sServerKeyBits:
+          intptr = &options->server_key_bits;
+          goto parse_int;
 
-	case sLoginGraceTime:
-	  intptr = &options->login_grace_time;
-	  goto parse_int;
-	  
-	case sKeyRegenerationTime:
-	  intptr = &options->key_regeneration_time;
-	  goto parse_int;
+        case sLoginGraceTime:
+          intptr = &options->login_grace_time;
+          goto parse_int;
+          
+        case sKeyRegenerationTime:
+          intptr = &options->key_regeneration_time;
+          goto parse_int;
 
-	case sListenAddress:
-	  cp = strtok(NULL, WHITESPACE);
-	  if (!cp)
-	    {
-	      fprintf(stderr, "%s line %d: missing inet addr.\n",
-		      filename, linenum);
-	      exit(1);
-	    }
+        case sListenAddress:
+          cp = strtok(NULL, WHITESPACE);
+          if (!cp)
+            {
+              fprintf(stderr, "%s line %d: missing inet addr.\n",
+                      filename, linenum);
+              exit(1);
+            }
 #ifdef BROKEN_INET_ADDR
-	  options->listen_addr.s_addr = inet_network(cp);
+          options->listen_addr.s_addr = inet_network(cp);
 #else /* BROKEN_INET_ADDR */
-	  options->listen_addr.s_addr = inet_addr(cp);
+          options->listen_addr.s_addr = inet_addr(cp);
 #endif /* BROKEN_INET_ADDR */
-	  break;
+          break;
 
-	case sHostKeyFile:
-	  charptr = &options->host_key_file;
-	parse_pathname:
-	  cp = strtok(NULL, WHITESPACE);
-	  if (!cp)
-	    {
-	      fprintf(stderr, "%s line %d: missing file name.\n",
-		      filename, linenum);
-	      exit(1);
-	    }
-	  if (*charptr == NULL)
-	    *charptr = tilde_expand_filename(cp, getuid());
-	  break;
+        case sHostKeyFile:
+          charptr = &options->host_key_file;
+        parse_pathname:
+          cp = strtok(NULL, WHITESPACE);
+          if (!cp)
+            {
+              fprintf(stderr, "%s line %d: missing file name.\n",
+                      filename, linenum);
+              exit(1);
+            }
+          if (*charptr == NULL)
+            *charptr = tilde_expand_filename(cp, getuid());
+          break;
 
-	case sRandomSeedFile:
-	  charptr = &options->random_seed_file;
-	  goto parse_pathname;
+        case sRandomSeedFile:
+          charptr = &options->random_seed_file;
+          goto parse_pathname;
 
-	case sPidFile:
-	  charptr = &options->pid_file;
-	  goto parse_pathname;
+        case sPidFile:
+          charptr = &options->pid_file;
+          goto parse_pathname;
 
-	case sPermitRootLogin:
-	  cp = strtok (NULL, WHITESPACE);
-	  if (!cp)
-	    {
-	      fprintf(stderr, "%s line %d: missing yes/nopwd/no argument.\n",
-		      filename, linenum);
-	      exit(1);
-	    }
-	  for(i = 0; cp[i]; i++)
-	    cp[i] = tolower(cp[i]);
-	  if (strcmp(cp, "yes") == 0)
-	    value = 2;
-	  else if (strcmp(cp, "nopwd") == 0)
-	      value = 1;
-	  else if (strcmp(cp, "no") == 0)
-	    value = 0;
-	  else
-	    {
-	      fprintf(stderr, "%s line %d: Bad yes/nopwd/no argument: %s\n", 
-		      filename, linenum, cp);
-	      exit(1);
-	    }
-	  if (options->permit_root_login == -1)
-	    options->permit_root_login = value;
-	  break;
+        case sPermitRootLogin:
+          cp = strtok (NULL, WHITESPACE);
+          if (!cp)
+            {
+              fprintf(stderr, "%s line %d: missing yes/nopwd/no argument.\n",
+                      filename, linenum);
+              exit(1);
+            }
+          for(i = 0; cp[i]; i++)
+            cp[i] = tolower(cp[i]);
+          if (strcmp(cp, "yes") == 0)
+            value = 2;
+          else if (strcmp(cp, "nopwd") == 0)
+              value = 1;
+          else if (strcmp(cp, "no") == 0)
+            value = 0;
+          else
+            {
+              fprintf(stderr, "%s line %d: Bad yes/nopwd/no argument: %s\n", 
+                      filename, linenum, cp);
+              exit(1);
+            }
+          if (options->permit_root_login == -1)
+            options->permit_root_login = value;
+          break;
 
-	parse_flag:
-	  cp = strtok(NULL, WHITESPACE);
-	  if (!cp)
-	    {
-	      fprintf(stderr, "%s line %d: missing yes/no argument.\n",
-		      filename, linenum);
-	      exit(1);
-	    }
-	  for(i = 0; cp[i]; i++)
-	    cp[i] = tolower(cp[i]);
-	  if (strcmp(cp, "yes") == 0 || strcmp(cp, "true") == 0)
-	    value = 1;
-	  else
-	    if (strcmp(cp, "no") == 0 || strcmp(cp, "false") == 0)
-	      value = 0;
-	    else
-	      {
-		fprintf(stderr, "%s line %d: Bad yes/no argument: %s\n", 
-			filename, linenum, cp);
-		exit(1);
-	      }
-	  if (*intptr == -1)
-	    *intptr = value;
-	  break;
+        parse_flag:
+          cp = strtok(NULL, WHITESPACE);
+          if (!cp)
+            {
+              fprintf(stderr, "%s line %d: missing yes/no argument.\n",
+                      filename, linenum);
+              exit(1);
+            }
+          for(i = 0; cp[i]; i++)
+            cp[i] = tolower(cp[i]);
+          if (strcmp(cp, "yes") == 0 || strcmp(cp, "true") == 0)
+            value = 1;
+          else
+            if (strcmp(cp, "no") == 0 || strcmp(cp, "false") == 0)
+              value = 0;
+            else
+              {
+                fprintf(stderr, "%s line %d: Bad yes/no argument: %s\n", 
+                        filename, linenum, cp);
+                exit(1);
+              }
+          if (*intptr == -1)
+            *intptr = value;
+          break;
 
-	case sIgnoreRhosts:
-	  intptr = &options->ignore_rhosts;
-	  goto parse_flag;
-	  
-	case sIgnoreRootRhosts:
-	  intptr = &options->ignore_root_rhosts;
-	  goto parse_flag;
-	  
-	case sQuietMode:
-	  intptr = &options->quiet_mode;
-	  goto parse_flag;
+        case sIgnoreRhosts:
+          intptr = &options->ignore_rhosts;
+          goto parse_flag;
+          
+        case sIgnoreRootRhosts:
+          intptr = &options->ignore_root_rhosts;
+          goto parse_flag;
+          
+        case sQuietMode:
+          intptr = &options->quiet_mode;
+          goto parse_flag;
 
-	case sFascistLogging:
-	  intptr = &options->fascist_logging;
-	  goto parse_flag;
+        case sFascistLogging:
+          intptr = &options->fascist_logging;
+          goto parse_flag;
 
-	case sRhostsAuthentication:
-	  intptr = &options->rhosts_authentication;
-	  goto parse_flag;
+        case sRhostsAuthentication:
+          intptr = &options->rhosts_authentication;
+          goto parse_flag;
 
-	case sRhostsRSAAuthentication:
-	  intptr = &options->rhosts_rsa_authentication;
-	  goto parse_flag;
-	  
-	case sRSAAuthentication:
-	  intptr = &options->rsa_authentication;
-	  goto parse_flag;
-	  
- 	case sKerberosAuthentication:
- 	  intptr = &options->kerberos_authentication;
- 	  goto parse_flag;
-	  
- 	case sKerberosOrLocalPasswd:
- 	  intptr = &options->kerberos_or_local_passwd;
- 	  goto parse_flag;
-	  
- 	case sKerberosTgtPassing:
- 	  intptr = &options->kerberos_tgt_passing;
- 	  goto parse_flag;
-	  
- 	case sAllowTcpForwarding:
- 	  intptr = &options->allow_tcp_forwarding;
-	  goto parse_flag;
-	  
-	case sTISAuthentication:
-	  intptr = &options->tis_authentication;
-	  goto parse_flag;
-	  
-	case sPasswordAuthentication:
-	  intptr = &options->password_authentication;
-	  goto parse_flag;
+        case sRhostsRSAAuthentication:
+          intptr = &options->rhosts_rsa_authentication;
+          goto parse_flag;
+          
+        case sRSAAuthentication:
+          intptr = &options->rsa_authentication;
+          goto parse_flag;
+          
+        case sKerberosAuthentication:
+          intptr = &options->kerberos_authentication;
+          goto parse_flag;
+          
+        case sKerberosOrLocalPasswd:
+          intptr = &options->kerberos_or_local_passwd;
+          goto parse_flag;
+          
+        case sKerberosTgtPassing:
+          intptr = &options->kerberos_tgt_passing;
+          goto parse_flag;
+          
+        case sAllowTcpForwarding:
+          intptr = &options->allow_tcp_forwarding;
+          goto parse_flag;
+          
+        case sTISAuthentication:
+          intptr = &options->tis_authentication;
+          goto parse_flag;
+          
+        case sPasswordAuthentication:
+          intptr = &options->password_authentication;
+          goto parse_flag;
 
-	case sUseLogin:
-	  intptr = &options->use_login;
-	  goto parse_flag;
-	  
-	case sPrintMotd:
-	  intptr = &options->print_motd;
-	  goto parse_flag;
+        case sUseLogin:
+          intptr = &options->use_login;
+          goto parse_flag;
+          
+        case sPrintMotd:
+          intptr = &options->print_motd;
+          goto parse_flag;
 
-	case sX11Forwarding:
-	  intptr = &options->x11_forwarding;
-	  goto parse_flag;
+        case sX11Forwarding:
+          intptr = &options->x11_forwarding;
+          goto parse_flag;
 
         case sX11DisplayOffset:
             intptr = &options->x11_display_offset;
             goto parse_int;
 
-	case sStrictModes:
-	  intptr = &options->strict_modes;
-	  goto parse_flag;
+        case sStrictModes:
+          intptr = &options->strict_modes;
+          goto parse_flag;
 
-	case sKeepAlives:
-	  intptr = &options->keepalives;
-	  goto parse_flag;
-	  
-	case sEmptyPasswd:
-	  intptr = &options->permit_empty_passwd;
-	  goto parse_flag;
-	  
-	case sSilentDeny:
-	  intptr = &options->silent_deny;
-	  goto parse_flag;
+        case sKeepAlives:
+          intptr = &options->keepalives;
+          goto parse_flag;
+          
+        case sEmptyPasswd:
+          intptr = &options->permit_empty_passwd;
+          goto parse_flag;
+          
+        case sSilentDeny:
+          intptr = &options->silent_deny;
+          goto parse_flag;
 
-	case sForcedPasswd:
-	  intptr = &options->forced_passwd_change;
-	  goto parse_flag;
+        case sForcedPasswd:
+          intptr = &options->forced_passwd_change;
+          goto parse_flag;
 
-	case sForcedEmptyPasswd:
-	  intptr = &options->forced_empty_passwd_change;
-	  goto parse_flag;
+        case sForcedEmptyPasswd:
+          intptr = &options->forced_empty_passwd_change;
+          goto parse_flag;
 
-	case sUmask:
-	  intptr = &options->umask;
-	  goto parse_int;
+        case sUmask:
+          intptr = &options->umask;
+          goto parse_int;
 
-	case sIdleTimeout:
-	  cp = strtok(NULL, WHITESPACE);
-	  if (!cp)
-	    {
-	      fprintf(stderr, "%s line %d: missing integer value.\n", 
-		      filename, linenum);
-	      exit(1);
-	    }
-	  value = 0;
-	  while(isdigit(*cp))
-	    {
-	      value *= 10;
-	      value += *cp - '0';
-	      cp++;
-	    }
-	  *cp = tolower(*cp);
-	  if (*cp == 'w') /* Weeks */
-	    {
-	      value *= 7 * 24 * 60 * 60;
-	      cp++;
-	    }
-	  else if (*cp == 'd') /* Days */
-	    {
-	      value *= 24 * 60 * 60;
-	      cp++;
-	    }
-	  else if (*cp == 'h') /* Hours */
-	    {
-	      value *= 60 * 60;
-	      cp++;
-	    }
-	  else if (*cp == 'm') /* Minutes */
-	    {
-	      value *= 60;
-	      cp++;
-	    }
-	  else if (*cp == 's')
-	    {
-	      cp++;
-	    }
-	  options->idle_timeout = value;
-	  break;
+        case sIdleTimeout:
+          cp = strtok(NULL, WHITESPACE);
+          if (!cp)
+            {
+              fprintf(stderr, "%s line %d: missing integer value.\n", 
+                      filename, linenum);
+              exit(1);
+            }
+          value = 0;
+          while(isdigit(*cp))
+            {
+              value *= 10;
+              value += *cp - '0';
+              cp++;
+            }
+          *cp = tolower(*cp);
+          if (*cp == 'w') /* Weeks */
+            {
+              value *= 7 * 24 * 60 * 60;
+              cp++;
+            }
+          else if (*cp == 'd') /* Days */
+            {
+              value *= 24 * 60 * 60;
+              cp++;
+            }
+          else if (*cp == 'h') /* Hours */
+            {
+              value *= 60 * 60;
+              cp++;
+            }
+          else if (*cp == 'm') /* Minutes */
+            {
+              value *= 60;
+              cp++;
+            }
+          else if (*cp == 's')
+            {
+              cp++;
+            }
+          options->idle_timeout = value;
+          break;
 
-	case sLogFacility:
-	  cp = strtok(NULL, WHITESPACE);
-	  if (!cp)
-	    {
-	      fprintf(stderr, "%s line %d: missing facility name.\n",
-		      filename, linenum);
-	      exit(1);
-	    }
-	  for(i = 0; cp[i]; i++)
-	    cp[i] = tolower(cp[i]);
-	  for (i = 0; log_facilities[i].name; i++)
-	    if (strcmp(log_facilities[i].name, cp) == 0)
-	      break;
-	  if (!log_facilities[i].name)
-	    {
-	      fprintf(stderr, "%s line %d: unsupported log facility %s\n",
-		      filename, linenum, cp);
-	      exit(1);
-	    }
-	  if (options->log_facility == (SyslogFacility)(-1))
-	    options->log_facility = log_facilities[i].facility;
-	  break;
-	  
-	case sAllowSHosts:
-	  while ((cp = strtok(NULL, WHITESPACE)))
-	    {
-	      if (options->num_allow_shosts >= MAX_ALLOW_SHOSTS)
-		{
-		  fprintf(stderr, "%s line %d: too many allow shosts.\n",
-			  filename, linenum);
-		  exit(1);
-		}
-	      options->allow_shosts[options->num_allow_shosts++] = xstrdup(cp);
-	    }
-	  break;
+        case sLogFacility:
+          cp = strtok(NULL, WHITESPACE);
+          if (!cp)
+            {
+              fprintf(stderr, "%s line %d: missing facility name.\n",
+                      filename, linenum);
+              exit(1);
+            }
+          for(i = 0; cp[i]; i++)
+            cp[i] = tolower(cp[i]);
+          for (i = 0; log_facilities[i].name; i++)
+            if (strcmp(log_facilities[i].name, cp) == 0)
+              break;
+          if (!log_facilities[i].name)
+            {
+              fprintf(stderr, "%s line %d: unsupported log facility %s\n",
+                      filename, linenum, cp);
+              exit(1);
+            }
+          if (options->log_facility == (SyslogFacility)(-1))
+            options->log_facility = log_facilities[i].facility;
+          break;
+          
+        case sAllowSHosts:
+          while ((cp = strtok(NULL, WHITESPACE)))
+            {
+              if (options->num_allow_shosts >= MAX_ALLOW_SHOSTS)
+                {
+                  fprintf(stderr, "%s line %d: too many allow shosts.\n",
+                          filename, linenum);
+                  exit(1);
+                }
+              options->allow_shosts[options->num_allow_shosts++] = xstrdup(cp);
+            }
+          break;
 
-	case sDenySHosts:
-	  while ((cp = strtok(NULL, WHITESPACE)))
-	    {
-	      if (options->num_deny_shosts >= MAX_DENY_SHOSTS)
-		{
-		  fprintf(stderr, "%s line %d: too many deny shosts.\n",
-			  filename, linenum);
-		  exit(1);
-		}
-	      options->deny_shosts[options->num_deny_shosts++] = xstrdup(cp);
-	    }
-	  break;
+        case sDenySHosts:
+          while ((cp = strtok(NULL, WHITESPACE)))
+            {
+              if (options->num_deny_shosts >= MAX_DENY_SHOSTS)
+                {
+                  fprintf(stderr, "%s line %d: too many deny shosts.\n",
+                          filename, linenum);
+                  exit(1);
+                }
+              options->deny_shosts[options->num_deny_shosts++] = xstrdup(cp);
+            }
+          break;
 
-	case sAllowHosts:
-	  while ((cp = strtok(NULL, WHITESPACE)))
-	    {
-	      if (options->num_allow_hosts >= MAX_ALLOW_HOSTS)
-		{
-		  fprintf(stderr, "%s line %d: too many allow hosts.\n",
-			  filename, linenum);
-		  exit(1);
-		}
-	      options->allow_hosts[options->num_allow_hosts++] = xstrdup(cp);
-	    }
-	  break;
+        case sAllowHosts:
+          while ((cp = strtok(NULL, WHITESPACE)))
+            {
+              if (options->num_allow_hosts >= MAX_ALLOW_HOSTS)
+                {
+                  fprintf(stderr, "%s line %d: too many allow hosts.\n",
+                          filename, linenum);
+                  exit(1);
+                }
+              options->allow_hosts[options->num_allow_hosts++] = xstrdup(cp);
+            }
+          break;
 
-	case sDenyHosts:
-	  while ((cp = strtok(NULL, WHITESPACE)))
-	    {
-	      if (options->num_deny_hosts >= MAX_DENY_HOSTS)
-		{
-		  fprintf(stderr, "%s line %d: too many deny hosts.\n",
-			  filename, linenum);
-		  exit(1);
-		}
-	      options->deny_hosts[options->num_deny_hosts++] = xstrdup(cp);
-	    }
-	  break;
+        case sDenyHosts:
+          while ((cp = strtok(NULL, WHITESPACE)))
+            {
+              if (options->num_deny_hosts >= MAX_DENY_HOSTS)
+                {
+                  fprintf(stderr, "%s line %d: too many deny hosts.\n",
+                          filename, linenum);
+                  exit(1);
+                }
+              options->deny_hosts[options->num_deny_hosts++] = xstrdup(cp);
+            }
+          break;
 
-	case sAllowUsers:
-	  while ((cp = strtok(NULL, WHITESPACE)))
-	    {
-	      if (options->num_allow_users >= MAX_ALLOW_USERS)
-		{
-		  fprintf(stderr, "%s line %d: too many allow users.\n",
-			  filename, linenum);
-		  exit(1);
-		}
-	      options->allow_users[options->num_allow_users++] = xstrdup(cp);
-	    }
-	  break;
-	  
-	case sDenyUsers:
-	  while ((cp = strtok(NULL, WHITESPACE)))
-	    {
-	      if (options->num_deny_users >= MAX_DENY_USERS)
-		{
-		  fprintf(stderr, "%s line %d: too many deny users.\n",
-			  filename, linenum);
-		  exit(1);
-		}
-	      options->deny_users[options->num_deny_users++] = xstrdup(cp);
-	    }
-	  break;
-	  
-	case sAllowGroups:
- 	  while ((cp = strtok(NULL, WHITESPACE)))
- 	    {
- 	      if (options->num_allow_groups >= MAX_ALLOW_GROUPS)
- 		{
- 		  fprintf(stderr, "%s line %d: too many allow groups.\n",
- 			  filename, linenum);
- 		  exit(1);
- 		}
- 	      options->allow_groups[options->num_allow_groups++] = xstrdup(cp);
- 	    }
- 	  break;
- 	  
- 	case sDenyGroups:
- 	  while ((cp = strtok(NULL, WHITESPACE)))
- 	    {
- 	      if (options->num_deny_groups >= MAX_DENY_GROUPS)
- 		{
- 		  fprintf(stderr, "%s line %d: too many deny groups.\n",
- 			  filename, linenum);
- 		  exit(1);
- 		}
- 	      options->deny_groups[options->num_deny_groups++] = xstrdup(cp);
-  	    }
-  	  break;
-	  
-	case sXauthPath:
- 	  charptr = &options->xauth_path;
- 	  goto parse_pathname;
+        case sAllowUsers:
+          while ((cp = strtok(NULL, WHITESPACE)))
+            {
+              if (options->num_allow_users >= MAX_ALLOW_USERS)
+                {
+                  fprintf(stderr, "%s line %d: too many allow users.\n",
+                          filename, linenum);
+                  exit(1);
+                }
+              options->allow_users[options->num_allow_users++] = xstrdup(cp);
+            }
+          break;
+          
+        case sDenyUsers:
+          while ((cp = strtok(NULL, WHITESPACE)))
+            {
+              if (options->num_deny_users >= MAX_DENY_USERS)
+                {
+                  fprintf(stderr, "%s line %d: too many deny users.\n",
+                          filename, linenum);
+                  exit(1);
+                }
+              options->deny_users[options->num_deny_users++] = xstrdup(cp);
+            }
+          break;
+          
+        case sAllowGroups:
+          while ((cp = strtok(NULL, WHITESPACE)))
+            {
+              if (options->num_allow_groups >= MAX_ALLOW_GROUPS)
+                {
+                  fprintf(stderr, "%s line %d: too many allow groups.\n",
+                          filename, linenum);
+                  exit(1);
+                }
+              options->allow_groups[options->num_allow_groups++] = xstrdup(cp);
+            }
+          break;
+          
+        case sDenyGroups:
+          while ((cp = strtok(NULL, WHITESPACE)))
+            {
+              if (options->num_deny_groups >= MAX_DENY_GROUPS)
+                {
+                  fprintf(stderr, "%s line %d: too many deny groups.\n",
+                          filename, linenum);
+                  exit(1);
+                }
+              options->deny_groups[options->num_deny_groups++] = xstrdup(cp);
+            }
+          break;
+          
+        case sXauthPath:
+          charptr = &options->xauth_path;
+          goto parse_pathname;
 
-	case sCheckMail:
-	  intptr = &options->check_mail;
-	  goto parse_flag;
-	  
-	case sPasswordExpireWarningDays:
-	  intptr = &options->password_expire_warning_days;
-	  goto parse_int;
+        case sCheckMail:
+          intptr = &options->check_mail;
+          goto parse_flag;
+          
+        case sPasswordExpireWarningDays:
+          intptr = &options->password_expire_warning_days;
+          goto parse_int;
 
-	case sAccountExpireWarningDays:
-	  intptr = &options->account_expire_warning_days;
-	  goto parse_int;
+        case sAccountExpireWarningDays:
+          intptr = &options->account_expire_warning_days;
+          goto parse_int;
 
 #ifdef F_SECURE_COMMERCIAL
 
@@ -871,18 +879,18 @@ void read_server_config(ServerOptions *options, const char *filename)
 
 
 #endif /* F_SECURE_COMMERCIAL */
-	  
-	default:
-	  fprintf(stderr, "%s line %d: Missing handler for opcode %s (%d)\n",
-		  filename, linenum, cp, opcode);
-	  exit(1);
-	}
+          
+        default:
+          fprintf(stderr, "%s line %d: Missing handler for opcode %s (%d)\n",
+                  filename, linenum, cp, opcode);
+          exit(1);
+        }
       if (strtok(NULL, WHITESPACE) != NULL)
-	{
-	  fprintf(stderr, "%s line %d: garbage at end of line.\n",
-		  filename, linenum);
-	  exit(1);
-	}
+        {
+          fprintf(stderr, "%s line %d: garbage at end of line.\n",
+                  filename, linenum);
+          exit(1);
+        }
     }
   fclose(f);
 }

@@ -9,13 +9,16 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
 
 Created: Mon Mar 20 21:13:40 1995 ylo
 
-Client-side versions of debug(), log(), etc.  These print to stderr.
+Client-side versions of debug(), log_msg(), etc.  These print to stderr.
 
 */
 
 /*
- * $Id: log-client.c,v 1.3 1996/04/26 00:40:12 ylo Exp $
+ * $Id: log-client.c,v 1.4 1996/10/29 22:37:59 kivinen Exp $
  * $Log: log-client.c,v $
+ * Revision 1.4  1996/10/29 22:37:59  kivinen
+ * 	log -> log_msg.
+ *
  * Revision 1.3  1996/04/26 00:40:12  ylo
  * 	Changed \n\r to \r\n.  They are always written in this order,
  * 	and deviating from this is likely to cause problems.
@@ -50,7 +53,7 @@ void log_init(char *av0, int on_stderr, int debug, int quiet,
   log_quiet = quiet;
 }
 
-void log(const char *fmt, ...)
+void log_msg(const char *fmt, ...)
 {
   va_list args;
 

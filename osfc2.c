@@ -15,8 +15,12 @@ within ssh. See the file COPYING for full licensing informations.
 */
 
 /*
- * $Id: osfc2.c,v 1.2 1996/10/29 22:43:02 kivinen Exp $
+ * $Id: osfc2.c,v 1.3 1997/01/08 13:22:36 ttsalo Exp $
  * $Log: osfc2.c,v $
+ * Revision 1.3  1997/01/08 13:22:36  ttsalo
+ * 	A fix for OSF/1 passwords from
+ * 	Steve VanDevender <stevev@hexadecimal.uoregon.edu> merged.
+ *
  * Revision 1.2  1996/10/29 22:43:02  kivinen
  * 	log -> log_msg.
  *
@@ -104,12 +108,7 @@ char *
 osf1c2crypt(char *pw, char *salt)
 {
    if (c2security == 1) {
-     if (crypt_algo == AUTH_CRYPT_BIGCRYPT)
-       return(bigcrypt(pw, salt));
-     else if (crypt_algo == AUTH_CRYPT_CRYPT16)
-       return("x"); /* Not supported because undocumented */
-     else
-       return("x");
+     return(dispcrypt(pw, salt, crypt_algo));
    } else
      return(crypt(pw, salt));
 }

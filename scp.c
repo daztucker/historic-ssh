@@ -11,8 +11,14 @@ and ssh has the necessary privileges.)
 */
 
 /*
- * $Id: scp.c,v 1.5 1997/03/26 07:15:57 kivinen Exp $
+ * $Id: scp.c,v 1.7 1997/04/23 00:03:04 kivinen Exp $
  * $Log: scp.c,v $
+ * Revision 1.7  1997/04/23 00:03:04  kivinen
+ * 	Added -S flag
+ *
+ * Revision 1.6  1997/04/17 04:20:06  kivinen
+ * *** empty log message ***
+ *
  * Revision 1.5  1997/03/26 07:15:57  kivinen
  * 	Use last @ to separate user from host in the user@host@host:
  *
@@ -90,7 +96,7 @@ and ssh has the necessary privileges.)
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$Id: scp.c,v 1.5 1997/03/26 07:15:57 kivinen Exp $
+ *	$Id: scp.c,v 1.7 1997/04/23 00:03:04 kivinen Exp $
  */
 
 #ifndef lint
@@ -104,7 +110,7 @@ char scp_berkeley_copyright[] =
 #include "xmalloc.h"
 #ifdef HAVE_UTIME_H
 #include <utime.h>
-#ifdef _NEXT_SOURCE
+#if defined(_NEXT_SOURCE) && !defined(_POSIX_SOURCE)
 struct utimbuf {
   time_t actime;
   time_t modtime;
@@ -154,6 +160,11 @@ char *port = NULL;
 
 char *ssh_program = SSH_PROGRAM;
 
+/* Ssh options */
+char **ssh_options = NULL;
+int ssh_options_cnt = 0;
+int ssh_options_alloc = 0;
+
 /* This function executes the given command as the specified user on the given
    host.  This returns < 0 if execution fails, and >= 0 otherwise.
    This assigns the input and output file descriptors on success. */
@@ -183,8 +194,8 @@ int do_cmd(char *host, char *remuser, char *cmd, int *fdin, int *fdout)
   /* For a child to execute the command on the remote host using ssh. */
   if (fork() == 0) 
     {
-      char *args[100];
-      unsigned int i;
+      char *args[256];
+      unsigned int i, j;
 
       /* Child. */
       close(pin[1]);
@@ -199,6 +210,7 @@ int do_cmd(char *host, char *remuser, char *cmd, int *fdin, int *fdout)
       args[i++] = "-x";
       args[i++] = "-a";
       args[i++] = "-oFallBackToRsh no";
+      args[i++] = "-oClearAllForwardings yes";
       if (verbose)
 	args[i++] = "-v";
       if (compress)
@@ -224,6 +236,13 @@ int do_cmd(char *host, char *remuser, char *cmd, int *fdin, int *fdout)
 	{
 	  args[i++] = "-l";
 	  args[i++] = remuser;
+	}
+      for(j = 0; j < ssh_options_cnt; j++)
+	{
+	  args[i++] = "-o";
+	  args[i++] = ssh_options[j];
+	  if (i > 250)
+	    fatal("Too many -o options (total number of arguments is more than 256)");
 	}
       args[i++] = host;
       args[i++] = cmd;
@@ -321,14 +340,37 @@ main(argc, argv)
 	  }
 
 	fflag = tflag = 0;
-	while ((ch = getopt(argc, argv, "dfprtvBCc:i:P:")) != EOF)
+	while ((ch = getopt(argc, argv, "dfprtvBCc:i:P:o:S:")) != EOF)
 		switch(ch) {			/* User-visible flags. */
+		case 'S':
+	       		ssh_program = optarg;
+			break;
 		case 'p':
 			pflag = 1;
 			break;
 		case 'P':
 		  	port = optarg;
 		  	break;
+		case 'o':
+		  	if (ssh_options_cnt >= ssh_options_alloc)
+			  {
+			    if (ssh_options_alloc == 0)
+			      {
+				ssh_options_alloc = 10;
+				ssh_options = xmalloc(sizeof(char *) *
+						      ssh_options_alloc);
+			      }
+			    else
+			      {
+				ssh_options_alloc += 10;
+				ssh_options = xrealloc(ssh_options,
+						       sizeof(char *) *
+						       ssh_options_alloc);
+			      }
+			  }
+			ssh_options[ssh_options_cnt++] = optarg;
+			break;
+			
 		case 'r':
 			iamrecursive = 1;
 			break;
@@ -434,13 +476,30 @@ toremote(targ, argc, argv)
 	for (i = 0; i < argc - 1; i++) {
 		src = colon(argv[i]);
 		if (src) {			/* remote to remote */
+		  	int j, options_len;
+			char *options;
+			
+			options_len = 0;
+			for(j = 0; j < ssh_options_cnt; j++)
+			  options_len = 5 + strlen(ssh_options[j]);
+			
+			options = xmalloc(options_len + 1);
+			options[0] = '\0';
+			
+			for(j = 0; j < ssh_options_cnt; j++)
+			  {
+			    strcat(options, "-o'");
+			    strcat(options, ssh_options[j]);
+			    strcat(options, "' ");
+			  }
 			*src++ = 0;
 			if (*src == 0)
 				src = ".";
 			host = strrchr(argv[i], '@');
 			len = strlen(ssh_program) + strlen(argv[i]) +
 			    strlen(src) + (tuser ? strlen(tuser) : 0) +
-			    strlen(thost) + strlen(targ) + CMDNEEDS + 32;
+			    strlen(thost) + strlen(targ) + CMDNEEDS + 32 +
+			    options_len;
 		        bp = xmalloc(len);
 			if (host) {
 				*host++ = 0;
@@ -450,15 +509,15 @@ toremote(targ, argc, argv)
 				else if (!okname(suser))
 					continue;
 				(void)sprintf(bp, 
-				    "%s%s -x -o'FallBackToRsh no' -n -l %s %s %s %s '%s%s%s:%s'",
-				    ssh_program, verbose ? " -v" : "",
+				    "%s%s -x -o'FallBackToRsh no' -o'ClearAllForwardings yes' %s -n -l %s %s %s %s '%s%s%s:%s'",
+				    ssh_program, verbose ? " -v" : "", options,
 				    suser, host, cmd, src,
 				    tuser ? tuser : "", tuser ? "@" : "",
 				    thost, targ);
 			} else
 				(void)sprintf(bp,
-				    "exec %s%s -x -o'FallBackToRsh no' -n %s %s %s '%s%s%s:%s'",
-				    ssh_program, verbose ? " -v" : "",
+				    "exec %s%s -x -o'FallBackToRsh no' -o'ClearAllForwardings yes' %s -n %s %s %s '%s%s%s:%s'",
+				    ssh_program, verbose ? " -v" : "", options,
 				    argv[i], cmd, src,
 				    tuser ? tuser : "", tuser ? "@" : "",
 				    thost, targ);
@@ -1043,7 +1102,7 @@ run_err(const char *fmt, ...)
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$Id: scp.c,v 1.5 1997/03/26 07:15:57 kivinen Exp $
+ *	$Id: scp.c,v 1.7 1997/04/23 00:03:04 kivinen Exp $
  */
 
 char *

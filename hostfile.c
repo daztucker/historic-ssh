@@ -8,9 +8,20 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Thu Jun 29 07:10:56 1995 ylo
-Last modified: Wed Jul  5 21:42:31 1995 ylo
+
+Functions for manipulating the known hosts files.
 
 */
+
+/*
+ * $Id: hostfile.c,v 1.2 1995/07/13 01:24:36 ylo Exp $
+ * $Log: hostfile.c,v $
+ * Revision 1.2  1995/07/13  01:24:36  ylo
+ * 	Removed "Last modified" header.
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
 
 #include "includes.h"
 #include "packet.h"

@@ -14,58 +14,63 @@ Identity and host key generation and maintenance.
 */
 
 /*
- * $Id: ssh-keygen.c,v 1.12 1998/05/23 20:37:28 kivinen Exp $
+ * $Id: ssh-keygen.c,v 1.13 1999/02/21 19:52:44 ylo Exp $
  * $Log: ssh-keygen.c,v $
- * Revision 1.12  1998/05/23  20:37:28  kivinen
- * 	Changed () -> (void).
+ * Revision 1.13  1999/02/21 19:52:44  ylo
+ * 	Intermediate commit of ssh1.2.27 stuff.
+ * 	Main change is sprintf -> snprintf; however, there are also
+ * 	many other changes.
+ *
+ * Revision 1.12  1998/05/23 20:37:28  kivinen
+ *      Changed () -> (void).
  *
  * Revision 1.11  1997/04/27  21:54:52  kivinen
- * 	Added F-SECURE stuff.
+ *      Added F-SECURE stuff.
  *
  * Revision 1.10  1997/04/17 04:17:35  kivinen
- * 	Removed extra variables.
+ *      Removed extra variables.
  *
  * Revision 1.9  1997/04/05 21:59:56  kivinen
- * 	Added checks that userfile_get_des_1_magic_phrase succeeded
- * 	before using passphrase.
+ *      Added checks that userfile_get_des_1_magic_phrase succeeded
+ *      before using passphrase.
  *
  * Revision 1.8  1997/03/25 05:46:26  kivinen
- * 	Fixed bug in SECURE_RPC code.
+ *      Fixed bug in SECURE_RPC code.
  *
  * Revision 1.7  1997/03/19 17:42:58  kivinen
- * 	Added SECURE_RPC, SECURE_NFS and NIS_PLUS support from Andy
- * 	Polyakov <appro@fy.chalmers.se>.
+ *      Added SECURE_RPC, SECURE_NFS and NIS_PLUS support from Andy
+ *      Polyakov <appro@fy.chalmers.se>.
  *
  * Revision 1.6  1996/11/09 17:29:22  ttsalo
  *       Modified ssh-keygen to tell pw->pw_dir instead of '/u/ttsalo'
  *
  * Revision 1.5  1996/10/03 16:59:41  ttsalo
- * 	Small fix in option-parsing
+ *      Small fix in option-parsing
  *
  * Revision 1.4  1996/10/03 16:54:58  ttsalo
- * 	New feature: updating the keyfiles' cipher type.
+ *      New feature: updating the keyfiles' cipher type.
  *
  * Revision 1.3  1996/08/06 07:55:15  ylo
- * 	Don't advertise the possibility of using an empty passphrase.
+ *      Don't advertise the possibility of using an empty passphrase.
  *
  * Revision 1.2  1996/05/30 16:39:07  ylo
- * 	Don't loop forever if -f given, and saving fails.
+ *      Don't loop forever if -f given, and saving fails.
  *
  * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
- * 	Imported ssh-1.2.13.
+ *      Imported ssh-1.2.13.
  *
  * Revision 1.5  1995/08/31  09:22:50  ylo
- * 	Use either passphrase when only one needed.
+ *      Use either passphrase when only one needed.
  *
  * Revision 1.4  1995/08/29  22:33:00  ylo
- * 	Added support for -P, -N, -f, and -C.
+ *      Added support for -P, -N, -f, and -C.
  *
  * Revision 1.3  1995/07/26  17:11:31  ylo
- * 	Print version number in the usage string.
+ *      Print version number in the usage string.
  *
  * Revision 1.2  1995/07/13  01:39:53  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
+ *      Removed "Last modified" header.
+ *      Added cvs log.
  *
  * $Endlog$
  */
@@ -136,14 +141,14 @@ void do_change_passphrase(struct passwd *pw)
   else
     {
       printf("Enter file key is in (%s/%s): ",
-	     pw->pw_dir, SSH_CLIENT_IDENTITY);
+             pw->pw_dir, SSH_CLIENT_IDENTITY);
       fflush(stdout);
       if (fgets(buf, sizeof(buf), stdin) == NULL)
-	exit(1);
+        exit(1);
       if (strchr(buf, '\n'))
-	*strchr(buf, '\n') = 0;
+        *strchr(buf, '\n') = 0;
       if (strcmp(buf, "") == 0)
-	sprintf(buf, "%s/%s", pw->pw_dir, SSH_CLIENT_IDENTITY);
+        snprintf(buf, sizeof(buf), "%s/%s", pw->pw_dir, SSH_CLIENT_IDENTITY);
     }
 
   /* Check if the file exists. */
@@ -171,34 +176,34 @@ void do_change_passphrase(struct passwd *pw)
     {
       old_passphrase = userfile_get_des_1_magic_phrase(geteuid());
       if (old_passphrase != NULL)
-	{
-	  done = load_private_key(geteuid(), buf, old_passphrase,
-				  &private_key, &comment);
-	  if (done)
-	    printf ("Using SUN-DES-1 magic phrase to decrypt the private key.\n");
-	  memset(old_passphrase, 0, strlen(old_passphrase));
-	  xfree(old_passphrase);
-	  old_passphrase = NULL;
-	}
+        {
+          done = load_private_key(geteuid(), buf, old_passphrase,
+                                  &private_key, &comment);
+          if (done)
+            printf ("Using SUN-DES-1 magic phrase to decrypt the private key.\n");
+          memset(old_passphrase, 0, strlen(old_passphrase));
+          xfree(old_passphrase);
+          old_passphrase = NULL;
+        }
     }
 #endif
   if (!done)
     {
       /* Read passphrase from the user. */
       if (identity_passphrase)
-	old_passphrase = xstrdup(identity_passphrase);
+        old_passphrase = xstrdup(identity_passphrase);
       else
-	old_passphrase = read_passphrase(geteuid(), 
-					 "Enter old passphrase: ", 1);
+        old_passphrase = read_passphrase(geteuid(), 
+                                         "Enter old passphrase: ", 1);
       /* Try to load using the passphrase. */
       if (!load_private_key(geteuid(), buf, old_passphrase, &private_key, 
-			    &comment))
-	{
-	  memset(old_passphrase, 0, strlen(old_passphrase));
-	  xfree(old_passphrase);
-	  printf("Bad passphrase.\n");
-	  exit(1);
-	}
+                            &comment))
+        {
+          memset(old_passphrase, 0, strlen(old_passphrase));
+          xfree(old_passphrase);
+          printf("Bad passphrase.\n");
+          exit(1);
+        }
       /* Destroy the passphrase. */
       memset(old_passphrase, 0, strlen(old_passphrase));
       xfree(old_passphrase);
@@ -214,21 +219,21 @@ void do_change_passphrase(struct passwd *pw)
   else
     {
       passphrase1 = 
-	read_passphrase(geteuid(),
-			"Enter new passphrase: ", 1);
+        read_passphrase(geteuid(),
+                        "Enter new passphrase: ", 1);
       passphrase2 = read_passphrase(geteuid(), 
-				    "Enter the same passphrase again: ", 1);
+                                    "Enter the same passphrase again: ", 1);
 
       /* Verify that they are the same. */
       if (strcmp(passphrase1, passphrase2) != 0)
-	{
-	  memset(passphrase1, 0, strlen(passphrase1));
-	  memset(passphrase2, 0, strlen(passphrase2));
-	  xfree(passphrase1);
-	  xfree(passphrase2);
-	  printf("Passphrases do not match.  Try again.\n");
-	  exit(1);
-	}
+        {
+          memset(passphrase1, 0, strlen(passphrase1));
+          memset(passphrase2, 0, strlen(passphrase2));
+          xfree(passphrase1);
+          xfree(passphrase2);
+          printf("Passphrases do not match.  Try again.\n");
+          exit(1);
+        }
       /* Destroy the other copy. */
       memset(passphrase2, 0, strlen(passphrase2));
       xfree(passphrase2);
@@ -241,19 +246,19 @@ void do_change_passphrase(struct passwd *pw)
       xfree(passphrase1);
       passphrase1 = userfile_get_des_1_magic_phrase(geteuid());
       if (passphrase1 == NULL)
-	{
-	  printf ("Failed to get SUN-DES-1 magic phrase. Run keylogin.\n");
-	  exit (1);
-	}
+        {
+          printf ("Failed to get SUN-DES-1 magic phrase. Run keylogin.\n");
+          exit (1);
+        }
       printf ("Using SUN-DES-1 magic phrase to encrypt the private key.\n");
     }
 #endif
   /* Save the file using the new passphrase. */
   if (!save_private_key(geteuid(), buf, passphrase1, &private_key, comment, 
-			&state))
+                        &state))
     {
       printf("Saving the key failed: %s: %s.\n",
-	     buf, strerror(errno));
+             buf, strerror(errno));
       memset(passphrase1, 0, strlen(passphrase1));
       xfree(passphrase1);
       rsa_clear_private_key(&private_key);
@@ -289,14 +294,14 @@ void do_change_comment(struct passwd *pw)
   else
     {
       printf("Enter file key is in (%s/%s): ",
-	     pw->pw_dir, SSH_CLIENT_IDENTITY);
+             pw->pw_dir, SSH_CLIENT_IDENTITY);
       fflush(stdout);
       if (fgets(buf, sizeof(buf), stdin) == NULL)
-	exit(1);
+        exit(1);
       if (strchr(buf, '\n'))
-	*strchr(buf, '\n') = 0;
+        *strchr(buf, '\n') = 0;
       if (strcmp(buf, "") == 0)
-	sprintf(buf, "%s/%s", pw->pw_dir, SSH_CLIENT_IDENTITY);
+        snprintf(buf, sizeof(buf), "%s/%s", pw->pw_dir, SSH_CLIENT_IDENTITY);
     }
 
   /* Check if the file exists. */
@@ -322,38 +327,38 @@ void do_change_comment(struct passwd *pw)
     {
       passphrase = userfile_get_des_1_magic_phrase(geteuid());
       if (passphrase != NULL)
-	{
-	  if (load_private_key(geteuid(), buf, passphrase,
-			       &private_key, &comment))
-	    printf ("Using SUN-DES-1 magic phrase to decrypt the private key.\n");
-	  else
-	    {
-	      memset(passphrase, 0, strlen(passphrase));
-	      xfree(passphrase);
-	      passphrase = NULL;
-	    }
-	}
+        {
+          if (load_private_key(geteuid(), buf, passphrase,
+                               &private_key, &comment))
+            printf ("Using SUN-DES-1 magic phrase to decrypt the private key.\n");
+          else
+            {
+              memset(passphrase, 0, strlen(passphrase));
+              xfree(passphrase);
+              passphrase = NULL;
+            }
+        }
     }
 #endif
   if (passphrase == NULL)
     {
       /* Read passphrase from the user. */
       if (identity_passphrase)
-	passphrase = xstrdup(identity_passphrase);
+        passphrase = xstrdup(identity_passphrase);
       else
-	if (identity_new_passphrase)
-	  passphrase = xstrdup(identity_new_passphrase);
-	else
-	  passphrase = read_passphrase(geteuid(), "Enter passphrase: ", 1);
+        if (identity_new_passphrase)
+          passphrase = xstrdup(identity_new_passphrase);
+        else
+          passphrase = read_passphrase(geteuid(), "Enter passphrase: ", 1);
       /* Try to load using the passphrase. */
       if (!load_private_key(geteuid(), buf, passphrase, &private_key, 
-			    &comment))
-	{
-	  memset(passphrase, 0, strlen(passphrase));
-	  xfree(passphrase);
-	  printf("Bad passphrase.\n");
-	  exit(1);
-	}
+                            &comment))
+        {
+          memset(passphrase, 0, strlen(passphrase));
+          xfree(passphrase);
+          printf("Bad passphrase.\n");
+          exit(1);
+        }
     }
   printf("Key now has comment '%s'\n", comment);
 
@@ -367,23 +372,23 @@ void do_change_comment(struct passwd *pw)
       printf("Enter new comment: ");
       fflush(stdout);
       if (!fgets(new_comment, sizeof(new_comment), stdin))
-	{
-	  memset(passphrase, 0, strlen(passphrase));
-	  rsa_clear_private_key(&private_key);
-	  exit(1);
-	}
+        {
+          memset(passphrase, 0, strlen(passphrase));
+          rsa_clear_private_key(&private_key);
+          exit(1);
+        }
       
       /* Remove terminating newline from comment. */
       if (strchr(new_comment, '\n'))
-	*strchr(new_comment, '\n') = 0;
+        *strchr(new_comment, '\n') = 0;
     }
       
   /* Save the file using the new passphrase. */
   if (!save_private_key(geteuid(), buf, passphrase, &private_key, new_comment, 
-			&state))
+                        &state))
     {
       printf("Saving the key failed: %s: %s.\n",
-	     buf, strerror(errno));
+             buf, strerror(errno));
       memset(passphrase, 0, strlen(passphrase));
       xfree(passphrase);
       rsa_clear_private_key(&private_key);
@@ -434,14 +439,14 @@ void do_update_cipher(struct passwd *pw)
   else
     {
       printf("Enter file key is in (%s/%s): ",
-	     pw->pw_dir, SSH_CLIENT_IDENTITY);
+             pw->pw_dir, SSH_CLIENT_IDENTITY);
       fflush(stdout);
       if (fgets(buf, sizeof(buf), stdin) == NULL)
-	exit(1);
+        exit(1);
       if (strchr(buf, '\n'))
-	*strchr(buf, '\n') = 0;
+        *strchr(buf, '\n') = 0;
       if (strcmp(buf, "") == 0)
-	sprintf(buf, "%s/%s", pw->pw_dir, SSH_CLIENT_IDENTITY);
+        snprintf(buf, sizeof(buf), "%s/%s", pw->pw_dir, SSH_CLIENT_IDENTITY);
     }
 
   /* Check if the file exists. */
@@ -459,46 +464,46 @@ void do_update_cipher(struct passwd *pw)
     {
       passphrase = userfile_get_des_1_magic_phrase(geteuid());
       if (passphrase != NULL)
-	{
-	  if (load_private_key(geteuid(), buf, passphrase,
-			       &private_key, &comment))
-	    printf ("Using SUN-DES-1 magic phrase to decrypt the private key.\n");
-	  else
-	    {
-	      memset(passphrase, 0, strlen(passphrase));
-	      xfree(passphrase);
-	      passphrase = NULL;
-	    }
-	}
+        {
+          if (load_private_key(geteuid(), buf, passphrase,
+                               &private_key, &comment))
+            printf ("Using SUN-DES-1 magic phrase to decrypt the private key.\n");
+          else
+            {
+              memset(passphrase, 0, strlen(passphrase));
+              xfree(passphrase);
+              passphrase = NULL;
+            }
+        }
     }
 #endif 
   if (passphrase == NULL)
     {
       /* Read passphrase from the user. */
       if (identity_passphrase)
-	passphrase = xstrdup(identity_passphrase);
+        passphrase = xstrdup(identity_passphrase);
       else
-	if (identity_new_passphrase)
-	  passphrase = xstrdup(identity_new_passphrase);
-	else
-	  passphrase = read_passphrase(geteuid(), "Enter passphrase: ", 1);
+        if (identity_new_passphrase)
+          passphrase = xstrdup(identity_new_passphrase);
+        else
+          passphrase = read_passphrase(geteuid(), "Enter passphrase: ", 1);
       /* Try to load using the passphrase. */
       if (!load_private_key(geteuid(), buf, passphrase, &private_key, 
-			    &comment))
-	{
-	  memset(passphrase, 0, strlen(passphrase));
-	  xfree(passphrase);
-	  printf("Bad passphrase.\n");
-	  exit(1);
-	}
+                            &comment))
+        {
+          memset(passphrase, 0, strlen(passphrase));
+          xfree(passphrase);
+          printf("Bad passphrase.\n");
+          exit(1);
+        }
     }
 
   /* Save the file, using SSH_AUTHFILE_CIPHER (defined in ssh.h) */
   if (!save_private_key(geteuid(), buf, passphrase, &private_key, comment, 
-			&state))
+                        &state))
     {
       printf("Saving the key failed: %s: %s.\n",
-	     buf, strerror(errno));
+             buf, strerror(errno));
       memset(passphrase, 0, strlen(passphrase));
       xfree(passphrase);
       rsa_clear_private_key(&private_key);
@@ -543,7 +548,7 @@ int main(int ac, char **av)
     }
 
   /* Create ~/.ssh directory if it doesn\'t already exist. */
-  sprintf(buf, "%s/%s", pw->pw_dir, SSH_USER_DIR);
+  snprintf(buf, sizeof(buf), "%s/%s", pw->pw_dir, SSH_USER_DIR);
   if (stat(buf, &st) < 0)
     if (mkdir(buf, 0755) < 0)
       error("Could not create directory '%s'.", buf);
@@ -552,54 +557,54 @@ int main(int ac, char **av)
   while ((opt = getopt(ac, av, "pcub:f:P:N:C:")) != EOF)
     {
       switch (opt)
-	{
-	case 'b':
-	  bits = atoi(optarg);
-	  if (bits < 512 || bits > 32768)
-	    {
-	      printf("Bits has bad value.\n");
-	      exit(1);
-	    }
-	  break;
+        {
+        case 'b':
+          bits = atoi(optarg);
+          if (bits < 512 || bits > 32768)
+            {
+              printf("Bits has bad value.\n");
+              exit(1);
+            }
+          break;
 
-	case 'p':
-	  change_passphrase = 1;
-	  break;
+        case 'p':
+          change_passphrase = 1;
+          break;
 
-	case 'c':
-	  change_comment = 1;
-	  break;
+        case 'c':
+          change_comment = 1;
+          break;
 
-	case 'u':
-	  update_cipher = 1;
-	  break;
+        case 'u':
+          update_cipher = 1;
+          break;
 
-	case 'f':
-	  identity_file = optarg;
-	  break;
-	  
-	case 'P':
-	  identity_passphrase = optarg;
-	  break;
+        case 'f':
+          identity_file = optarg;
+          break;
+          
+        case 'P':
+          identity_passphrase = optarg;
+          break;
 
-	case 'N':
-	  identity_new_passphrase = optarg;
-	  break;
+        case 'N':
+          identity_new_passphrase = optarg;
+          break;
 
-	case 'C':
-	  identity_comment = optarg;
-	  break;
+        case 'C':
+          identity_comment = optarg;
+          break;
 
-	case '?':
-	default:
+        case '?':
+        default:
 #ifdef F_SECURE_COMMERCIAL
 
 #endif /* F_SECURE_COMMERCIAL */
-	  printf("ssh-keygen version %s\n", SSH_VERSION);
-	  printf("Usage: %s [-b bits] [-p] [-c] [-u] [-f file] [-P pass]\n"
-		 "          [-N new-pass] [-C comment]\n", av[0]);
-	  exit(1);
-	}
+          printf("ssh-keygen version %s\n", SSH_VERSION);
+          printf("Usage: %s [-b bits] [-p] [-c] [-u] [-f file] [-P pass]\n"
+                 "          [-N new-pass] [-C comment]\n", av[0]);
+          exit(1);
+        }
     }
   if (optind < ac)
     {
@@ -630,7 +635,7 @@ int main(int ac, char **av)
   /* Initialize random number generator.  This may take a while if the
      user has no seed file, so display a message to the user. */
   printf("Initializing random number generator...\n");
-  sprintf(buf, "%s/%s", pw->pw_dir, SSH_CLIENT_SEEDFILE);
+  snprintf(buf, sizeof(buf), "%s/%s", pw->pw_dir, SSH_CLIENT_SEEDFILE);
   random_initialize(&state, geteuid(), buf);
 
   /* Save random seed so we don't need to do all that time-consuming
@@ -656,14 +661,14 @@ int main(int ac, char **av)
   else
     {
       printf("Enter file in which to save the key (%s/%s): ",
-	     pw->pw_dir, SSH_CLIENT_IDENTITY);
+             pw->pw_dir, SSH_CLIENT_IDENTITY);
       fflush(stdout);
       if (fgets(buf, sizeof(buf), stdin) == NULL)
-	exit(1);
+        exit(1);
       if (strchr(buf, '\n'))
-	*strchr(buf, '\n') = 0;
+        *strchr(buf, '\n') = 0;
       if (strcmp(buf, "") == 0)
-	sprintf(buf, "%s/%s", pw->pw_dir, SSH_CLIENT_IDENTITY);
+        snprintf(buf, sizeof(buf), "%s/%s", pw->pw_dir, SSH_CLIENT_IDENTITY);
     }
 
   /* If the file aready exists, ask the user to confirm. */
@@ -673,9 +678,9 @@ int main(int ac, char **av)
       printf("Overwrite (y/n)? ");
       fflush(stdout);
       if (fgets(buf2, sizeof(buf2), stdin) == NULL)
-	exit(1);
+        exit(1);
       if (buf2[0] != 'y' && buf2[0] != 'Y')
-	exit(1);
+        exit(1);
     }
   
   /* Ask for a passphrase (twice). */
@@ -687,24 +692,24 @@ int main(int ac, char **av)
     else
       {
       passphrase_again:
-	passphrase1 = 
-	  read_passphrase(geteuid(), 
-			  "Enter passphrase: ", 1);
-	passphrase2 = read_passphrase(geteuid(),
-				      "Enter the same passphrase again: ", 1);
-	if (strcmp(passphrase1, passphrase2) != 0)
-	  {
-	    /* The passphrases do not match.  Clear them and retry. */
-	    memset(passphrase1, 0, strlen(passphrase1));
-	    memset(passphrase2, 0, strlen(passphrase2));
-	    xfree(passphrase1);
-	    xfree(passphrase2);
-	    printf("Passphrases do not match.  Try again.\n");
-	    goto passphrase_again;
-	  }
-	/* Clear the other copy of the passphrase. */
-	memset(passphrase2, 0, strlen(passphrase2));
-	xfree(passphrase2);
+        passphrase1 = 
+          read_passphrase(geteuid(), 
+                          "Enter passphrase: ", 1);
+        passphrase2 = read_passphrase(geteuid(),
+                                      "Enter the same passphrase again: ", 1);
+        if (strcmp(passphrase1, passphrase2) != 0)
+          {
+            /* The passphrases do not match.  Clear them and retry. */
+            memset(passphrase1, 0, strlen(passphrase1));
+            memset(passphrase2, 0, strlen(passphrase2));
+            xfree(passphrase1);
+            xfree(passphrase2);
+            printf("Passphrases do not match.  Try again.\n");
+            goto passphrase_again;
+          }
+        /* Clear the other copy of the passphrase. */
+        memset(passphrase2, 0, strlen(passphrase2));
+        xfree(passphrase2);
       }
   
 #ifdef SECURE_RPC
@@ -714,10 +719,10 @@ int main(int ac, char **av)
       xfree(passphrase1);
       passphrase1 = userfile_get_des_1_magic_phrase(geteuid());
       if (passphrase1 == NULL)
-	{
-	  printf ("Failed to get SUN-DES-1 magic phrase. Run keylogin.\n");
-	  exit (1);
-	}
+        {
+          printf ("Failed to get SUN-DES-1 magic phrase. Run keylogin.\n");
+          exit (1);
+        }
       printf ("Using SUN-DES-1 magic phrase to encrypt the private key.\n");
     }
 #endif
@@ -733,31 +738,31 @@ int main(int ac, char **av)
     {
 #ifdef HAVE_GETHOSTNAME
       if (gethostname(hostname, sizeof(hostname)) < 0)
-	{
-	  perror("gethostname");
-	  exit(1);
-	}
-      sprintf(buf2, "%s@%s", pw->pw_name, hostname);
+        {
+          perror("gethostname");
+          exit(1);
+        }
+      snprintf(buf2, sizeof(buf2), "%s@%s", pw->pw_name, hostname);
 #else
       if (uname(&uts) < 0)
-	{
-	  perror("uname");
-	  exit(1);
-	}
-      sprintf(buf2, "%s@%s", pw->pw_name, uts.nodename);
+        {
+          perror("uname");
+          exit(1);
+        }
+      snprintf(buf2, sizeof(buf2), "%s@%s", pw->pw_name, uts.nodename);
 #endif
     }
 
   /* Save the key with the given passphrase and comment. */
   if (!save_private_key(geteuid(), buf, passphrase1, &private_key, buf2, 
-			&state))
+                        &state))
     {
       printf("Saving the key failed: %s: %s.\n",
-	     buf, strerror(errno));
+             buf, strerror(errno));
       memset(passphrase1, 0, strlen(passphrase1));
       xfree(passphrase1);
       if (identity_file) /* Supplied on the command line. */
-	exit(1);
+        exit(1);
       goto ask_file_again;
     }
   /* Clear the passphrase. */

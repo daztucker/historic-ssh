@@ -15,8 +15,19 @@ login (authentication) dialog.
 */
 
 /*
- * $Id: sshconnect.c,v 1.8 1995/09/06 16:01:12 ylo Exp $
+ * $Id: sshconnect.c,v 1.11 1995/09/13 12:03:55 ylo Exp $
  * $Log: sshconnect.c,v $
+ * Revision 1.11  1995/09/13  12:03:55  ylo
+ * 	Added debugging output to print uids.
+ *
+ * Revision 1.10  1995/09/10  22:48:29  ylo
+ * 	Added original_real_uid parameter to ssh_login.  Changed to
+ * 	use it.
+ * 	Fixed read_passphrase arguments.
+ *
+ * Revision 1.9  1995/09/09  21:26:46  ylo
+ * /m/shadows/u2/users/ylo/ssh/README
+ *
  * Revision 1.8  1995/09/06  16:01:12  ylo
  * 	Added BROKEN_INET_ADDR.
  *
@@ -82,7 +93,8 @@ unsigned char session_id[16];
    a privileged port will be allocated to make the connection. 
    This requires super-user privileges if anonymous is false. */
 
-int ssh_connect(const char *host, int port, int anonymous)
+int ssh_connect(const char *host, int port, int anonymous,
+		uid_t original_real_uid)
 {
   int sock, attempt, i;
   int on = 1;
@@ -92,6 +104,9 @@ int ssh_connect(const char *host, int port, int anonymous)
 #ifdef SO_LINGER
   struct linger linger;
 #endif /* SO_LINGER */
+
+  debug("ssh_connect: getuid %d geteuid %d anon %d", 
+	(int)getuid(), (int)geteuid(), anonymous);
 
   /* Get default port if port has not been set. */
   if (port == 0)
@@ -126,7 +141,7 @@ int ssh_connect(const char *host, int port, int anonymous)
 	    {
 	      sock = socket(AF_INET, SOCK_STREAM, 0);
 	      if (sock < 0)
-		fatal("socket: %s", strerror(errno));
+		fatal("socket: %.100s", strerror(errno));
 	      memset(&sin, 0, sizeof(sin));
 	      sin.sin_family = AF_INET;
 	      sin.sin_addr.s_addr = INADDR_ANY;
@@ -138,7 +153,7 @@ int ssh_connect(const char *host, int port, int anonymous)
 		  close(sock);
 		  continue;
 		}
-	      fatal("bind: %s", strerror(errno));
+	      fatal("bind: %.100s", strerror(errno));
 	    }
 	  debug("Allocated local port %d.", p);
 	}
@@ -147,7 +162,7 @@ int ssh_connect(const char *host, int port, int anonymous)
 	  /* Just create an ordinary socket on arbitrary port. */
 	  sock = socket(AF_INET, SOCK_STREAM, 0);
 	  if (sock < 0)
-	    fatal("socket: %s", strerror(errno));
+	    fatal("socket: %.100s", strerror(errno));
 	}
 
       /* Try to parse the host name as a numeric inet address. */
@@ -162,14 +177,14 @@ int ssh_connect(const char *host, int port, int anonymous)
       if ((hostaddr.sin_addr.s_addr & 0xffffffff) != 0xffffffff)
 	{ 
 	  /* Valid numeric IP address */
-	  debug("Connecting to %s port %d.", 
+	  debug("Connecting to %.100s port %d.", 
 		inet_ntoa(hostaddr.sin_addr), port);
       
 	  /* Connect to the host. */
 	  if (connect(sock, (struct sockaddr *)&hostaddr, sizeof(hostaddr))
 	      >= 0)
 	    break;
-	  debug("connect: %s", strerror(errno));
+	  debug("connect: %.100s", strerror(errno));
 	}
       else
 	{ 
@@ -189,13 +204,13 @@ int ssh_connect(const char *host, int port, int anonymous)
 	      hostaddr.sin_family = hp->h_addrtype;
 	      memcpy(&hostaddr.sin_addr, hp->h_addr_list[0], 
 		     sizeof(hostaddr.sin_addr));
-	      debug("Connecting to %s [%s] port %d.",
+	      debug("Connecting to %.200s [%.100s] port %d.",
 		    host, inet_ntoa(hostaddr.sin_addr), port);
 	      /* Connect to the host. */
 	      if (connect(sock, (struct sockaddr *)&hostaddr, 
 			  sizeof(hostaddr)) >= 0)
 		break;
-	      debug("connect: %s", strerror(errno));
+	      debug("connect: %.100s", strerror(errno));
 	    }
 	  if (hp->h_addr_list[i])
 	    break; /* Successful connection. */
@@ -572,10 +587,11 @@ void ssh_login(RandomState *state, int host_key_valid,
 	       int rhosts_authentication, int rhosts_rsa_authentication,
 	       int rsa_authentication,
 	       int password_authentication, int cipher_type,
-	       const char *system_hostfile, const char *user_hostfile)
+	       const char *system_hostfile, const char *user_hostfile,
+	       uid_t original_real_uid)
 {
   int i, type, remote_major, remote_minor;
-  char buf[1024]; /* Must not be larger than remove_version. */
+  char buf[1024]; /* Must not be larger than remote_version. */
   char remote_version[1024]; /* Must be at least as big as buf. */
   char *password;
   struct passwd *pw;
@@ -600,7 +616,7 @@ void ssh_login(RandomState *state, int host_key_valid,
   for (i = 0; i < sizeof(buf) - 1; i++)
     {
       if (read(sock, &buf[i], 1) != 1)
-	fatal("read: %s", strerror(errno));
+	fatal("read: %.100s", strerror(errno));
       if (buf[i] == '\r')
 	{
 	  buf[i] = '\n';
@@ -630,7 +646,7 @@ void ssh_login(RandomState *state, int host_key_valid,
 	  PROTOCOL_MAJOR, remote_major);
 #endif
 
-  /* Check if remote side has protocol version >= 1.1. XXX remove this later. */
+  /* Check if remote side has protocol version >= 1.1. XXX remove this later.*/
   remote_protocol_1_1 = (remote_major >= 1 && remote_minor >= 1);
   if (!remote_protocol_1_1)
     {
@@ -639,9 +655,10 @@ void ssh_login(RandomState *state, int host_key_valid,
     }
 
   /* Send our own protocol version identification. */
-  sprintf(buf, "SSH-%d.%d-%s\n", PROTOCOL_MAJOR, PROTOCOL_MINOR, SSH_VERSION);
+  sprintf(buf, "SSH-%d.%d-%.100s\n", 
+	  PROTOCOL_MAJOR, PROTOCOL_MINOR, SSH_VERSION);
   if (write(sock, buf, strlen(buf)) != strlen(buf))
-    fatal("write: %s", strerror(errno));
+    fatal("write: %.100s", strerror(errno));
 
   /* The minor version is currently not used for anything but
      might be used to enable certain features in future. */
@@ -649,17 +666,17 @@ void ssh_login(RandomState *state, int host_key_valid,
   /* Set the socket into non-blocking mode. */
 #ifdef O_NONBLOCK
   if (fcntl(sock, F_SETFL, O_NONBLOCK) < 0)
-    error("fcntl O_NONBLOCK: %s", strerror(errno));
+    error("fcntl O_NONBLOCK: %.100s", strerror(errno));
 #else /* O_NONBLOCK */  
   if (fcntl(sock, F_SETFL, O_NDELAY) < 0)
-    error("fcntl O_NDELAY: %s", strerror(errno));
+    error("fcntl O_NDELAY: %.100s", strerror(errno));
 #endif /* O_NONBLOCK */
 
   /* Get local user name.  Use it as server user if no user name
      was given. */
-  pw = getpwuid(getuid());
+  pw = getpwuid(original_real_uid);
   if (!pw)
-    fatal("User id %d not found from user database.", (int)getuid());
+    fatal("User id %d not found from user database.", original_real_uid);
   local_user = xstrdup(pw->pw_name);
   server_user = user ? user : local_user;
 
@@ -738,7 +755,7 @@ void ssh_login(RandomState *state, int host_key_valid,
       /* The host is new. */
       if (!add_host_to_hostfile(user_hostfile, host, host_key.bits, 
 				&host_key.e, &host_key.n))
-	log("Failed to add the host to the list of known hosts (%s).", 
+	log("Failed to add the host to the list of known hosts (%.500s).", 
 	    user_hostfile);
       else
 	log("Host '%.200s' added to the list of known hosts.", host);
@@ -766,12 +783,12 @@ void ssh_login(RandomState *state, int host_key_valid,
   /* Generate a session key. */
   
   /* Initialize the random number generator. */
-  sprintf(buf, "%s/%s", pw->pw_dir, SSH_CLIENT_SEEDFILE);
+  sprintf(buf, "%.500s/%.200s", pw->pw_dir, SSH_CLIENT_SEEDFILE);
   if (stat(buf, &st) < 0)
-    log("Creating random seed file ~/%s.  This may take a while.", 
+    log("Creating random seed file ~/%.900s.  This may take a while.", 
 	SSH_CLIENT_SEEDFILE);
   else
-    debug("Initializing random; seed %s", buf);
+    debug("Initializing random; seed file %.900s", buf);
   random_initialize(state, buf);
   
   /* Generate an encryption key for the session.   The key is a 256 bit
@@ -832,20 +849,21 @@ void ssh_login(RandomState *state, int host_key_valid,
     }
 
   if (cipher_type == SSH_CIPHER_NOT_SET)
-    if (cipher_mask() & supported_ciphers & SSH_CIPHER_IDEA)
+    if (cipher_mask() & supported_ciphers & (1 << SSH_CIPHER_IDEA))
       cipher_type = SSH_CIPHER_IDEA;
     else
       {
-	debug("IDEA not supported, using DES instead.");
-	cipher_type = SSH_CIPHER_DES;
+	debug("IDEA not supported, using %.100s instead.",
+	      cipher_name(SSH_FALLBACK_CIPHER));
+	cipher_type = SSH_FALLBACK_CIPHER;
       }
 
   /* Check that the selected cipher is supported. */
   if (!(supported_ciphers & (1 << cipher_type)))
-    fatal("Selected cipher type %s not supported by server.", 
+    fatal("Selected cipher type %.100s not supported by server.", 
 	  cipher_name(cipher_type));
 
-  debug("Encryption type: %s", cipher_name(cipher_type));
+  debug("Encryption type: %.100s", cipher_name(cipher_type));
 
   /* Send the encrypted session key to the server. */
   packet_start(SSH_CMSG_SESSION_KEY);
@@ -954,10 +972,11 @@ void ssh_login(RandomState *state, int host_key_valid,
       debug("Doing password authentication.");
       if (cipher_type == SSH_CIPHER_NONE)
 	log("WARNING: Encryption is disabled! Password will be transmitted in plain text.");
-      password = getpass("Password: ");
+      password = read_passphrase("Password: ", 0);
       packet_start(SSH_CMSG_AUTH_PASSWORD);
       packet_put_string(password, strlen(password));
       memset(password, 0, strlen(password));
+      xfree(password);
       packet_send();
       packet_write_wait();
   

@@ -15,9 +15,12 @@ within ssh. See the file COPYING for full licensing informations.
 */
 
 /*
- * $Id: osfc2.c,v 1.10 1998/05/11 21:26:49 kivinen Exp $
+ * $Id: osfc2.c,v 1.11 1998/05/23 20:31:56 kivinen Exp $
  * $Log: osfc2.c,v $
- * Revision 1.10  1998/05/11 21:26:49  kivinen
+ * Revision 1.11  1998/05/23  20:31:56  kivinen
+ * 	Added osf1c2_check_account_and_terminal function.
+ *
+ * Revision 1.10  1998/05/11  21:26:49  kivinen
  * 	Moved prpasswd stuff to be inside if (pr).
  *
  * Revision 1.9  1998/05/11 18:53:16  kivinen
@@ -68,6 +71,7 @@ within ssh. See the file COPYING for full licensing informations.
  */
 
 #include "includes.h"
+#include "ssh.h"
 #include <sys/security.h>
 #include <prot.h>
 #include <sia.h>
@@ -125,60 +129,73 @@ initialize_osf_security(int ac, char **av)
     set_auth_parameters(ac, av);
 }
 
-int
-osf1c2_getprpwent(char *p, char *n, int len)
+const char *osf1c2_check_account_and_terminal(const char *username,
+					      const char *terminal)
 {
-  time_t pschg, tnow;
-
   if (c2security == 1)
     {
-      struct es_passwd *es; 
-      struct pr_passwd *pr = getprpwnam(n);
+      struct pr_passwd *pr = getprpwnam((char *) username);
       if (pr)
 	{
-	  strncpy(p, pr->ufld.fd_encrypt, len);
-	  crypt_algo = pr->ufld.fd_oldcrypt;
-
-	  /****
-	   * jcastro@ist.utl.pt  Sep 1997
-	   *
-	   * Changed to verify prpasswd stuff such as
-	   *    - account locked 
-	   *    - passwd lifetime reached
-	   *    - user profiles diferent from default
-	   *      login resources limited !!!
-	   ****/
 	  if (pr->uflg.fg_lock == 1)
 	    {
 	      if (pr->ufld.fd_lock == 1)
-		return 1;		/* Locked in user's profile */
+		{
+		  return "\n\tYour account is locked.\n\n";
+		}
 	    }
 	  else
 	    if (pr->sflg.fg_lock == 1 && pr->sfld.fd_lock == 1)
-	      return 1;		/* Locked in system default */
-	  
-	  tnow = time(NULL);
-	  if (pr->uflg.fg_schange == 1)
-	    pschg = pr->ufld.fd_schange;
-	  if (pr->uflg.fg_template == 0)
-	    { /** default template, system values **/
-	      if (pr->sflg.fg_lifetime == 1)
-		if (pr->sfld.fd_lifetime > 0 && 
-		    pschg + pr->sfld.fd_lifetime < tnow)
-		  return 2;
+	      {
+		return "\n\tYour account is locked.\n\n";
+	      }
+		
+	  if (pr->uflg.fg_retired)
+	    {
+	      if (pr->ufld.fd_retired)
+		{
+		  return "\n\tYour account has been retired.\n\n";
+		}
 	    }
-	  else                      /** user template, specific values **/
+	  else
+	    if (pr->sflg.fg_retired && pr->sfld.fd_retired)
+	      {
+		return "\n\tYour account has been retired.\n\n";
+	      }
+	  
+#ifdef HAVE_TIME_LOCK
+	  if (time_lock(pr))
+	    {
+	      return "\n\tWrong time period to log into this account.\n\n";
+	    }
+#endif /* HAVE_TIME_LOCK */
+	  if (pr->uflg.fg_template)
 	    {
 #ifdef HAVE_GETESPWNAM
-	      es = getespwnam(pr->ufld.fd_template);
+	      struct es_passwd *es = getespwnam(pr->ufld.fd_template);
 	      if (es)
 		{
-		  if (es->uflg->fg_expire == 1) 
-		    if (es->ufld->fd_expire > 0 &&
-			pschg + es->ufld->fd_expire < tnow)
-		      return 2;
-		  /** Login resources **/
+#ifdef HAVE_GETESTCNAM
+		  if (terminal != NULL)
+		    {
+		      struct es_term *term = getestcnam(terminal);
+		      if (term)
+			{
+			  if (auth_for_terminal_es(es, term))
+			    {
+			      return "\n\tNot authorized to login from that terminal.\n\n";
+			    }
+			}
+		    }
+#endif /* HAVE_GETESTCNAM */
+#ifdef HAVE_LOCKED_OUT_ES
+		  if (locked_out_es(es))
+		    {
+		      return "\n\tYour account has been locked out.\n\n";
+		    }
+#endif /* HAVE_LOCKED_OUT_ES */
 		  
+		  /** Login resources **/
 		  if (es->uflg->fg_rlim_cpu == 1) 
 		    osflim[0] = es->ufld->fd_rlim_cpu;
 		  if (es->uflg->fg_rlim_fsize == 1)
@@ -200,6 +217,61 @@ osf1c2_getprpwent(char *p, char *n, int len)
 	    }
 	}
     }
+  return NULL;
+}
+
+int
+osf1c2_getprpwent(char *p, char *n, int len)
+{
+  time_t pschg, tnow;
+
+  if (c2security == 1)
+    {
+      struct es_passwd *es; 
+      struct pr_passwd *pr = getprpwnam(n);
+      if (pr)
+	{
+	  extern int days_before_password_expires;
+	  
+	  strncpy(p, pr->ufld.fd_encrypt, len);
+	  crypt_algo = pr->ufld.fd_oldcrypt;
+
+	  tnow = time(NULL);
+	  if (pr->uflg.fg_schange == 1)
+	    pschg = pr->ufld.fd_schange;
+	  else
+	    pschg = 0;
+	  if (pr->uflg.fg_template == 0)
+	    {
+	      /** default template, system values **/
+	      if (pr->sflg.fg_lifetime == 1)
+		if (pr->sfld.fd_lifetime > 0 && 
+		    pschg + pr->sfld.fd_lifetime < tnow)
+		  return 1;
+	      if (pr->sflg.fg_lifetime && pr->sfld.fd_lifetime > 0)
+		days_before_password_expires =
+		  (pschg + pr->sfld.fd_lifetime - tnow) / 86400;
+	    }
+	  else                      /** user template, specific values **/
+	    {
+#ifdef HAVE_GETESPWNAM
+	      es = getespwnam(pr->ufld.fd_template);
+	      if (es)
+		{
+		  if (es->uflg->fg_expire == 1) 
+		    if (es->ufld->fd_expire > 0 &&
+			pschg + es->ufld->fd_expire < tnow)
+		      return 1;
+		  if (es->uflg->fg_expire == 1 &&
+		      es->ufld->fd_expire > 0)
+		    days_before_password_expires =
+		      (pschg + es->ufld->fd_expire - tnow) / 86400;
+		  
+		}
+#endif /* HAVE_GETESPWNAM */
+	    }
+	}
+    }
   else
     {
       struct passwd *pw = getpwnam(n);
@@ -210,7 +282,7 @@ osf1c2_getprpwent(char *p, char *n, int len)
 }
 
 char *
-osf1c2crypt(char *pw, char *salt)
+osf1c2crypt(const char *pw, char *salt)
 {
    if (c2security == 1) {
      return(dispcrypt(pw, salt, crypt_algo));

@@ -15,9 +15,15 @@ login (authentication) dialog.
 */
 
 /*
- * $Id: sshconnect.c,v 1.26 1998/04/30 01:56:01 kivinen Exp $
+ * $Id: sshconnect.c,v 1.28 1998/06/11 00:10:50 kivinen Exp $
  * $Log: sshconnect.c,v $
- * Revision 1.26  1998/04/30 01:56:01  kivinen
+ * Revision 1.28  1998/06/11 00:10:50  kivinen
+ * 	Added ENABLE_SO_LINGER ifdef.
+ *
+ * Revision 1.27  1998/05/23  20:25:58  kivinen
+ * 	Changed () -> (void).
+ *
+ * Revision 1.26  1998/04/30  01:56:01  kivinen
  * 	Added PasswordPromptLogin and PasswordPromptHost option code.
  * 	Added check that proxy command isn't empty.
  *
@@ -383,7 +389,7 @@ int ssh_connect(const char *host, int port, int connection_attempts,
   struct servent *sp;
   struct hostent *hp;
   struct sockaddr_in hostaddr;
-#ifdef SO_LINGER
+#if defined(SO_LINGER) && defined(ENABLE_SO_LINGER)
   struct linger linger;
 #endif /* SO_LINGER */
 
@@ -560,7 +566,7 @@ int ssh_connect(const char *host, int port, int connection_attempts,
 #if defined(TCP_NODELAY) && defined(ENABLE_TCP_NODELAY)
   setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (void *)&on, sizeof(on));
 #endif /* TCP_NODELAY */
-#ifdef SO_LINGER
+#if defined(SO_LINGER) && defined(ENABLE_SO_LINGER)
   linger.l_onoff = 1;
   linger.l_linger = 15;
   setsockopt(sock, SOL_SOCKET, SO_LINGER, (void *)&linger, sizeof(linger));
@@ -575,7 +581,7 @@ int ssh_connect(const char *host, int port, int connection_attempts,
 /* Checks if the user has an authentication agent, and if so, tries to
    authenticate using the agent. */
 
-int try_agent_authentication()
+int try_agent_authentication(void)
 {
   int status, type, bits;
   MP_INT e, n, challenge;
@@ -911,7 +917,7 @@ int try_rhosts_rsa_authentication(const char *local_user,
 }
 
 #ifdef KERBEROS
-int try_kerberos_authentication()
+int try_kerberos_authentication(void)
 {
 #ifdef KRB5
   char *remotehost;
@@ -1067,7 +1073,7 @@ cleanup:
 
 #ifdef KERBEROS_TGT_PASSING
 /* Forward our local Kerberos tgt to the server. */
-int send_kerberos_tgt()
+int send_kerberos_tgt(void)
 {
 #ifdef KRB5
   char *remotehost;
@@ -1168,7 +1174,7 @@ int send_kerberos_tgt()
 /* Waits for the server identification string, and sends our own identification
    string. */
 
-void ssh_exchange_identification()
+void ssh_exchange_identification(void)
 {
   char buf[256], remote_version[256]; /* must be same size! */
   int remote_major, remote_minor, i;

@@ -15,8 +15,12 @@ for reading the passphrase from the user.
 */
 
 /*
- * $Id: authfile.c,v 1.1.1.1 1996/02/18 21:38:11 ylo Exp $
+ * $Id: authfile.c,v 1.2 1997/03/19 22:18:27 kivinen Exp $
  * $Log: authfile.c,v $
+ * Revision 1.2  1997/03/19 22:18:27  kivinen
+ * 	Removed check that SSH_CIPHER_NONE is in cipher_mask because
+ * 	it is always internally supported, even if not in cipher_mask.
+ *
  * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
  * 	Imported ssh-1.2.13.
  *
@@ -305,7 +309,8 @@ int load_private_key(uid_t uid, const char *filename, const char *passphrase,
     xfree(buffer_get_string(&buffer, NULL));
 
   /* Check that it is a supported cipher. */
-  if ((cipher_mask() & (1 << cipher_type)) == 0)
+  if (cipher_type != SSH_CIPHER_NONE &&
+      (cipher_mask() & (1 << cipher_type)) == 0)
     {
       debug("Unsupported cipher %.100s used in key file %.200s.",
 	    cipher_name(cipher_type), filename);

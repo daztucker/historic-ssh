@@ -15,8 +15,11 @@ authentication.
 */
 
 /*
- * $Id: auth-rh-rsa.c,v 1.1.1.1 1996/02/18 21:38:12 ylo Exp $
+ * $Id: auth-rh-rsa.c,v 1.2 1996/10/29 22:34:10 kivinen Exp $
  * $Log: auth-rh-rsa.c,v $
+ * Revision 1.2  1996/10/29 22:34:10  kivinen
+ * 	log -> log_msg.
+ *
  * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
  * 	Imported ssh-1.2.13.
  *
@@ -92,7 +95,7 @@ int auth_rhosts_rsa(RandomState *state,
   if (!auth_rsa_challenge_dialog(state, client_host_key_bits,
 				 client_host_key_e, client_host_key_n))
     {
-      log("Client on %.800s failed to respond correctly to host authentication.",
+      log_msg("Client on %.800s failed to respond correctly to host authentication.",
 	  canonical_hostname);
       return 0;
     }
@@ -100,7 +103,7 @@ int auth_rhosts_rsa(RandomState *state,
   /* We have authenticated the user using .rhosts or /etc/hosts.equiv, and
      the host using RSA.  We accept the authentication. */
   
-  log("Rhosts with RSA host authentication accepted for %.100s, %.100s on %.700s.",
+  log_msg("Rhosts with RSA host authentication accepted for %.100s, %.100s on %.700s.",
       pw->pw_name, client_user, canonical_hostname);
   packet_send_debug("Rhosts with RSA host authentication accepted.");
   return 1;

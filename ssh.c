@@ -16,8 +16,19 @@ of X11, TCP/IP, and authentication connections.
 */
 
 /*
- * $Id: ssh.c,v 1.8 1996/10/04 01:00:13 kivinen Exp $
+ * $Id: ssh.c,v 1.11 1996/10/29 22:45:10 kivinen Exp $
  * $Log: ssh.c,v $
+ * Revision 1.11  1996/10/29 22:45:10  kivinen
+ * 	log -> log_msg. Added old agent emulation code (disable agent
+ * 	forwarding if the other end is too old).
+ * 	Added userfile_uninit again. Agent doesn't need it any more.
+ *
+ * Revision 1.10  1996/10/20 16:23:01  ttsalo
+ *       use normal close() to close authentication socket
+ *
+ * Revision 1.9  1996/10/20 16:19:35  ttsalo
+ *      Added global variable 'original_real_uid' and it's initialization
+ *
  * Revision 1.8  1996/10/04 01:00:13  kivinen
  * 	Commented userfile_uninit out because we might need userfile
  * 	later to open agent connections.
@@ -110,6 +121,7 @@ of X11, TCP/IP, and authentication connections.
 #include "authfd.h"
 #include "readconf.h"
 #include "userfile.h"
+#include "emulate.h"
 
 /* Random number generator state.  This is initialized in ssh_login, and
    left initialized.  This is used both by the packet module and by various
@@ -166,6 +178,8 @@ int host_private_key_loaded = 0;
 /* Host private key. */
 RSAPrivateKey host_private_key;
 
+/* Original real uid. */
+uid_t original_real_uid;
 
 /* Prints a help message to the user.  This function never returns. */
 
@@ -207,7 +221,7 @@ void rsh_connect(char *host, char *user, Buffer *command)
   char *cp;
   int i;
   
-  log("Using rsh.  WARNING: Connection will not be encrypted.");
+  log_msg("Using rsh.  WARNING: Connection will not be encrypted.");
 
   /* Switch to the original uid permanently. */
   if (setuid(getuid()) < 0)
@@ -274,13 +288,12 @@ void rsh_connect(char *host, char *user, Buffer *command)
 int main(int ac, char **av)
 {
   int i, opt, optind, type, exit_status, ok, fwd_port, fwd_host_port;
-  UserFile authfd;
+  int authfd;
   char *optarg, *cp, buf[256];
   Buffer command;
   struct stat st;
   struct passwd *pw, pwcopy;
   int interactive = 0, dummy;
-  uid_t original_real_uid;
   uid_t original_effective_uid;
 #ifdef SIGWINCH
   struct winsize ws;
@@ -622,11 +635,11 @@ int main(int ac, char **av)
     {
       userfile_uninit();
       if (options.port != 0)
-	log("Secure connection to %.100s on port %d refused%s.", 
+	log_msg("Secure connection to %.100s on port %d refused%s.", 
 	    host, options.port,
 	    options.fallback_to_rsh ? "; reverting to insecure method" : "");
       else
-	log("Secure connection to %.100s refused%s.", host,
+	log_msg("Secure connection to %.100s refused%s.", host,
 	    options.fallback_to_rsh ? "; reverting to insecure method" : "");
 
       if (options.fallback_to_rsh)
@@ -694,7 +707,7 @@ int main(int ac, char **av)
       if (type == SSH_SMSG_SUCCESS)
 	packet_start_compression(options.compression_level);
       else
-	log("Warning: Remote host refused compression.");
+	log_msg("Warning: Remote host refused compression.");
     }
 
   /* Allocate a pseudo tty if appropriate. */
@@ -739,7 +752,7 @@ int main(int ac, char **av)
       if (type == SSH_SMSG_SUCCESS)
 	interactive = 1;
       else
-	log("Warning: Remote host failed or refused to allocate a pseudo tty.");
+	log_msg("Warning: Remote host failed or refused to allocate a pseudo tty.");
     }
 
   /* Request X11 forwarding if enabled and DISPLAY is set. */
@@ -790,19 +803,28 @@ int main(int ac, char **av)
 	  interactive = 1;
 	}
       else
-	log("Warning: Remote host denied X11 forwarding.");
+	log_msg("Warning: Remote host denied X11 forwarding.");
     }
 
   /* Tell the packet module whether this is an interactive session. */
   packet_set_interactive(interactive, options.keepalives);
 
-  /* Clear agent forwarding if we don\'t have an agent. */
-  authfd = ssh_get_authentication_fd();
-  if (authfd == NULL)
-    options.forward_agent = 0;
-  else
-    ssh_close_authentication_socket(authfd);
-
+  if (emulation_information & EMULATE_OLD_AGENT_BUG)
+    {
+      log_msg("Warning: Denied agent forwarding because the other end has too old version.");
+      options.forward_agent = 0;
+    }
+  
+  if (options.forward_agent)
+    {
+      /* Clear agent forwarding if we don\'t have an agent. */
+      authfd = ssh_get_authentication_fd();
+      if (authfd == -1)
+	options.forward_agent = 0;
+      else
+	close(authfd);
+    }
+  
   /* Request authentication agent forwarding if appropriate. */
   if (options.forward_agent)
     {
@@ -812,7 +834,7 @@ int main(int ac, char **av)
       /* Read response from the server. */
       type = packet_read();
       if (type != SSH_SMSG_SUCCESS)
-	log("Warning: Remote host denied authentication agent forwarding.");
+	log_msg("Warning: Remote host denied authentication agent forwarding.");
     }
 
   /* Initiate local TCP/IP port forwardings. */
@@ -839,11 +861,8 @@ int main(int ac, char **av)
 
   /* We will no longer need the forked process that reads files on the
      user's uid. */
+  userfile_uninit(); 
   
-  /* userfile_uninit(); This is commented out, because we might to make
-     agent connections as user later with userfile.
-     //kivinen 03:54 Oct  4 1996 */
-
   /* If requested, fork and let ssh continue in the background. */
   if (fork_after_authentication_flag)
     {

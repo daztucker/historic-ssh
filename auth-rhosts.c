@@ -16,8 +16,13 @@ the login based on rhosts authentication.  This file also processes
 */
 
 /*
- * $Id: auth-rhosts.c,v 1.10 1995/09/27 02:11:07 ylo Exp $
+ * $Id: auth-rhosts.c,v 1.11 1995/10/02 01:19:18 ylo Exp $
  * $Log: auth-rhosts.c,v $
+ * Revision 1.11  1995/10/02  01:19:18  ylo
+ * 	Fixed a serious security bug in the new hosts.equiv code.
+ * 	Fixed case-insensitivity in host names.
+ * 	Added support for /etc/shosts.equiv.
+ *
  * Revision 1.10  1995/09/27  02:11:07  ylo
  * 	Ignore "NO_PLUS".
  * 	Fixed comment processing.
@@ -225,7 +230,7 @@ int check_rhosts_file(const char *filename, const char *hostname,
    are ignored). */
 
 int auth_rhosts(struct passwd *pw, const char *client_user,
-		int ignore_rhosts)
+		int ignore_rhosts, int strict_modes)
 {
   char buf[1024];
   const char *hostname, *ipaddr;
@@ -303,8 +308,9 @@ int auth_rhosts(struct passwd *pw, const char *client_user,
 			pw->pw_name, pw->pw_dir);
       return 0;
     }
-  if ((st.st_uid != 0 && st.st_uid != pw->pw_uid) ||
-      (st.st_mode & 022) != 0)
+  if (strict_modes && 
+      ((st.st_uid != 0 && st.st_uid != pw->pw_uid) ||
+       (st.st_mode & 022) != 0))
     {
       log("Rhosts authentication refused for %.100s: bad ownership or modes for home directory.",
 	  pw->pw_name);
@@ -329,8 +335,9 @@ int auth_rhosts(struct passwd *pw, const char *client_user,
 	 and make sure it is not writable by anyone but the owner.  This is
 	 to help avoid novices accidentally allowing access to their account
 	 by anyone. */
-      if ((st.st_uid != 0 && st.st_uid != pw->pw_uid) ||
-	  (st.st_mode & 022) != 0)
+      if (strict_modes &&
+	  ((st.st_uid != 0 && st.st_uid != pw->pw_uid) ||
+	   (st.st_mode & 022) != 0))
 	{
 	  log("Rhosts authentication refused for %.100s: bad modes for %.200s",
 	      pw->pw_name, buf);

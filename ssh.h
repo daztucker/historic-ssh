@@ -8,9 +8,29 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Fri Mar 17 17:09:37 1995 ylo
-Last modified: Wed Jul 12 01:24:08 1995 ylo
+
+Generic header file for ssh.
 
 */
+
+/*
+ * $Id: ssh.h,v 1.5 1995/07/27 00:41:04 ylo Exp $
+ * $Log: ssh.h,v $
+ * Revision 1.5  1995/07/27  00:41:04  ylo
+ * 	Added GlobalKnownHostsFile and UserKnownHostsFile.
+ *
+ * Revision 1.4  1995/07/26  23:28:56  ylo
+ * 	Changed PROTOCOL_MINOR from 0 to 1.
+ *
+ * Revision 1.3  1995/07/16  01:02:26  ylo
+ * 	Removed host argument from record_logout.
+ *
+ * Revision 1.2  1995/07/13  01:40:22  ylo
+ * 	Removed "Last modified" header.
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
 
 #ifndef SSH_H
 #define SSH_H
@@ -26,7 +46,7 @@ Last modified: Wed Jul 12 01:24:08 1995 ylo
 
 /* Minor protocol version.  Different version indicates minor incompatibility
    that does not prevent interoperation. */
-#define PROTOCOL_MINOR		0
+#define PROTOCOL_MINOR		1
 
 /* Name for the service.  The port named by this service overrides the default
    port if present. */
@@ -197,7 +217,7 @@ void record_login(int pid, const char *ttyname, const char *user, uid_t uid,
 
 /* Records that the user has logged out.  This does many thigs normally
    done by login(1) or init. */
-void record_logout(int pid, const char *ttyname, const char *host);
+void record_logout(int pid, const char *ttyname);
 
 /*------------ definitions for sshconnect.c ----------*/
 
@@ -221,8 +241,8 @@ void ssh_login(RandomState *state, int host_key_valid, RSAPrivateKey *host_key,
 	       unsigned int num_identity_files, char **identity_files,
 	       int rhosts_authentication, int rhosts_rsa_authentication,
 	       int rsa_authentication,
-	       int password_authentication, int cipher_type);
-
+	       int password_authentication, int cipher_type,
+	       const char *system_hostfile, const char *user_hostfile);
 
 /*------------ Definitions for various authentication methods. -------*/
 

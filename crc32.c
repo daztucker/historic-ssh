@@ -1,6 +1,9 @@
 /*
- * $Id: crc32.c,v 1.2 1995/07/13 01:21:34 ylo Exp $
+ * $Id: crc32.c,v 1.1.1.1 1996/02/18 21:38:12 ylo Exp $
  * $Log: crc32.c,v $
+ * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.2  1995/07/13  01:21:34  ylo
  * 	Added cvs log.
  *

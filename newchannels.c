@@ -16,9 +16,21 @@ arbitrary tcp/ip connections, and the authentication agent connection.
 */
 
 /*
- * $Id: newchannels.c,v 1.42 1998/03/27 16:58:26 kivinen Exp $
+ * $Id: newchannels.c,v 1.45 1998/06/11 00:25:48 kivinen Exp $
  * $Log: newchannels.c,v $
- * Revision 1.42  1998/03/27 16:58:26  kivinen
+ * Revision 1.45  1998/06/11 00:25:48  kivinen
+ * 	Fixed typo in strncpy call.
+ *
+ * Revision 1.44  1998/06/11 00:08:20  kivinen
+ * 	Added date to X11 connection rejected message. Added checking
+ * 	of /var/X directory first and if that doesn't exists then try
+ * 	X11_DIR and if that doesn't exists try /tmp/.X11-unix.
+ *
+ * Revision 1.43  1998/05/23  20:22:30  kivinen
+ * 	Changed () -> (void). Fixed typo in debug text. Added check
+ * 	that chown succeeds.
+ *
+ * Revision 1.42  1998/03/27  16:58:26  kivinen
  * 	Added gatewayports support.
  *
  * Revision 1.41  1998/01/03 06:41:38  kivinen
@@ -409,7 +421,7 @@ void channel_set_options(int hostname_in_open)
    called by the server, because the user could connect to any port anyway,
    and the server has no way to know but to trust the client anyway. */
 
-void channel_permit_all_opens()
+void channel_permit_all_opens(void)
 {
   all_opens_permitted = 1;
 }
@@ -665,7 +677,7 @@ void channel_receive_oclosed(Channel *ch)
 
 /* This is called after receiving CHANNEL_INPUT_EOF */
 
-void channel_ieof()
+void channel_ieof(void)
 {
   int channel;
   /* Get the channel number and verify it. */
@@ -678,7 +690,7 @@ void channel_ieof()
 }
 
 /* This is called after receiving CHANNEL_OUTPUT_CLOSED */
-void channel_oclosed()
+void channel_oclosed(void)
 {
   int channel;
   /* Get the channel number and verify it. */
@@ -832,9 +844,27 @@ void channel_prepare_select(fd_set *readset, fd_set *writeset)
 	reject:
 	  /* We have received an X11 connection that has bad authentication
 	     information. */
-	  log_msg("X11 connection rejected because of wrong authentication.\r\n");
-	  if (ch->remote_name)
-	    log_msg("Rejected connection: %.200s\r\n", ch->remote_name);
+	  {
+	    time_t t;
+	    char buffer[255], *p;
+
+	    t = time(NULL);
+	    strncpy(buffer, ctime(&t), sizeof(buffer));
+	    buffer[sizeof(buffer) - 1] = '\0';
+
+	    p = strchr(buffer, '\n');
+	    if (p)
+	      *p = '\0';
+	    p = strchr(buffer, '\r');
+	    if (p)
+	      *p = '\0';
+	    
+	    log_msg("X11 connection rejected because of wrong authentication at %s.\r\na",
+		    buffer);
+	    if (ch->remote_name)
+	      log_msg("Rejected connection at %s: %.200s\r\n", buffer,
+		      ch->remote_name);
+	  }
 	  buffer_clear(&ch->input);
 	  buffer_clear(&ch->output);
 	  channel_close_input(ch);
@@ -1055,7 +1085,7 @@ void channel_after_select(fd_set *readset, fd_set *writeset)
 
 /* If there is data to send to the connection, send some of it now. */
 
-void channel_output_poll()
+void channel_output_poll(void)
 {
   int len, i;
   Channel *ch;
@@ -1115,7 +1145,7 @@ void channel_output_poll()
    The message type has already been consumed, but channel number and data
    is still there. */
 
-void channel_input_data()
+void channel_input_data(void)
 {
   int channel;
   char *data;
@@ -1153,7 +1183,7 @@ void channel_input_data()
 /* Returns true if no channel has too much buffered data, and false if
    one or more channel is overfull. */
 
-int channel_not_very_much_buffered_data()
+int channel_not_very_much_buffered_data(void)
 {
 #if 0
   unsigned int i;
@@ -1185,7 +1215,7 @@ int channel_not_very_much_buffered_data()
 }
 
 #ifdef SUPPORT_OLD_CHANNELS
-void channel_input_close_confirmation()
+void channel_input_close_confirmation(void)
 {
   if (emulation_information & EMULATE_OLD_CHANNEL_CODE)
     channel_emulated_close(1);
@@ -1193,7 +1223,7 @@ void channel_input_close_confirmation()
     channel_oclosed();
 }
 
-void channel_input_close()
+void channel_input_close(void)
 {
   if (emulation_information & EMULATE_OLD_CHANNEL_CODE)
     channel_emulated_close(0);
@@ -1204,7 +1234,7 @@ void channel_input_close()
 
 /* This is called after receiving CHANNEL_OPEN_CONFIRMATION. */
 
-void channel_input_open_confirmation()
+void channel_input_open_confirmation(void)
 {
   int channel, remote_channel;
 
@@ -1226,7 +1256,7 @@ void channel_input_open_confirmation()
 
 /* This is called after receiving CHANNEL_OPEN_FAILURE from the other side. */
 
-void channel_input_open_failure()
+void channel_input_open_failure(void)
 {
   int channel;
 
@@ -1244,7 +1274,7 @@ void channel_input_open_failure()
 /* Stops listening for channels, and removes any unix domain sockets that
    we might have. */
 
-void channel_stop_listening()
+void channel_stop_listening(void)
 {
   int i;
   for (i = 0; i < channels_alloc; i++)
@@ -1268,7 +1298,7 @@ void channel_stop_listening()
 /* Closes the sockets of all channels.  This is used to close extra file
    descriptors after a fork. */
 
-void channel_close_all()
+void channel_close_all(void)
 {
   int i;
   for (i = 0; i < channels_alloc; i++)
@@ -1280,14 +1310,14 @@ void channel_close_all()
 
 /* Returns the maximum file descriptor number used by the channels. */
 
-int channel_max_fd()
+int channel_max_fd(void)
 {
   return channel_max_fd_value;
 }
 
 /* Returns true if any channel is still open. */
 
-int channel_still_open()
+int channel_still_open(void)
 {
   unsigned int i;
   for (i = 0; i < channels_alloc; i++)
@@ -1313,7 +1343,7 @@ int channel_still_open()
    connections, suitable for sending to the client.  The message
    contains crlf pairs for newlines. */
 
-char *channel_open_message()
+char *channel_open_message(void)
 {
   Buffer buffer;
   int i;
@@ -1581,7 +1611,7 @@ fail:
    to the given host:port, and sends back CHANNEL_OPEN_CONFIRMATION or
    CHANNEL_OPEN_FAILURE. */
 
-void channel_input_port_open()
+void channel_input_port_open(void)
 {
   int remote_channel, sock, newch, host_port, i;
   struct sockaddr_in sin;
@@ -1858,7 +1888,7 @@ char *x11_create_display_inet(int screen_number)
    the remote channel number.  We should do whatever we want, and respond
    with either SSH_MSG_OPEN_CONFIRMATION or SSH_MSG_OPEN_FAILURE. */
 
-void x11_input_open()
+void x11_input_open(void)
 {
   int remote_channel, display_number, sock, newch;
   const char *display;
@@ -1953,7 +1983,24 @@ void x11_input_open()
 	  }
       }
 #else /* HPSUX_NONSTANDARD_X11_KLUDGE */
-      sprintf(ssun.sun_path, "%.80s/X%d", X11_DIR, display_number);
+      {
+	struct stat st;
+
+	if (stat("/var/X", &st) == 0)
+	  {
+	    sprintf(ssun.sun_path, "%.80s/X%d", "/var/X/.X11-unix",
+		    display_number);
+	  }
+	else if (stat(X11_DIR, &st) == 0)
+	  {
+	    sprintf(ssun.sun_path, "%.80s/X%d", X11_DIR, display_number);
+	  }
+	else
+	  {
+	    sprintf(ssun.sun_path, "%.80s/X%d", "/tmp/.X11-unix",
+		    display_number);
+	  }
+      }
 #endif /* HPSUX_NONSTANDARD_X11_KLUDGE */
       if (connect(sock, (struct sockaddr *)&ssun, AF_UNIX_SIZE(ssun)) < 0)
 	{
@@ -2127,7 +2174,7 @@ void x11_request_forwarding_with_spoofing(RandomState *state,
 
 /* Sends a message to the server to request authentication fd forwarding. */
 
-void auth_request_forwarding()
+void auth_request_forwarding(void)
 {
   packet_start(SSH_CMSG_AGENT_REQUEST_FORWARDING);
   packet_send();
@@ -2139,7 +2186,7 @@ void auth_request_forwarding()
    the authentication fd.  Returns -1 if there is no forwarded authentication
    fd. */
 
-int auth_get_fd()
+int auth_get_fd(void)
 {
   return channel_forwarded_auth_fd;
 }
@@ -2148,7 +2195,7 @@ int auth_get_fd()
    if there is no forwarded authentication socket.  The returned value
    points to a static buffer. */
 
-char *auth_get_socket_name()
+char *auth_get_socket_name(void)
 {
   return channel_forwarded_auth_socket_name;
 }
@@ -2273,7 +2320,7 @@ int auth_input_request_forwarding(struct passwd *pw)
       if ((st.st_uid != pw->pw_uid) || (st.st_mode & 077) != 0)
 	{
 	  packet_send_debug("* Remote error: Agent socket creation:"
-		"Bad modes/owner for directory \'%s\' (modes are %o, should be 041777)",
+		"Bad modes/owner for directory \'%s\' (modes are %o, should be 040700)",
 		channel_forwarded_auth_socket_dir_name,
 		st.st_mode);
 	  packet_send_debug("* Remote error: Authentication fowarding disabled.");
@@ -2342,7 +2389,9 @@ int auth_input_request_forwarding(struct passwd *pw)
   umask(old_umask);
   
   if (directory_created)
-    chown(".", pw->pw_uid, pw->pw_gid);
+    if (chown(".", pw->pw_uid, pw->pw_gid) < 0)
+      packet_disconnect("Agent socket directory chown failed: %.100s",
+			strerror(errno));
 
   /* Start listening on the socket. */
   if (listen(sock, 5) < 0)
@@ -2362,7 +2411,7 @@ int auth_input_request_forwarding(struct passwd *pw)
 
 /* This is called to process an SSH_SMSG_AGENT_OPEN message. */
 
-void auth_input_open_request()
+void auth_input_open_request(void)
 {
   int remote_channel, sock, newch;
   char *dummyname;

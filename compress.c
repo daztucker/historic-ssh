@@ -14,8 +14,11 @@ Interface to packet compression for ssh.
 */
 
 /*
- * $Id$
- * $Log$
+ * $Id: compress.c,v 1.1.1.1 1996/02/18 21:38:12 ylo Exp $
+ * $Log: compress.c,v $
+ * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * $EndLog$
  */
 

@@ -13,6 +13,9 @@ Created: Wed Jan 24 20:19:53 1996 ylo
 
 /*
  * $Log: userfile.c,v $
+ * Revision 1.17  1998/04/17 00:43:08  kivinen
+ * 	Freebsd login capabilities support.
+ *
  * Revision 1.16  1997/05/13 22:30:05  kivinen
  * 	Added some casts.
  *
@@ -168,6 +171,10 @@ Created: Wed Jan 24 20:19:53 1996 ylo
 #include <rpc/rpc.h>
 #endif
 
+
+#if defined (__FreeBSD__) && defined(HAVE_LOGIN_CAP_H)
+#include <login_cap.h>
+#endif
 
 /* Protocol message types. */
 #define USERFILE_OPEN		1
@@ -629,6 +636,14 @@ void userfile_init(const char *username, uid_t uid, gid_t gid,
   /* Child.  We will start serving request. */
   if (uid != geteuid() || uid != getuid())
     {
+#if defined (__FreeBSD__) && defined(HAVE_LOGIN_CAP_H)
+      struct passwd * pw = getpwuid(uid);
+      login_cap_t * lc = login_getuserclass(pw);
+      if (setusercontext(lc, pw, uid,
+			 LOGIN_SETALL & ~(LOGIN_SETLOGIN | LOGIN_SETPATH |
+					  LOGIN_SETENV)) < 0)
+	fatal("setusercontext: %s", strerror(errno));
+#else
       if (setgid(gid) < 0)
 	fatal("setgid: %s", strerror(errno));
 
@@ -639,6 +654,7 @@ void userfile_init(const char *username, uid_t uid, gid_t gid,
 
       if (setuid(uid) < 0)
 	fatal("setuid: %s", strerror(errno));
+#endif /* HAVE_LOGIN_CAP_H */
     }
 
   /* Enter the server main loop. */

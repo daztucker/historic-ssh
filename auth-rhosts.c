@@ -16,8 +16,14 @@ the login based on rhosts authentication.  This file also processes
 */
 
 /*
- * $Id: auth-rhosts.c,v 1.11 1995/10/02 01:19:18 ylo Exp $
+ * $Id: auth-rhosts.c,v 1.2 1996/02/18 21:53:00 ylo Exp $
  * $Log: auth-rhosts.c,v $
+ * Revision 1.2  1996/02/18 21:53:00  ylo
+ * 	Eliminate warning for innetgr arguments.
+ *
+ * Revision 1.1.1.1  1996/02/18 21:38:13  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.11  1995/10/02  01:19:18  ylo
  * 	Fixed a serious security bug in the new hosts.equiv code.
  * 	Fixed case-insensitivity in host names.
@@ -177,8 +183,8 @@ int check_rhosts_file(uid_t uid, const char *filename, const char *hostname,
       /* Verify that host name matches. */
       if (host[0] == '@')
 	{
-	  if (!innetgr(host + 1, hostname, NULL, NULL) &&
-	      !innetgr(host + 1, ipaddr, NULL, NULL))
+	  if (!innetgr(host + 1, (char *)hostname, NULL, NULL) &&
+	      !innetgr(host + 1, (char *)ipaddr, NULL, NULL))
 	    continue;
 	}
       else
@@ -188,7 +194,7 @@ int check_rhosts_file(uid_t uid, const char *filename, const char *hostname,
       /* Verify that user name matches. */
       if (user[0] == '@')
 	{
-	  if (!innetgr(user + 1, NULL, client_user, NULL))
+	  if (!innetgr(user + 1, NULL, (char *)client_user, NULL))
 	    continue;
 	}
       else

@@ -14,8 +14,11 @@ Cryptographically strong random number generation.
 */
 
 /*
- * $Id: randoms.c,v 1.6 1995/10/02 01:25:24 ylo Exp $
+ * $Id: randoms.c,v 1.1.1.1 1996/02/18 21:38:11 ylo Exp $
  * $Log: randoms.c,v $
+ * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.6  1995/10/02  01:25:24  ylo
  * 	Added a cast to avoid compiler warning; also minor change in
  * 	noise collection.

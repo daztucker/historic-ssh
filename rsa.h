@@ -14,8 +14,14 @@ RSA key generation, encryption and decryption.
 */
 
 /*
- * $Id: rsa.h,v 1.3 1995/07/13 01:33:11 ylo Exp $
+ * $Id: rsa.h,v 1.2 1996/02/19 16:09:38 huima Exp $
  * $Log: rsa.h,v $
+ * Revision 1.2  1996/02/19 16:09:38  huima
+ * 	Comments fixed.
+ *
+ * Revision 1.1.1.1  1996/02/18  21:38:10  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.3  1995/07/13  01:33:11  ylo
  * 	Fixed comments and label used to protect again multiple inclusion.
  *
@@ -91,13 +97,13 @@ void rsa_set_verbose(int verbose);
 
 /* These functions are a kludge but can be implemented using rsaref. */
 
-/* Encrypt input using the public key.  The 24 least significant bits of
-   input must contain the value 0x000200. */
+/* It is not assumed that output != input. */
+
+/* Encrypt input using the public key.  Input should be a 256 bit value. */
 void rsa_public_encrypt(MP_INT *output, MP_INT *input, RSAPublicKey *key,
 			RandomState *state);
 
-/* Decrypt input using the private key.  The 24 least significant bits of
-   the result must contain the value 0x000200. */
+/* Performs a private key decrypt operation. */
 void rsa_private_decrypt(MP_INT *output, MP_INT *input, RSAPrivateKey *key);
 
 #endif /* RSA_H */

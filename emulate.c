@@ -36,7 +36,7 @@ int check_emulation(int remote_major, int remote_minor,
 	*return_minor = PROTOCOL_MINOR;
     }
 
-  if (remote_major != PROTOCOL_MAJOR)
+  if (remote_major < PROTOCOL_MAJOR)
     return EMULATE_MAJOR_VERSION_MISMATCH;
 
   if (remote_major == 1 && remote_minor == 0)
@@ -54,7 +54,8 @@ int check_emulation(int remote_major, int remote_minor,
       debug("Agent forwarding disabled (remote protocol too old)");
     }
 
-  if (remote_minor > PROTOCOL_MINOR)
+  if (remote_major > PROTOCOL_MAJOR ||
+      (remote_major == PROTOCOL_MAJOR && remote_minor > PROTOCOL_MINOR))
     {
       /* The remote software is newer than we. If we are the client,
 	 no matter - the server will decide. If we are the server, we

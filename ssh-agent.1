@@ -9,8 +9,12 @@
 .\"
 .\" Created: Sat Apr 23 20:10:43 1995 ylo
 .\"
-.\" $Id: ssh-agent.1,v 1.7 1998/01/02 06:21:20 kivinen Exp $
+.\" $Id: ssh-agent.1,v 1.8 1998/07/08 00:40:26 kivinen Exp $
 .\" $Log: ssh-agent.1,v $
+.\" Revision 1.8  1998/07/08 00:40:26  kivinen
+.\" 	Changed to do similar commercial #ifdef processing than other
+.\" 	files.
+.\"
 .\" Revision 1.7  1998/01/02  06:21:20  kivinen
 .\" 	Documented -k option. Renamed SSH_AUTHENCATION_SOCKET to
 .\" 	SSH_AUTH_SOCK.
@@ -46,9 +50,12 @@
 .\"
 .\" $Endlog$
 .\"
-.nr CO 1
-.ie \n(CO .TH SSH-AGENT 1 "November 8, 1995" "F-SECURE SSH" "F-SECURE SSH"
-.el .TH SSH-AGENT 1 "November 8, 1995" "SSH" "SSH"
+.\"
+.\"
+.\"
+.\" #ifndef F_SECURE_COMMERCIAL
+.TH SSH-AGENT 1 "November 8, 1995" "SSH" "SSH"
+.\" #endif F_SECURE_COMMERCIAL
 
 .SH NAME
 ssh-agent \- authentication agent

@@ -8,8 +8,15 @@
 #
 # Created: Wed Mar 22 17:37:49 1995 ylo
 #
-# $Id: Makefile.in,v 1.47 1998/06/11 14:00:37 kivinen Exp $
+# $Id: Makefile.in,v 1.49 1998/07/08 01:20:28 kivinen Exp $
 # $Log: Makefile.in,v $
+# Revision 1.49  1998/07/08 01:20:28  kivinen
+# 	Changed SSH_PROGRAM to be ssh1.
+#
+# Revision 1.48  1998/06/12 08:04:37  kivinen
+# 	Moved removing of suid bit in the beginnin of the installation
+# 	process.
+#
 # Revision 1.47  1998/06/11 14:00:37  kivinen
 # 	Added README.DEATTACK to DISTFILES.
 #
@@ -245,7 +252,7 @@ man8dir		= $(mandir)/man8
 etcdir		= @ETCDIR@
 piddir		= @PIDDIR@
 
-COMMERCIAL	= -DF_SECURE_COMMERCIAL=1
+COMMERCIAL	=
 CC 		= @CC@
 CFLAGS 		= @CFLAGS@
 LDFLAGS		= @LDFLAGS@
@@ -386,7 +393,7 @@ SCRIPT_PROGRAMS = make-ssh-known-hosts
 SBIN_PROGRAMS = sshd
 PROGRAMS = ssh $(SBIN_PROGRAMS) $(NORMAL_PROGRAMS) $(SCRIPT_PROGRAMS) \
 $(X_PROGRAMS) $(OTHER_PROGRAMS)
-SSH_PROGRAM = $(bindir)/ssh
+SSH_PROGRAM = $(bindir)/ssh1
 
 all: $(PROGRAMS)
 
@@ -511,15 +518,15 @@ hostinstall: $(PROGRAMS) make-dirs generate-host-key install-configs
 # not be available if non-root and using shadow passwords.
 install: $(PROGRAMS) make-dirs generate-host-key install-configs
 	-rm -f $(install_prefix)$(bindir)/ssh1.old
+	-chmod 755 $(install_prefix)$(bindir)/ssh1
+	-chmod 755 $(install_prefix)$(bindir)/ssh
 	-mv $(install_prefix)$(bindir)/ssh1 $(install_prefix)$(bindir)/ssh1.old
-	-chmod 755 $(install_prefix)$(bindir)/ssh1.old
 	$(INSTALL_PROGRAM) -o root -m $(SSH_INSTALL_MODE) ssh $(install_prefix)$(bindir)/ssh1
 	-if test -f $(install_prefix)$(bindir)/ssh2; then \
 	  echo "Ssh version 2 program found, installation doesn't touch ssh link"; \
 	else \
 	  rm -f $(install_prefix)$(bindir)/ssh.old; \
 	  mv $(install_prefix)$(bindir)/ssh $(install_prefix)$(bindir)/ssh.old ;\
-	  chmod 755 $(install_prefix)$(bindir)/ssh.old ;\
 	  $(LN_S) ssh1 $(install_prefix)$(bindir)/ssh ;\
         fi
 	-if test "`echo ssh | sed '$(transform)'`" '!=' ssh; then \
@@ -675,7 +682,7 @@ distclean: clean
 	cd $(GMPDIR); $(MAKE) distclean
 	cd $(ZLIBDIR); $(MAKE) distclean
 
-dist: dist-commercial
+dist: dist-free
 
 dist-free: dist-make-dir dist-free-cleanup \
 	dist-free-make-tar dist-increment-version

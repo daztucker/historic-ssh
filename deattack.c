@@ -1,5 +1,5 @@
 /*
- * $Id: deattack.c,v 1.2 1998/06/11 13:52:37 kivinen Exp $ Cryptographic attack
+ * Id: deattack.c,v 1.9 1998/06/27 00:02:22 futo Exp  Cryptographic attack
  * detector for ssh - source code (C)1998 CORE-SDI, Buenos Aires Argentina
  * Ariel Futoransky(futo@core-sdi.com) <http://www.core-sdi.com>
  */
@@ -30,64 +30,45 @@
 
 #define CMP(a,b) (memcmp(a, b, SSH_BLOCKSIZE))
 
+
+void
+crc_update(word32 * a, word32 b)
+{
+  b ^= *a;
+  *a = crc32((unsigned char *) &b, sizeof(b));
+}
+
 /*
    check_crc
    detects if a block is used in a particular pattern
  */
+
 int
-check_crc (unsigned char *S, unsigned char *buf, word32 len, unsigned char *IV)
+check_crc(unsigned char *S, unsigned char *buf, word32 len, unsigned char *IV)
 {
-  word32 crc1, crc2, crc;
-  unsigned char *c;
-  unsigned char s[SSH_BLOCKSIZE];
+  word32          crc;
+  unsigned char  *c;
 
-  memcpy (s, S, sizeof (s));
-
-  crc1 = crc32 (buf, len);
+  crc = 0;
+  if (IV && !CMP(S, IV))
+  {
+    crc_update(&crc, 1);
+    crc_update(&crc, 0);
+  }
   for (c = buf; c < buf + len; c += SSH_BLOCKSIZE)
+  {
+    if (!CMP(S, c))
     {
-      if (!memcmp (c, s, SSH_BLOCKSIZE))
-	*c ^= 0x80;
-    }
-  *s ^= 0x80;
-  crc2 = crc32 (buf, len);
-  for (c = buf; c < buf + len; c += SSH_BLOCKSIZE)
+      crc_update(&crc, 1);
+      crc_update(&crc, 0);
+    } else
     {
-      if (!memcmp (c, s, SSH_BLOCKSIZE))
-	*c ^= 0x80;
+      crc_update(&crc, 0);
+      crc_update(&crc, 0);
     }
-  *s ^= 0x80;
+  }
 
-  if (crc1 == crc2)
-    return (1);
-
-
-  if (IV && (!memcmp (c, IV, SSH_BLOCKSIZE)))
-    {
-      crc = crc32 (&IV, SSH_BLOCKSIZE);
-      PUT_32BIT_LSB_FIRST (buf, GET_32BIT_LSB_FIRST (buf) ^ crc);
-
-      crc1 = crc32 (buf, len);
-      for (c = buf; c < buf + len; c += SSH_BLOCKSIZE)
-	{
-	  if (!memcmp (c, s, SSH_BLOCKSIZE))
-	    *c ^= 0x80;
-	}
-      *s ^= 0x80;
-      crc2 = crc32 (buf, len);
-      for (c = buf; c < buf + len; c += SSH_BLOCKSIZE)
-	{
-	  if (!memcmp (c, s, SSH_BLOCKSIZE))
-	    *c ^= 0x80;
-	}
-      *s ^= 0x80;
-      PUT_32BIT_LSB_FIRST (buf, GET_32BIT_LSB_FIRST (buf) ^ crc);
-
-      if (crc1 == crc2)
-	return (1);
-
-    }
-  return (0);
+  return (crc == 0);
 }
 
 
@@ -96,83 +77,90 @@ check_crc (unsigned char *S, unsigned char *buf, word32 len, unsigned char *IV)
    Detects a crc32 compensation attack on a packet
  */
 int
-detect_attack (unsigned char *buf, word32 len, unsigned char *IV)
+detect_attack(unsigned char *buf, word32 len, unsigned char *IV)
 {
-  static word16 *h = (word16 *) NULL;
-  static word16 n = HASH_MINSIZE / HASH_ENTRYSIZE;
+  static word16  *h = (word16 *) NULL;
+  static word16   n = HASH_MINSIZE / HASH_ENTRYSIZE;
   register word32 i, j;
-  word32 l;
+  word32          l;
   register unsigned char *c;
-  unsigned char *d;
+  unsigned char  *d;
 
 
-  assert (len <= (SSH_MAXBLOCKS * SSH_BLOCKSIZE));
-  assert (len % SSH_BLOCKSIZE == 0);
+  assert(len <= (SSH_MAXBLOCKS * SSH_BLOCKSIZE));
+  assert(len % SSH_BLOCKSIZE == 0);
 
-  for (l = n; l < HASH_FACTOR (len / SSH_BLOCKSIZE); l = l << 2);
+  for (l = n; l < HASH_FACTOR(len / SSH_BLOCKSIZE); l = l << 2);
 
   if (h == NULL)
+  {
+    debug("Installing crc compensation attack detector.");
+    n = l;
+    h = (word16 *) xmalloc(n * HASH_ENTRYSIZE);
+  } else
+  {
+    if (l > n)
     {
-      debug ("Installing crc compensation attack detector");
       n = l;
-      h = (word16 *) xmalloc (n * HASH_ENTRYSIZE);
+      h = (word16 *) xrealloc(h, n * HASH_ENTRYSIZE);
     }
-  else
-    {
-      if (l > n)
-	{
-	  n = l;
-	  h = (word16 *) xrealloc (h, n * HASH_ENTRYSIZE);
-	}
-    }
+  }
 
 
   if (len <= HASH_MINBLOCKS)
+  {
+    for (c = buf; c < buf + len; c += SSH_BLOCKSIZE)
     {
-      for (c = buf; c < buf + len; c += SSH_BLOCKSIZE)
+      if (IV && (!CMP(c, IV)))
+      {
+	if ((check_crc(c, buf, len, IV)))
+	  return (DEATTACK_DETECTED);
+	else
+	  break;
+      }
+      for (d = buf; d < c; d += SSH_BLOCKSIZE)
+      {
+	if (!CMP(c, d))
 	{
-	  if (IV && (!CMP (c, IV)))
-	    {
-	      if ((check_crc (c, buf, len, IV)))
-		return (DEATTACK_DETECTED);
-	    }
-	  for (d = buf; d < c; d += SSH_BLOCKSIZE)
-	    {
-	      if (!CMP (c, d))
-		{
-		  if ((check_crc (c, buf, len, IV)))
-		    return (DEATTACK_DETECTED);
-		}
-	    }
+	  if ((check_crc(c, buf, len, IV)))
+	    return (DEATTACK_DETECTED);
+	  else
+	    break;
 	}
-      return (DEATTACK_OK);
+      }
     }
-  memset (h, HASH_UNUSEDCHAR, n * HASH_ENTRYSIZE);
+    return (DEATTACK_OK);
+  }
+  memset(h, HASH_UNUSEDCHAR, n * HASH_ENTRYSIZE);
 
   if (IV)
-    h[HASH (IV) & (n - 1)] = HASH_IV;
+    h[HASH(IV) & (n - 1)] = HASH_IV;
 
 
   for (c = buf, j = 0; c < (buf + len); c += SSH_BLOCKSIZE, j++)
+  {
+    for (i = HASH(c) & (n - 1); h[i] != HASH_UNUSED;
+	 i = (i + 1) & (n - 1))
     {
-      for (i = HASH (c) & (n - 1); h[i] != HASH_UNUSED;
-	   i = (i + 1) & (n - 1))
+      if (h[i] == HASH_IV)
+      {
+	if (!CMP(c, IV))
 	{
-	  if (h[i] == HASH_IV)
-	    {
-	      if ((!CMP (c, IV)) &&
-		  (check_crc (c, buf, len, IV)))
-		return (DEATTACK_DETECTED);
-	    }
+	  if (check_crc(c, buf, len, IV))
+	    return (DEATTACK_DETECTED);
 	  else
-	    {
-	      if ((!CMP (c, buf + h[i] * SSH_BLOCKSIZE)) &&
-		  (check_crc (c, buf, len, IV)))
-		return (DEATTACK_DETECTED);
-	    }
+	    break;
 	}
-      h[i] = j;
+      } else if (!CMP(c, buf + h[i] * SSH_BLOCKSIZE))
+      {
+	if (check_crc(c, buf, len, IV))
+	  return (DEATTACK_DETECTED);
+	else
+	  break;
+      }
     }
+    h[i] = j;
+  }
 
   return (DEATTACK_OK);
 }

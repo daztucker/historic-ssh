@@ -9,8 +9,12 @@
 .\"
 .\" Created: Sat Apr 22 21:55:14 1995 ylo
 .\"
-.\" $Id: ssh.1.in,v 1.17 1998/06/11 00:10:36 kivinen Exp $
+.\" $Id: ssh.1.in,v 1.18 1998/07/08 00:41:03 kivinen Exp $
 .\" $Log: ssh.1.in,v $
+.\" Revision 1.18  1998/07/08 00:41:03  kivinen
+.\" 	Changed to do similar commercial #ifdef processing than other
+.\" 	files. Fixed privileged typo.
+.\"
 .\" Revision 1.17  1998/06/11 00:10:36  kivinen
 .\" 	Fixed comment characters.
 .\"
@@ -95,9 +99,12 @@
 .\" 
 .\" $Endlog$
 .\"
-.nr CO 1
-.ie \n(CO .TH SSH 1 "November 8, 1995" "F-SECURE SSH" "F-SECURE SSH"
-.el .TH SSH 1 "November 8, 1995" "SSH" "SSH"
+.\"
+.\"
+.\"
+.\" #ifndef F_SECURE_COMMERCIAL
+.TH SSH 1 "November 8, 1995" "SSH" "SSH"
+.\" #endif F_SECURE_COMMERCIAL
 
 .SH NAME
 ssh \- secure shell client (remote login program)
@@ -506,9 +513,9 @@ suppressed.  Only fatal errors are displayed.
 .ne 3
 .TP
 .B \-P
-Use non priviledged port. With this you cannot use rhosts or rsarhosts
+Use non privileged port. With this you cannot use rhosts or rsarhosts
 authentications, but it can be used to bypass some firewalls that dont
-allow priviledged source ports to pass. 
+allow privileged source ports to pass. 
 .ne 3
 .TP
 .B \-t
@@ -904,8 +911,8 @@ keyword must be
 .ne 3
 
 .TP
-.B UsePriviledgedPort
-Specifies whether to use priviledged port when connecting to other
+.B UsePrivilegedPort
+Specifies whether to use privileged port when connecting to other
 end. The default is yes if rhosts or rsarhosts authentications are
 enabled. 
 .ne 3

@@ -9,8 +9,12 @@
 .\"
 .\" Created: Sat Apr 22 21:55:14 1995 ylo
 .\"
-.\" $Id: sshd.8.in,v 1.20 1998/06/11 00:11:47 kivinen Exp $
+.\" $Id: sshd.8.in,v 1.21 1998/07/08 00:41:22 kivinen Exp $
 .\" $Log: sshd.8.in,v $
+.\" Revision 1.21  1998/07/08 00:41:22  kivinen
+.\" 	Changed to do similar commercial #ifdef processing than other
+.\" 	files.
+.\"
 .\" Revision 1.20  1998/06/11 00:11:47  kivinen
 .\" 	Documented Allow/DenyUsers user@host format.
 .\"
@@ -113,9 +117,12 @@
 .\"
 .\" $Endlog$
 .\"
-.nr CO 1
-.ie \n(CO .TH SSHD 8 "November 8, 1995" "F-SECURE SSH" "F-SECURE SSH"
-.el  .TH SSHD 8 "November 8, 1995" "SSH" "SSH"
+.\"
+.\"
+.\"
+.\" #ifndef F_SECURE_COMMERCIAL
+.TH SSHD 8 "November 8, 1995" "SSH" "SSH"
+.\" #endif F_SECURE_COMMERCIAL
 
 .SH NAME
 sshd \- secure shell daemon
@@ -310,30 +317,30 @@ and empty lines are interpreted as comments.
 
 The following keywords are possible. Keywords are case insensitive. 
 
-.if \n(CO \{
-.TP
-.B AllowForwardingPort
-This keyword can be followed by any number of port numbers, separated
-by spaces.  If specified remote forwardings are only allowed to for
-those ports whose number matches one of the patterns.  \'*\' can be used
-as wildcard entry for all ports.  \'>x\', \'<x\', and \'x..x\' formats can
-be used to specify greater than, less than or inclusive port range. By
-default, all port forwardings are allowed.
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
 
-.TP
-.B AllowForwardingTo
-This keyword can be followed by any number of hostname and port number
-patterns, separated by spaces. Port number pattern is separated from
-hostname by colon. If specified forwardings from client are only
-allowed to those hosts and port pairs whose name and port number
-matches one of the patterns. \'*\' and \'?\' can be used as
-wildcards in the patterns for host names.  Normal name servers are
-used to map the client's host into a canonical host name.  If the name
-cannot be mapped, its IP-address is used as the host name. 
-\'*\' can be used as wildcard entry for all ports. \'>x\', \'<x\', and
-\'x..x\' formats can be used to specify greater than, less than or
-inclusive port range. By default, all port forwardings are allowed.
-\}
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
 
 .TP
 .B AllowGroups
@@ -408,29 +415,29 @@ when a user logs in interactively.  (On some systems it is also
 printed by the shell, /etc/profile, or equivalent.)  The default is
 "yes".
 
-.if \n(CO \{
-.TP
-.B DenyForwardingPort
-This keyword can be followed by any number of port numbers, separated
-by spaces. If specified remote forwardings are disallowed for those
-ports whose number matches one of the patterns. \'*\' can be used as
-wildcard entry for all ports. \'>x\', \'<x\', and \'x..x\' formats can be
-used to specify greater than, less than or inclusive port range. 
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
 
-.TP
-.B DenyForwardingTo
-This keyword can be followed by any number of hostname and port number
-patterns, separated by spaces. Port number pattern is separated from
-hostname by colon. If specified forwardings from client are disallowed
-to those hosts and port pairs whose name and port number 
-matches one of the patterns. \'*\' and \'?\' can be used as
-wildcards in the patterns for host names.  Normal name servers are
-used to map the client's host into a canonical host name.  If the name
-cannot be mapped, its IP-address is used as the host name. 
-\'*\' can be used as wildcard entry for all ports. \'>x\', \'<x\', and
-\'x..x\' formats can be used to specify greater than, less than or
-inclusive port range. 
-\}
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
 
 .TP
 .B DenyGroups
@@ -831,28 +838,28 @@ authentication.
 .br
 Prevents tty allocation (a request to allocate a pty will fail).
 
-.if \n(CO \{
-.IP
-.ti -.5i
-\fBallowforwardingport="<port list>"\fR
-.br
-See AllowForwardingPort server option.
-.IP
-.ti -.5i
-\fBallowforwardingto="<hostname and port list>"\fR
-.br
-See AllowForwardingTo server option.
-.IP
-.ti -.5i
-\fBdenyforwardingport="<port list>"\fR
-.br
-See DenyForwardingPort server option.
-.IP
-.ti -.5i
-\fBdenyforwardingto="<hostname port list>"\fR
-.br
-See DenyForwardingTo server option.
-\}
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
+.\"
 .SS Examples
 .LP
 1024 33 12121.\|.\|.\|312314325 ylo@foo.bar
@@ -860,10 +867,10 @@ See DenyForwardingTo server option.
 from="*.niksula.hut.fi,!pc.niksula.hut.fi" 1024 35 23.\|.\|.\|2334 ylo@niksula
 .LP
 command="dump /home",no-pty,no-port-forwarding 1024 33 23.\|.\|.\|2323 backup.hut.fi
-.if \n(CO \{
-.LP
-allowforwardingport="localhost:80" 1024 35 23.\|.\|.\|2334 www@localhost
-\}
+.\"
+.\"
+.\"
+.\"
 
 .SH SSH WITH TCP WRAPPERS
 

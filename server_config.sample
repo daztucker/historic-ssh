@@ -28,4 +28,4 @@ UseLogin no
 # AllowHosts *.our.com friend.other.com
 # DenyHosts lowsecurity.theirs.com *.evil.org evil.org
 # Umask 022
-# SilentDeny on
+# SilentDeny yes

@@ -27,16 +27,19 @@
 #	  (C) Tero Kivinen 1995 <Tero.Kivinen@hut.fi>
 #
 #	  Creation          : 19:52 Jun 27 1995 kivinen
-#	  Last Modification : 04:40 Apr 30 1998 kivinen
-#	  Last check in     : $Date: 1998/04/30 01:53:33 $
-#	  Revision number   : $Revision: 1.5 $
+#	  Last Modification : 00:07 Jul  8 1998 kivinen
+#	  Last check in     : $Date: 1998/07/08 00:44:23 $
+#	  Revision number   : $Revision: 1.6 $
 #	  State             : $State: Exp $
-#	  Version	    : 1.340
-#	  Edit time	    : 241 min
+#	  Version	    : 1.343
+#	  Edit time	    : 242 min
 #
 #	  Description       : Make ssh-known-host file from dns data.
 #
 #	  $Log: make-ssh-known-hosts.pl,v $
+#	  Revision 1.6  1998/07/08 00:44:23  kivinen
+#	  	Fixed to understand bind 8 nslookup output.
+#
 # Revision 1.5  1998/04/30  01:53:33  kivinen
 # 	Moved kill before close and added sending SIGINT first and
 # 	then 1 second sleep before sending SIGKILL.
@@ -81,7 +84,7 @@ use POSIX;
 use Socket;
 use Fcntl;
 
-$version = ' $Id: make-ssh-known-hosts.pl,v 1.5 1998/04/30 01:53:33 kivinen Exp $ ';
+$version = ' $Id: make-ssh-known-hosts.pl,v 1.6 1998/07/08 00:44:23 kivinen Exp $ ';
 
 $command_line = "$0 ";
 foreach $a (@ARGV) {
@@ -276,10 +279,28 @@ do {
     
     while(<DNS>) {
 	$lines++;
-	if (/^\s+(\S+)\s+(\S+)\s+(.*)\s*$/) {
-	    $host = "\L$1\E";
-	    $field = "\L$2\E";
-	    $data = "\L$3\E";
+	chomp;
+	undef $hostname if/^\s*$/;
+	if (/^\s{0,1}([a-zA-Z0-9-]\S*)/) {
+            $hostname = "\L$1\E";
+	}
+	next unless defined $hostname;
+	if (/^.*\s(SOA)\s+(.*)\s*$/ || $hostname eq "SOA") {
+	    undef $soa if(/^.*\s(SOA)\s+(.*)\s*$/);
+	    $data = $_ if ($hostname eq "SOA");
+	    $data = $2 unless $hostname eq "SOA";
+	    $data =~ s/\s*;.*$//;
+	    $data =~ s/^\s+//;
+	    if( defined $soa ) {
+		$soa .= " \L$data\E";
+	    } else {
+		$soa = "\L$data\E";
+	    }
+	    $hostname = "SOA";
+        } elsif (/^.*\s(A|CNAME|NS)\s+(.*)\s*$/) {
+            $host = $hostname;
+	    $field = "\L$1\E";
+	    $data = "\L$2\E";
 	    debug(70, "Line = /$host/$field/$data/");
 	    if ($host !~ /\.$/) {
 		$host .= ".$domain";
@@ -297,6 +318,11 @@ do {
 		    debug(30, "$host A == $host{$host}");
 		}
 	    } elsif ($field eq "cname") {
+		if ($data !~ /\.$/ && ! /^\s/ ) {
+    		    $data .= ".$domain";
+	        } else {
+		    $data =~ s/\.$//g;
+	        }
 		if ($host =~ /$domain$/) {
 		    if (defined($cname{$data})) {
 			$cname{$data} .= ",$host";
@@ -320,8 +346,6 @@ do {
 			$domains_waiting{$host} .= ",$data";
 		    }
 		}
-	    } elsif ($field eq "soa") {
-		$soa = $data;
 	    }
 	    if (!defined($hostdata{$host})) {
 		$hostdata{$host} = "$host\n$field=$data\n";
@@ -698,7 +722,7 @@ sub find_soa {
 
 sub make_perl_happy {
     if (0) {
-	print $FileHandle::ARG, $opt_silent;
+	print $opt_silent;
     }
 }
 

@@ -1,3 +1,73 @@
+Tue Jul  7 22:38:41 1998  Tero Kivinen  <kivinen@ssh.fi>
+
+	* Changed scp to run ssh1 instead of ssh.
+	
+	* Added -L (no privileged port) option to scp. Patch from Ville
+	Herva <vherva@niksula.hut.fi>.
+	
+	* Fixed spelling of privileged (was priviledged). The olwd option
+	is still understood. Reported by Mike Friedman
+	<mikef@ack.berkeley.edu>. 
+	
+	* Removed .ie, and .el from man pages, and replace them with empty
+	lines as is done with other sources.
+	
+	* Fixed checking that user default group must exist if it used in
+	allow/deny groups. Patch from Teddy Grenman <tricky@cs.hut.fi>. 
+	
+	* Fixed overflow in scp statistics. Patch from Petri Kaukasoina
+	<kaukasoi@elektroni.ee.tut.fi>. 
+	
+	* Added checking for syslen field in utmpx structure.
+	
+	* Added better support for HPUX tcb auth.
+	
+	* Added match_host, that will check that if the pattern is all
+	numeric, it is only compared against ip addresses. Suggestion from
+	Andrew Tridgell <tridge@samba.anu.edu.au>.
+	
+	* Added bind 8 support for make-known-hosts.pl from Niklas
+	Edmundsson <nikke@ing.umu.se>.
+	
+	* Added SGI project accounting from Eivind Gjelseth
+ 	<eivind@ii.uib.no>.
+
+	* Added checking of system function return value in scp.c. Patch
+	from Loren "Buck" Buchanan <lbuchana@csc.com>.
+	
+	* Fixed "SilentDeny on" to "SilentDeny yes" in the example config
+	file for server.
+
+	* Changed HPSUX_NONSTANDARD_X11_KLUDGE to only be used when
+ 	opening socket. Added new NONSTANDARD_IP_ADDRESS_X11_KLUDGE to be
+ 	used when display must be ipaddress instead of hostname. Changed
+ 	configure to define the NONSTANDARD_IP_ADDRESS_X11_KLUDGE for
+ 	i386-sni-sysv4 (SINIX) (report from Felix von Delius
+ 	<Felix-von.Delius@dresdner-bank.de>).
+
+	* Changed version number checking so that the client will allow
+	server to send new major version number (2.x).
+	
+	* Moved connecting ... debug message after allocated local port
+	message. Suggestion from Jarkko Hietaniemi <jhi@iki.fi>.
+
+	* Updated deattack code to new version (fixes some bug in
+	check_crc function. New code from CORE SDI S.A., Buenos Aires,
+	Argentina.
+	
+	* Added find of passwd program in configure. Patch from Jum Bourne
+	<jbourne@island.net>.
+
+Fri Jun 12 10:51:59 1998  Tero Kivinen  <kivinen@ssh.fi>
+
+	* Fixed suid bit removing so that it will be done first and after
+	that the files are renamed to xxx.old. 
+	
+	* Disable scp statistics if -B option is given. Patch from Philip
+	Kizer <pckizer@tamu.edu>. 	
+	
+	* Disable scp statistics if the stdout is not a tty. 
+
 Thu Jun 11 01:05:28 1998  Tero Kivinen  <kivinen@ssh.fi>
 
 	* Added time and date in the X11 connection rejected message

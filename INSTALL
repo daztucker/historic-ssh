@@ -135,7 +135,7 @@ This software has been used at least in the following environments.
 	DolphinOS 3.8
 	FreeBSD 1.x, 2.x, 3.0; Pentium
 	HPUX 7.x, 9.x, 10.0; HPPA
-	IRIX 5.2, 5.3, 6.2, 6.3; SGI Indy
+	IRIX 5.2, 5.3, 6.2, 6.3, 6.4; SGI Indy, O2 R5000, Onyx 2 R10000
 	IRIX 6.0.1; Mips-R8000
 	Linux 1.2.x, 2.0.x Slackware 2.x, 3.x, RedHat 2.1, 3.0; i486, Sparc
 	Linux 3.0.3, 4.0, 5.0; Alpha
@@ -151,7 +151,7 @@ This software has been used at least in the following environments.
 	OSF/1 3.0, 3.2, 3.2; Alpha
 	Sequent Dynix/ptx 3.2.0 V2.1.0; i386
 	SCO Unix; i386 (client only)
-	SINIX 5.42; Mips R4000
+	SINIX 5.42; Mips R4000, i386
 	Solaris 2.3, 2.4, 2.5, 2.5.1, 2.6; Sparc, i386
 	Sony NEWS-OS 3.3 (BSD 4.3); m68k
 	SunOS 4.1.1, 4.1.2, 4.1.3, 4.1.4; Sparc, Sun3
@@ -203,7 +203,14 @@ compiler error: program cc1 got fatal signal 6" when compiling some
 gmp files. Updating to gcc 2.7.2.3 or newer will fix the problem.
 
 HP-UX 10.* note: If you are using HP's compilers and get compression
-failures, try compiling zlib-1.0.4/inftrees.c without optimization. 
+failures, try compiling zlib-1.0.4/inftrees.c without optimization.
+
+SINIX note: You may have to add "xserver10 6010/tcp", "xserver11
+6011/tcp" etc lines to your /etc/services file to get x11 forwarding
+work properly.
+
+IRIX note: the gcc for 6.x series machines might not work properly, so
+if the ssh-keygen doesn't finish, try using system cc. 
 
 COMPILING WITH RSAREF2
 

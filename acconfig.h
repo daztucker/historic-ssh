@@ -8,129 +8,6 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 */
 
-/*
- * $Log: acconfig.h,v $
- * Revision 1.21  1998/06/11 00:03:25  kivinen
- * 	Added ENABLE_SO_LINGER and ENABLE_SCP_STATS.
- *
- * Revision 1.20  1998/05/23  20:18:21  kivinen
- * 	Added X11_DIR.
- *
- * Revision 1.19  1998/04/17  00:36:31  kivinen
- * 	Added NOLOGIN_ALLOW.
- *
- * Revision 1.18  1998/03/27 17:30:10  kivinen
- * 	Added ENABLE_TCP_NODELAY.
- *
- * Revision 1.17  1998/03/27 17:26:08  kivinen
- * 	Removed TSS.
- *
- * Revision 1.16  1997/05/13 22:32:06  kivinen
- * 	Added SOCKS4 and SOCKS5.
- *
- * Revision 1.15  1997/04/22 23:57:14  kivinen
- * 	Added HAVE_STRUCT_SPWD_EXPIRE and HAVE_STRUCT_SPWD_INACT.
- *
- * Revision 1.14  1997/04/21 01:01:14  kivinen
- * 	Added HAVE_INCOMPATIBLE_SIGINFO.
- *
- * Revision 1.13  1997/04/05 21:44:26  kivinen
- * 	Added KRB5.
- *
- * Revision 1.12  1997/03/27 03:08:36  kivinen
- * 	Added USELOGIN, PATH_LOGIN, HAVE_NO_TZ_IN_GETTIMEOFDAY,
- * 	KERBEROS and KERBEROS_TGT_PASSING defines.
- *
- * Revision 1.11  1997/03/19 22:26:50  kivinen
- * 	Removed WITH_3DES, as it is mandatory.
- *
- * Revision 1.10  1997/03/19 22:16:31  kivinen
- * 	Added WITH_{IDEA,DES,3DES,TSS,ARCFOUR,BLOWFISH,NONE}.
- * 	Added HAVE_LIBWRAP.
- * 	Added HAVE_TIS.
- *
- * Revision 1.9  1997/03/19 15:56:59  kivinen
- * 	Added SECURE_RPC, SECURE_NFS and NIS_PLUS support from Andy
- * 	Polyakov <appro@fy.chalmers.se>.
- *
- * Revision 1.8  1996/11/26 18:08:39  ttsalo
- *     Added group-writeability option
- *
- * Revision 1.7  1996/11/24 08:17:24  kivinen
- * 	Added SSH{,D}_NO_{PORT,X11}_FORWARDING.
- *
- * Revision 1.6  1996/09/28 17:43:53  ttsalo
- * 	Socks5-defines corrected
- *
- * Revision 1.5  1996/09/05 19:07:41  ttsalo
- * 	Added checking of setpgid()
- *
- * Revision 1.4  1996/07/12 07:34:14  ttsalo
- * 	Added defines SCO5, HAVE_GETPSEUDOTTY, HAVE_DEV_PTYP10
- *
- * Revision 1.3  1996/04/26 00:37:21  ylo
- * 	Added HPSUX7_KLUDGES.
- * 	Removed SOCKS defines for socket functions.
- *
- * Revision 1.2  1996/02/18 21:54:02  ylo
- * 	Added HAVE_ULTRIX_SHADOW_PASSWORDS.
- *
- * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
- * 	Imported ssh-1.2.13.
- *
- * Revision 1.16  1995/10/02  01:18:13  ylo
- * 	Added NEED_SYS_SYSLOG_H (Ultrix).
- * 	Added HAVE_SCO_ETC_SHADOW and SCO.
- *
- * Revision 1.15  1995/09/27  02:47:19  ylo
- * 	Added SOCKS stuff.
- *
- * Revision 1.14  1995/09/27  02:09:52  ylo
- * 	Added ETCDIR.
- * 	Added SPEED_T_IN_STDTYPES_H.
- *
- * Revision 1.13  1995/09/21  17:06:23  ylo
- * 	Added USE_STRLEN_FOR_AF_UNIX.
- * 	Added USE_PIPES.
- *
- * Revision 1.12  1995/09/13  12:05:51  ylo
- * 	Removed HPSUX_BROKEN_PTYS.
- *
- * Revision 1.11  1995/09/11  17:34:54  ylo
- * 	Added LIBWRAP.
- *
- * Revision 1.10  1995/09/10  22:44:21  ylo
- * 	Added HAVE_OSF1_C2_SECURITY.
- *
- * Revision 1.9  1995/09/09  21:26:37  ylo
- * /m/shadows/u2/users/ylo/ssh/README
- *
- * Revision 1.8  1995/09/06  15:57:37  ylo
- * 	Added BROKEN_INET_ADDR
- *
- * Revision 1.7  1995/08/29  22:17:54  ylo
- * 	Removed AGENT_USES_SOCKET
- * 	Added HPSUX_BROKEN_PTYS
- *
- * Revision 1.6  1995/08/21  23:20:17  ylo
- * 	Removed NO_RHOSTS_AUTHENTICATION.
- * 	Fixed a typo.
- *
- * Revision 1.5  1995/08/18  23:42:14  ylo
- * 	Added HAVE_SECURID.
- *
- * Revision 1.4  1995/08/18  22:41:46  ylo
- * 	Added O_NONBLOCK_BROKEN, WITHOUT_IDEA, crypt, __FreeBSD__, TTY_GROUP.
- *
- * Revision 1.3  1995/07/27  00:36:32  ylo
- * 	Added SSH_UTMP, SSH_WTMP, SSH_LASTLOG, DEFAUL_PATH.
- *
- * Revision 1.2  1995/07/13  01:08:48  ylo
- * 	Added cvs log.
- *
- * $Endlog$
- */
-
 @TOP@
 
 /* Define this to the canonical name of your host type (e.g., 
@@ -173,6 +50,9 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 /* Define if utmp structure has pid field. */
 #undef HAVE_PID_IN_UTMP
+
+/* Define if utmpx structure has syslen field. */
+#undef HAVE_SYSLEN_IN_UTMPX
 
 /* Define if /var/adm/lastlog or whatever it is called is a directory
    (e.g. SGI IRIX). */
@@ -254,6 +134,9 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
    memory communication for X, which seems to be enabled by the display name
    matching that of the local host.  This circumvents it by using the IP
    address instead of the host name in DISPLAY. */
+#undef NONSTANDARD_IP_ADDRESS_X11_KLUDGE
+
+/* This will enable using magic directory to find x11 sockets */
 #undef HPSUX_NONSTANDARD_X11_KLUDGE
 
 /* Define this is compiling on HPSUX 7.x.  This will avoid including
@@ -397,5 +280,18 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 #undef ENABLE_SO_LINGER
 
 /* Define this if you want to enable scp statistics option */
-#undef ENABLE_SCP_STATS
+#undef WITH_SCP_STATS
+
+/* Define this to be the path to the passwd program */
+#undef PASSWD_PATH
+
+/* Define this if you have SGI proj.h */
+#undef HAVE_SGI_PROJ_H
+
+/* Define this if you want to have scp statistics on by default */
+#undef SCP_STATISTICS_ENABLED
+
+/* Define this if you want to have scp statistics on by default for each
+   file */
+#undef SCP_ALL_STATISTICS_ENABLED
 

@@ -9,8 +9,13 @@
 .\"
 .\" Created: Sun May  7 00:14:37 1995 ylo
 .\"
-.\" $Id: scp.1,v 1.5 1998/06/11 00:10:08 kivinen Exp $
+.\" $Id: scp.1,v 1.6 1998/07/08 00:42:13 kivinen Exp $
 .\" $Log: scp.1,v $
+.\" Revision 1.6  1998/07/08 00:42:13  kivinen
+.\" 	Changed to do similar commercial #ifdef processing than other
+.\" 	files. Added -a, -A, -Q, and -L. Added comment about
+.\" 	environment variables.
+.\"
 .\" Revision 1.5  1998/06/11 00:10:08  kivinen
 .\" 	Added -q option.
 .\"
@@ -38,9 +43,12 @@
 .\"
 .\" $Endlog$
 .\"
-.nr CO 1
-.ie \n(CO .TH SCP 1 "November 8, 1995" "F-SECURE SSH" "F-SECURE SSH"
-.el .TH SCP 1 "November 8, 1995" "SSH" "SSH"
+.\"
+.\"
+.\"
+.\" #ifndef F_SECURE_COMMERCIAL
+.TH SCP 1 "November 8, 1995" "SSH" "SSH"
+.\" #endif F_SECURE_COMMERCIAL
 
 .SH NAME
 scp \- secure copy (remote file copy program)
@@ -49,7 +57,7 @@ scp \- secure copy (remote file copy program)
 .LP
 .B scp
 [\c
-.B \-qprvBC\c
+.B \-aAqQprvBCL\c
 ]
 [\c
 .BI \-S "\ path-to-ssh\c
@@ -102,6 +110,12 @@ remote hosts are permitted.
 .SH OPTIONS
 
 .TP 0.6i
+.B \-a
+Turn on statistics display for each file.
+.TP
+.B \-A
+Turn off statistics display for each file.
+.TP
 .BI \-c "\ cipher
 Selects the cipher to use for encrypting the data transfer.  This
 option is directly passed to
@@ -112,6 +126,13 @@ Selects the file from which the identity (private key) for RSA
 authentication is read.  This option is directly passed to
 .B ssh.
 .TP
+.B \-L
+Use non privileged port. With this you cannot use
+rhosts  or rsarhosts authentications, but it can be
+used to bypass some firewalls that dont allow privileged
+source ports to pass. Same as saying "-o UsePriviledgePort=no"
+or -P to ssh; -L is used due to exhaustion of suitable letters.
+.TP
 .BI \-o "\ ssh-options
 Ssh options passed to ssh.
 .TP
@@ -121,6 +142,9 @@ original file.
 .TP
 .B \-q
 Turn off statistics display.
+.TP
+.B \-Q
+Turn on statistics display.
 .TP
 .B \-r
 Recursively copy entire directories.
@@ -148,6 +172,21 @@ preserving the times and modes of the file in rcp.
 .TP
 .BI \-S "\ path-to-ssh
 Specifies the path to ssh program.
+
+.SH ENVIRONMENT VARIABLES
+.LP
+You can turn scp statistics on or off by setting
+.B SSH_SCP_STATS
+or
+.B SSH_NO_SCP_STATS
+environment variables. To turn on or off scp statistics for each file,
+use 
+.B SSH_ALL_SCP_STATS
+or
+.B SSH_NO_ALL_SCP_STATS
+environment variables. The default value of the statistics can be set
+when the ssh is configured. Next the scp checks those environment
+variables and after that command line options. 
 
 .SH AUTHORS
 .LP

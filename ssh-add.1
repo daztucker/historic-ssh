@@ -9,8 +9,12 @@
 .\"
 .\" Created: Sat Apr 22 23:55:14 1995 ylo
 .\"
-.\" $Id: ssh-add.1,v 1.4 1997/04/27 21:48:43 kivinen Exp $
+.\" $Id: ssh-add.1,v 1.5 1998/07/08 00:40:34 kivinen Exp $
 .\" $Log: ssh-add.1,v $
+.\" Revision 1.5  1998/07/08 00:40:34  kivinen
+.\" 	Changed to do similar commercial #ifdef processing than other
+.\" 	files.
+.\"
 .\" Revision 1.4  1997/04/27  21:48:43  kivinen
 .\" 	Added F-SECURE stuff.
 .\"
@@ -38,9 +42,12 @@
 .\"
 .\" $Endlog$
 .\"
-.nr CO 1
-.ie \n(CO .TH SSH-ADD 1 "November 8, 1995" "F-SECURE SSH" "F-SECURE SSH"
-.el .TH SSH-ADD 1 "November 8, 1995" "SSH" "SSH"
+.\"
+.\"
+.\"
+.\" #ifndef F_SECURE_COMMERCIAL
+.TH SSH-ADD 1 "November 8, 1995" "SSH" "SSH"
+.\" #endif F_SECURE_COMMERCIAL
 
 .SH NAME
 ssh-add \- adds identities for the authentication agent

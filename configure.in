@@ -8,373 +8,6 @@
 #
 # Created: Wed Mar 22 18:02:48 1995 ylo
 #
-# $Id: configure.in,v 1.58 1998/06/11 00:04:47 kivinen Exp $
-# $Log: configure.in,v $
-# Revision 1.58  1998/06/11 00:04:47  kivinen
-# 	Added --enable-so-linger option. Changed --enable-tcp-nodalay
-# 	to --disable-tcp-nodelay. Added --disable-scp-stats.
-#
-# Revision 1.57  1998/05/23  20:30:06  kivinen
-# 	Added osf1 c2 libraries check and locked_out_es and time_lock
-# 	functions check. Include osfc2.o only to sshd. Fixed X11_DIR
-# 	setting. Fixed socks.h header check. Added SSHCONFOBJS and
-# 	SSHDCONFOBJS.
-#
-# Revision 1.56  1998/04/30  02:34:08  kivinen
-# 	Added CRAY T3E.
-#
-# Revision 1.55  1998/04/17 00:37:37  kivinen
-# 	Added login_cap.h checking. Added /tmp/.X11-pipe socket
-# 	directory checking. Added nologin-allow support. Fixed typo.
-#
-# Revision 1.54  1998/03/29 02:46:50  kivinen
-# 	Fixed order of socks5 lib and include tests. Remvoed gssrpc
-# 	from kerberos libs.
-#
-# Revision 1.53  1998/03/27 17:26:32  kivinen
-# 	Removed TSS.
-#
-# Revision 1.52  1998/03/27 16:57:40  kivinen
-# 	Added ttyslot and authenticate function checks. Added check
-# 	for /var/X/.X11-unix directory (X11 sockets). Fixed kerberos
-# 	support when using socks with it. Added --enable-tcp-nodelay
-# 	option.
-#
-# Revision 1.51  1998/01/14 16:40:03  kivinen
-# 	Added check that getespwnam function exists for osf/1.
-#
-# Revision 1.50  1998/01/03 06:40:30  kivinen
-# 	Fixed prot.h check/local copy generation.
-#
-# Revision 1.49  1998/01/02 06:17:02  kivinen
-# 	Added automatic prot.h fixiging for dunix 4.0. Added
-# 	sys/resource.h checking.
-#
-# Revision 1.48  1997/05/13 22:31:34  kivinen
-# 	Fixed RSAREF code.
-#
-# Revision 1.47  1997/05/08 02:57:26  kivinen
-# 	Fixed AC_MSG_RESULT messages when disabling idea in commercial
-# 	version.
-#
-# Revision 1.46  1997/04/22 23:59:59  kivinen
-# 	Fixed SIGINFO check.
-# 	Added check that getpseudotty function exists before using.
-# 	Added check that spwd struct have sp_expire and sp_inact
-# 	fields.
-# 	Added WARPLIBS stuff.
-#
-# Revision 1.45  1997/04/21 01:03:05  kivinen
-# 	Fixed linux shadow password pw_encrypt function detection. It
-# 	seems to be in libshadow, not in the same library as getspnam.
-# 	Added AC_MSG_CHECKING/AC_MSG_RESULT to AC_EGREP_HEADER stuff.
-# 	Added AC_CHECK_FUNCS(waitpid).
-#
-# Revision 1.44  1997/04/17 03:58:29  kivinen
-# 	Added --enable-deprecated-linux-pw-encrypt support.
-# 	Fixed $HOME/MailBox to $HOME/Mailbox.
-#
-# Revision 1.43  1997/04/05 21:46:36  kivinen
-# 	Added check for $HOME/MailBox.
-# 	Added KRB5 define, added -lcom_err to KERBEROS_LIBS. Added
-# 	-lndbm to KERBEROS_LIBS if it exists.
-#
-# Revision 1.42  1997/03/27 03:14:52  kivinen
-# 	Added kerberos patches from Glenn Machin.
-# 	Added USELOGIN patches from Brian Cully.
-#
-# Revision 1.41  1997/03/26 07:13:24  kivinen
-# 	Added mips-sony-newsos6.
-# 	Removed extra setting of X_PROGRAMS.
-# 	Fixed disable-suid-ssh code.
-#
-# Revision 1.40  1997/03/25 06:18:16  kivinen
-# 	Added no_utmpx=yes for aix4.2.
-# 	Rewrote the linux shadow password checks.
-# 	Added mips-sony-bsd support. Added daemon() check.
-# 	Fixed HAVE_DEV_PTS_AND_PTC test.
-# 	Added SOCKS type defines.
-#
-# Revision 1.39  1997/03/19 21:55:24  kivinen
-# 	Fixed AC_CHECK_PROG(AR...).
-#
-# Revision 1.38  1997/03/19 21:12:01  kivinen
-# 	Fixed libshadow code for linux.
-# 	Added check if openpty can be found from libbsd.
-# 	Added </dev/null to RSH_PATH testing, so it doesn't hang even
-# 	if it is restricted shell.
-# 	Fixed --with-libwrap argument handling.
-# 	Fixed --with-socks* argument handling.
-# 	Fixed --with-rsaref argument handling.
-# 	Added --enable-suid-ssh option.
-#
-# Revision 1.37  1997/03/19 18:00:44  kivinen
-# 	Added SECURE_RPC, SECURE_NFS and NIS_PLUS support from Andy
-# 	Polyakov <appro@fy.chalmers.se>. Added 64 bit irix support.
-# 	Added TIS authentication code from Andre April
-# 	<Andre.April@cediti.be>.
-# 	Changed WITHOUT_IDEA to WITH_IDEA. Made all ciphers
-# 	configurable using --with-xxx and --without-xxx options.
-# 	Added check to libwrap code that if argument points to
-# 	directory add that to library path and use -lwrap.
-# 	Fixed *-*-forwarding options printing.
-# 	Updated zlib version.
-#
-# Revision 1.36  1997/01/03 14:59:45  ttsalo
-#     DYNIX/ptx2 patch from Kenneth Stailey <kstailey@eagle.dol-esa.gov>
-#
-# Revision 1.35  1996/11/26 17:55:12  ttsalo
-#     Resolved some weird conflicts
-#
-# Revision 1.34  1996/11/24 08:18:55  kivinen
-# 	Fixed cached host information checking.
-# 	Added defaults to sizeof checks.
-# 	Added --disable-{server,client}-{port,x11}-forwardings?.
-#
-# Revision 1.33  1996/11/19 22:45:05  kivinen
-# 	Fixed CC for IRIX 6.2 systems (CC="cc -n32").
-#
-# Revision 1.32  1996/10/31 02:06:22  ylo
-# 	Added check for cached information no longer being valid.
-#
-# Revision 1.31  1996/10/30 04:24:23  kivinen
-# 	Changed to require 2.10.
-# 	Changed cflags to have -Ae instead of -Aa for hpux.
-# 	Added checks if prot.h is broken. Give error message if so.
-# 	Export CC and CFLAGS to subdirectories.
-# 	Fixed bug in ac_cv_header_shadow_h checking.
-#
-# Revision 1.30  1996/10/29 22:36:48  kivinen
-# 	Added --disable-asm help text. Updated gmp-2.0.2 to
-# 	gmp-2.0.2-ssh-2.
-#
-# Revision 1.29  1996/10/22 13:59:22  ttsalo
-#       Fixed a bug
-#
-# Revision 1.28  1996/10/19 02:03:47  ylo
-# 	Use m68k-apple-aux* for A/UX (instead of old
-# 	m68k-apple-sysv).  This is now the name used by GNU.
-#
-# Revision 1.27  1996/10/17 08:16:19  ttsalo
-#       Check for xauth when configuring with X
-#
-# Revision 1.26  1996/10/14 16:15:47  ttsalo
-#       Configuring for OpenBSD (from Thorsten Lockert <tholo@SigmaSoft.COM>
-#
-# Revision 1.25  1996/10/07 13:00:47  ttsalo
-# 	HP-UX shadow password detection removed from "*-*-hpux7.*"
-#       	section and placed in "*-*-hpux*".
-#
-# Revision 1.24  1996/10/07 11:40:19  ttsalo
-# 	Configuring for hurd and a small fix to do_popen()
-# 	from "Charles M. Hannum" <mycroft@gnu.ai.mit.edu> added.
-#
-# Revision 1.23  1996/10/03 13:53:17  ttsalo
-# 	Configuring for m68k-apple-sysv added
-#
-# Revision 1.22  1996/09/30 01:24:04  kivinen
-# 	Fixed test of existence of shadow.h in /etc/shadow testing.
-#
-# Revision 1.21  1996/09/29 22:45:33  kivinen
-# 	Added --with-socks option that will first try to use socks5 if
-# 	found and then socks4. Updated gmp-2.0 to gmp-2.0.2.
-#
-# Revision 1.20  1996/09/27 23:35:50  ylo
-# 	Define no_termios=yes on ultrix.
-#
-# Revision 1.19  1996/09/27 14:31:36  ttsalo
-# 	Socks5 support from David Kågedal  <davidk@lysator.liu.se>
-#
-# Revision 1.18  1996/09/27 13:58:43  ttsalo
-# 	Added checking of shadow.h, removed checking of old slackware
-# 	bugs (was causing difficulties with newer distributions).
-#
-# Revision 1.17  1996/09/08 17:36:50  ttsalo
-# 	Patches for HPUX 10.x shadow passwords from
-# 	vincent@ucthpx.uct.ac.za (Russell Vincent) merged.
-#
-# Revision 1.16  1996/09/04 12:45:04  ttsalo
-# 	Configuring zlib for compilation to separate object
-# 	directory now possible
-#
-# Revision 1.15  1996/08/27 12:59:32  ttsalo
-# 	Changed gmp 1.3.2 to gmp 2.0
-#
-# Revision 1.14  1996/08/16 02:33:44  ylo
-# 	Fixes for NextStep.
-# 	Fixed quotes in no_x test.
-#
-# Revision 1.13  1996/08/11 22:29:37  ylo
-# 	Added checking of machine/endian.h.
-# 	Added checking of setpgrp.
-#
-# Revision 1.12  1996/07/24 12:00:28  ttsalo
-# 	Fixed X detection
-#
-# Revision 1.11  1996/07/12 09:10:03  ttsalo
-# 	Added configuring in zlib-1.0.3
-#
-# Revision 1.10  1996/07/12 07:15:57  ttsalo
-# 	-lipc for BSDI 2.1, -lrsc for cray, SCO v5 defines,
-# 	dynix/ptx defines, detection of getpseudotty() and
-# 	sco-style ptys.
-#
-# Revision 1.9  1996/06/25 14:43:39  ylo
-# 	Added no_utmpx=yes for OSF/1.
-#
-# Revision 1.8  1996/06/21 00:39:24  ylo
-# 	Define no_utmpx on ultrix.
-#
-# Revision 1.7  1996/06/20 23:49:52  ylo
-# 	Define no_utmpx on hpux.
-#
-# Revision 1.6  1996/06/03 19:25:12  ylo
-# 	Add -L/usr/local/lib in LIBS.  This seems to be necessary on
-# 	many machines to easily find locally installed libraries, such as
-# 	socks or tcp/wrappers.
-#
-# Revision 1.5  1996/05/28 12:46:11  ylo
-# 	Cosmetic changes.
-#
-# Revision 1.4  1996/04/26 00:35:42  ylo
-# 	Added AC_ISC_POSIX (AC_PATH_XTRA seems to require it?).
-# 	Added support for HPUX 7.x.
-# 	Added testing for setluid on OSF/1.
-# 	Grep for "installed" when checking for OSF/1 C2 security.
-# 	No longer tests for perl5.001 (there are newer versions, and
-# 	this would incorrectly take the old buggy version).
-# 	Changes in SOCKS support.
-#
-# Revision 1.3  1996/04/22 23:38:56  huima
-#	Added support for X programs.
-#
-# Revision 1.2  1996/02/18  21:51:17  ylo
-# 	Don't use setsid on mips-dec-mach3.
-# 	Define HAVE_ULTRIX_SHADOW_PASSWORDS on ultrix.
-# 	Test for setluid on OSF/1.  Also changed how -lsecurity is checked.
-#
-# Revision 1.1.1.1  1996/02/18 21:38:13  ylo
-# 	Imported ssh-1.2.13.
-#
-# Revision 1.26  1995/10/02  01:22:16  ylo
-# 	Check that the compiler understands at least basic ANSI C.
-# 	Check sys/syslog.h on Ultrix.
-# 	Fixes for SCO.
-# 	Fixed --with-etcdir.
-# 	Put extra libraries at head of LIBS.
-# 	Check existence of /var/run; set and substitute PIDDIR.
-#
-# Revision 1.25  1995/09/27  03:13:24  ylo
-# 	Fixed a syntax error.
-#
-# Revision 1.24  1995/09/27  02:48:20  ylo
-# 	Added SOCKS support.
-# 	Added some checking... and result printings.
-#
-# Revision 1.23  1995/09/27  02:13:44  ylo
-# 	Define SPEED_T_IN_STDTYPES_H on sunos 4.1.1 and NextStep.
-# 	Added support for SCO unix.
-# 	Added --with-etcdir=PATH.
-#
-# Revision 1.22  1995/09/21  17:10:59  ylo
-# 	Fixed bsdi support.
-# 	Added svr4 (univel unixware) support.
-# 	Added machten support.
-# 	Always define USE_PIPES; socketpairs appear to be broken on
-# 	many systems.
-# 	Check innetgr.
-# 	Don't define XAUTH_PATH if no xauth program.
-# 	--with-libwrap can take library name as argument.
-# 	Fixed checking for libwrap library.
-#
-# Revision 1.21  1995/09/13  11:55:30  ylo
-# 	Added Cray and BSDI support.  Don't use -pipe on BSDI (bundled
-# 	compiler is broken).
-# 	Eliminated references to HPSUX_BROKEN_PTYS (it is now used on
-# 	all systems).
-#
-# Revision 1.20  1995/09/11  17:37:45  ylo
-# 	Fixed hpsux pty define on aix 3.2.
-# 	Remove duplicate TTY_GROUP define on osf.
-# 	Check sizes of all integer types.
-# 	Added libwrap support.
-#
-# Revision 1.19  1995/09/10  23:26:20  ylo
-# 	Fixed osfc2.o in CONFOBJS.
-#
-# Revision 1.18  1995/09/10  22:46:19  ylo
-# 	Use HPSUX_BROKEN_PTYS on aix3.2.{0-4}.
-# 	Added OSF/1 C2 stuff.
-# 	Don't check for wait{3,4,pid} (no longer used).
-#
-# Revision 1.17  1995/09/09  21:26:42  ylo
-# /m/shadows/u2/users/ylo/ssh/README
-#
-# Revision 1.16  1995/09/06  15:59:08  ylo
-# 	Updated 64-bit irix stuff.
-# 	Added m88k-dg-dgux support.
-#
-# Revision 1.15  1995/08/31  09:20:42  ylo
-# 	Added check if compiler works.
-# 	Added support for irix6.
-# 	Don't use libsun on irix.
-# 	Define SSH_LASTLOG even if lastlog not found.
-#
-# Revision 1.14  1995/08/29  22:22:10  ylo
-# 	Reordered checks for wtmp, utmp, lastlog locations.
-# 	Check for missing crypt (replace if missing).
-#
-# Revision 1.13  1995/08/22  14:10:30  ylo
-# 	Fixed a typo.
-#
-# Revision 1.12  1995/08/22  14:08:37  ylo
-# 	Added warning if kerberos present.
-# 	Added check for seteuid (used to enable uid-swapping).
-#
-# Revision 1.11  1995/08/21  23:24:14  ylo
-# 	Fixed a typo.
-# 	Deleted --with-rhosts.
-#
-# Revision 1.10  1995/08/19  13:18:00  ylo
-# 	Changed to securid stuff.
-#
-# Revision 1.9  1995/08/18  22:53:46  ylo
-# 	Added determining the canonical host type.
-# 	Added host type specific configuration code for a number of
-# 	machines.  Eliminated kludges to do this from other parts of
-# 	configure.
-# 	Added checking for netinet/in_systm.h.
-# 	Fixed types in utmp/wtmp testing.
-# 	Added --without-idea.
-# 	Added --with-securid.
-#
-# Revision 1.8  1995/07/27  03:38:18  ylo
-# 	Fixed lastlog determination code when lastlog is directory.
-#
-# Revision 1.7  1995/07/27  03:27:10  ylo
-# 	Added AC_TYPE_MODE_T.
-# 	Added default for lastlog when not found (otherwise
-# 	directoryness test fails).
-#
-# Revision 1.6  1995/07/27  00:37:57  ylo
-# 	Added --with-path.
-# 	Added looking for utmp, wtmp, and lastlog.
-# 	Added checking for utime.h.
-#
-# Revision 1.5  1995/07/26  23:29:55  ylo
-# 	Removed checking for sys/termios.h.
-#
-# Revision 1.4  1995/07/13  17:29:44  ylo
-# 	Added --enable-warnings.  -Wall is only used if enabled by this.
-#
-# Revision 1.3  1995/07/13  09:55:07  ylo
-# 	Added AC_STRUCT_ST_BLKSIZE.
-#
-# Revision 1.2  1995/07/13  01:20:51  ylo
-# 	Removed "Last modified" header.
-# 	Added cvs log.
-#
-# $Endlog$
 #
 
 AC_INIT(sshd.c)
@@ -447,12 +80,16 @@ case "$host" in
     # if they do so, don't let sshd down:-) appro@fy.chalmers.se
     AC_DEFINE(HAVE_ETC_SHADOW)
     no_shadows_password_checking=yes
+    # We want support for <proj.h> eivind@ii.uib.no
+    AC_TRY_COMPILE([#include <proj.h>],
+		[int foo = MAXPROJNAMELEN; ],
+		AC_DEFINE(HAVE_SGI_PROJ_H))
     ;;
   *-ibm-aix3.2|*-ibm-aix3.2.0|*-ibm-aix3.2.1|*-ibm-aix3.2.2|*-ibm-aix3.2.3|*-ibm-aix3.2.4)
     os_aix=yes
     AC_CHECK_LIB(s, getuserattr)
     ;;
-  *-ibm-aix4.2|*-ibm-aix4.2.*)
+  *-ibm-aix4.2|*-ibm-aix4.2.*|*-ibm-aix4.3*|*-ibm-aix4.4*)
     no_utmpx=yes
     os_aix=yes
     AC_CHECK_LIB(s, getuserattr)
@@ -489,6 +126,7 @@ case "$host" in
     if test -z "$GCC"; then
       CFLAGS="$CFLAGS -Aa -D_HPUX_SOURCE"
     fi
+    AC_DEFINE(NONSTANDARD_IP_ADDRESS_X11_KLUDGE)
     AC_DEFINE(HPSUX_NONSTANDARD_X11_KLUDGE)
     ;;
   *-*-hpux*)
@@ -512,6 +150,7 @@ case "$host" in
     else
       AC_MSG_RESULT(no)
     fi
+    AC_DEFINE(NONSTANDARD_IP_ADDRESS_X11_KLUDGE)
     AC_DEFINE(HPSUX_NONSTANDARD_X11_KLUDGE)
     no_utmpx=yes
     ;;
@@ -621,6 +260,10 @@ Making a local copy of prot.h and patching it.])
     CFLAGS="$CFLAGS -DCRAY_STACKSEG_END=_getb67"
     LIBS="$LIBS -lrsc"
     ;;
+  i386-sni-sysv4*)
+    AC_DEFINE(NONSTANDARD_IP_ADDRESS_X11_KLUDGE)
+    AC_CHECK_LIB(gen, openlog)
+    ;;
   *-*-sysv4*)
     AC_CHECK_LIB(gen, openlog)
     ;;
@@ -725,6 +368,9 @@ fi
 
 if test -z "$no_utmpx"; then
   AC_CHECK_HEADERS(utmpx.h)
+  AC_MSG_CHECKING([whether utmpx have ut_syslen field])
+  AC_EGREP_HEADER(ut_syslen, utmpx.h, [ AC_DEFINE(HAVE_SYSLEN_IN_UTMPX)
+    AC_MSG_RESULT(yes)], AC_MSG_RESULT(no))
 fi
 
 AC_HEADER_STDC
@@ -737,6 +383,7 @@ AC_CHECK_HEADERS(sys/resource.h login_cap.h)
 AC_HEADER_TIME
 AC_HEADER_DIRENT
 AC_HEADER_STAT
+AC_HEADER_MAJOR
 AC_MSG_CHECKING([whether utmp have ut_pid field])
 AC_EGREP_HEADER(ut_pid, utmp.h, [ AC_DEFINE(HAVE_PID_IN_UTMP)
   AC_MSG_RESULT(yes)], AC_MSG_RESULT(no))
@@ -806,6 +453,11 @@ fi
 AC_PROGRAMS_CHECK(MAKEDEP, makedepend makedep, makedepend)
 
 AC_PATH_XTRA
+
+AC_PATH_PROG(PASSWD_PATH, passwd)
+if test -n "$PASSWD_PATH"; then
+  AC_DEFINE_UNQUOTED(PASSWD_PATH, "$PASSWD_PATH")
+fi
 
 AC_PATH_PROG(XAUTH_PATH, xauth)
 if test -n "$XAUTH_PATH"; then
@@ -1259,6 +911,8 @@ AC_ARG_WITH(tis,
     AC_DEFINE(HAVE_TIS)
     CFLAGS="$CFLAGS -I$withval -DHAVE_TIS"
     LIBS="-L$withval -lauth -lfwall $LIBS"
+    AC_MSG_WARN(Remember to read README.TIS. The connection between sshd and TIS authentication
+server is clear text!)
     ;;
   esac ],
   AC_MSG_RESULT(no)
@@ -1621,6 +1275,21 @@ AC_ARG_ENABLE(so-linger,
   AC_MSG_RESULT(no)
 )
 
+AC_MSG_CHECKING(whether to include scp statistics at all)
+AC_ARG_WITH(scp-stats,
+[  --without-scp-stats     Without scp statistics code],
+[ case "withvalval" in
+  no)
+       AC_MSG_RESULT(no)
+       ;;
+  *)
+       AC_DEFINE(WITH_SCP_STATS)
+       AC_MSG_RESULT(yes)
+  esac ],
+  AC_MSG_RESULT(yes)
+  AC_DEFINE(WITH_SCP_STATS)
+)
+
 AC_MSG_CHECKING(whether to enable scp statistics)
 AC_ARG_ENABLE(scp-stats,
 [  --disable-scp-stats     Disable scp statistics display],
@@ -1629,11 +1298,26 @@ AC_ARG_ENABLE(scp-stats,
        AC_MSG_RESULT(no)
        ;;
   *)
-       AC_DEFINE(ENABLE_SCP_STATS)
+       AC_DEFINE(SCP_STATISTICS_ENABLED)
        AC_MSG_RESULT(yes)
   esac ],
   AC_MSG_RESULT(yes)
-  AC_DEFINE(ENABLE_SCP_STATS)
+  AC_DEFINE(SCP_STATISTICS_ENABLED)
+)
+
+AC_MSG_CHECKING(whether to enable scp statistics for all files)
+AC_ARG_ENABLE(all-scp-stats,
+[  --disable-all-scp-stats Disable all files scp statistics display],
+[ case "$enableval" in
+  no)
+       AC_MSG_RESULT(no)
+       ;;
+  *)
+       AC_DEFINE(SCP_ALL_STATISTICS_ENABLED)
+       AC_MSG_RESULT(yes)
+  esac ],
+  AC_MSG_RESULT(yes)
+  AC_DEFINE(SCP_ALL_STATISTICS_ENABLED)
 )
 
 # We include this here only to make it visible in --help; this is only used

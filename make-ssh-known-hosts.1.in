@@ -27,14 +27,18 @@
 .\"
 .\"	  Creation          : 03:51 Jun 28 1995 kivinen
 .\"	  Last Modification : 03:44 Jun 28 1995 kivinen
-.\"	  Last check in     : $Date: 1998/06/11 00:07:21 $
-.\"	  Revision number   : $Revision: 1.3 $
+.\"	  Last check in     : $Date: 1998/07/08 00:40:14 $
+.\"	  Revision number   : $Revision: 1.4 $
 .\"	  State             : $State: Exp $
 .\"	  Version	    : 1.1
 .\"
 .\"	  Description       : Manual page for make-ssh-known-hosts.pl
 .\"
 .\"	  $Log: make-ssh-known-hosts.1.in,v $
+.\"	  Revision 1.4  1998/07/08 00:40:14  kivinen
+.\"	  	Changed to do similar commercial #ifdef processing than other
+.\"	  	files.
+.\"
 .\"	  Revision 1.3  1998/06/11 00:07:21  kivinen
 .\"	  	Fixed comment characters.
 .\"
@@ -65,9 +69,12 @@
 .\" Tero.Kivinen@hut.fi
 .\"
 .\"
-.nr CO 1
-.ie \n(CO .TH MAKE-SSH-KNOWN-HOSTS 1 "November 8, 1995" "F-SECURE SSH TOOLS"" F-SECURE SSH TOOLS"
-.el .TH MAKE-SSH-KNOWN-HOSTS 1 "November 8, 1995" "SSH TOOLS" "SSH TOOLS"
+.\"
+.\"
+.\"
+.\" #ifndef F_SECURE_COMMERCIAL
+.TH MAKE-SSH-KNOWN-HOSTS 1 "November 8, 1995" "SSH TOOLS" "SSH TOOLS"
+.\" #endif F_SECURE_COMMERCIAL
 .SH NAME
 make-ssh-known-hosts \- make ssh_known_hosts file from DNS data
 .SH SYNOPSIS

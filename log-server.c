@@ -9,14 +9,17 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
 
 Created: Mon Mar 20 21:19:30 1995 ylo
 
-Server-side versions of debug(), log(), etc.  These normally send the output
-to the system log.
+Server-side versions of debug(), log_msg(), etc.  These normally send the
+output to the system log.
 
 */
 
 /*
- * $Id: log-server.c,v 1.1.1.1 1996/02/18 21:38:12 ylo Exp $
+ * $Id: log-server.c,v 1.2 1996/10/29 22:38:23 kivinen Exp $
  * $Log: log-server.c,v $
+ * Revision 1.2  1996/10/29 22:38:23  kivinen
+ * 	log -> log_msg.
+ *
  * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
  * 	Imported ssh-1.2.13.
  *
@@ -111,7 +114,7 @@ void log_init(char *av0, int on_stderr, int debug, int quiet,
 
 /* Log this message (information that usually should go to the log). */
 
-void log(const char *fmt, ...)
+void log_msg(const char *fmt, ...)
 {
   char buf[1024];
   va_list args;

@@ -8,7 +8,6 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Sun Jun 25 02:59:39 1995 ylo
-Last modified: Fri Jul  7 03:25:38 1995 ylo
 
 This code is based on Xuejia Lai: On the Design and Security of Block
 Ciphers, ETH Series in Information Processing, vol. 1, Hartung-Gorre
@@ -19,6 +18,16 @@ The IDEA mathematical formula may be covered by one or more of the
 following patents: PCT/CH91/00117, EP 0 482 154 B1, US Pat. 5,214,703.
 
 */
+
+/*
+ * $Id: idea.c,v 1.2 1995/07/13 01:24:44 ylo Exp $
+ * $Log: idea.c,v $
+ * Revision 1.2  1995/07/13  01:24:44  ylo
+ * 	Removed "Last modified" header.
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
 
 #include "includes.h"
 #include "getput.h"

@@ -2,10 +2,11 @@
 
 ssh-add.c
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Thu Apr  6 00:52:24 1995 ylo
 
@@ -14,12 +15,15 @@ Adds an identity to the authentication server, or removes an identity.
 */
 
 /*
- * $Id: ssh-add.c,v 1.7 1999/02/21 19:52:39 ylo Exp $
+ * $Id: ssh-add.c,v 1.8 1999/11/17 17:04:55 tri Exp $
  * $Log: ssh-add.c,v $
+ * Revision 1.8  1999/11/17 17:04:55  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.7  1999/02/21 19:52:39  ylo
- * 	Intermediate commit of ssh1.2.27 stuff.
- * 	Main change is sprintf -> snprintf; however, there are also
- * 	many other changes.
+ *      Intermediate commit of ssh1.2.27 stuff.
+ *      Main change is sprintf -> snprintf; however, there are also
+ *      many other changes.
  *
  * Revision 1.6  1998/05/23 20:24:29  kivinen
  *      Changed () -> (void).

@@ -2,10 +2,11 @@
 
 log-client.c
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Mon Mar 20 21:13:40 1995 ylo
 
@@ -14,12 +15,15 @@ Client-side versions of debug(), log_msg(), etc.  These print to stderr.
 */
 
 /*
- * $Id: log-client.c,v 1.7 1999/02/21 19:52:22 ylo Exp $
+ * $Id: log-client.c,v 1.8 1999/11/17 17:04:46 tri Exp $
  * $Log: log-client.c,v $
+ * Revision 1.8  1999/11/17 17:04:46  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.7  1999/02/21 19:52:22  ylo
- * 	Intermediate commit of ssh1.2.27 stuff.
- * 	Main change is sprintf -> snprintf; however, there are also
- * 	many other changes.
+ *      Intermediate commit of ssh1.2.27 stuff.
+ *      Main change is sprintf -> snprintf; however, there are also
+ *      many other changes.
  *
  * Revision 1.6  1998/05/23 20:21:37  kivinen
  *      Changed () -> (void).

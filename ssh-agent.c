@@ -14,8 +14,27 @@ The authentication agent program.
 */
 
 /*
- * $Id: ssh-agent.c,v 1.8 1996/09/27 14:01:33 ttsalo Exp $
+ * $Id: ssh-agent.c,v 1.13 1996/10/29 22:43:55 kivinen Exp $
  * $Log: ssh-agent.c,v $
+ * Revision 1.13  1996/10/29 22:43:55  kivinen
+ * 	log -> log_msg. Removed unused sockaddr_in sin.
+ * 	Do not define SSH_AUTHENTICATION_SOCKET environment variable
+ * 	if the agent could not be started.
+ *
+ * Revision 1.12  1996/10/29 12:34:29  ttsalo
+ * 	Agent's behaviour improved: socket is created and listened to
+ * 	before forking, and if creation fails, parent still executes
+ * 	the specified command (without forking the child).
+ *
+ * Revision 1.11  1996/10/21 16:17:28  ttsalo
+ *       Implemented direct socket handling in ssh-agent
+ *
+ * Revision 1.10  1996/10/20 16:19:34  ttsalo
+ *      Added global variable 'original_real_uid' and it's initialization
+ *
+ * Revision 1.9  1996/10/12 22:19:32  ttsalo
+ * 	Return value of mkdir is now checked.
+ *
  * Revision 1.8  1996/09/27 14:01:33  ttsalo
  * 	Use AF_UNIX_SIZE(sunaddr) instead of sizeof(sunaddr)
  *
@@ -79,13 +98,11 @@ The authentication agent program.
 #include "md5.h"
 #include "getput.h"
 #include "mpaux.h"
-#include "userfile.h"
 
 typedef struct
 {
   int fd;
-  enum { AUTH_UNUSED, AUTH_FD, AUTH_SOCKET, AUTH_SOCKET_FD, 
-    AUTH_CONNECTION } type;
+  enum { AUTH_UNUSED, AUTH_SOCKET, AUTH_SOCKET_FD } type;
   Buffer input;
   Buffer output;
 } SocketEntry;
@@ -101,6 +118,8 @@ typedef struct
 
 unsigned int num_identities = 0;
 Identity *identities = NULL;
+
+uid_t original_real_uid = 0;
 
 int max_fd = 0;
 
@@ -167,7 +186,7 @@ void process_authentication_challenge(SocketEntry *e)
 	  {
 	  case 0: /* As of protocol 1.0 */
 	    /* This response type is no longer supported. */
-	    log("Compatibility with ssh protocol 1.0 no longer supported.");
+	    log_msg("Compatibility with ssh protocol 1.0 no longer supported.");
 	    buffer_put_char(&msg, SSH_AGENT_FAILURE);
 	    goto send;
 
@@ -415,10 +434,8 @@ void prepare_select(fd_set *readset, fd_set *writeset)
   for (i = 0; i < sockets_alloc; i++)
     switch (sockets[i].type)
       {
-      case AUTH_FD:
-      case AUTH_CONNECTION:
-      case AUTH_SOCKET:
       case AUTH_SOCKET_FD:
+      case AUTH_SOCKET:
 	FD_SET(sockets[i].fd, readset);
 	if (buffer_len(&sockets[i].output) > 0)
 	  FD_SET(sockets[i].fd, writeset);
@@ -436,52 +453,12 @@ void after_select(fd_set *readset, fd_set *writeset)
   unsigned int i;
   int len, sock, port;
   char buf[1024], *p;
-  struct sockaddr_in sin;
   struct sockaddr_un sunaddr;
 
   for (i = 0; i < sockets_alloc; i++)
     switch (sockets[i].type)
       {
       case AUTH_UNUSED:
-	break;
-      case AUTH_FD:
-	if (FD_ISSET(sockets[i].fd, readset))
-	  {
-	    len = recv(sockets[i].fd, buf, sizeof(buf), 0);
-	    if (len <= 0)
-	      { /* All instances of the other side have been closed. */
-		log("Authentication agent exiting.");
-		exit(0);
-	      }
-	  process_auth_fd_input:
-	    /* We allow for simultaneously recv'ing sends from multiple
-	       clients, as can happen with, e.g., SunOS 4. */
-	    for (p = buf; len >= 3; len -= 3, p += 3)
- 	      {
-		if ((unsigned char)p[0] != SSH_AUTHFD_CONNECT)
-		  break; /* Incorrect message; ignore it and give up. */
-	      
-		/* It is a connection request message. */
-		port = (unsigned char)p[1] * 256 + (unsigned char)p[2];
-		memset(&sin, 0, sizeof(sin));
-		sin.sin_family = AF_INET;
-		sin.sin_addr.s_addr = htonl(0x7f000001); /* localhost */
-		sin.sin_port = htons(port);
-		sock = socket(AF_INET, SOCK_STREAM, 0);
-		if (sock < 0)
-		  {
-		    perror("socket");
-		    break;
-		  }
-		if (connect(sock, (struct sockaddr *)&sin, sizeof(sin)) < 0)
-		  {
-		    perror("connecting to port requested in authfd message");
-		    close(sock);
-		    break;
-		  }
-		new_socket(AUTH_CONNECTION, sock);
-	       }
-	  }
 	break;
       case AUTH_SOCKET:
 	if (FD_ISSET(sockets[i].fd, readset))
@@ -497,22 +474,6 @@ void after_select(fd_set *readset, fd_set *writeset)
 	  }
 	break;
       case AUTH_SOCKET_FD:
-	if (FD_ISSET(sockets[i].fd, readset))
-	  {
-	    len = recv(sockets[i].fd, buf, sizeof(buf), 0);
-	    if (len <= 0)
-	      { /* The other side has closed the socket. */
-		shutdown(sockets[i].fd, 2);
-		close(sockets[i].fd);
-		sockets[i].type = AUTH_UNUSED;
-		buffer_free(&sockets[i].input);
-		buffer_free(&sockets[i].output);
-		break;
-	      }
-	    goto process_auth_fd_input;
-	  }
-	break;
-      case AUTH_CONNECTION:
 	if (buffer_len(&sockets[i].output) > 0 &&
 	    FD_ISSET(sockets[i].fd, writeset))
 	  {
@@ -579,8 +540,7 @@ int main(int ac, char **av)
 {
   fd_set readset, writeset;
   char buf[1024];
-  int pfd;
-  int sock;
+  int sock, creation_failed = 1;
   struct sockaddr_un sunaddr;
   struct passwd *pw;
   struct stat st;
@@ -588,6 +548,8 @@ int main(int ac, char **av)
   int sockets[2], i;
   int *dups, ret;
 
+  original_real_uid = getuid();
+  
   if (ac < 2)
     {
       fprintf(stderr, "ssh-agent version %s\n", SSH_VERSION);
@@ -595,143 +557,112 @@ int main(int ac, char **av)
       exit(1);
     }
 
-  pfd = get_permanent_fd(NULL);
-  if (pfd < 0) 
+  /* The agent uses SSH_AUTHENTICATION_SOCKET. */
+  
+  parent_pid = getpid();
+  pw = getpwuid(getuid());
+  if (pw == NULL)
     {
-      /* The agent uses SSH_AUTHENTICATION_SOCKET. */
+      fprintf(stderr, "Unknown user uid = %d\n", getuid());
+      exit(1);
+    }
+  
+  sprintf(socket_dir_name, SSH_AGENT_SOCKET_DIR, pw->pw_name);
 
-      parent_pid = getpid();
-      pw = getpwuid(getuid());
-      if (pw == NULL)
+  /* Start setting up the socket. Do it before forking to guarantee
+     that the socket exists when the parent starts executing the
+     command. Also, if something fails before fork, just execute the
+     command and don't bother forking the child. */
+  
+  /* Check that the per-user socket directory either doesn't exist
+     or has good modes */
+  
+  ret = stat(socket_dir_name, &st);
+  if (ret == -1 && errno != ENOENT)
+    {
+      perror("stat");
+      goto fail_socket_setup;
+    }
+  if (errno == ENOENT && mkdir(socket_dir_name, S_IRWXU) != 0)
+    {
+      perror("mkdir");
+      goto fail_socket_setup;
+    }
+
+  /* Check the owner and permissions */
+  if (stat(socket_dir_name, &st) != 0 || pw->pw_uid != st.st_uid ||
+      (st.st_mode & 077) != 0)
+    {
+      fprintf(stderr, "Bad modes or owner for directory \'%s\'\n",
+	      socket_dir_name);
+      goto fail_socket_setup;
+    }
+
+  sprintf(socket_name,
+	  SSH_AGENT_SOCKET_DIR"/"SSH_AGENT_SOCKET,
+	  pw->pw_name, (int)getpid());
+
+  /* Check that socket doesn't exist */
+  ret = stat(socket_name, &st);
+  if (ret != -1 && errno != ENOENT)
+    {
+      fprintf(stderr,
+	      "\'%s\' already exists (ssh-agent already running?)\n",
+	      socket_name);
+      goto fail_socket_setup;
+    }
+  sock = socket(AF_UNIX, SOCK_STREAM, 0);
+  if (sock < 0)
+    {
+      perror("socket");
+      goto fail_socket_setup;
+    }
+  memset(&sunaddr, 0, AF_UNIX_SIZE(sunaddr));
+  sunaddr.sun_family = AF_UNIX;
+  strncpy(sunaddr.sun_path, socket_name, sizeof(sunaddr.sun_path));
+  if (bind(sock, (struct sockaddr *)&sunaddr, AF_UNIX_SIZE(sunaddr)) < 0)
+    {
+      perror("bind");
+      close(sock);
+      goto fail_socket_setup;
+    }
+  if (chmod(socket_name, 0700) < 0)
+    {
+      perror("chmod");
+      close(sock);
+      goto fail_socket_setup;
+    }
+  if (listen(sock, 5) < 0)
+    {
+      perror("listen");
+      close(sock);
+      goto fail_socket_setup;
+    }
+
+  /* Everything ok so far, so permit forking. */
+  creation_failed = 0;
+  
+fail_socket_setup:
+  /* If not creation_failed, fork, and have the parent execute the command.
+     The child continues as the authentication agent. If creation failed,
+     don't fork the child and forget the socket */
+  if (creation_failed || fork() != 0)
+    { /* Parent - execute the given command. */
+      if (!creation_failed)
 	{
-	  fprintf(stderr, "Unknown user uid = %d\n", getuid());
-	  exit(1);
-	}
-      
-      sprintf(socket_dir_name, SSH_AGENT_SOCKET_DIR, pw->pw_name);
-
-      /* Check that the per-user socket directory either doesn't exist
-	 or has good modes */
-      
-      ret = stat(socket_dir_name, &st);
-      if (ret == -1 && errno != ENOENT)
-	{
-	  perror("stat");
-	  exit(1);
-	}
-      else
-	mkdir(socket_dir_name, S_IRWXU);
-
-      if (ret == 0 && !userfile_check_owner_permissions(pw, socket_dir_name))
-	{
-	  fprintf(stderr, "Bad modes for directory \'%s\'\n", socket_dir_name);
-	  exit(1);
-	}
-
-      sprintf(socket_name,
-	      SSH_AGENT_SOCKET_DIR"/"SSH_AGENT_SOCKET,
-	      pw->pw_name, (int)getpid());
-
-      /* Check that socket doesn't exist */
-
-      ret = stat(socket_name, &st);
-      if (ret != -1 && errno != ENOENT)
-	{
-	  fprintf(stderr,
-		  "\'%s\' already exists (ssh-agent already running?)\n",
-		  socket_name);
-	  exit(1);
-	}
-      
-      /* Fork, and have the parent execute the command.  The child continues as
-	 the authentication agent. */
-      if (fork() != 0)
-	{ /* Parent - execute the given command. */
 	  sprintf(buf, "SSH_AUTHENTICATION_SOCKET=%s", socket_name);
 	  putenv(buf);
-	  execvp(av[1], av + 1);
-	  perror(av[1]);
-	  exit(1);
 	}
-      
-      sock = socket(AF_UNIX, SOCK_STREAM, 0);
-      if (sock < 0)
-	{
-	  perror("socket");
-	  exit(1);
-	}
-      memset(&sunaddr, 0, AF_UNIX_SIZE(sunaddr));
-      sunaddr.sun_family = AF_UNIX;
-      strncpy(sunaddr.sun_path, socket_name, sizeof(sunaddr.sun_path));
-      if (bind(sock, (struct sockaddr *)&sunaddr, AF_UNIX_SIZE(sunaddr)) < 0)
-	{
-	  perror("bind");
-	  exit(1);
-	}
-      if (chmod(socket_name, 0700) < 0)
-	{
-	  perror("chmod");
-	  exit(1);
-	}
-      if (listen(sock, 5) < 0)
-	{
-	  perror("listen");
-	  exit(1);
-	}
-      new_socket(AUTH_SOCKET, sock);
-      signal(SIGALRM, check_parent_exists);
-      signal(SIGHUP, remove_socket_on_signal);
-      signal(SIGTERM, remove_socket_on_signal);
-      alarm(10);
+      execvp(av[1], av + 1);
+      perror(av[1]);
+      exit(1);
     }
-  else 
-    {
-      /* The agent uses SSH_AUTHENTICATION_FD. */
-      int cnt, newfd;
-      
-      dups = xmalloc(sizeof (int) * (1 + pfd));
-      
-      if (socketpair(AF_UNIX, SOCK_STREAM, 0, sockets) < 0)
-	{
-	  perror("socketpair");
-	  exit(1);
-	}
 
-      /* Dup some descriptors to get the authentication fd to pfd,
-	 because some shells arbitrarily close descriptors below that.
-	 Don't use dup2 because maybe some systems don't have it?? */
-      for (cnt = 0;; cnt++) {
-	if ((dups[cnt] = dup(0)) < 0)
-	  fatal("auth_input_request_forwarding: dup failed");
-	if (dups[cnt] == pfd)
-	  break;
-      }
-      close(dups[cnt]);
-      
-      /* Move the file descriptor we pass to children up high where
-	 the shell won't close it. */
-      newfd = dup(sockets[1]);
-      if (newfd != pfd)
-	fatal("auth_input_request_forwarding: dup didn't return %d.", pfd);
-      close(sockets[1]);
-      sockets[1] = newfd;
-      /* Close duped descriptors. */
-      for (i = 0; i < cnt; i++)
-	close(dups[i]);
-      xfree(dups);
-      
-      if (fork() != 0)
-	{ /* Parent - execute the given command. */
-	  close(sockets[0]);
-	  sprintf(buf, "SSH_AUTHENTICATION_FD=%d", sockets[1]);
-	  putenv(buf);
-	  execvp(av[1], av + 1);
-	  perror(av[1]);
-	  exit(1);
-	}
-      close(sockets[1]);
-      new_socket(AUTH_FD, sockets[0]);
-    }
+  new_socket(AUTH_SOCKET, sock);
+  signal(SIGALRM, check_parent_exists);
+  signal(SIGHUP, remove_socket_on_signal);
+  signal(SIGTERM, remove_socket_on_signal);
+  alarm(10);
 
   signal(SIGINT, SIG_IGN);
   while (1)

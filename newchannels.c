@@ -16,8 +16,19 @@ arbitrary tcp/ip connections, and the authentication agent connection.
 */
 
 /*
- * $Id: newchannels.c,v 1.37 1997/04/17 04:01:22 kivinen Exp $
+ * $Id: newchannels.c,v 1.40 1997/08/21 22:16:26 ylo Exp $
  * $Log: newchannels.c,v $
+ * Revision 1.40  1997/08/21 22:16:26  ylo
+ * 	Fixed security bug with port number > 65535 in remote forwarding.
+ *
+ * Revision 1.39  1997/04/27 22:20:11  kivinen
+ * 	Fixed bug in port number parsing in
+ * 	channel_add_{allow,deny}_forwd_to.
+ *
+ * Revision 1.38  1997/04/27 21:52:42  kivinen
+ * 	Added F-SECURE stuff. Added {Allow,Deny}Forwarding{To,Port}
+ * 	feature.
+ *
  * Revision 1.37  1997/04/17 04:01:22  kivinen
  * 	Removed extra port variable. Added return -1 to
  * 	channel_allocate to get rid of warning.
@@ -325,6 +336,31 @@ unsigned int x11_saved_data_len = 0;
    us; we should replace any occurrences of this by the real data. */
 char *x11_fake_data = NULL;
 unsigned int x11_fake_data_len;
+
+#ifdef F_SECURE_COMMERCIAL
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#endif /* F_SECURE_COMMERCIAL */
 
 /* Data structure for storing which hosts are permitted for forward requests.
    The local sides of any remote forwards are stored in this array to prevent
@@ -1384,6 +1420,84 @@ void channel_request_remote_forwarding(int port, const char *host,
   num_permitted_opens++;
 }
 
+#ifdef F_SECURE_COMMERCIAL
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#endif /* F_SECURE_COMMERCIAL */
+
 /* This is called after receiving CHANNEL_FORWARDING_REQUEST.  This initates
    listening for the port, and sends back a success reply (or disconnect
    message if there was an error).  This never returns if there was an 
@@ -1405,15 +1519,47 @@ void channel_input_port_forward_request(int is_root)
   
   /* Check that an unprivileged user is not trying to forward a privileged
      port. */
-  if (port < 1024 && !is_root)
+  if ((port < 1024 || port > 65535) && !is_root)
     packet_disconnect("Requested forwarding of port %d but user is not root.",
 		      port);
 
+#ifdef F_SECURE_COMMERCIAL
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#endif /* F_SECURE_COMMERCIAL */
   /* Initiate forwarding. */
   channel_request_local_forwarding(port, hostname, host_port);
 
   /* Free the argument string. */
   xfree(hostname);
+  return;
+fail:
+  xfree(hostname);
+  return;
 }
 
 /* This is called after receiving PORT_OPEN message.  This attempts to connect
@@ -1461,9 +1607,7 @@ void channel_input_port_open()
 	  /* The port is not permitted. */
 	  log_msg("Received request to connect to %.100s:%d, but the request was denied.",
 	      host, host_port);
-	  packet_start(SSH_MSG_CHANNEL_OPEN_FAILURE);
-	  packet_put_int(remote_channel);
-	  packet_send();
+	  goto fail;
 	}
     }
   
@@ -1497,6 +1641,43 @@ void channel_input_port_open()
 	     sizeof(sin.sin_addr));
     }
   sin.sin_port = htons(host_port);
+  
+#ifdef F_SECURE_COMMERCIAL
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#endif /* F_SECURE_COMMERCIAL */
 
   /* Create the socket. */
   sock = socket(sin.sin_family, SOCK_STREAM, 0);
@@ -1541,6 +1722,7 @@ void channel_input_port_open()
  fail:
   /* Free the argument string. */
   xfree(host);
+  xfree(originator_string);
 
   /* Send refusal to the remote host. */
   packet_start(SSH_MSG_CHANNEL_OPEN_FAILURE);

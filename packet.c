@@ -15,8 +15,15 @@ with the other side.  This same code is used both on client and server side.
 */
 
 /*
- * $Id: packet.c,v 1.7 1997/04/05 17:29:21 ylo Exp $
+ * $Id: packet.c,v 1.9 1998/04/30 01:54:30 kivinen Exp $
  * $Log: packet.c,v $
+ * Revision 1.9  1998/04/30 01:54:30  kivinen
+ * 	Fixed SSH_MSG_IGNORE handling. Now it will skip the string
+ * 	argument also.
+ *
+ * Revision 1.8  1998/03/27 16:59:02  kivinen
+ * 	Added ENABLE_TCP_NODELAY support.
+ *
  * Revision 1.7  1997/04/05 17:29:21  ylo
  * 	Added packet_get_len (returns the remaining length of incoming
  * 	packet).
@@ -551,7 +558,12 @@ int packet_read_poll()
 
   /* Ignore ignore messages. */
   if ((unsigned char)buf[0] == SSH_MSG_IGNORE)
-    goto restart;
+    {
+      char *str;
+      str = packet_get_string(NULL);
+      xfree(str);
+      goto restart;
+    }
 
   /* Send debug messages as debugging output. */
   if ((unsigned char)buf[0] == SSH_MSG_DEBUG)
@@ -784,7 +796,7 @@ void packet_set_interactive(int interactive, int keepalives)
 		     sizeof(lowdelay)) < 0)
 	error("setsockopt IPTOS_LOWDELAY: %.100s", strerror(errno));
 #endif /* IPTOS_LOWDELAY */
-#ifdef TCP_NODELAY
+#if defined(TCP_NODELAY) && defined(ENABLE_TCP_NODELAY)
       if (setsockopt(connection_in, IPPROTO_TCP, TCP_NODELAY, (void *)&on, 
 		     sizeof(on)) < 0)
 	error("setsockopt TCP_NODELAY: %.100s", strerror(errno));
@@ -800,7 +812,7 @@ void packet_set_interactive(int interactive, int keepalives)
 		     sizeof(throughput)) < 0)
 	error("setsockopt IPTOS_THROUGHPUT: %.100s", strerror(errno));
 #endif /* IPTOS_THROUGHPUT */
-#ifdef TCP_NODELAY
+#if defined(TCP_NODELAY) && defined(ENABLE_TCP_NODELAY)
       if (setsockopt(connection_in, IPPROTO_TCP, TCP_NODELAY, (void *)&off, 
 		     sizeof(off)) < 0)
 	error("setsockopt TCP_NODELAY: %.100s", strerror(errno));

@@ -19,10 +19,18 @@ using the --with-rsaref configure option.
 */
 
 /*
- * $Id: rsaglue.c,v 1.8 1999/12/10 23:27:25 sjl Exp $
+ * $Id: rsaglue.c,v 1.10 2001/02/03 09:47:59 ylo Exp $
  * $Log: rsaglue.c,v $
+ * Revision 1.10  2001/02/03 09:47:59  ylo
+ * 	Improved patch for bleisenbacher attack to avoid creating
+ * 	possible denial of service issue.
+ *
+ * Revision 1.9  2001/02/01 21:11:28  ylo
+ *      Kludged a fix for a theoretical bleisenbacher attack discovered by
+ *      CORE-SDI.
+ *
  * Revision 1.8  1999/12/10 23:27:25  sjl
- * 	Added space to please Tatu.
+ *      Added space to please Tatu.
  *
  * Revision 1.7  1999/11/24 14:47:59  ttsalo
  *     Applied a fix for checking key lengths when using RSAREF
@@ -264,7 +272,15 @@ void rsa_private_decrypt(MP_INT *output, MP_INT *input, RSAPrivateKey *key)
   mpz_clear(&aux);
 
   if (value[0] != 0 || value[1] != 2)
-    fatal("Bad result from rsa_private_decrypt");
+    {
+      static time_t last_kill_time = 0;
+      if (time(NULL) - last_kill_time > 60 && getppid() != 1)
+        {
+          last_kill_time = time(NULL);
+          kill(SIGALRM, getppid());
+        }
+      fatal("Bad result from rsa_private_decrypt");
+    }
 
   for (i = 2; i < len && value[i]; i++)
     ;

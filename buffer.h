@@ -2,10 +2,11 @@
 
 buffer.h
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Sat Mar 18 04:12:25 1995 ylo
 
@@ -14,14 +15,17 @@ Code for manipulating FIFO buffers.
 */
 
 /*
- * $Id: buffer.h,v 1.1.1.1 1996/02/18 21:38:11 ylo Exp $
+ * $Id: buffer.h,v 1.2 1999/11/17 17:04:40 tri Exp $
  * $Log: buffer.h,v $
+ * Revision 1.2  1999/11/17 17:04:40  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
- * 	Imported ssh-1.2.13.
+ *      Imported ssh-1.2.13.
  *
  * Revision 1.2  1995/07/13  01:18:55  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
+ *      Removed "Last modified" header.
+ *      Added cvs log.
  *
  * $Endlog$
  */
@@ -31,10 +35,10 @@ Code for manipulating FIFO buffers.
 
 typedef struct
 {
-  char *buf;			/* Buffer for data. */
-  unsigned int alloc;		/* Number of bytes allocated for data. */
-  unsigned int offset;		/* Offset of first byte containing data. */
-  unsigned int end;		/* Offset of last byte containing data. */
+  char *buf;                    /* Buffer for data. */
+  unsigned int alloc;           /* Number of bytes allocated for data. */
+  unsigned int offset;          /* Offset of first byte containing data. */
+  unsigned int end;             /* Offset of last byte containing data. */
 } Buffer;
 
 /* Initializes the buffer structure. */

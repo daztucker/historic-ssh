@@ -14,9 +14,12 @@ Cryptographically strong random number generation.
 */
 
 /*
- * $Id: randoms.c,v 1.3 1998/04/17 00:39:38 kivinen Exp $
+ * $Id: randoms.c,v 1.4 1998/05/23 20:23:13 kivinen Exp $
  * $Log: randoms.c,v $
- * Revision 1.3  1998/04/17 00:39:38  kivinen
+ * Revision 1.4  1998/05/23  20:23:13  kivinen
+ * 	Changed uint32 to word32.
+ *
+ * Revision 1.3  1998/04/17  00:39:38  kivinen
  * 	Removed sys/resource.h including (it is already included in
  * 	the includes.h).
  *
@@ -300,7 +303,7 @@ void random_add_noise(RandomState *state, const void *buf, unsigned int bytes)
 
 void random_stir(RandomState *state)
 {
-  uint32 iv[4];
+  word32 iv[4];
   unsigned int i;
 
   /* Start IV from last block of random pool. */

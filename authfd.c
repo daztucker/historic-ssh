@@ -14,8 +14,12 @@ Functions for connecting the local authentication agent.
 */
 
 /*
- * $Id: authfd.c,v 1.14 1998/01/02 06:15:49 kivinen Exp $
+ * $Id: authfd.c,v 1.15 1998/03/27 16:56:30 kivinen Exp $
  * $Log: authfd.c,v $
+ * Revision 1.15  1998/03/27 16:56:30  kivinen
+ * 	Allow authentication socket to be symlink, if not suid. Fixed
+ * 	authsocketdir freeing.
+ *
  * Revision 1.14  1998/01/02 06:15:49  kivinen
  * 	Fixed agent socket opening routine.
  *
@@ -203,9 +207,12 @@ int ssh_get_authentication_fd()
     }
   if (S_ISLNK(socket_st.st_mode))
     {
-      error("Authentication socket `%.100s' is symlink", origauthsocket);
-      xfree(authsocketdir);
-      return -1;
+      if (original_real_uid != geteuid())
+	{
+	  error("Authentication socket `%.100s' is symlink", origauthsocket);
+	  xfree(authsocketdir);
+	  return -1;
+	}
     }
 
   /* Check if we are suid process */
@@ -335,8 +342,6 @@ int ssh_get_authentication_fd()
   sunaddr.sun_family = AF_UNIX;
   strncpy(sunaddr.sun_path, authsocket, sizeof(sunaddr.sun_path));
 
-  xfree(authsocketdir);
-  
   sock = socket(AF_UNIX, SOCK_STREAM, 0);
   if (sock < 0)
     {
@@ -348,6 +353,7 @@ int ssh_get_authentication_fd()
 	  rmdir(newauthsockdir);
 	  xfree(newauthsockdir);
 	}
+      xfree(authsocketdir);
       return -1;
     }
 
@@ -362,6 +368,7 @@ int ssh_get_authentication_fd()
 	  rmdir(newauthsockdir);
 	  xfree(newauthsockdir);
 	}
+      xfree(authsocketdir);
       return -1;
     }
   if (newauthsockdir != NULL)
@@ -371,6 +378,7 @@ int ssh_get_authentication_fd()
       rmdir(newauthsockdir);
       xfree(newauthsockdir);
     }
+  xfree(authsocketdir);
   fcntl(sock, F_SETFL, 0);  /* Set the socket to blocking mode */
   return sock;
 }

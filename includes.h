@@ -14,8 +14,12 @@ This file includes most of the needed system headers.
 */
 
 /*
- * $Id: includes.h,v 1.9 1997/03/19 18:02:19 kivinen Exp $
+ * $Id: includes.h,v 1.10 1998/01/02 06:18:20 kivinen Exp $
  * $Log: includes.h,v $
+ * Revision 1.10  1998/01/02 06:18:20  kivinen
+ * 	Added sys/resource.h include. Added _S_IFLNK and S_ISLNK
+ * 	defines if not defined by system.
+ *
  * Revision 1.9  1997/03/19 18:02:19  kivinen
  * 	Added SECURE_RPC, SECURE_NFS and NIS_PLUS support from Andy
  * 	Polyakov <appro@fy.chalmers.se>.
@@ -283,6 +287,10 @@ struct linger {
 #endif /* HAVE_SYS_TIME_H */
 #endif /* TIME_WITH_SYS_TIME */
 
+#if HAVE_SYS_RESOURCE_H
+#include <sys/resource.h>
+#endif
+
 #ifdef HAVE_PATHS_H
 #include <paths.h>
 #endif
@@ -337,6 +345,12 @@ struct linger {
 #endif
 #ifndef _S_IFDIR
 #define _S_IFDIR 0040000
+#endif
+#ifndef _S_IFLNK
+#define _S_IFLNK 0120000
+#endif
+#ifndef S_ISLNK
+#define S_ISLNK(m) (((mode)&(_S_IFMT))==(_S_IFLNK))
 #endif
 
 #if USE_STRLEN_FOR_AF_UNIX

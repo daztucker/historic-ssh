@@ -16,8 +16,21 @@ of X11, TCP/IP, and authentication connections.
 */
 
 /*
- * $Id: ssh.c,v 1.9 1995/08/31 09:23:32 ylo Exp $
+ * $Id: ssh.c,v 1.12 1995/09/13 12:03:37 ylo Exp $
  * $Log: ssh.c,v $
+ * Revision 1.12  1995/09/13  12:03:37  ylo
+ * 	Fixed rhosts authentication.
+ * 	Moved channel_prepare_select to the correct location (should
+ * 	fix channel closes being reported only after a keypress).
+ *
+ * Revision 1.11  1995/09/10  22:47:34  ylo
+ * 	Added uidswap stuff (fixes security problems).  Changed to use
+ * 	original_real_uid instead of getuid in various places.
+ * 	#ifdef'd some SIGWINCH stuff.
+ *
+ * Revision 1.10  1995/09/09  21:26:45  ylo
+ * /m/shadows/u2/users/ylo/ssh/README
+ *
  * Revision 1.9  1995/08/31  09:23:32  ylo
  * 	Copy struct pw.
  *
@@ -56,6 +69,7 @@ of X11, TCP/IP, and authentication connections.
 #include "buffer.h"
 #include "authfd.h"
 #include "readconf.h"
+#include "uidswap.h"
 
 /* Random number generator state.  This is initialized in ssh_login, and
    left initialized.  This is used both by the packet module and by various
@@ -92,11 +106,13 @@ Options options;
    in a configuration file. */
 char *host;
 
+#ifdef SIGWINCH
 /* Flag to indicate that we have received a window change signal which has
    not yet been processed.  This will cause a message indicating the new
    window size to be sent to the server a little later.  This is volatile
    because this is updated in a signal handler. */
 volatile int received_window_change_signal = 0;
+#endif /* SIGWINCH */
 
 /* Value of argv[0] (set in the main program). */
 char *av0;
@@ -202,6 +218,7 @@ void leave_non_blocking()
   in_non_blocking_mode = 0;
 }
 
+#ifdef SIGWINCH
 /* Signal handler for the window change signal (SIGWINCH).  This just
    sets a flag indicating that the window has changed. */
 
@@ -210,6 +227,7 @@ RETSIGTYPE window_change_handler(int sig)
   received_window_change_signal = 1;
   signal(SIGWINCH, window_change_handler);
 }
+#endif /* SIGWINCH */
 
 /* Signal handler for signals that cause the program to terminate.  These
    signals must be trapped to restore terminal modes. */
@@ -317,6 +335,20 @@ int main(int ac, char **av)
   struct stat st;
   struct passwd *pw, pwcopy;
   int interactive = 0, dummy;
+  uid_t original_real_uid;
+  uid_t original_effective_uid;
+
+  /* Save the original real uid.  It will be needed later (uid-swapping may
+     clobber the real uid).  */
+  original_real_uid = getuid();
+  original_effective_uid = geteuid();
+
+  /* Use uid-swapping to give up root privileges for the duration of option
+     processing.  We will re-instantiate the rights when we are ready to
+     create the privileged port, and will permanently drop them when the
+     port has been created (actually, when the connection has been made, as
+     we may need to create the port several times). */
+  temporarily_use_uid(original_real_uid);
   
   /* Save our own name. */
   av0 = av[0];
@@ -402,7 +434,7 @@ int main(int ac, char **av)
 #ifdef RSAREF
 	  fprintf(stderr, "Compiled with RSAREF.\n");
 #else /* RSAREF */
-	  fprintf(stderr, "International version.  Does not use RSAREF.\n");
+	  fprintf(stderr, "Standard version.  Does not use RSAREF.\n");
 #endif /* RSAREF */
 	  break;
 
@@ -457,12 +489,6 @@ int main(int ac, char **av)
 	      usage();
 	      /*NOTREACHED*/
 	    }
-	  if (fwd_port < 1024 && getuid() != 0)
-	    {
-	      fprintf(stderr, 
-		      "Privileged ports can only be forwarded by root.\n");
-	      exit(1);
-	    }
 	  add_remote_forward(&options, fwd_port, buf, fwd_host_port);
 	  break;
 
@@ -474,7 +500,7 @@ int main(int ac, char **av)
 	      usage();
 	      /*NOTREACHED*/
 	    }
-	  if (fwd_port < 1024 && getuid() != 0)
+	  if (fwd_port < 1024 && original_real_uid != 0)
 	    {
 	      fprintf(stderr, 
 		      "Privileged ports can only be forwarded by root.\n");
@@ -537,7 +563,7 @@ int main(int ac, char **av)
     }
 
   /* Get user data. */
-  pw = getpwuid(getuid());
+  pw = getpwuid(original_real_uid);
   if (!pw)
     {
       fprintf(stderr, "You don't exist, go away!\n");
@@ -574,7 +600,7 @@ int main(int ac, char **av)
     host = options.hostname;
 
   /* Disable rhosts authentication if not running as root. */
-  if (geteuid() != 0)
+  if (original_effective_uid != 0)
     {
       options.rhosts_authentication = 0;
       options.rhosts_rsa_authentication = 0;
@@ -584,18 +610,27 @@ int main(int ac, char **av)
      else).  Note that we must release privileges first. */
   if (options.use_rsh)
     {
-      /* Drop extra privileges before executing rsh. */
-      setgid(getgid());
-      setuid(getuid());
+      /* Restore our superuser privileges.  This must be done before
+         permanently setting the uid. */
+      restore_uid();
+
+      /* Switch to the original uid permanently. */
+      permanently_set_uid(original_real_uid);
+
+      /* Execute rsh. */
       rsh_connect(host, options.user, &command);
       fatal("rsh_connect returned");
     }
+
+  /* Restore our superuser privileges. */
+  restore_uid();
 
   /* Open a connection to the remote host.  This needs root privileges if
      rhosts_authentication is true. */
   sock = ssh_connect(host, options.port, 
 		     !options.rhosts_authentication &&
-		     !options.rhosts_rsa_authentication);
+		     !options.rhosts_rsa_authentication,
+		     original_real_uid);
 
   /* If we successfully made the connection, load the host private key in
      case we will need it later for combined rsa-rhosts authentication. 
@@ -609,10 +644,9 @@ int main(int ac, char **av)
 
   /* Get rid of any extra privileges that we may have.  We will no longer need
      them.  Also, extra privileges could make it very hard to read identity
-     files and other non-world-readable files from the user\'s home directory
+     files and other non-world-readable files from the user's home directory
      if it happens to be on a NFS volume where root is mapped to nobody. */
-  setgid(getgid());
-  setuid(getuid());
+  permanently_set_uid(original_real_uid);
 
   /* Now that we are back to our own permissions, create ~/.ssh directory
      if it doesn\'t already exist. */
@@ -640,17 +674,16 @@ int main(int ac, char **av)
       exit(1);
     }
 
-  /* Expand ~ in options.identity_files.   Warning: tilde_expand_filename
-     corrupts pw. */
+  /* Expand ~ in options.identity_files. */
   for (i = 0; i < options.num_identity_files; i++)
     options.identity_files[i] = 
-      tilde_expand_filename(options.identity_files[i], getuid());
+      tilde_expand_filename(options.identity_files[i], original_real_uid);
 
   /* Expand ~ in known host file names. */
   options.system_hostfile = tilde_expand_filename(options.system_hostfile,
-						  getuid());
+						  original_real_uid);
   options.user_hostfile = tilde_expand_filename(options.user_hostfile,
-						getuid());
+						original_real_uid);
 
   /* Log into the remote system.  This never returns if the login fails. 
      Note: this initializes the random state, and leaves it initialized. */
@@ -660,7 +693,8 @@ int main(int ac, char **av)
 	    options.rhosts_authentication, options.rhosts_rsa_authentication,
 	    options.rsa_authentication,
 	    options.password_authentication, options.cipher,
-	    options.system_hostfile, options.user_hostfile);
+	    options.system_hostfile, options.user_hostfile,
+	    original_real_uid);
 
   /* We no longer need the host private key.  Clear it now. */
   if (host_private_key_loaded)
@@ -671,7 +705,7 @@ int main(int ac, char **av)
     {
       int ret = fork();
       if (ret == -1)
-	fatal("fork failed: %s", strerror(errno));
+	fatal("fork failed: %.100s", strerror(errno));
       if (ret != 0)
 	exit(0);
 #ifdef HAVE_SETSID
@@ -725,7 +759,7 @@ int main(int ac, char **av)
       int forwarded = 0;
 
       /* Try to get Xauthority information for the display. */
-      sprintf(line, "%s list %.200s 2>/dev/null", 
+      sprintf(line, "%.100s list %.200s 2>/dev/null", 
 	      XAUTH_PATH, getenv("DISPLAY"));
       f = popen(line, "r");
       if (f && fgets(line, sizeof(line), f) && 
@@ -1126,6 +1160,9 @@ int do_session(int have_pty, int escape_char)
 	FD_SET(fileno(stdin), &readset);
 
       FD_ZERO(&writeset);
+      
+      /* Add any selections by the channel mechanism. */
+      channel_prepare_select(&readset, &writeset);
 
       /* Select server connection if have data to write to the server. */
       if (packet_have_data_to_write())
@@ -1138,9 +1175,6 @@ int do_session(int have_pty, int escape_char)
       /* Select stderr if have data in buffer. */
       if (buffer_len(&stderr_buffer) > 0)
 	FD_SET(fileno(stderr), &writeset);
-      
-      /* Add any selections by the channel mechanism. */
-      channel_prepare_select(&readset, &writeset);
 
       /* Update maximum file descriptor number, if appropriate. */
       if (channel_max_fd() > max_fd)
@@ -1157,7 +1191,7 @@ int do_session(int have_pty, int escape_char)
 	  if (errno == EINTR)
 	    continue;
 	  /* Note: we might still have data in the buffers. */
-	  sprintf(buf, "select: %s\r\n", strerror(errno));
+	  sprintf(buf, "select: %.100s\r\n", strerror(errno));
 	  buffer_append(&stderr_buffer, buf, strlen(buf));
 	  stderr_bytes += strlen(buf);
 	  goto quit;
@@ -1185,7 +1219,7 @@ int do_session(int have_pty, int escape_char)
 	    {
 	      /* An error has encountered.  Perhaps there is a network
 		 problem. */
-	      sprintf(buf, "Read from remote host %.300s: %s\r\n", 
+	      sprintf(buf, "Read from remote host %.300s: %.100s\r\n", 
 		      host, strerror(errno));
 	      buffer_append(&stderr_buffer, buf, strlen(buf));
 	      stderr_bytes += strlen(buf);
@@ -1206,7 +1240,7 @@ int do_session(int have_pty, int escape_char)
 		 an error condition. */
 	      if (len < 0)
 		{
-		  sprintf(buf, "read: %s\r\n", strerror(errno));
+		  sprintf(buf, "read: %.100s\r\n", strerror(errno));
 		  buffer_append(&stderr_buffer, buf, strlen(buf));
 		  stderr_bytes += strlen(buf);
 		}
@@ -1346,7 +1380,7 @@ int do_session(int have_pty, int escape_char)
 		{
 		  /* An error or EOF was encountered.  Put an error message
 		     to stderr buffer. */
-		  sprintf(buf, "write stdout: %s\r\n", strerror(errno));
+		  sprintf(buf, "write stdout: %.100s\r\n", strerror(errno));
 		  buffer_append(&stderr_buffer, buf, strlen(buf));
 		  stderr_bytes += strlen(buf);
 		  goto quit;
@@ -1384,7 +1418,7 @@ int do_session(int have_pty, int escape_char)
 
   /* In interactive mode (with pseudo tty) display a message indicating that
      the connection has been closed. */
-  if (have_pty)
+  if (have_pty && !quiet_flag)
     {
       sprintf(buf, "Connection to %.300s closed.\r\n", host);
       buffer_append(&stderr_buffer, buf, strlen(buf));

@@ -8,7 +8,7 @@ See the file INSTALL for installation instructions.  See COPYING for
 license terms and other legal issues.  See RFC for a description of
 the protocol.  There is a WWW page for ssh; see http://www.cs.hut.fi/ssh.
 
-This file has been updated to match ssh-1.2.22 / f-secure ssh 1.3.2.
+This file has been updated to match ssh-1.2.23 / f-secure ssh 1.3.4.
 
 
 FEATURES
@@ -422,26 +422,32 @@ ACKNOWLEDGEMENTS
 
 Many people have contributed to the development of this software.
 
-Martin Abadi, Satoshi Adachi, Tim Adam, Walker Aumann, Jurgen Botz,
-Hans-Werner Braun, Stephane Bortzmeyer, Bill Broadley, Andrey Chernov,
-Adrian Colley, Michael Cooper, David Dombek, Ian Donaldson, Danek
-Duvall, Jerome Etienne, Bill Fithen, Mark Fullmer, Jean-Loup Gailly,
-Bert Gijsbers, Ian Goldberg, Torbjorn Granlund, Klaus Guntermann,
-Andreas Gustafsson, Michael Henits, Ton Hospel, Antti Huima, Cedomir
-Igaly, Steve Johnson, Tero Kivinen, Mika Kojo, Thomas König, David
-Kågedal, Joseph Lappa, Felix Leitner, Gunnar Lindberg, Harald
-Lundberg, Andrew Macpherson, Marc Martinec, Paul Mauvais, David
-Mazieres, Donald McKillican, Pedro Melo, Leon Mlakar, Robert Muchsel,
-Pekka Nikander, Matt Power, Timo Rinne, Ollivier Robert, Tomi Salo,
-Janne Snabb, Bryan O'Sullivan, Mikael Suokas, Heikki Suonsivu, Corey
-Satten, Jakob Schlyter, Wayne Schroeder, Harlan Stenn, Tomasz Surmacz,
-Holger Trapp, Mark Treacy, Dragan Vecerina, Wietse Venema, Alvar
-Vinacua, Russell Vincent, Petri Virkkula, Michael Warfield, Brian
-Weaver, Peter Wemm, Mike Williams, Christophe Wolfhugel, Andre April,
-Arne Juul, Andy Polyakov, LaMont Jones, Witse Venema, Charles M.
-Hannum, Jay Schuster, Kojima Hajime, Glenn Machin, Brian Cully, Hannu
-Napari, Charles Karney, Markus Linnala, Doug Engert, Jason Ackley,
-Joao Castro, Harry McGavran Jr., Nick Hibma, and Aaron Gowatch.
+Martin Abadi, Jason Ackley, Satoshi Adachi, Tim Adam, Andre April,
+Walker Aumann, E. Jay Barkenbilt, Steve Bellovin, Steve Birnbaum,
+Steve Bonds, Paul Borman, Stephane Bortzmeyer, Jurgen Botz,
+Hans-Werner Braun, Bill Broadley, Donald Buczek, Joao Castro, Andrey
+Chernov, Adrian Colley, Michael Cooper, Brian Cully, David Dombek, Ian
+Donaldson, Sean Doran, Danek Duvall, Garance Drosehn, Doug Engert,
+Jerome Etienne, Bill Fithen, Florian Fuchs, Mark Fullmer, Jean-Loup
+Gailly, Bert Gijsbers, Bob Goellner, Ian Goldberg, Chuck Goodhart,
+Aaron Gowatch, Torbjorn Granlund, Klaus Guntermann, Andreas
+Gustafsson, Kojima Hajime, Charles M. Hannum, Michael Henits, Nick
+Hibma, Ton Hospel, Antti Huima, Cedomir Igaly, Steve Johnson, LaMont
+Jones, Arne Juul, Charles Karney, Brendan Kehoe, Tero Kivinen, Philip
+Kizer, Mika Kojo, David Kågedal, Thomas König, Joseph Lappa, Felix
+Leitner, Ofer Licht, Gunnar Lindberg, Markus Linnala, Harald Lundberg,
+Glenn Machin, Andrew Macpherson, Marc Martinec, Paul Mauvais, David
+Mazieres, Harry McGavran Jr., Donald McKillican, Pedro Melo, Luke
+Mewburn, Leon Mlakar, Robert Muchsel, Kaj Mustikkamäki, Hannu Napari,
+Pekka Nikander, Bill O'Neill, Bryan O'Sullivan, John P.Speno, Andy
+Polyakov, Matt Power, Matt Richards, Michael Richardson, Timo Rinne,
+Ollivier Robert, Maciej W. Rozycki, Dima Ruban, Tomi Salo, Paul J.
+Sanchez, Corey Satten, Jakob Schlyter, Wayne Schroeder, Jay Schuster,
+Janne Snabb, Harlan Stenn, Mikael Suokas, Heikki Suonsivu, Tomasz
+Surmacz, Holger Trapp, Mark Treacy, Dragan Vecerina, Wietse Venema,
+Witse Venema, Alvar Vinacua, Russell Vincent, Petri Virkkula, Michael
+Warfield, Brian Weaver, Peter Wemm, Raymund Will, Mike Williams, and
+Christophe Wolfhugel.
 
 My apologies to people whom I have forgotten to list.
 

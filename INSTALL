@@ -51,8 +51,6 @@ script accepts several options
   --without-des           Don't allow single DES (default)
   --with-arcfour          Include arcfour (DO NOT ENABLE, unless you know the security implications of this settings. See README.CIPHERS for more info).
   --without-arcfour       Don't include arcfour (default)
-  --with-tss              Include TSS encryption algorithm.
-  --without-tss           Don't include TSS (default)
   --with-none             Include support for unencrypted connections
   --without-none          Don't allow unencrypted connections (default)
   --with-login[=PATH]     Use login -f to finish login connections. 
@@ -137,7 +135,7 @@ This software has been used at least in the following environments.
 	DolphinOS 3.8
 	FreeBSD 1.x, 2.x, 3.0; Pentium
 	HPUX 7.x, 9.x, 10.0; HPPA
-	IRIX 5.2, 5.3, 6.2; SGI Indy
+	IRIX 5.2, 5.3, 6.2, 6.3; SGI Indy
 	IRIX 6.0.1; Mips-R8000
 	Linux 1.2.x, 2.0.x Slackware 2.x, 3.x, RedHat 2.1, 3.0; i486, Sparc
 	Linux 3.0.3, 4.0; Alpha
@@ -147,7 +145,7 @@ This software has been used at least in the following environments.
 	Mach3/Lites; i386
 	Machten 2.2VM (m68k); Macintosh
 	NCR Unix 3.00; NCR S40
-	NetBSD 1.0A, 1.1, 1.2, 1.3; Pentium, Sparc, Mac68k, Alpha
+	NetBSD 1.0A, 1.1, 1.2, 1.3; Pentium, Sparc, Mac68k, Alpha, Mips
 	OpenBSD 2.0; x86, mac68k.
 	NextSTEP 3.3; 68040
 	OSF/1 3.0, 3.2, 3.2; Alpha
@@ -199,6 +197,13 @@ configure [options]" if you are on Ultrix.
 Solaris x86 note: The Solaris x86 uses syntax for assembler that is
 not supported by gmp provided by ssh. The gmp configure will
 automatically detect this and disable assembler code.
+
+Gcc 2.7.2 note: Gcc 2.7.2 has a bugs that will cause "Internal
+compiler error: program cc1 got fatal signal 6" when compiling some
+gmp files. Updating to gcc 2.7.2.3 or newer will fix the problem.
+
+HP-UX 10.* note: If you are using HP's compilers and get compression
+failures, try compiling zlib-1.0.4/inftrees.c without optimization. 
 
 COMPILING WITH RSAREF2
 

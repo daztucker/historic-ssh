@@ -9,8 +9,18 @@
 .\"
 .\" Created: Sat Apr 22 21:55:14 1995 ylo
 .\"
-.\" $Id: ssh.1.in,v 1.13 1998/01/02 06:22:26 kivinen Exp $
+.\" $Id: ssh.1.in,v 1.16 1998/04/30 01:56:20 kivinen Exp $
 .\" $Log: ssh.1.in,v $
+.\" Revision 1.16  1998/04/30 01:56:20  kivinen
+.\" 	Added PasswordPromptLogin and PasswordPromptHost option
+.\" 	documentation.
+.\"
+.\" Revision 1.15  1998/03/27 17:27:07  kivinen
+.\" 	Removed TSS.
+.\"
+.\" Revision 1.14  1998/03/27 17:01:15  kivinen
+.\" 	Documented -g option and GatewayPorts config option.
+.\"
 .\" Revision 1.13  1998/01/02 06:22:26  kivinen
 .\" 	Sorted options. Added XAuthLocation option. Renamed
 .\" 	SSH_AUTHENTICATION_SOCKET to SSH_AUTH_SOCK.
@@ -106,7 +116,7 @@ ssh \- secure shell client (remote login program)
 [\c
 .B \-c
 \fIidea\fR\||\|\fIblowfish\fR\||\|\fIdes\fR\||\|\fI3des\c
-\fR\||\|\fIarcfour\fR\||\|\fItss\fR\||\|\fInone\fR\c
+\fR\||\|\fIarcfour\fR\||\|\fInone\fR\c
 ]
 [\c
 .BI \-e \ escape_char\fR\c
@@ -149,6 +159,9 @@ ssh \- secure shell client (remote login program)
 ]
 [\c
 .BR \-C \c
+]
+[\c
+.BR \-g \c
 ]
 [\c
 .BI \-L \ port\fB:\fIhost\fB:\fIhostport\fR\c
@@ -392,7 +405,7 @@ Disables forwarding of the authentication agent connection.  This may
 also be specified on a per-host basis in the configuration file.
 .ne 3
 .TP
-.BI \-c \ \fIidea\fR\||\|\fIdes\fR\||\|\fI3des\fR\||\|\fIblowfish\fR\||\|\fIarcfour\fR\||\|\fItss\fR\||\|\fInone\fR
+.BI \-c \ \fIidea\fR\||\|\fIdes\fR\||\|\fI3des\fR\||\|\fIblowfish\fR\||\|\fIarcfour\fR\||\|\fInone\fR
 Selects the cipher to use for encrypting the session. 
 .B \s-1idea\s0
 is used by default.  It is believed to be secure. 
@@ -411,8 +424,6 @@ is an algorithm published in the Usenet News in 1995.
 This algorithm is believed to be equivalent with the RC4 cipher from
 RSA Data Security (RC4 is a trademark of RSA Data Security).  This is
 the fastest algorithm currently supported.
-.B \s-1TSS\s0
-is a fast home-grown algorithm based on MD5. 
 .B none
 disables encryption entirely; it is only intended for debugging, and
 it renders the connection insecure.
@@ -512,6 +523,11 @@ debugging connection, authentication, and configuration problems.
 .TP
 .B \-V
 Print only version number and exit.
+.ne 3
+.TP
+.B \-g
+Allows remote hosts to connect local port forwarding ports. The
+default is that only localhost may connect to locally binded ports.
 .ne 3
 .TP
 .B \-x
@@ -617,7 +633,6 @@ Specifies the cipher to use for encrypting the session.  Currently,
 .IR 3des ",
 .IR blowfish ",
 .IR arcfour ",
-.IR tss ",
 and
 .I none
 are supported.  The default is "idea" (or "3des" if "idea" is not
@@ -694,6 +709,13 @@ set.  The argument must be
 .ne 3
 
 .TP
+.B GatewayPorts
+Specifies that also remote hosts may connect to locally forwarded
+ports.  The argument must be
+.YN
+.ne 3
+
+.TP
 .B GlobalKnownHostsFile
 Specifies a file to use instead of 
 .IR @ETCDIR@/ssh_known_hosts ".
@@ -766,6 +788,20 @@ value is one.
 .B PasswordAuthentication
 Specifies whether to use password authentication.  The argument to
 this keyword must be
+.YN
+.ne 3
+
+.TP
+.B PasswordPromptHost
+Specifies whether to include the remote host name in the password prompt.
+The argument to this keyword must be
+.YN
+.ne 3
+
+.TP
+.B PasswordPromptLogin
+Specifies whether to include the remote login name in the password prompt.
+The argument to this keyword must be
 .YN
 .ne 3
 

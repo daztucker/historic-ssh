@@ -27,16 +27,24 @@
 #	  (C) Tero Kivinen 1995 <Tero.Kivinen@hut.fi>
 #
 #	  Creation          : 19:52 Jun 27 1995 kivinen
-#	  Last Modification : 03:14 Apr 17 1997 kivinen
-#	  Last check in     : $Date: 1997/04/17 04:21:27 $
-#	  Revision number   : $Revision: 1.3 $
+#	  Last Modification : 04:40 Apr 30 1998 kivinen
+#	  Last check in     : $Date: 1998/04/30 01:53:33 $
+#	  Revision number   : $Revision: 1.5 $
 #	  State             : $State: Exp $
-#	  Version	    : 1.334
-#	  Edit time	    : 236 min
+#	  Version	    : 1.340
+#	  Edit time	    : 241 min
 #
 #	  Description       : Make ssh-known-host file from dns data.
 #
 #	  $Log: make-ssh-known-hosts.pl,v $
+#	  Revision 1.5  1998/04/30 01:53:33  kivinen
+#	  	Moved kill before close and added sending SIGINT first and
+#	  	then 1 second sleep before sending SIGKILL.
+#
+#	  Revision 1.4  1998/04/17 00:39:19  kivinen
+#	  	Changed to close ssh program filedescriptor before killing it.
+#	  	Removed ^ from the password matching prompt.
+#
 #	  Revision 1.3  1997/04/17 04:21:27  kivinen
 #	  	Changed to use 3des by default.
 #
@@ -73,7 +81,7 @@ use POSIX;
 use Socket;
 use Fcntl;
 
-$version = ' $Id: make-ssh-known-hosts.pl,v 1.3 1997/04/17 04:21:27 kivinen Exp $ ';
+$version = ' $Id: make-ssh-known-hosts.pl,v 1.5 1998/04/30 01:53:33 kivinen Exp $ ';
 
 $command_line = "$0 ";
 foreach $a (@ARGV) {
@@ -530,7 +538,7 @@ sub try_ssh {
 	# Timeout
 	if ($nfound <= 0) {
 	    debug(20, "Ssh select timed out");
-	    kill(9, $pid);
+	    kill(2, $pid); sleep(1); kill(9, $pid);
 	    close(SSH);
 	    $err = "Timeout expired";
 	    return undef;
@@ -560,17 +568,17 @@ sub try_ssh {
 	    } elsif (/$public_key.*permission\s+denied/i) {
 		$err = "$public_key file permission denied";
 	    } elsif (/^\d+\s+\d+\s+\d/) {
-		kill(9, $pid);
+		kill(2, $pid); sleep(1); kill(9, $pid);
 		close(SSH);
 		return $_;
 	    }
 	    if (defined($err)) {
-		kill(9, $pid);
+		kill(2, $pid); sleep(1); kill(9, $pid);
 		close(SSH);
 		return undef;
 	    }
 	}
-	if ($buf =~ /^password: $/i) {
+	if ($buf =~ /password: $/i) {
 	    if (defined($passwordtimeout)) {
 		$tmout = $passwordtimeout;
 		print(STDERR "$bell\n\rPassword: ");

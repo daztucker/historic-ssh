@@ -78,16 +78,6 @@ Performance on a pentium machine is about 45% of "none" encryption.
 You cannot disable it, because the it is mandatory cipher. 
 
 
-TSS
-===
-
-Timo Rinne's own cipher. Not recommended, because it is mainly
-experimantal and not supported.
-
-You can enable it by giving --with-tss option to configure. It is OFF
-by default.
-
-
 NONE
 ====
 

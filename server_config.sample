@@ -23,6 +23,7 @@ RSAAuthentication yes
 PasswordAuthentication yes
 PermitEmptyPasswords yes
 UseLogin no
+# CheckMail no
 # PidFile /u/zappa/.ssh/pid
 # AllowHosts *.our.com friend.other.com
 # DenyHosts lowsecurity.theirs.com *.evil.org evil.org

@@ -8,8 +8,28 @@
 #
 # Created: Wed Mar 22 18:02:48 1995 ylo
 #
-# $Id: configure.in,v 1.51 1998/01/14 16:40:03 kivinen Exp $
+# $Id: configure.in,v 1.56 1998/04/30 02:34:08 kivinen Exp $
 # $Log: configure.in,v $
+# Revision 1.56  1998/04/30 02:34:08  kivinen
+# 	Added CRAY T3E.
+#
+# Revision 1.55  1998/04/17 00:37:37  kivinen
+# 	Added login_cap.h checking. Added /tmp/.X11-pipe socket
+# 	directory checking. Added nologin-allow support. Fixed typo.
+#
+# Revision 1.54  1998/03/29 02:46:50  kivinen
+# 	Fixed order of socks5 lib and include tests. Remvoed gssrpc
+# 	from kerberos libs.
+#
+# Revision 1.53  1998/03/27 17:26:32  kivinen
+# 	Removed TSS.
+#
+# Revision 1.52  1998/03/27 16:57:40  kivinen
+# 	Added ttyslot and authenticate function checks. Added check
+# 	for /var/X/.X11-unix directory (X11 sockets). Fixed kerberos
+# 	support when using socks with it. Added --enable-tcp-nodelay
+# 	option.
+#
 # Revision 1.51  1998/01/14 16:40:03  kivinen
 # 	Added check that getespwnam function exists for osf/1.
 #
@@ -578,6 +598,10 @@ Making a local copy of prot.h and patching it.])
   m88k-dg-dgux*)
     AC_DEFINE(BROKEN_INET_ADDR)
     ;;
+  t3e-*-*)
+    CFLAGS="$CFLAGS -I."
+    LIBS="$LIBS -lrsc"
+    ;;
   *-cray-unicos*)
     CFLAGS="$CFLAGS -DCRAY_STACKSEG_END=_getb67"
     LIBS="$LIBS -lrsc"
@@ -694,7 +718,7 @@ AC_CHECK_HEADERS(unistd.h rusage.h sys/time.h lastlog.h utmp.h shadow.h)
 AC_CHECK_HEADERS(sgtty.h sys/select.h sys/ioctl.h machine/endian.h)
 AC_CHECK_HEADERS(paths.h usersec.h utime.h netinet/in_systm.h)
 AC_CHECK_HEADERS(netinet/in_system.h netinet/ip.h netinet/tcp.h ulimit.h)
-AC_CHECK_HEADERS(sys/resource.h)
+AC_CHECK_HEADERS(sys/resource.h login_cap.h)
 AC_HEADER_TIME
 AC_HEADER_DIRENT
 AC_HEADER_STAT
@@ -752,7 +776,7 @@ fi
 AC_CHECK_FUNCS(gettimeofday times getrusage ftruncate revoke makeutx)
 AC_CHECK_FUNCS(strchr memcpy setlogin openpty _getpty clock fchmod ulimit)
 AC_CHECK_FUNCS(gethostname getdtablesize umask innetgr initgroups setpgrp)
-AC_CHECK_FUNCS(setpgid daemon waitpid)
+AC_CHECK_FUNCS(setpgid daemon waitpid ttyslot authenticate)
 
 AC_REPLACE_FUNCS(strerror memmove remove random putenv crypt socketpair)
 
@@ -782,6 +806,17 @@ else
   X_PROGRAMS="ssh-askpass"
 fi
 AC_SUBST(X_PROGRAMS)
+if test '!' -d /tmp/.X11-unix; then
+  if test -d /var/X/.X11-unix; then
+    X11_DIR="/var/X/.X11-unix"
+    AC_SUBST(X11_DIR)
+  else
+    if test -d /tmp/.X11-pipe; then
+      X11_DIR="/tmp/.X11-pipe"
+      AC_SUBST(X11_DIR)
+    fi
+  fi
+fi
 
 AC_PATH_PROGS(PERL, perl5 perl, not found)
 if test "x$PERL" = "xnot found" || $PERL -e 'exit ($] >= 5)'; then
@@ -1031,22 +1066,6 @@ AC_ARG_WITH(arcfour,
   AC_MSG_RESULT(no)
 )
 
-AC_MSG_CHECKING(whether to include the TSS encryption algorithm)
-AC_ARG_WITH(tss,
-[  --with-tss              Include TSS encryption algorithm.
-  --without-tss           Don't include TSS (default)],
-[ case "$withval" in
-  yes)
-    AC_MSG_RESULT(yes)
-    AC_DEFINE(WITH_TSS)
-    ;;
-  *)
-    AC_MSG_RESULT(no)
-    ;;
-  esac ],
-  AC_MSG_RESULT(no)
-)
-
 AC_MSG_CHECKING(whether to include the none encryption algorithm)
 AC_ARG_WITH(none,
 [  --with-none             Include support for unencrypted connections
@@ -1153,6 +1172,25 @@ AC_ARG_WITH(etcdir,
   AC_MSG_RESULT(/etc)
 )
 
+AC_MSG_CHECKING(whether to use nologin.allow file to override nologin)
+AC_ARG_WITH(nologin-allow,
+[  --with-nologin-allow[=PATH]     If a nologin.allow override should be used (default /etc/nologin.allow). ],
+[ case "$withval" in
+    no)
+	AC_MSG_RESULT(no)
+	;;
+    yes)
+	AC_MSG_RESULT(yes)
+	AC_DEFINE_UNQUOTED(NOLOGIN_ALLOW, "/etc/nologin.allow")
+	;;
+    *)
+	AC_MSG_RESULT($withval)
+	AC_DEFINE_UNQUOTED(NOLOGIN_ALLOW, "$withval")
+	;;
+  esac ],
+  [ AC_MSG_RESULT(no) ]
+)
+
 AC_MSG_CHECKING(whether to support SecurID)
 AC_ARG_WITH(securid,
 [  --with-securid[=PATH]   Enable support for Security Dynamics SecurID card.],
@@ -1226,7 +1264,7 @@ no)
   AC_DEFINE(KRB5)
   KERBEROS_ROOT="$with_kerberos5"
   KERBEROS_INCS="-I${KERBEROS_ROOT}/include"
-  KERBEROS_LIBS="-L${KERBEROS_ROOT}/lib -lkrb5 -lcrypto -lcom_err"
+  KERBEROS_LIBS="-L${KERBEROS_ROOT}/lib -lgssapi_krb5 -lkrb5 -lcrypto -lcom_err"
   AC_CHECK_LIB(ndbm, dbm_open, KERBEROS_LIBS="$KERBEROS_LIBS -lndbm")
   KERBEROS_OBJS="auth-kerberos.o"
   ;;
@@ -1328,14 +1366,29 @@ if test "x$socks" = "x"; then
 	      withval="-lsocks5"
 	    else
 	      if test -d "$withval"; then
-	        withval="-L$withval -lsocks5"
+		if test -d "$withval/include"; then
+		  CFLAGS="$CFLAGS -I$withval/include"
+		else
+		  CFLAGS="$CFLAGS -I$withval"
+		fi
+	        if test -d "$withval/lib"; then
+		  withval="-L$withval/lib -lsocks5"
+		else
+		  withval="-L$withval -lsocks5"
+		fi
 	      fi
 	    fi
 	    LIBS="$withval $LIBS"
+	    # If Socks was compiled with Kerberos support, we will need
+	    # to link against kerberos libraries.  Temporarily append
+	    # to LIBS.  This is harmless if there is no kerberos support.
+	    TMPLIBS="$LIBS"
+	    LIBS="$LIBS $KERBEROS_LIBS"
 	    AC_TRY_LINK([],
 	                [ SOCKSconnect(); ],
 			[],
 			[ AC_MSG_ERROR(Could not find the $withval library.  You must first install socks5.) ])
+	    LIBS="$TMPLIBS"
 	    ;;
 	  esac ],
 	  AC_MSG_RESULT(no)
@@ -1381,27 +1434,30 @@ fi
 if test "x$socks" = "x5"; then
     AC_DEFINE(SOCKS)
     AC_DEFINE(SOCKS5)
-    AC_DEFINE(Rconnect,SOCKSconnect)
-    AC_DEFINE(Rgetsockname,SOCKSgetsockname)
-    AC_DEFINE(Rgetpeername,SOCKSgetpeername)
-    AC_DEFINE(Rbind,SOCKSbind)
-    AC_DEFINE(Raccept,SOCKSaccept)
-    AC_DEFINE(Rlisten,SOCKSlisten)
-    AC_DEFINE(Rselect,SOCKSselect)
-    AC_DEFINE(Rrecvfrom,SOCKSrecvfrom)
-    AC_DEFINE(Rsendto,SOCKSsendto)
-    AC_DEFINE(Rrecv,SOCKSrecv)
-    AC_DEFINE(Rsend,SOCKSsend)
-    AC_DEFINE(Rread,SOCKSread)
-    AC_DEFINE(Rwrite,SOCKSwrite)
-    AC_DEFINE(Rrresvport,SOCKSrresvport)
-    AC_DEFINE(Rshutdown,SOCKSshutdown)
-    AC_DEFINE(Rlisten,SOCKSlisten)
-    AC_DEFINE(Rclose,SOCKSclose)
-    AC_DEFINE(Rdup,SOCKSdup)
-    AC_DEFINE(Rdup2,SOCKSdup2)
-    AC_DEFINE(Rfclose,SOCKSfclose)
-    AC_DEFINE(Rgethostbyname,SOCKSgethostbyname)
+    AC_CHECK_HEADER(socks.h)
+    if test "x$ac_cv_header_socks_h" != "xyes"; then
+      AC_DEFINE(Rconnect,SOCKSconnect)
+      AC_DEFINE(Rgetsockname,SOCKSgetsockname)
+      AC_DEFINE(Rgetpeername,SOCKSgetpeername)
+      AC_DEFINE(Rbind,SOCKSbind)
+      AC_DEFINE(Raccept,SOCKSaccept)
+      AC_DEFINE(Rlisten,SOCKSlisten)
+      AC_DEFINE(Rselect,SOCKSselect)
+      AC_DEFINE(Rrecvfrom,SOCKSrecvfrom)
+      AC_DEFINE(Rsendto,SOCKSsendto)
+      AC_DEFINE(Rrecv,SOCKSrecv)
+      AC_DEFINE(Rsend,SOCKSsend)
+      AC_DEFINE(Rread,SOCKSread)
+      AC_DEFINE(Rwrite,SOCKSwrite)
+      AC_DEFINE(Rrresvport,SOCKSrresvport)
+      AC_DEFINE(Rshutdown,SOCKSshutdown)
+      AC_DEFINE(Rlisten,SOCKSlisten)
+      AC_DEFINE(Rclose,SOCKSclose)
+      AC_DEFINE(Rdup,SOCKSdup)
+      AC_DEFINE(Rdup2,SOCKSdup2)
+      AC_DEFINE(Rfclose,SOCKSfclose)
+      AC_DEFINE(Rgethostbyname,SOCKSgethostbyname)
+    fi
 fi
 
 AC_MSG_CHECKING(whether to use rsaref)
@@ -1514,6 +1570,21 @@ AC_ARG_ENABLE(suid-ssh,
   esac ],
   AC_MSG_RESULT(yes)
   SSHINSTALLMODE=04711
+)
+
+AC_MSG_CHECKING(whether to enable TCP_NODELAY)
+AC_ARG_ENABLE(tcp-nodelay,
+[  --enable-tcp-nodelay    Enable TCP_NODELAY socket option],
+[ case "$enableval" in
+  yes)
+       AC_MSG_RESULT(yes)
+       AC_DEFINE(ENABLE_TCP_NODELAY)
+       ;;
+  *)
+       AC_MSG_RESULT(no)
+  esac ],
+  AC_MSG_RESULT(yes)
+  AC_DEFINE(ENABLE_TCP_NODELAY)
 )
 
 # We include this here only to make it visible in --help; this is only used

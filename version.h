@@ -1,1 +1,1 @@
-#define SSH_VERSION	"1.2.22"
+#define SSH_VERSION	"1.2.23"

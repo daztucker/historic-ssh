@@ -9,8 +9,17 @@
 .\"
 .\" Created: Sat Apr 22 21:55:14 1995 ylo
 .\"
-.\" $Id: sshd.8.in,v 1.15 1998/01/03 06:42:24 kivinen Exp $
+.\" $Id: sshd.8.in,v 1.18 1998/05/04 13:37:32 kivinen Exp $
 .\" $Log: sshd.8.in,v $
+.\" Revision 1.18  1998/05/04 13:37:32  kivinen
+.\" 	Fixed layout of authorized key options.
+.\"
+.\" Revision 1.17  1998/04/30 03:58:29  kivinen
+.\" 	Documented -V option.
+.\"
+.\" Revision 1.16  1998/03/27 17:05:18  kivinen
+.\" 	Documented IgnoreRootRhosts option.
+.\"
 .\" Revision 1.15  1998/01/03 06:42:24  kivinen
 .\" 	Added allow/deny groups option documentation..
 .\"
@@ -132,6 +141,9 @@ sshd \- secure shell daemon
 ]
 [\c
 .B \-q \c
+]
+[\c
+.BI \-V \ version\fR\c
 ]
 .ad
 
@@ -273,6 +285,11 @@ Specifies the port on which the server listens for connections
 .B \-q
 Quiet mode.  Nothing is sent to the system log.  Normally the beginning,
 authentication, and termination of each connection is logged.
+.TP
+.B \-V
+SSH version 2 compatibility mode. Server assumes that SSH version 2
+daemon has already read the version number string from the client and
+this option gives the version string read from the client. 
 
 .SH CONFIGURATION FILE
 
@@ -431,6 +448,12 @@ authentication.
 and
 .I @ETCDIR@/shosts.equiv 
 are still used.  The default is "no".
+
+.TP
+.B IgnoreRootRhosts
+Specifies that rhosts and shosts files will not be used in
+authentication for root.  The default is the value of
+.BR IgnoreRhosts .
 
 .TP
 .B KeepAlive
@@ -742,11 +765,13 @@ option.
 Forbids X11 forwarding when this key is used for authentication.
 Any X11 forward requests by the client will return an error.
 .IP
+.ti -.5i
 \fBno-agent-forwarding\fR
 .br
 Forbids authentication agent forwarding when this key is used for
 authentication.
 .IP
+.ti -.5i
 \fBno-pty\fR
 .br
 Prevents tty allocation (a request to allocate a pty will fail).

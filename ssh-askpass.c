@@ -620,12 +620,19 @@ void event_loop()
 	    if (!focused) {
 	      XSetInputFocus(display, main_window, RevertToPointerRoot,
 			     CurrentTime);
+	      if (XGrabKeyboard(display, main_window, True,
+				GrabModeAsync, GrabModeAsync, CurrentTime)
+		  != GrabSuccess ) 
+		fatal ("Cannot grab keyboard.");
 	      focused = 1;
 	    }
 	  }
 	  break;		     
 	}
     }
+  if (focused) {
+    XUngrabKeyboard(display, CurrentTime);
+  }
   switch (exiting)
     {
     case 1:

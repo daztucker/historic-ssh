@@ -313,6 +313,9 @@ EOF
     C4*:ConvexOS:*:* | convex:ConvexOS:C4*:*)
 	echo c4-convex-bsd
         exit 0 ;;
+    CRAY*T3E:*:*:*)
+        echo t3e-cray-unicos_mk
+        exit 0 ;;
     CRAY*X-MP:*:*:*)
 	echo xmp-cray-unicos
         exit 0 ;;

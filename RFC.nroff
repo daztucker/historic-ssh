@@ -1,7 +1,13 @@
 .\" -*- nroff -*-
 .\"
-.\" $Id: RFC.nroff,v 1.9 1997/08/21 22:35:33 ylo Exp $
+.\" $Id: RFC.nroff,v 1.11 1998/04/30 01:49:48 kivinen Exp $
 .\" $Log: RFC.nroff,v $
+.\" Revision 1.11  1998/04/30 01:49:48  kivinen
+.\" 	Fixed phone numbers.
+.\"
+.\" Revision 1.10  1998/03/27 17:25:27  kivinen
+.\" 	Removed TSS.
+.\"
 .\" Revision 1.9  1997/08/21 22:35:33  ylo
 .\" 	Clarified session id computation, as reported by Ian Goldberg.
 .\"
@@ -284,14 +290,12 @@ SSH_CIPHER_NONE	0	   No encryption
 SSH_CIPHER_IDEA	1	   IDEA in CFB mode
 SSH_CIPHER_DES	2	   DES in CBC mode
 SSH_CIPHER_3DES	3	   Triple-DES in CBC mode
-SSH_CIPHER_TSS	4	   An experimental stream cipher
 SSH_CIPHER_RC4	5	   RC4
 .TE
 
 All implementations are required to support SSH_CIPHER_3DES.
 Supporting SSH_CIPHER_IDEA, SSH_CIPHER_RC4, and 
-SSH_CIPHER_NONE is recommended.  Support for SSH_CIPHER_TSS is
-optional (and it is not described in this document).  Other ciphers
+SSH_CIPHER_NONE is recommended.  Other ciphers
 may be added at a later time; support for them is optional.
 
 For encryption, the encrypted portion of the packet is considered a
@@ -324,14 +328,6 @@ descriptions.)
 The key is taken from the first 16 bytes of the session key.  IDEA
 [IDEA] is used in CFB mode.  The initialization vector is initialized
 to all zeroes.
-.IP SSH_CIPHER_TSS
-All 32 bytes of the session key are used as the key.
-
-There is no reference available for the TSS algorithm; it is currently
-only documented in the sample implementation source code.  The
-security of this cipher is unknown (but it is quite fast).  The cipher
-is basically a stream cipher that uses MD5 as a random number
-generator and takes feedback from the data.
 .IP SSH_CIPHER_RC4
 The first 16 bytes of the session key are used as the key for the
 server to client direction.  The remaining 16 bytes are used as the
@@ -1884,7 +1880,7 @@ Helsinki University of Technology
 Otakaari 1
 FIN-02150 Espoo, Finland
 
-Phone: +358-0-451-3374
-Fax: +358-0-451-3293
+Phone: +358-0-4354-3205
+Fax: +358-0-4354-3206
 EMail: ylo@cs.hut.fi
 .TE

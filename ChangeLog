@@ -1,3 +1,165 @@
+Mon May  4 16:37:41 1998  Tero Kivinen  <kivinen@ssh.fi>
+
+	* Fixed layout of the authorized_keys options in the sshd man
+	page.
+	
+	* Added check that if SIGPWR and SIGINFO are same only one of them
+	is used.
+	
+	* Fixed no-port-forwarding so that it will also disable local port
+	forwardings at the server side. 
+
+Fri Apr 24 19:02:05 1998  Tero Kivinen  <kivinen@ssh.fi>
+
+	* Changed installation so that all programs are installed as
+	<program>1 and if the <program>2 file doesn't exists then it will
+	make symlink from <program> to <program>1. This means that after
+	you have ssh version 2 installed the installation process doesn't
+	touch <program> anymore, it will just install everything as
+	<program>1. Then you can manually change <program> link to point
+	to version 1 or 2 programs. Man pages are exception for this, the
+	man pages will always install as <manpage>1.x and they will always
+	make link from <manpage>.x to <manpage>1.x. 
+	
+	* Added ssh version 2 compat option. If started with -V "str" the
+	sshd will assume the remote version is "str" and it doesn't try to
+	read it from the input channel. This way ssh2d may read the
+	version string and if it notices that this is ssh 1 client it can
+	exec sshd -i -V "str" options. 
+	
+	* Fixed make-known-hosts.pl so that it will first send SIGINT to
+	ssh and then wait 1 second before sending SIGKILL. This will allow
+	ssh-client to die cleanly and restore the terminal settings before
+	exiting. 
+	
+	* Added code that will ignore the string given to SSH_MSG_IGNORE.
+	Bug reported by Bernard Perrot <perrot@lal.in2p3.fr>.
+	
+	* Check that proxy command isn't empy before starting it. Patch
+	from Chuck Goodhart <ceg@alumni.caltech.edu>.
+	
+	* Patch from John P.Speno <speno@isc.upenn.edu> to allow osf c2
+	resources to be set to 0.
+	
+	* Added default processing of SIGPWR signal.
+	
+	* Configurable password prompt from Maciej W. Rozycki
+	<macro@ds2.pg.gda.pl>.
+	
+	* Utmpx fix from Ofer Licht <ofer@stat.Berkeley.EDU>.
+	
+	* Added .rhosts to understand #-comment in the end of the line.
+	Patch from <lamont@cranston.fc.hp.com>.
+	
+	* Added libwrap calls to debug mode sshd also. 
+	
+	* Added patch that will force password change if OSF C2 password
+	is expired. Patch from Florian Fuchs.
+	
+	* Added grabbing of keyboard in ssh-askpass. Patch from Raymund
+	Will <ray@caldera.de>.
+	
+	* Small patch for debian linux for sparcs.
+	
+	* Added cray T3E patches from Kaj Mustikkamäki
+	(kaj.mustikkamaki@csc.fi).
+	
+	* Added code that will set resource limits under BSD/OS. Patch
+	from Payl Borman <prb@bsdi.com>.
+
+Fri Apr 17 01:46:00 1998  Tero Kivinen  <kivinen@ssh.fi>
+
+	* Fixed ttyslot code. Fixed NeXT inline assembler codes. Patches
+	from Corey Satten <corey@cac.washington.edu>.	
+	
+	* Added setting of REMOTEUSER environment variable name if remote
+	username available. 
+	
+	* Added setting of AUTHSTATE and KRB5CCNAME environment variables
+ 	if we have authenticate() in AIX. Patch from Matt Richards
+ 	(v2matt@btv.ibm.com).
+	
+        * Added configure option --with-nologin-allow[=/etc/nologin.allow]
+ 	to have sshd read the given file for a list of usernames exempt
+ 	from /etc/nologin. This allows administrators retain remote access
+ 	in the case of needed maintainence when users needed to not be on
+ 	the system. Jointly created by Philip Kizer <pckizer@nostrum.com>
+ 	and <steele@nostrum.com>.
+	
+	* FreeBSD /etc/login.conf capabilities patches from Steve Birnbaum
+ 	<sbirn@security.org.il> and torstenb@FreeBSD.ORG.
+	
+	* Added setsid patch for -f option in ssh from Garance A Drosehn
+ 	<gad@eclipse.its.rpi.edu>.
+
+Tue Mar 31 00:39:51 1998  Tero Kivinen  <kivinen@ssh.fi>
+
+	* Fixed 2 GB file handling in scp. Bug reported by Anthony
+	Talltree <aad@nwnet.net>.
+	
+	* Added checking of system default lock from John P.Speno
+ 	<speno@isc.upenn.edu>.
+
+Fri Mar 27 15:17:04 1998  Tero Kivinen  <kivinen@ssh.fi>
+
+	* Added IgnoreRootRhosts option to server config file. Patch from
+	Luke Mewburn <lm@cs.rmit.edu.au>.
+	
+	* Fixed idle_timeout code in serverloop.c. Patch from Bob Goellner
+	<bgelnr@bbn.com>.
+	
+	* Moved initgroups before closing all filedescriptors. Patch from
+	Donald Buczek <buczek@MPING-Berlin-Dahlem.MPG.DE>. 
+	
+	* Added patch from Bill O'Neill <woneill@thunder.ocis.temple.edu>
+	that will fix the Digital Unix 4.0 C2 password expiration
+	problems. 
+	
+	* Allow authentication socket to be symlink, if we are not suid.
+	Patch from Steve Birnbaum <sbirn@security.org.il>. 
+	
+	* Combined two getpwent calls in the ssh.c to get around bug in
+	red hat 4.2 nis library. 
+	
+	* gmp-2.0.2-ssh-2/mpf/set_str.c (mpf_set_str) [!__STDC__]: Add
+	const to STR argument, to match decl in ../gmp.h from Brendan
+	Kehoe <brendan@cygnus.com>.
+	
+	* Added GatewayPorts option and -g option from Steve Bellovin
+	<smb@research.att.com>.
+	
+	* Added SIGDANGER patch from Steve Bonds <sbonds@agora.rdrop.com>.
+	
+	* Added socks5 with kerberos patches from E. Jay Berkenbilt
+	<ejb@ql.org>.
+	
+	* Added using of aix authenticate function if it exists from Matt
+	Richards (v2matt@btv.ibm.com).
+	
+	* Added check that kerberos initialization succeeds from Dima
+	Ruban (dima@best.net).
+	
+	* Added dectection of ttyslot function in the configure.in.
+	
+	* NeXT patches from Corey Satten <corey@cac.washington.edu>. 
+	
+	* Fixed too early free of authsocket in the authfd.c (reported by
+	many people). 
+	
+	* Added check that .rhosts/.shosts file cannot have any other
+	control characters except whitespaces. 
+	
+	* Disabled TCP_NODELAY and added --enable-tcp-nodelay configure
+	option to enable it again (Sean Doran <smb@ebone.net>).
+		
+	* Added support for X11 socket being in the /var/X/.X11-unix
+	instead of /tmp/.X11-unix directory (mcr@sandelman.ottawa.on.ca). 
+
+Wed Jan 21 16:02:01 1998  Tero Kivinen  <kivinen@ssh.fi>
+
+	* includes.h (S_ISLNK): Fixed bug reported by Paul J. Sanchez
+	<paul@spectrum.slu.edu>. 
+
 Sat Jan  3 07:11:58 1998  Tero Kivinen  <kivinen@ssh.fi>
 
 	* Fixed bug in {Allow,Deny}ForwardingTo host name handling. The
@@ -50,7 +212,7 @@ Fri Jan  2 04:51:21 1998  Tero Kivinen  <kivinen@ssh.fi>
  	default resource limits patch from Joao Castro
  	<jcastro@ist.utl.pt>.
 	
-	* Adde BSDI /etc/login.conf and password expiration warning
+	* Added BSDI /etc/login.conf and password expiration warning
  	patches from Jason Ackley <jason@ackley.net>.
 	
 Mon Apr 28 00:53:04 1997  Tero Kivinen  <kivinen@ssh.fi>

@@ -14,8 +14,12 @@ The authentication agent program.
 */
 
 /*
- * $Id: ssh-agent.c,v 1.18 1997/04/17 04:15:11 kivinen Exp $
+ * $Id: ssh-agent.c,v 1.19 1998/01/02 06:21:42 kivinen Exp $
  * $Log: ssh-agent.c,v $
+ * Revision 1.19  1998/01/02 06:21:42  kivinen
+ * 	Added -k option. Renamed SSH_AUTHENCATION_SOCKET to
+ * 	SSH_AUTH_SOCK.
+ *
  * Revision 1.18  1997/04/17 04:15:11  kivinen
  * 	Removed some extra variables. Removed some warnings.
  * 	Added check to socket closing that it is really opened.
@@ -575,6 +579,7 @@ int main(int ac, char **av)
   struct passwd *pw;
   struct stat st;
   int binsh = 1, erflg = 0;
+  int do_kill = 0;
   char *sh;
   
   int i;
@@ -601,6 +606,7 @@ int main(int ac, char **av)
 		{
 		case 's': binsh = 1; break;
 		case 'c': binsh = 0; break;
+		case 'k': do_kill = 1; break;
 		default: erflg++; break;
 		}
 	    }
@@ -612,11 +618,55 @@ int main(int ac, char **av)
     }
   if (erflg)
     {
-      fprintf(stderr, "Usage: ssh-agent [-cs] [command [args...]]\n");
+      fprintf(stderr, "Usage: ssh-agent [-csk] [command [args...]]\n");
       exit(0);
     }
 
   original_real_uid = getuid();
+
+  if (do_kill)
+    {
+      if (getenv("SSH_AGENT_PID") == NULL)
+	{
+	  fprintf(stderr, "No SSH_AGENT_PID environment variable found\n");
+	  exit(1);
+	}
+      pid = atoi(getenv("SSH_AGENT_PID"));
+      if (pid == 0)
+	{
+	  fprintf(stderr, "Invalid SSH_AGENT_PID value: %s\n",
+		  getenv("SSH_AGENT_PID"));
+	  exit(1);
+	}
+      if (kill(pid, SIGTERM) != 0)
+	{
+	  fprintf(stderr, "Kill failed, either no agent process or permission denied\n");
+	  exit(1);
+	}
+      if (getenv(SSH_AUTHSOCKET_ENV_NAME) == NULL)
+	{
+	  fprintf(stderr, "No %s environment variable found\n",
+		  SSH_AUTHSOCKET_ENV_NAME);
+	}
+      else
+	{
+	  if (!binsh)		/* shell is *csh */
+	    printf("unsetenv %s;\n", SSH_AUTHSOCKET_ENV_NAME);
+	  else
+	      printf("unset %s;\n", SSH_AUTHSOCKET_ENV_NAME);
+	}
+      if (!binsh)
+	{			/* shell is *csh */
+	  printf("unsetenv SSH_AGENT_PID;\n");
+	  printf("echo Agent pid %d killed;\n", pid);
+	}
+      else
+	{
+	  printf("unset SSH_AGENT_PID;\n");
+	  printf("echo Agent pid %d killed;\n", pid);
+	}
+      exit(0);
+    }
   
   /* The agent uses SSH_AUTHENTICATION_SOCKET. */
   
@@ -729,14 +779,15 @@ fail_socket_setup:
 	  
 	  if (!binsh)
 	    {			/* shell is *csh */
-	      printf("setenv SSH_AUTHENTICATION_SOCKET %s;\n",
+	      printf("setenv %s %s;\n", SSH_AUTHSOCKET_ENV_NAME,
 		     socket_name);
 	      printf("setenv SSH_AGENT_PID %d;\n", pid);
 	      printf("echo Agent pid %d;\n", pid);
 	    }
 	  else
 	    {
-	      printf("SSH_AUTHENTICATION_SOCKET=%s; export SSH_AUTHENTICATION_SOCKET;\n", socket_name);
+	      printf("%s=%s; export %s;\n", SSH_AUTHSOCKET_ENV_NAME,
+		     socket_name, SSH_AUTHSOCKET_ENV_NAME);
 	      printf("SSH_AGENT_PID=%d; export SSH_AGENT_PID;\n", pid);
 	      printf("echo Agent pid %d;\n", pid);
 	    }
@@ -745,7 +796,7 @@ fail_socket_setup:
       /* Command given run it */
       if (!creation_failed)
 	{
-	  sprintf(buf, "SSH_AUTHENTICATION_SOCKET=%s", socket_name);
+	  sprintf(buf, "%s=%s", SSH_AUTHSOCKET_ENV_NAME, socket_name);
 	  putenv(xstrdup(buf));
 	  sprintf(buf, "SSH_AGENT_PID=%d", pid);
 	  putenv(xstrdup(buf));
@@ -754,7 +805,7 @@ fail_socket_setup:
       perror(av[1]);
       exit(1);
     }
-  
+
   close(0);
   close(1);
   close(2);
@@ -795,6 +846,7 @@ fail_socket_setup:
   signal(SIGTERM, remove_socket_on_signal);
 
   signal(SIGINT, SIG_IGN);
+  signal(SIGPIPE, SIG_IGN);
   while (1)
     {
       FD_ZERO(&readset);

@@ -15,8 +15,11 @@ the password is valid for the user.
 */
 
 /*
- * $Id: auth-passwd.c,v 1.6 1995/08/21 23:20:29 ylo Exp $
+ * $Id: auth-passwd.c,v 1.7 1995/09/10 22:44:41 ylo Exp $
  * $Log: auth-passwd.c,v $
+ * Revision 1.7  1995/09/10  22:44:41  ylo
+ * 	Added OSF/1 C2 extended security stuff.
+ *
  * Revision 1.6  1995/08/21  23:20:29  ylo
  * 	Fixed a typo.
  *
@@ -138,6 +141,9 @@ int auth_password(const char *server_user, const char *password)
   /* Save the encrypted password. */
   strncpy(correct_passwd, pw->pw_passwd, sizeof(correct_passwd));
 
+#ifdef HAVE_OSF1_C2_SECURITY
+    osf1c2_getprpwent(correct_passwd, pw->pw_name, sizeof(correct_passwd));
+#else /* HAVE_OSF1_C2_SECURITY */
   /* If we have shadow passwords, lookup the real encrypted password from
      the shadow file, and replace the saved encrypted password with the
      real encrypted password. */
@@ -217,6 +223,7 @@ int auth_password(const char *server_user, const char *password)
 #endif /* HAVE_ETC_MASTER_PASSWD */
 #endif /* HAVE_ETC_SECURITY_PASSWD_ADJUNCT */
 #endif /* HAVE_ETC_SHADOW */
+#endif /* HAVE_OSF1_C2_SECURITY */
 
   /* Check for users with no password. */
   if (strcmp(password, "") == 0 && strcmp(correct_passwd, "") == 0)
@@ -226,9 +233,15 @@ int auth_password(const char *server_user, const char *password)
     }
 
   /* Encrypt the candidate password using the proper salt. */
+#ifdef HAVE_OSF1_C2_SECURITY
+  encrypted_password = (char *)osf1c2crypt(password,
+                                   (correct_passwd[0] && correct_passwd[1]) ?
+                                   correct_passwd : "xx");
+#else /* HAVE_OSF1_C2_SECURITY */
   encrypted_password = crypt(password, 
 			     (correct_passwd[0] && correct_passwd[1]) ?
 			     correct_passwd : "xx");
+#endif
 
   /* Authentication is accepted if the encrypted passwords are identical. */
   return strcmp(encrypted_password, correct_passwd) == 0;

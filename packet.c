@@ -8,12 +8,28 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Sat Mar 18 02:40:40 1995 ylo
-Last modified: Mon Jul 10 22:48:30 1995 ylo
 
 This file contains code implementing the packet protocol and communication
 with the other side.  This same code is used both on client and server side.
 
 */
+
+/*
+ * $Id: packet.c,v 1.4 1995/07/27 03:59:37 ylo Exp $
+ * $Log: packet.c,v $
+ * Revision 1.4  1995/07/27  03:59:37  ylo
+ * 	Fixed a bug in new rc4 keying.
+ *
+ * Revision 1.3  1995/07/27  02:17:11  ylo
+ * 	Changed keying for RC4 to avoid using the same key for both
+ * 	directions.
+ *
+ * Revision 1.2  1995/07/13  01:27:33  ylo
+ * 	Removed "Last modified" header.
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
 
 #include "includes.h"
 #include "xmalloc.h"
@@ -137,11 +153,30 @@ void packet_decrypt(CipherContext *cc, void *dest, void *src,
    are encrypted independently of each other. */
 
 void packet_set_encryption_key(const unsigned char *key, unsigned int keylen,
-			       int cipher)
+			       int cipher, int is_client)
 {
   cipher_type = cipher;
-  cipher_set_key(&receive_context, cipher, key, keylen, 0);
-  cipher_set_key(&send_context, cipher, key, keylen, 1);
+  if (cipher == SSH_CIPHER_RC4)
+    {
+      if (is_client)
+	{ /* In client: use first half for receiving, second for sending. */
+	  cipher_set_key(&receive_context, cipher, key, keylen / 2, 0);
+	  cipher_set_key(&send_context, cipher, key + keylen / 2, 
+			 keylen / 2, 1);
+	}
+      else
+	{ /* In server: use first half for sending, second for receiving. */
+	  cipher_set_key(&receive_context, cipher, key + keylen / 2, 
+			 keylen / 2, 0);
+	  cipher_set_key(&send_context, cipher, key, keylen / 2, 1);
+	}
+    }
+  else
+    {
+      /* All other ciphers use the same key in both directions for now. */
+      cipher_set_key(&receive_context, cipher, key, keylen, 0);
+      cipher_set_key(&send_context, cipher, key, keylen, 1);
+    }
 }
 
 /* Starts constructing a packet to send. */

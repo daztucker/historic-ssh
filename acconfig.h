@@ -10,6 +10,12 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 /*
  * $Log: acconfig.h,v $
+ * Revision 1.15  1997/04/22 23:57:14  kivinen
+ * 	Added HAVE_STRUCT_SPWD_EXPIRE and HAVE_STRUCT_SPWD_INACT.
+ *
+ * Revision 1.14  1997/04/21 01:01:14  kivinen
+ * 	Added HAVE_INCOMPATIBLE_SIGINFO.
+ *
  * Revision 1.13  1997/04/05 21:44:26  kivinen
  * 	Added KRB5.
  *
@@ -349,3 +355,11 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define this if you want to pass the Kerberos TGT. */
 #undef KERBEROS_TGT_PASSING
 
+/* Define this if you dont have SIGINFO as signal but some other macro */
+#undef HAVE_INCOMPATIBLE_SIGINFO
+
+/* Define this if your spwd struct defined shadow.h have sp_expire field */
+#undef HAVE_STRUCT_SPWD_EXPIRE
+
+/* Define this if your spwd struct defined shadow.h have sp_inact field */
+#undef HAVE_STRUCT_SPWD_INACT

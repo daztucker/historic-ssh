@@ -37,9 +37,12 @@ Description of the RSA algorithm can be found e.g. from the following sources:
 */
 
 /*
- * $Id: rsa.c,v 1.3 1997/08/21 22:26:55 ylo Exp $
+ * $Id: rsa.c,v 1.4 1998/05/23 20:23:56 kivinen Exp $
  * $Log: rsa.c,v $
- * Revision 1.3  1997/08/21 22:26:55  ylo
+ * Revision 1.4  1998/05/23  20:23:56  kivinen
+ * 	Changed () -> (void). Added #include "ssh.h".
+ *
+ * Revision 1.3  1997/08/21  22:26:55  ylo
  * 	Set the two highest bits of the prime to one to ensure that we
  * 	end up with the right number of bits for the generated key.
  * 	(Bug reported by Ian Goldberg.)
@@ -61,6 +64,7 @@ Description of the RSA algorithm can be found e.g. from the following sources:
  */
 
 #include "includes.h"
+#include "ssh.h"
 #include <gmp.h>
 #include "xmalloc.h"
 #include "rsa.h"
@@ -694,7 +698,7 @@ static void rsa_free(void *ptr, size_t size)
 /* Sets MP_INT memory allocation routines to ones that clear any memory
    when freed. */
 
-void rsa_set_mp_memory_allocation()
+void rsa_set_mp_memory_allocation(void)
 {
   mp_set_memory_functions(xmalloc, rsa_realloc, rsa_free);
 }

@@ -14,8 +14,11 @@ Interface for the packet protocol functions.
 */
 
 /*
- * $Id: packet.h,v 1.3 1995/07/27 02:17:53 ylo Exp $
+ * $Id: packet.h,v 1.4 1995/09/24 23:59:20 ylo Exp $
  * $Log: packet.h,v $
+ * Revision 1.4  1995/09/24  23:59:20  ylo
+ * 	Added packet_get_protocol_flags.
+ *
  * Revision 1.3  1995/07/27  02:17:53  ylo
  * 	Pass as argument to packet_set_encryption_key whether running
  * 	as the client or the server.
@@ -53,6 +56,9 @@ void packet_set_encryption_key(const unsigned char *key, unsigned int keylen,
 /* Sets remote side protocol flags for the current connection.  This can
    be called at any time. */
 void packet_set_protocol_flags(unsigned int flags);
+
+/* Returns the remote protocol flags set earlier by the above function. */
+unsigned int packet_get_protocol_flags();
 
 /* Informs that the current session is interactive.  Sets IP flags for optimal
    performance in interactive use. */

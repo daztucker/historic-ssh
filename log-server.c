@@ -15,8 +15,11 @@ to the system log.
 */
 
 /*
- * $Id: log-server.c,v 1.5 1995/10/02 01:22:57 ylo Exp $
+ * $Id: log-server.c,v 1.1.1.1 1996/02/18 21:38:12 ylo Exp $
  * $Log: log-server.c,v $
+ * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.5  1995/10/02  01:22:57  ylo
  * 	Include sys/syslog.h if needed.
  *

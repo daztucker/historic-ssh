@@ -14,9 +14,12 @@ Generic header file for ssh.
 */
 
 /*
- * $Id: ssh.h,v 1.22 1998/03/27 17:02:55 kivinen Exp $
+ * $Id: ssh.h,v 1.23 1998/05/23 20:37:44 kivinen Exp $
  * $Log: ssh.h,v $
- * Revision 1.22  1998/03/27 17:02:55  kivinen
+ * Revision 1.23  1998/05/23  20:37:44  kivinen
+ * 	Added OSF1 C2 prototypes.
+ *
+ * Revision 1.22  1998/03/27  17:02:55  kivinen
  * 	Added gateway ports option. Added ignore root rhosts option.
  *
  * Revision 1.21  1998/01/02 06:23:01  kivinen
@@ -838,5 +841,16 @@ extern uid_t original_real_uid;
 #else
 #define UID_ROOT 0
 #endif
+
+#ifdef HAVE_OSF1_C2_SECURITY
+void initialize_osf_security(int ac, char **av);
+
+const char *osf1c2_check_account_and_terminal(const char *username,
+					      const char *terminal);
+
+int osf1c2_getprpwent(char *p, char *n, int len);
+
+char *osf1c2crypt(const char *pw, char *salt);
+#endif /* HAVE_OSF1_C2_SECURITY */
 
 #endif /* SSH_H */

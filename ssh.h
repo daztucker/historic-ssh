@@ -14,8 +14,22 @@ Generic header file for ssh.
 */
 
 /*
- * $Id: ssh.h,v 1.11 1995/09/10 22:47:59 ylo Exp $
+ * $Id: ssh.h,v 1.15 1995/09/27 02:16:24 ylo Exp $
  * $Log: ssh.h,v $
+ * Revision 1.15  1995/09/27  02:16:24  ylo
+ * 	Added SSH_USER_RC and SSH_SYSTEM_RC.
+ *
+ * Revision 1.14  1995/09/25  00:02:06  ylo
+ * 	Added client_loop.
+ * 	Added screen number arguments.
+ * 	Added connection_attempts.
+ *
+ * Revision 1.13  1995/09/22  22:23:41  ylo
+ * 	Changed argument list of ssh_login.
+ *
+ * Revision 1.12  1995/09/21  17:14:08  ylo
+ * 	Added original_real_uid argument to ssh_connect.
+ *
  * Revision 1.11  1995/09/10  22:47:59  ylo
  * 	Added server_loop.
  * 	Added original_real_uid parameter to ssh_login.
@@ -111,7 +125,7 @@ only by root, whereas ssh_config should be world-readable. */
 
 /* The process id of the daemon listening for connections is saved
    here to make it easier to kill the correct daemon when necessary. */
-#define SSH_DAEMON_PID_FILE	ETCDIR "/sshd_pid"
+#define SSH_DAEMON_PID_FILE	PIDDIR "/sshd.pid"
 
 /* The directory in user\'s home directory in which the files reside.
    The directory should be world-readable (though not all files are). */
@@ -145,6 +159,16 @@ only by root, whereas ssh_config should be world-readable. */
    world-readable.  (This file is read by the daemon which is running as 
    root.) */
 #define SSH_USER_PERMITTED_KEYS	".ssh/authorized_keys"
+
+/* Per-user and system-wide ssh "rc" files.  These files are executed with
+   /bin/sh before starting the shell or command if they exist.  They
+   will be passed "proto cookie" as arguments if X11 forwarding with
+   spoofing is in use.  xauth will be run if neither of these exists. */
+#define SSH_USER_RC		".ssh/rc"
+#define SSH_SYSTEM_RC		ETCDIR "/sshrc"
+
+/* Ssh-only version of /etc/hosts.equiv. */
+#define SSH_HOSTS_EQUIV		ETCDIR "/shosts.equiv"
 
 /* Additionally, the daemon may use ~/.rhosts and /etc/hosts.equiv if 
    rhosts authentication is enabled. */
@@ -184,6 +208,9 @@ only by root, whereas ssh_config should be world-readable. */
 #define SSH_AUTH_RSA		2
 #define SSH_AUTH_PASSWORD	3
 #define SSH_AUTH_RHOSTS_RSA	4
+
+/* Protocol flags. */
+#define SSH_PROTOFLAG_SCREEN_NUMBER	1 /* X11 forwarding includes screen */
 
 /* Definition of message types.  New values can be added, but old values
    should not be removed or without careful consideration of the consequences
@@ -228,6 +255,10 @@ only by root, whereas ssh_config should be world-readable. */
 #define SSH_CMSG_AUTH_RHOSTS_RSA		35	/* user,mod (s,mpi) */
 #define SSH_MSG_DEBUG				36	/* string */
 
+/* Includes that need definitions above. */
+
+#include "readconf.h"
+
 /*------------ definitions for login.c -------------*/
 
 /* Returns the time when the user last logged in.  Returns 0 if the 
@@ -250,27 +281,21 @@ void record_logout(int pid, const char *ttyname);
 /* Opens a TCP/IP connection to the remote server on the given host.  If
    port is 0, the default port will be used.  If anonymous is zero,
    a privileged port will be allocated to make the connection. 
-   This requires super-user privileges if anonymous is false. */
-int ssh_connect(const char *host, int port, int anonymous,
-		uid_t original_real_uid);
+   This requires super-user privileges if anonymous is false. 
+   Connection_attempts specifies the maximum number of tries, one per
+   second. */
+int ssh_connect(const char *host, int port, int connection_attempts,
+		int anonymous, uid_t original_real_uid);
 
 /* Starts a dialog with the server, and authenticates the current user on the
    server.  This does not need any extra privileges.  The basic connection
    to the server must already have been established before this is called. 
-   User is the remote user; if it is NULL, the current local user name will
-   be used.  Anonymous indicates that no rhosts authentication will be used.
    If login fails, this function prints an error and never returns. 
-   This function does not require super-user privileges. 
    This initializes the random state, and leaves it initialized (it will also
    have references from the packet module). */
 void ssh_login(RandomState *state, int host_key_valid, RSAPrivateKey *host_key,
-	       int sock, const char *host, const char *user, 
-	       unsigned int num_identity_files, char **identity_files,
-	       int rhosts_authentication, int rhosts_rsa_authentication,
-	       int rsa_authentication,
-	       int password_authentication, int cipher_type,
-	       const char *system_hostfile, const char *user_hostfile,
-	       uid_t original_real_uid);
+	       int sock, const char *host, 
+	       Options *options, uid_t original_real_uid);
 
 /*------------ Definitions for various authentication methods. -------*/
 
@@ -308,6 +333,9 @@ const char *get_canonical_hostname();
 /* Returns the remote IP address as an ascii string.  The value need not be
    freed by the caller. */
 const char *get_remote_ipaddr();
+
+/* Returns the port number of the remote host. */
+int get_remote_port();
 
 /* Tries to match the host name (which must be in all lowercase) against the
    comma-separated sequence of subpatterns (each possibly preceded by ! to 
@@ -492,12 +520,12 @@ void channel_input_port_open(void);
 
 /* Creates a port for X11 connections, and starts listening for it.
    Returns the display name, or NULL if an error was encountered. */
-char *x11_create_display(void);
+char *x11_create_display(int screen);
 
 /* Creates an internet domain socket for listening for X11 connections. 
    Returns a suitable value for the DISPLAY variable, or NULL if an error
    occurs. */
-char *x11_create_display_inet(void);
+char *x11_create_display_inet(int screen);
 
 /* This is called when SSH_SMSG_X11_OPEN is received.  The packet contains
    the remote channel number.  We should do whatever we want, and respond
@@ -551,5 +579,8 @@ int get_permanent_fd(const char *pathname);
    stdin (of the child program), and reads from stdout and stderr (of the
    child program). */
 void server_loop(int pid, int fdin, int fdout, int fderr);
+
+/* Client side main loop for the interactive session. */
+int client_loop(int have_pty, int escape_char);
 
 #endif /* SSH_H */

@@ -18,8 +18,38 @@ agent connections.
 */
 
 /*
- * $Id: sshd.c,v 1.24 1995/09/11 17:35:53 ylo Exp $
+ * $Id: sshd.c,v 1.30 1995/09/27 02:54:43 ylo Exp $
  * $Log: sshd.c,v $
+ * Revision 1.30  1995/09/27  02:54:43  ylo
+ * 	Fixed a minor error.
+ *
+ * Revision 1.29  1995/09/27  02:49:06  ylo
+ * 	Fixed syntax errors.
+ *
+ * Revision 1.28  1995/09/27  02:18:51  ylo
+ * 	Added support for SCO unix.
+ * 	Added support for .hushlogin.
+ * 	Read $HOME/.environment.
+ * 	Pass X11 proto and cookie in stdin instead of command line.
+ * 	Added support for $HOME/.ssh/rc and /etc/sshrc.
+ *
+ * Revision 1.27  1995/09/25  00:03:53  ylo
+ * 	Added screen number.
+ * 	Don't display motd and login time if executing a command.
+ *
+ * Revision 1.26  1995/09/22  22:22:34  ylo
+ * 	Fixed a bug in the new environment code.
+ *
+ * Revision 1.25  1995/09/21  17:16:49  ylo
+ * 	Fixes to libwrap code.
+ * 	Fixed problem in wait() in key regeneration.  Now only
+ * 	ackquires light noise at regeneration.
+ * 	Support for ignore_rhosts.
+ * 	Don't use X11 forwarding with spoofing if no xauth.
+ * 	Rewrote the code to initialize the environment in the child.
+ * 	Added code to read /etc/environment into child environment.
+ * 	Fixed setpcred argument type.
+ *
  * Revision 1.24  1995/09/11  17:35:53  ylo
  * 	Added libwrap support.
  * 	Log daemon name without path.
@@ -151,6 +181,10 @@ agent connections.
 
 #ifdef LIBWRAP
 #include <tcpd.h>
+#include <syslog.h>
+#ifdef NEED_SYS_SYSLOG_H
+#include <sys/syslog.h>
+#endif /* NEED_SYS_SYSLOG_H */
 int allow_severity = LOG_INFO;
 int deny_severity = LOG_WARNING;
 #endif /* LIBWRAP */
@@ -401,7 +435,7 @@ int main(int ac, char **av)
 	  fprintf(stderr, "sshd version %s\n", SSH_VERSION);
 	  fprintf(stderr, "Usage: %s [options]\n", av0);
 	  fprintf(stderr, "Options:\n");
-	  fprintf(stderr, "  -f file    Configuration file (default /etc/sshd_config)\n");
+	  fprintf(stderr, "  -f file    Configuration file (default %s/sshd_config)\n", ETCDIR);
 	  fprintf(stderr, "  -d         Debugging mode\n");
 	  fprintf(stderr, "  -i         Started from inetd\n");
 	  fprintf(stderr, "  -q         Quiet (no logging)\n");
@@ -465,6 +499,10 @@ int main(int ac, char **av)
       exit(1);
     }
   xfree(comment);
+
+#ifdef SCO
+  (void) set_auth_parameters(ac, av);
+#endif
 
 #ifdef HAVE_OSF1_C2_SECURITY
   initialize_osf_security(ac, av);
@@ -1298,7 +1336,7 @@ void do_authenticated(struct passwd *pw)
 {
   int type;
   int have_pty = 0, ptyfd = -1, ttyfd = -1;
-  int row, col, xpixel, ypixel;
+  int row, col, xpixel, ypixel, screen;
   char ttyname[64];
   char *command, *term = NULL, *display = NULL, *proto = NULL, *data = NULL;
   struct group *grp;
@@ -1393,12 +1431,17 @@ void do_authenticated(struct passwd *pw)
 	  debug("Received request for X11 forwarding.");
 	  if (display)
 	    packet_disconnect("Protocol error: X11 display already set.");
-	  display = x11_create_display();
+	  if (packet_get_protocol_flags() & SSH_PROTOFLAG_SCREEN_NUMBER)
+	    screen = packet_get_int();
+	  else
+	    screen = 0;
+	  display = x11_create_display(screen);
 	  if (!display)
 	    goto fail;
 	  break;
 
 	case SSH_CMSG_X11_FWD_WITH_AUTH_SPOOFING:
+#ifdef XAUTH_PATH
 	  if (no_x11_forwarding_flag)
 	    {
 	      debug("X11 forwarding not permitted for this authentication.");
@@ -1409,10 +1452,19 @@ void do_authenticated(struct passwd *pw)
 	    packet_disconnect("Protocol error: X11 display already set.");
 	  proto = packet_get_string(NULL);
 	  data = packet_get_string(NULL);
-	  display = x11_create_display_inet();
+	  if (packet_get_protocol_flags() & SSH_PROTOFLAG_SCREEN_NUMBER)
+	    screen = packet_get_int();
+	  else
+	    screen = 0;
+	  display = x11_create_display_inet(screen);
 	  if (!display)
 	    goto fail;
 	  break;
+#else /* XAUTH_PATH */
+	  /* No xauth program; we won't accept forwarding with spoofing. */
+	  packet_send_debug("No xauth program; cannot forward with spoofing.");
+	  goto fail;
+#endif /* XAUTH_PATH */
 
 	case SSH_CMSG_AGENT_REQUEST_FORWARDING:
 	  if (no_agent_forwarding_flag)
@@ -1608,6 +1660,8 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
   char buf[100], *time_string;
   FILE *f;
   char line[256];
+  struct stat st;
+  int quiet_login;
 
   /* Get IP address of client.  This is needed because we want to record where
      the user logged in from. */
@@ -1657,9 +1711,16 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
 
       /* Close the extra descriptor for the pseudo tty. */
       close(ttyfd);
+
+      /* Check if .hushlogin exists. */
+      sprintf(line, "%.200s/.hushlogin", pw->pw_dir);
+      quiet_login = stat(line, &st) >= 0;
       
-      /* If the user has logged in before, display the time of last login. */
-      if (last_login_time != 0)
+      /* If the user has logged in before, display the time of last login. 
+         However, don't display anything extra if a command has been 
+	 specified (so that ssh can be used to execute commands on a remote
+	 machine without users knowing they are going to another machine). */
+      if (command == NULL && last_login_time != 0 && !quiet_login)
 	{
 	  /* Convert the date to a string. */
 	  time_string = ctime(&last_login_time);
@@ -1673,7 +1734,10 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
 	    printf("Last login: %s from %s\r\n", time_string, buf);
 	}
 
-      if (options.print_motd)
+      /* Print /etc/motd unless a command was specified or printing it was
+	 disabled in server options.  Note that some machines appear to
+	 print it in /etc/profile or similar. */
+      if (command == NULL && options.print_motd && !quiet_login)
 	{
 	  /* Print /etc/motd if it exists. */
 	  f = fopen("/etc/motd", "r");
@@ -1715,6 +1779,99 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
   pty_release(ttyname);
 }
 
+/* Sets the value of the given variable in the environment.  If the variable
+   already exists, its value is overriden. */
+
+void child_set_env(char ***envp, unsigned int *envsizep, const char *name,
+		   const char *value)
+{
+  unsigned int i, namelen;
+  char **env;
+
+  /* Find the slot where the value should be stored.  If the variable already
+     exists, we reuse the slot; otherwise we append a new slot at the end
+     of the array, expanding if necessary. */
+  env = *envp;
+  namelen = strlen(name);
+  for (i = 0; env[i]; i++)
+    if (strncmp(env[i], name, namelen) == 0 && env[i][namelen] == '=')
+      break;
+  if (env[i])
+    {
+      /* Name already exists.  Reuse the slot. */
+      xfree(env[i]);
+    }
+  else
+    {
+      /* New variable.  Expand the array if necessary. */
+      if (i >= (*envsizep) - 1)
+	{
+	  (*envsizep) += 50;
+	  env = (*envp) = xrealloc(env, (*envsizep) * sizeof(char *));
+	}
+
+      /* Need to set the NULL pointer at end of array beyond the new 
+	 slot. */
+      env[i + 1] = NULL;
+    }
+
+  /* Allocate space and format the variable in the appropriate slot. */
+  env[i] = xmalloc(strlen(name) + 1 + strlen(value) + 1);
+  sprintf(env[i], "%s=%s", name, value);
+}
+
+/* Reads environment variables from the given file and adds/overrides them
+   into the environment.  If the file does not exist, this does nothing.
+   Otherwise, it must consist of empty lines, comments (line starts with '#')
+   and assignments of the form name=value.  No other forms are allowed. */
+
+void read_environment_file(char ***env, unsigned int *envsize,
+			   const char *filename)
+{
+  FILE *f;
+  char buf[4096];
+  char *cp, *value;
+  
+  /* Open the environment file. */
+  f = fopen(filename, "r");
+  if (!f)
+    return;  /* Not found. */
+  
+  /* Process each line. */
+  while (fgets(buf, sizeof(buf), f))
+    {
+      /* Skip leading whitespace. */
+      for (cp = buf; *cp == ' ' || *cp == '\t'; cp++)
+	;
+
+      /* Ignore empty and comment lines. */
+      if (!*cp || *cp == '#' || *cp == '\n')
+	continue;
+
+      /* Remove newline. */
+      if (strchr(cp, '\n'))
+	*strchr(cp, '\n') = '\0';
+
+      /* Find the equals sign.  Its lack indicates badly formatted line. */
+      value = strchr(cp, '=');
+      if (value == NULL)
+	{
+	  fprintf(stderr, "Bad line in %.100s: %.200s\n", filename, buf);
+	  continue;
+	}
+
+      /* Replace the equals sign by nul, and advance value to the value 
+	 string. */
+      *value = '\0';
+      value++;
+
+      /* Set the value in environment. */
+      child_set_env(env, envsize, cp, value);
+    }
+  
+  fclose(f);
+}
+
 /* Performs common processing for the child, such as setting up the 
    environment, closing extra file descriptors, setting the user and group 
    ids, and executing the command or shell. */
@@ -1723,21 +1880,20 @@ void do_child(const char *command, struct passwd *pw, const char *term,
 	      const char *display, const char *auth_proto, 
 	      const char *auth_data)
 {
-  char *eterm, *euser, *ehome, *eshell, *epath, *edisplay, *eauthfd, *etz;
-  char *eclient, *elogname;
   const char *shell, *cp;
-  char *env[100];
-  char line[256];
-  struct sockaddr_in from;
+  char buf[256];
   FILE *f;
-  int i, fromlen;
+  unsigned int envsize, i;
+  char **env;
+  extern char **environ;
+  struct stat st;
 
   /* Check /etc/nologin. */
   f = fopen("/etc/nologin", "r");
   if (f)
     { /* /etc/nologin exists.  Print its contents and exit. */
-      while (fgets(line, sizeof(line), f))
-	fputs(line, stderr);
+      while (fgets(buf, sizeof(buf), f))
+	fputs(buf, stderr);
       fclose(f);
       if (pw->pw_uid != 0)
 	{
@@ -1768,11 +1924,17 @@ void do_child(const char *command, struct passwd *pw, const char *term,
 	  perror("setgid");
 	  exit(1);
 	}
+#ifdef HAVE_INITGROUPS
+/* Initgroups, per se, is not supported.  I suppose there might be
+   a more reasonable solution than just removing this call, perhaps
+   by emulating this with functions which are supported, but this
+   appears to work. */ 
       if (initgroups(pw->pw_name, pw->pw_gid) < 0)
 	{
 	  perror("initgroups");
 	  exit(1);
 	}
+#endif /* HAVE_INITGROUPS */
       endgrent();
 
       /* Permanently switch to the desired uid. */
@@ -1788,95 +1950,59 @@ void do_child(const char *command, struct passwd *pw, const char *term,
 
   /* Initialize the environment.  In the first part we allocate space for
      all environment variables. */
+  envsize = 100;
+  env = xmalloc(envsize * sizeof(char *));
+  env[0] = NULL;
+
+  /* Set basic environment. */
+  child_set_env(&env, &envsize, "USER", pw->pw_name);
+  child_set_env(&env, &envsize, "LOGNAME", pw->pw_name);
+  child_set_env(&env, &envsize, "HOME", pw->pw_dir);
+  child_set_env(&env, &envsize, "SHELL", shell);
+  child_set_env(&env, &envsize, "PATH", DEFAULT_PATH);
+
+  /* Let it inherit timezone if we have one. */
+  if (getenv("TZ"))
+    child_set_env(&env, &envsize, "TZ", getenv("TZ"));
+
+  /* Set SSH_CLIENT. */
+  sprintf(buf, "%.50s %d %d", 
+	  get_remote_ipaddr(), get_remote_port(), options.port);
+  child_set_env(&env, &envsize, "SSH_CLIENT", buf);
+
+  /* Set TERM if we have a pty. */
   if (term)
-    eterm = xmalloc(strlen("TERM=") + strlen(term) + 1);
-  else
-    eterm = NULL;
-  euser = xmalloc(strlen("USER=") + strlen(pw->pw_name) + 1);
-  elogname = xmalloc(strlen("LOGNAME=") + strlen(pw->pw_name) + 1);
-  ehome = xmalloc(strlen("HOME=") + strlen(pw->pw_dir) + 1);
-  eshell = xmalloc(strlen("SHELL=") + strlen(shell) + 1);
-  epath = xmalloc(strlen("PATH=") + strlen(DEFAULT_PATH) + 1);
-  eclient = xmalloc(100); /* clientaddr clientport serverport */
+    child_set_env(&env, &envsize, "TERM", term);
+
+  /* Set DISPLAY if we have one. */
   if (display)
-    edisplay = xmalloc(strlen("DISPLAY=") + strlen(display) + 1);
-  else
-    edisplay = NULL;
+    child_set_env(&env, &envsize, "DISPLAY", display);
+
+  /* Set variable for forwarded authentication connection, if we have one. */
   if (get_permanent_fd(pw->pw_shell) < 0)
     {
       if (auth_get_socket_name() != NULL)
-	eauthfd = xmalloc(strlen(SSH_AUTHSOCKET_ENV_NAME) + 
-			  strlen(auth_get_socket_name()) + 2);
-      else
-	eauthfd = NULL;
-    } 
-  else 
-    {
-      if (auth_get_fd() >= 0)
-	eauthfd = xmalloc(strlen(SSH_AUTHFD_ENV_NAME) + 20 + 2);
-      else
-	eauthfd = NULL;
-    }
-  /* some systems (e.g. SGIs) don't know anything about our current 
-     timezone unless we pass the TZ variable here */
-  if (getenv("TZ") != NULL)
-    etz = xmalloc(strlen("TZ=") + strlen(getenv("TZ")) + 1);
-  else
-    etz = NULL;
-
-  /* Format values for all environment variables. */
-  if (eterm)
-    sprintf(eterm, "TERM=%s", term);
-  sprintf(euser, "USER=%s", pw->pw_name);
-  sprintf(elogname, "LOGNAME=%s", pw->pw_name);
-  sprintf(ehome, "HOME=%s", pw->pw_dir);
-  sprintf(eshell, "SHELL=%s", shell);
-  sprintf(epath, "PATH=%s", DEFAULT_PATH);
-  if (edisplay)
-    sprintf(edisplay, "DISPLAY=%s", display);
-  if (get_permanent_fd(pw->pw_shell) < 0)
-    {
-      if (eauthfd)
-	sprintf(eauthfd, "%s=%s", SSH_AUTHSOCKET_ENV_NAME,
-		auth_get_socket_name());
+	child_set_env(&env, &envsize, SSH_AUTHSOCKET_ENV_NAME, 
+		      auth_get_socket_name());
     }
   else
-    {
-      if (eauthfd)
-	sprintf(eauthfd, "%s=%d", SSH_AUTHFD_ENV_NAME, auth_get_fd());
-    }
-  if (etz)
-    sprintf(etz, "TZ=%s", getenv("TZ"));
+    if (auth_get_fd() >= 0)
+      {
+	sprintf(buf, "%d", auth_get_fd());
+	child_set_env(&env, &envsize, SSH_AUTHFD_ENV_NAME, buf);
+      }
 
-  /* Get remote address. */
-  fromlen = sizeof(from);
-  if (getpeername(packet_get_connection(), (struct sockaddr *)&from, &fromlen) < 0)
-    log("getpeername connection (%d) failed: %s", packet_get_connection(),
-	strerror(errno));
-  sprintf(eclient, "SSH_CLIENT=%.50s %d %d", 
-	  inet_ntoa(from.sin_addr), ntohs(from.sin_port), options.port);
+  /* Read environment variable settings from /etc/environment.  (This exists
+     at least on AIX, but could be useful also elsewhere.) */
+  read_environment_file(&env, &envsize, "/etc/environment");
 
-  /* Build the environment array. */
-  i = 0;
-  if (eterm)
-    env[i++] = eterm;
-  env[i++] = euser;
-  env[i++] = elogname;
-  env[i++] = ehome;
-  env[i++] = eshell;
-  env[i++] = epath;
-  env[i++] = eclient;
-  if (edisplay)
-    env[i++] = edisplay;
-  if (eauthfd)
-    env[i++] = eauthfd;
-  if (etz)
-    env[i++] = etz;
-  env[i++] = NULL;
+  /* Read $HOME/.environment. */
+  sprintf(buf, "%.200s/.environment", pw->pw_dir);
+  read_environment_file(&env, &envsize, buf);
 
+  /* If debugging, dump the environment to stderr. */
   if (debug_flag)
     {
-      /* Display the environment for debugging purposes. */
       fprintf(stderr, "Environment:\n");
       for (i = 0; env[i]; i++)
 	fprintf(stderr, "  %.200s\n", env[i]);
@@ -1905,22 +2031,64 @@ void do_child(const char *command, struct passwd *pw, const char *term,
     fprintf(stderr, "Could not chdir to home directory %s: %s\n",
 	    pw->pw_dir, strerror(errno));
 
-  /* Add authority data to .Xauthority if appropriate. */
-  if (auth_proto != NULL && auth_data != NULL)
+  /* Must take new environment into use so that .ssh/rc, /etc/sshrc and
+     xauth are run in the proper environment. */
+  environ = env;
+
+  /* Run $HOME/ssh/rc, /etc/sshrc, or xauth (whichever is found first
+     in this order). */
+  if (stat(SSH_USER_RC, &st) >= 0)
     {
       if (debug_flag)
-	fprintf(stderr, "Running %.100s add %.100s %.100s %.100s\n",
-		XAUTH_PATH, display, auth_proto, auth_data);
+	fprintf(stderr, "Running /bin/sh %s\n", SSH_USER_RC);
 
-      if (fork() == 0)
-	{ /* Child */
-	  execle(XAUTH_PATH, XAUTH_PATH, "add", display, auth_proto, auth_data,
-		 NULL, env);
-	  perror("execle");
-	  exit(1);
+      f = popen("/bin/sh " SSH_USER_RC, "w");
+      if (f)
+	{
+	  if (auth_proto != NULL && auth_data != NULL)
+	    fprintf(f, "%s %s\n", auth_proto, auth_data);
+	  pclose(f);
 	}
-      wait(NULL);
+      else
+	fprintf(stderr, "Could not run %s\n", SSH_USER_RC);
     }
+  else
+    if (stat(SSH_SYSTEM_RC, &st) >= 0)
+      {
+	if (debug_flag)
+	  fprintf(stderr, "Running /bin/sh %s\n", SSH_SYSTEM_RC);
+
+	f = popen("/bin/sh " SSH_SYSTEM_RC, "w");
+	if (f)
+	  {
+	    if (auth_proto != NULL && auth_data != NULL)
+	      fprintf(f, "%s %s\n", auth_proto, auth_data);
+	    pclose(f);
+	  }
+	else
+	  fprintf(stderr, "Could not run %s\n", SSH_SYSTEM_RC);
+      }
+#ifdef XAUTH_PATH
+    else
+      {
+	/* Add authority data to .Xauthority if appropriate. */
+	if (auth_proto != NULL && auth_data != NULL)
+	  {
+	    if (debug_flag)
+	      fprintf(stderr, "Running %.100s add %.100s %.100s %.100s\n",
+		      XAUTH_PATH, display, auth_proto, auth_data);
+	    
+	    f = popen(XAUTH_PATH " -q -", "w");
+	    if (f)
+	      {
+		fprintf(f, "add %s %s %s\n", display, auth_proto, auth_data);
+		fclose(f);
+	      }
+	    else
+	      fprintf(stderr, "Could not run %s -q -\n", XAUTH_PATH);
+	  }
+      }
+#endif /* XAUTH_PATH */
 
   /* Get the last component of the shell name. */
   cp = strrchr(shell, '/');

@@ -8,9 +8,22 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Wed Mar 29 01:30:28 1995 ylo
-Last modified: Wed Jul 12 00:50:57 1995 ylo
+
+Functions for connecting the local authentication agent.
 
 */
+
+/*
+ * $Id: authfd.c,v 1.3 1995/07/13 01:14:40 ylo Exp $
+ * $Log: authfd.c,v $
+ * Revision 1.3  1995/07/13  01:14:40  ylo
+ * 	Removed the "Last modified" header.
+ *
+ * Revision 1.2  1995/07/13  01:11:31  ylo
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
 
 #include "includes.h"
 #include "ssh.h"

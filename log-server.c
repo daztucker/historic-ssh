@@ -8,9 +8,21 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Mon Mar 20 21:19:30 1995 ylo
-Last modified: Mon Apr 24 14:51:26 1995 ylo
+
+Server-side versions of debug(), log(), etc.  These normally send the output
+to the system log.
 
 */
+
+/*
+ * $Id: log-server.c,v 1.2 1995/07/13 01:26:21 ylo Exp $
+ * $Log: log-server.c,v $
+ * Revision 1.2  1995/07/13  01:26:21  ylo
+ * 	Removed "Last modified" header.
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
 
 #include "includes.h"
 #include <syslog.h>

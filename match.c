@@ -8,9 +8,20 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Thu Jun 22 01:17:50 1995 ylo
-Last modified: Thu Jun 22 01:18:12 1995 ylo
+
+Simple pattern matching, with '*' and '?' as wildcards.
 
 */
+
+/*
+ * $Id: match.c,v 1.2 1995/07/13 01:27:07 ylo Exp $
+ * $Log: match.c,v $
+ * Revision 1.2  1995/07/13  01:27:07  ylo
+ * 	Removed "Last modified" header.
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
 
 #include "includes.h"
 #include "ssh.h"

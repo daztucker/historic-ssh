@@ -16,8 +16,15 @@ arbitrary tcp/ip connections, and the authentication agent connection.
 */
 
 /*
- * $Id: newchannels.c,v 1.45 1998/06/11 00:25:48 kivinen Exp $
+ * $Id: newchannels.c,v 1.46 1998/07/08 00:46:01 kivinen Exp $
  * $Log: newchannels.c,v $
+ * Revision 1.46  1998/07/08 00:46:01  kivinen
+ * 	Splitted ip address display name from
+ * 	HPSUX_NONSTANDARD_X11_KLUDGE to separate
+ * 	NONSTANDARD_IP_ADDRESS_X11_KLUDGE ifdef.
+ * 	Changed deny/allow stuff to use match_host instead of
+ * 	match_pattern.
+ *
  * Revision 1.45  1998/06/11 00:25:48  kivinen
  * 	Fixed typo in strncpy call.
  *
@@ -246,7 +253,7 @@ arbitrary tcp/ip connections, and the authentication agent connection.
  */
 
 #include "includes.h"
-#if !defined(HAVE_GETHOSTNAME) || defined(HPSUX_NONSTANDARD_X11_KLUDGE)
+#if !defined(HAVE_GETHOSTNAME) || defined(NONSTANDARD_IP_ADDRESS_X11_KLUDGE)
 #include <sys/utsname.h>
 #endif
 #include "ssh.h"
@@ -1720,8 +1727,6 @@ void channel_input_port_open(void)
 
 
 
-
-
 #endif /* F_SECURE_COMMERCIAL */
 
   /* Create the socket. */
@@ -1840,7 +1845,7 @@ char *x11_create_display_inet(int screen_number)
     }
 
   /* Set up a suitable value for the DISPLAY variable. */
-#ifdef HPSUX_NONSTANDARD_X11_KLUDGE
+#ifdef NONSTANDARD_IP_ADDRESS_X11_KLUDGE
   /* HPSUX has some special shared memory stuff in their X server, which
      appears to be enabled if the host name matches that of the local machine.
      However, it can be circumvented by using the IP address of the local
@@ -1864,7 +1869,7 @@ char *x11_create_display_inet(int screen_number)
     sprintf(buf, "%.100s:%d.%d", inet_ntoa(addr), display_number, 
 	    screen_number);
   }
-#else /* HPSUX_NONSTANDARD_X11_KLUDGE */
+#else /* NONSTANDARD_IP_ADDRESS_X11_KLUDGE */
 #ifdef HAVE_GETHOSTNAME
   if (gethostname(hostname, sizeof(hostname)) < 0)
     fatal("gethostname: %.100s", strerror(errno));
@@ -1874,7 +1879,7 @@ char *x11_create_display_inet(int screen_number)
     fatal("uname: %s", strerror(errno));
   sprintf(buf, "%.400s:%d.%d", uts.nodename, display_number, screen_number);
 #endif /* HAVE_GETHOSTNAME */
-#endif /* HPSUX_NONSTANDARD_X11_KLUDGE */
+#endif /* NONSTANDARD_IP_ADDRESS_X11_KLUDGE */
 	    
   /* Allocate a channel for the socket. */
   (void)channel_allocate(SSH_CHANNEL_X11_LISTENER, sock,

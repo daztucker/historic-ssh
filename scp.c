@@ -11,8 +11,19 @@ and ssh has the necessary privileges.)
 */
 
 /*
- * $Id: scp.c,v 1.11 1998/06/11 00:10:25 kivinen Exp $
+ * $Id: scp.c,v 1.14 1998/07/08 01:14:25 kivinen Exp $
  * $Log: scp.c,v $
+ * Revision 1.14  1998/07/08 01:14:25  kivinen
+ * 	Changed scp to run ssh1 instead of ssh.
+ *
+ * Revision 1.13  1998/07/08 00:49:40  kivinen
+ * 	Added all kind of possible (and impossible) ways to
+ * 	disable/enable scp statistics. Added -L option.
+ *
+ * Revision 1.12  1998/06/12 08:04:20  kivinen
+ * 	Added disablation of statistics if stdout is not a tty or -B
+ * 	option is given.
+ *
  * Revision 1.11  1998/06/11 00:10:25  kivinen
  * 	Added -q option. Added statistics output.
  *
@@ -111,7 +122,7 @@ and ssh has the necessary privileges.)
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$Id: scp.c,v 1.11 1998/06/11 00:10:25 kivinen Exp $
+ *	$Id: scp.c,v 1.14 1998/07/08 01:14:25 kivinen Exp $
  */
 
 #ifndef lint
@@ -156,8 +167,19 @@ struct utimbuf
 /* This is set to non-zero to enable verbose mode. */
 int verbose = 0;
 
-/* This is set to non-zero to disable statistics mode. */
+/* This is set to non-zero to enable statistics mode. */
+#ifdef SCP_STATISTICS_ENABLED
 int statistics = 1;
+#else /* SCP_STATISTICS_ENABLED */
+int statistics = 0;
+#endif /* SCP_STATISTICS_ENABLED */
+
+/* This is set to non-zero to enable printing statistics for each file */
+#ifdef SCP_ALL_STATISTICS_ENABLED
+int all_statistics = 1;
+#else /* SCP_ALL_STATISTICS_ENABLED */
+int all_statistics = 0;
+#endif /* SCP_ALL_STATISTICS_ENABLED */
 
 /* This is set to non-zero if compression is desired. */
 int compress = 0;
@@ -165,6 +187,10 @@ int compress = 0;
 /* This is set to non-zero if running in batch mode (that is, password
    and passphrase queries are not allowed). */
 int batchmode = 0;
+
+/* This is to call ssh with argument -P (for using non-privileged
+   ports to get through some firewalls.) */
+int use_privileged_port = 1;
 
 /* This is set to the cipher type string if given on the command line. */
 char *cipher = NULL;
@@ -178,7 +204,7 @@ char *port = NULL;
 
 char *ssh_program = SSH_PROGRAM;
 
-#ifdef ENABLE_SCP_STATS
+#ifdef WITH_SCP_STATS
 
 #define SOME_STATS_FILE stderr
 
@@ -191,7 +217,7 @@ double ratebs = 0.0;
 
 void stats_fixlen(int bytes);
 char *stat_eta(int secs);
-#endif /* ENABLE_SCP_STATS */
+#endif /* WITH_SCP_STATS */
 
 /* Ssh options */
 char **ssh_options = NULL;
@@ -255,6 +281,8 @@ int do_cmd(char *host, char *remuser, char *cmd, int *fdin, int *fdout)
 	args[i++] = "-v";
       if (compress)
 	args[i++] = "-C";
+      if (!use_privileged_port)
+	args[i++] = "-P";
       if (batchmode)
 	args[i++] = "-oBatchMode yes";
       if (cipher != NULL)
@@ -284,8 +312,8 @@ int do_cmd(char *host, char *remuser, char *cmd, int *fdin, int *fdout)
       execvp(ssh_program, args);
       if (errno == ENOENT)
 	{
-	  args[0] = "ssh";
-	  execvp("ssh", args);
+	  args[0] = "ssh1";
+	  execvp("ssh1", args);
 	}
       perror(ssh_program);
       exit(1);
@@ -372,14 +400,43 @@ main(argc, argv)
 	      }
 	  }
 
+	if (getenv("SSH_SCP_STATS") != NULL)
+	  {
+	    statistics = 1;
+	  }
+	if (getenv("SSH_ALL_SCP_STATS") != NULL)
+	  {
+	    all_statistics = 1;
+	  }
+	if (getenv("SSH_NO_SCP_STATS") != NULL)
+	  {
+	    statistics = 0;
+	  }
+	if (getenv("SSH_NO_ALL_SCP_STATS") != NULL)
+	  {
+	    all_statistics = 0;
+	  }
+	
+	if (!isatty(fileno(stdout)))
+	    statistics = 0;
+
 	fflag = tflag = 0;
-	while ((ch = getopt(argc, argv, "qdfprtvBCc:i:P:o:S:")) != EOF)
+	while ((ch = getopt(argc, argv, "aAqQdfprtvBCLc:i:P:o:S:")) != EOF)
 		switch(ch) {			/* User-visible flags. */
 		case 'S':
 	       		ssh_program = optarg;
 			break;
+		case 'a':
+			all_statistics = 1;
+			break;
+		case 'A':
+			all_statistics = 0;
+			break;
 		case 'q':
 			statistics = 0;
+			break;
+		case 'Q':
+			statistics = 1;
 			break;
 		case 'p':
 			pflag = 1;
@@ -433,7 +490,14 @@ main(argc, argv)
 		  	break;
 		case 'B':
 		  	batchmode = 1;
+			statistics = 0;
 		  	break;
+               case 'L':
+                 	/* -L ("large local ports" or something) means
+			   ssh -P. Since both -p and -P are already used
+			   such a non-intuitive letter had to be used. */
+		 	use_privileged_port = 0;
+		 	break;
 		case 'C':
 		  	compress = 1;
 		  	break;
@@ -477,22 +541,22 @@ main(argc, argv)
 	if ((targ = colon(argv[argc - 1]))) 	/* Dest is remote host. */
 	  {
 	    toremote(targ, argc, argv);
-#ifdef ENABLE_SCP_STATS
+#ifdef WITH_SCP_STATS
 	    if (!iamremote && statistics)
 	      {
 		fprintf(SOME_STATS_FILE,"\n");
 	      }
-#endif /* ENABLE_SCP_STATS */
+#endif /* WITH_SCP_STATS */
 	  }
 	else
 	  {
 	    tolocal(argc, argv);		/* Dest is local host. */
-#ifdef ENABLE_SCP_STATS
+#ifdef WITH_SCP_STATS
 	    if (!iamremote && statistics)
 	      {
 		fprintf(SOME_STATS_FILE,"\n");
 	      }
-#endif /* ENABLE_SCP_STATS */
+#endif /* WITH_SCP_STATS */
 	    if (targetshouldbedirectory)
 	      verifydir(argv[argc - 1]);
 	  }
@@ -574,7 +638,7 @@ toremote(targ, argc, argv)
 				    thost, targ);
 		        if (verbose)
 			  fprintf(stderr, "Executing: %s\n", bp);
-			(void)system(bp);
+			if (system(bp)) errs++;
 			(void)xfree(bp);
 		} else {			/* local to remote */
 			if (remin == -1) {
@@ -712,14 +776,14 @@ syserr:			run_err("%s: %s", name, strerror(errno));
 next:			(void)close(fd);
 			continue;
 		}
-#ifdef ENABLE_SCP_STATS
+#ifdef WITH_SCP_STATS
 		if (!iamremote && statistics)
 		  {
 		    statbytes = 0;
 		    ratebs = 0.0;
 		    stat_starttime = time(NULL);
 		  }
-#endif /* ENABLE_SCP_STATS */
+#endif /* WITH_SCP_STATS */
 
 		/* Keep writing after an error so that we stay sync'd up. */
 		for (haderr = i = 0; i < stb.st_size; i += bp->cnt) {
@@ -734,7 +798,7 @@ next:			(void)close(fd);
 			if (haderr)
 			  {
 			    (void)write(remout, bp->buf, amt);
-#ifdef ENABLE_SCP_STATS
+#ifdef WITH_SCP_STATS
 			    if (!iamremote && statistics)
 			      {
 				if ((time(NULL) - stat_lasttime) > 0)
@@ -747,13 +811,13 @@ next:			(void)close(fd);
 				    stat_lasttime = time(NULL);
 				  }
 			      }
-#endif /* ENABLE_SCP_STATS */
+#endif /* WITH_SCP_STATS */
 			  }
 			else {
 				result = write(remout, bp->buf, amt);
 				if (result != amt)
 					haderr = result >= 0 ? EIO : errno;
-#ifdef ENABLE_SCP_STATS
+#ifdef WITH_SCP_STATS
 				if (!iamremote && statistics)
 				  {
 				    statbytes += result;
@@ -781,13 +845,18 @@ next:			(void)close(fd);
 						  stat_eta((int) ((stb.st_size
 								   - statbytes)
 								  / ratebs)),
-						  100 * statbytes /
-						  stb.st_size);
+						  (int) (100.0 *
+							 (double) statbytes /
+							 stb.st_size));
+					if (all_statistics && (result + i) ==
+					    stb.st_size)
+					  bwritten += fprintf(SOME_STATS_FILE,
+							      "\n");
 					stats_fixlen(bwritten);
 					stat_lasttime = time(NULL);
 				      }
 				  }
-#endif /* ENABLE_SCP_STATS */
+#endif /* WITH_SCP_STATS */
 			}
 		}
 		if (close(fd) < 0 && !haderr)
@@ -871,9 +940,9 @@ sink(argc, argv)
 	char ch, *cp, *np, *targ, *why, *vect[1], buf[2048];
   	struct utimbuf ut;
   	int dummy_usec;
-#ifdef ENABLE_SCP_STATS
+#ifdef WITH_SCP_STATS
         char *statslast;
-#endif /* ENABLE_SCP_STATS */
+#endif /* WITH_SCP_STATS */
 
 #define	SCREWUP(str)	{ why = str; goto screwup; }
 
@@ -1031,7 +1100,7 @@ bad:			run_err("%s: %s", np, strerror(errno));
 		}
 		cp = bp->buf;
 		wrerr = NO;
-#ifdef ENABLE_SCP_STATS
+#ifdef WITH_SCP_STATS
 		if (!iamremote && statistics)
 		  {
 		    statbytes = 0;
@@ -1043,7 +1112,7 @@ bad:			run_err("%s: %s", np, strerror(errno));
 		    else
 		      ++statslast;
 		  }
-#endif /* ENABLE_SCP_STATS */
+#endif /* WITH_SCP_STATS */
 		for (count = i = 0; i < size; i += 4096) {
 			amt = 4096;
 			if (i + amt > size)
@@ -1056,7 +1125,7 @@ bad:			run_err("%s: %s", np, strerror(errno));
 					    "dropped connection");
 					exit(1);
 				}
-#ifdef ENABLE_SCP_STATS
+#ifdef WITH_SCP_STATS
 				if (!iamremote && statistics)
 				  {
 				    int bwritten;
@@ -1082,11 +1151,13 @@ bad:			run_err("%s: %s", np, strerror(errno));
 							 ((size - statbytes)
 							  / ratebs)),
 						100 * statbytes / size);
+				      if (all_statistics && (i + j) == size)
+					bwritten += fprintf(SOME_STATS_FILE, "\n");
 				      stats_fixlen(bwritten);
 				      stat_lasttime = time(NULL);
 				    }
 				  }
-#endif /* ENABLE_SCP_STATS */
+#endif /* WITH_SCP_STATS */
 				amt -= j;
 				cp += j;
 			} while (amt > 0);
@@ -1196,7 +1267,7 @@ void
 usage(void)
 {
 	(void)fprintf(stderr,
-	    "usage: scp [-qprvBC] [-S path-to-ssh] [-o ssh-options] [-P port] [-c cipher] [-i identity] f1 f2; or: scp [options] f1 ... fn directory\n");
+	    "usage: scp [-qQaAprvBCL] [-S path-to-ssh] [-o ssh-options] [-P port] [-c cipher] [-i identity] f1 f2; or: scp [options] f1 ... fn directory\n");
 	exit(1);
 }
 
@@ -1259,7 +1330,7 @@ run_err(const char *fmt, ...)
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$Id: scp.c,v 1.11 1998/06/11 00:10:25 kivinen Exp $
+ *	$Id: scp.c,v 1.14 1998/07/08 01:14:25 kivinen Exp $
  */
 
 char *
@@ -1355,7 +1426,7 @@ lostconn(signo)
 	exit(1);
 }
 
-#ifdef ENABLE_SCP_STATS
+#ifdef WITH_SCP_STATS
 void stats_fixlen(int bwritten)
 {
   char rest[80];
@@ -1383,4 +1454,4 @@ char *stat_eta(int secs)
    sprintf(stat_result, "%02d:%02d:%02d", hours, mins, secs);
    return(stat_result);
 }
-#endif /* ENABLE_SCP_STATS */
+#endif /* WITH_SCP_STATS */

@@ -490,7 +490,7 @@ int main(int ac, char **av)
     }
 
   /* Initialize the log (it is reinitialized below in case we forked). */
-  lognit(sdav0, debug_flag && !inetd_flag, 
+  log_init(av0, debug_flag && !inetd_flag, 
 	   debug_flag || options.fascist_logging, 
 	   options.quiet_mode, options.log_facility);
 
@@ -506,7 +506,7 @@ int main(int ac, char **av)
       else
 	{
 	  int err = errno;
-	  lognit(sdav0, !inetd_flag, 1, 0, options.log_facility);
+	  log_init(av0, !inetd_flag, 1, 0, options.log_facility);
 	  error("Could not load host key: %.200s: %.100s", 
 		options.host_key_file, strerror(err));
 	}
@@ -559,7 +559,7 @@ int main(int ac, char **av)
     }
 
   /* Reinitialize the log (because of the fork above). */
-  lognit(sdav0, debug_flag && !inetd_flag, 
+  log_init(av0, debug_flag && !inetd_flag, 
 	   debug_flag || options.fascist_logging, 
 	   options.quiet_mode, options.log_facility);
 
@@ -753,7 +753,7 @@ int main(int ac, char **av)
 		  close(listen_sock);
 		  sock_in = newsock;
 		  sock_out = newsock;
-		  lognit(sdav0, debug_flag && !inetd_flag, 
+		  log_init(av0, debug_flag && !inetd_flag, 
 			   options.fascist_logging || debug_flag, 
 			   options.quiet_mode, options.log_facility);
 		  break;
@@ -1731,7 +1731,7 @@ void do_exec_no_pty(const char *command, struct passwd *pw,
   if ((pid = fork()) == 0)
     {
       /* Child.  Reinitialize the log since the pid has changed. */
-      lognit(sdav0, debug_flag && !inetd_flag, debug_flag, 
+      log_init(av0, debug_flag && !inetd_flag, debug_flag, 
 	       options.quiet_mode, options.log_facility);
 
 #ifdef HAVE_SETSID
@@ -1866,7 +1866,7 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
       pid = getpid();
 
       /* Child.  Reinitialize the log because the pid has changed. */
-      lognit(sdav0, debug_flag && !inetd_flag, debug_flag, options.quiet_mode, 
+      log_init(av0, debug_flag && !inetd_flag, debug_flag, options.quiet_mode, 
 	       options.log_facility);
 
 #ifdef HAVE_SETSID

@@ -224,6 +224,22 @@ case "$host" in
     AC_DEFINE(SPEED_T_IN_STDTYPES_H)
     ;;
   *-*-linux*)
+    # Test for a bug in older slackware distributions
+    AC_MSG_CHECKING(for bugs in your linux distribution)
+    SAVED_LIBS="$LIBS"
+    LIBS="$LIBS -lm"
+    AC_TRY_LINK([#include <math.h>],
+                [ extern char **environ;
+		  double d = sin((double)(int)environ[0]);
+		  return (int)d; ],
+		AC_MSG_RESULT(ok),
+		AC_MSG_RESULT(problems)
+		AC_MSG_WARN(Your linux distribution contains an error.)
+		AC_MSG_WARN(To fix it use ln -s libc.sa /usr/lib/libg.sa)
+		AC_MSG_WARN(Alternatively you can configure ssh with CFLAGS=-O LDFLAGS=-O ./configure)
+		AC_MSG_ERROR(Compilation cannot continue before this is fixed.)
+	       )
+    LIBS="$SAVED_LIBS"
     # Linux shadow password support (Andrew.Macpherson.1248566@bnr.co.uk)
     if test -f /etc/shadow && test -f /etc/login.defs; then
       AC_MSG_RESULT(Using linux John Haugh shadow passwords and pw_encrypt for password encryption)

@@ -7,9 +7,6 @@ Merge rdist into the ssh distribution. -> ssh-1.3.1
   - -P arguments
   - configure/makefile
 
-mcooper@usc.edu says `tty` returns 'not a tty' when run from
-/etc/sshrc after 'ssh $host' where the server is a sunos 4.1.3 host.
-
 Check TIS FWTK/authsrv (and FWTK authentication in general).  Message
 from rsnyder@mobster.cit.ge.com.  ftp://ftp.tis.com/pub/firewalls/toolkit.
 Patches from Jacob Schripsema <J.Schripsema@hdxx05.unix.telecom.ptt.nl>.

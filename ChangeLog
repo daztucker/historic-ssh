@@ -1,5 +1,11 @@
 Sun Feb 11 16:35:37 1996  Tatu Ylonen  <ylo@trance.olari.clinet.fi>
 
+	* Released 1.2.13.
+
+	* sshd.8.in: Fixed a minor typo.
+
+	* configure.in: Give error on linux if the system has the libg.sa bug.
+
 	* servconf.c: Fixed pid file default setting.
 
 Sat Feb 10 14:33:29 1996  Tatu Ylonen  <ylo@trance.olari.clinet.fi>

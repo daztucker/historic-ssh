@@ -14,93 +14,98 @@ This file includes most of the needed system headers.
 */
 
 /*
- * $Id: includes.h,v 1.12 1998/04/30 01:51:53 kivinen Exp $
+ * $Id: includes.h,v 1.13 1999/02/21 19:52:21 ylo Exp $
  * $Log: includes.h,v $
- * Revision 1.12  1998/04/30  01:51:53  kivinen
- * 	Added linux sparc fix.
+ * Revision 1.13  1999/02/21 19:52:21  ylo
+ * 	Intermediate commit of ssh1.2.27 stuff.
+ * 	Main change is sprintf -> snprintf; however, there are also
+ * 	many other changes.
+ *
+ * Revision 1.12  1998/04/30 01:51:53  kivinen
+ *      Added linux sparc fix.
  *
  * Revision 1.11  1998/01/21 14:01:11  kivinen
- * 	Fixed bug raported Paul J. Sanchez <paul@spectrum.slu.edu>
- * 	about S_ISLNK macro defination.
+ *      Fixed bug raported Paul J. Sanchez <paul@spectrum.slu.edu>
+ *      about S_ISLNK macro defination.
  *
  * Revision 1.10  1998/01/02 06:18:20  kivinen
- * 	Added sys/resource.h include. Added _S_IFLNK and S_ISLNK
- * 	defines if not defined by system.
+ *      Added sys/resource.h include. Added _S_IFLNK and S_ISLNK
+ *      defines if not defined by system.
  *
  * Revision 1.9  1997/03/19 18:02:19  kivinen
- * 	Added SECURE_RPC, SECURE_NFS and NIS_PLUS support from Andy
- * 	Polyakov <appro@fy.chalmers.se>.
+ *      Added SECURE_RPC, SECURE_NFS and NIS_PLUS support from Andy
+ *      Polyakov <appro@fy.chalmers.se>.
  *
  * Revision 1.8  1996/10/14 16:16:19  ttsalo
  *       Support for OpenBSD (from Thorsten Lockert <tholo@SigmaSoft.COM>
  *
  * Revision 1.7  1996/10/14 02:37:12  ylo
- * 	Removed spaces from error tokens so that compiler reports the
- * 	error in the right place.
+ *      Removed spaces from error tokens so that compiler reports the
+ *      error in the right place.
  *
  * Revision 1.6  1996/10/07 11:40:20  ttsalo
- * 	Configuring for hurd and a small fix to do_popen()
- * 	from "Charles M. Hannum" <mycroft@gnu.ai.mit.edu> added.
+ *      Configuring for hurd and a small fix to do_popen()
+ *      from "Charles M. Hannum" <mycroft@gnu.ai.mit.edu> added.
  *
  * Revision 1.5  1996/08/11 22:30:59  ylo
- * 	Changed the way machine/endian.h include is tested (no longer
- * 	lists specific systems).
- * 	Added optional defines of _S_IFMT and _S_IFDIR.
+ *      Changed the way machine/endian.h include is tested (no longer
+ *      lists specific systems).
+ *      Added optional defines of _S_IFMT and _S_IFDIR.
  *
  * Revision 1.4  1996/07/12 07:19:23  ttsalo
- * 	SCO v5 support
+ *      SCO v5 support
  *
  * Revision 1.3  1996/04/26 00:33:48  ylo
- * 	Added support for HPUX 7.x.
+ *      Added support for HPUX 7.x.
  *
  * Revision 1.2  1996/04/22 23:40:42  huima
  * Added #define SUPPORT_OLD_CHANNELS.
  *
  * Revision 1.1.1.1  1996/02/18  21:38:10  ylo
- * 	Imported ssh-1.2.13.
+ *      Imported ssh-1.2.13.
  *
  * Revision 1.12  1995/10/02  01:22:37  ylo
- * 	Added machine/endian.h on Paragon.
+ *      Added machine/endian.h on Paragon.
  *
  * Revision 1.11  1995/09/27  02:14:08  ylo
- * 	Added support for SCO unix.
+ *      Added support for SCO unix.
  *
  * Revision 1.10  1995/09/21  17:11:28  ylo
- * 	Added Paragon support.
- * 	Added definition of AF_UNIX_SIZE.
+ *      Added Paragon support.
+ *      Added definition of AF_UNIX_SIZE.
  *
  * Revision 1.9  1995/09/13  11:57:21  ylo
- * 	Changed the code so that "short" gets used as word32 on Cray.
- * 	Some of the code depends on that.  (BTW, "short" has really
- * 	weird semantics on Cray...)
+ *      Changed the code so that "short" gets used as word32 on Cray.
+ *      Some of the code depends on that.  (BTW, "short" has really
+ *      weird semantics on Cray...)
  *
  * Revision 1.8  1995/09/11  17:35:27  ylo
- * 	Define word32 properly if any int type is 32 bits.
+ *      Define word32 properly if any int type is 32 bits.
  *
  * Revision 1.7  1995/08/18  22:54:59  ylo
- * 	Added using netinet/in_system.h if netinet/in_systm.h does not
- * 	exist (some old linux versions, at least).
+ *      Added using netinet/in_system.h if netinet/in_systm.h does not
+ *      exist (some old linux versions, at least).
  *
- * 	Added support for NextStep.
+ *      Added support for NextStep.
  *
  * Revision 1.6  1995/07/27  03:27:46  ylo
- * 	Moved sparc HAVE_SYS_IOCTL_H stuff to the proper place.
+ *      Moved sparc HAVE_SYS_IOCTL_H stuff to the proper place.
  *
  * Revision 1.5  1995/07/26  23:35:32  ylo
- * 	Undef HAVE_VHANGUP on Sony News.
+ *      Undef HAVE_VHANGUP on Sony News.
  *
  * Revision 1.4  1995/07/26  23:15:05  ylo
- * 	Include version.h.
- * 	Fixed SIZEOF_LONG test.
- * 	Added ultrix specific porting stuff.
- * 	Added sparc/sunos specific porting stuff.
+ *      Include version.h.
+ *      Fixed SIZEOF_LONG test.
+ *      Added ultrix specific porting stuff.
+ *      Added sparc/sunos specific porting stuff.
  *
  * Revision 1.3  1995/07/13  01:46:00  ylo
- * 	Added snabb's patches for IRIX 4.
+ *      Added snabb's patches for IRIX 4.
  *
  * Revision 1.2  1995/07/13  01:25:11  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
+ *      Removed "Last modified" header.
+ *      Added cvs log.
  *
  * $Endlog$
  */
@@ -224,9 +229,9 @@ char *strchr(), *strrchr();
 /* SCO does not have a un.h and there is no appropriate substitute. */
 /* Latest news: it doesn't have AF_UNIX at all, but this allows
    it to compile, and outgoing forwarded connections appear to work. */
-struct	sockaddr_un {
-	short	sun_family;		/* AF_UNIX */
-	char	sun_path[108];		/* path name (gag) */
+struct  sockaddr_un {
+        short   sun_family;             /* AF_UNIX */
+        char    sun_path[108];          /* path name (gag) */
 };
 /* SCO needs sys/stream.h and sys/ptem.h */
 #include <sys/stream.h>
@@ -326,18 +331,18 @@ struct linger {
 /* These POSIX macros are not defined in every system. */
 
 #ifndef S_IRWXU
-#define S_IRWXU 00700		/* read, write, execute: owner */
-#define S_IRUSR 00400		/* read permission: owner */
-#define S_IWUSR 00200		/* write permission: owner */
-#define S_IXUSR 00100		/* execute permission: owner */
-#define S_IRWXG 00070		/* read, write, execute: group */
-#define S_IRGRP 00040		/* read permission: group */
-#define S_IWGRP 00020		/* write permission: group */
-#define S_IXGRP 00010		/* execute permission: group */
-#define S_IRWXO 00007		/* read, write, execute: other */
-#define S_IROTH 00004		/* read permission: other */
-#define S_IWOTH 00002		/* write permission: other */
-#define S_IXOTH 00001		/* execute permission: other */
+#define S_IRWXU 00700           /* read, write, execute: owner */
+#define S_IRUSR 00400           /* read permission: owner */
+#define S_IWUSR 00200           /* write permission: owner */
+#define S_IXUSR 00100           /* execute permission: owner */
+#define S_IRWXG 00070           /* read, write, execute: group */
+#define S_IRGRP 00040           /* read permission: group */
+#define S_IWGRP 00020           /* write permission: group */
+#define S_IXGRP 00010           /* execute permission: group */
+#define S_IRWXO 00007           /* read, write, execute: other */
+#define S_IROTH 00004           /* read permission: other */
+#define S_IWOTH 00002           /* write permission: other */
+#define S_IXOTH 00001           /* execute permission: other */
 #endif /* S_IRWXU */
 
 #ifndef S_ISUID
@@ -377,4 +382,8 @@ struct linger {
 #define seteuid(uid) setresuid(-1,(uid),-1)
 #endif
 
+#ifndef HAVE_SNPRINTF
+#include "snprintf.h"
+#endif /* HAVE_SNPRINTF */
+     
 #endif /* INCLUDES_H */

@@ -14,21 +14,26 @@ Functions for manipulating the known hosts files.
 */
 
 /*
- * $Id: hostfile.c,v 1.3 1998/07/08 00:43:25 kivinen Exp $
+ * $Id: hostfile.c,v 1.4 1999/02/21 19:52:20 ylo Exp $
  * $Log: hostfile.c,v $
+ * Revision 1.4  1999/02/21 19:52:20  ylo
+ * 	Intermediate commit of ssh1.2.27 stuff.
+ * 	Main change is sprintf -> snprintf; however, there are also
+ * 	many other changes.
+ *
  * Revision 1.3  1998/07/08 00:43:25  kivinen
- * 	Added ip number to mach_hostname. Changed it to use match_host
- * 	instead of match_pattern.
+ *      Added ip number to mach_hostname. Changed it to use match_host
+ *      instead of match_pattern.
  *
  * Revision 1.2  1997/03/19  21:13:51  kivinen
- * 	Enlarged line buffer in check_host_in_hostfile to 16384.
+ *      Enlarged line buffer in check_host_in_hostfile to 16384.
  *
  * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
- * 	Imported ssh-1.2.13.
+ *      Imported ssh-1.2.13.
  *
  * Revision 1.2  1995/07/13  01:24:36  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
+ *      Removed "Last modified" header.
+ *      Added cvs log.
  *
  * $Endlog$
  */
@@ -126,7 +131,7 @@ int auth_rsa_read_key(char **cpp, unsigned int *bitsp, MP_INT *e, MP_INT *n)
    otherwise. */
 
 int match_hostname(const char *host, const char *ip,
-		   const char *pattern, unsigned int len)
+                   const char *pattern, unsigned int len)
 {
   char sub[1024];
   int negated;
@@ -138,36 +143,36 @@ int match_hostname(const char *host, const char *ip,
     {
       /* Check if the subpattern is negated. */
       if (pattern[i] == '!')
-	{
-	  negated = 1;
-	  i++;
-	}
+        {
+          negated = 1;
+          i++;
+        }
       else
-	negated = 0;
+        negated = 0;
       
       /* Extract the subpattern up to a comma or end.  Convert the subpattern
          to lowercase. */
       for (subi = 0; 
-	   i < len && subi < sizeof(sub) - 1 && pattern[i] != ',';
-	   subi++, i++)
-	sub[subi] = isupper(pattern[i]) ? tolower(pattern[i]) : pattern[i];
+           i < len && subi < sizeof(sub) - 1 && pattern[i] != ',';
+           subi++, i++)
+        sub[subi] = isupper(pattern[i]) ? tolower(pattern[i]) : pattern[i];
       /* If subpattern too long, return failure (no match). */
       if (subi >= sizeof(sub) - 1)
-	return 0;
+        return 0;
 
       /* If the subpattern was terminated by a comma, skip the comma. */
       if (i < len && pattern[i] == ',')
-	i++;
+        i++;
       
       /* Null-terminate the subpattern. */
       sub[subi] = '\0';
 
       /* Try to match the subpattern against the host name. */
       if (match_host(host, ip, sub))
-	if (negated)
-	  return 0;  /* Fail if host matches any negated subpattern. */
+        if (negated)
+          return 0;  /* Fail if host matches any negated subpattern. */
         else
-	  got_positive = 1;
+          got_positive = 1;
     }
 
   /* Return success if got a positive match.  If there was a negative match,
@@ -182,9 +187,9 @@ int match_hostname(const char *host, const char *ip,
    but used to have a different host key. */
 
 HostStatus check_host_in_hostfile(uid_t uid,
-				  const char *filename, 
-				  const char *host, unsigned int bits,
-				  MP_INT *e, MP_INT *n)
+                                  const char *filename, 
+                                  const char *host, unsigned int bits,
+                                  MP_INT *e, MP_INT *n)
 {
   UserFile uf;
   char line[16384];
@@ -199,10 +204,10 @@ HostStatus check_host_in_hostfile(uid_t uid,
   if (uf == NULL)
     {
       if (userfile_stat(uid, filename, &st) >= 0)
-	{
-	  packet_send_debug("Could not open %.900s for reading.", filename);
-	  packet_send_debug("If your home directory is on an NFS volume, it may need to be world-readable.");
-	}
+        {
+          packet_send_debug("Could not open %.900s for reading.", filename);
+          packet_send_debug("If your home directory is on an NFS volume, it may need to be world-readable.");
+        }
       return HOST_NEW;
     }
 
@@ -225,40 +230,40 @@ HostStatus check_host_in_hostfile(uid_t uid,
 
       /* Skip any leading whitespace. */
       for (; *cp == ' ' || *cp == '\t'; cp++)
-	;
+        ;
 
       /* Ignore comment lines and empty lines. */
       if (!*cp || *cp == '#' || *cp == '\n')
-	continue;
+        continue;
       
       /* Find the end of the host name portion. */
       for (cp2 = cp; *cp2 && *cp2 != ' ' && *cp2 != '\t'; cp2++)
-	;
+        ;
 
       /* Check if the host name matches. */
       if (!match_hostname(host, NULL, cp, (unsigned int)(cp2 - cp)))
-	continue;
+        continue;
       
       /* Got a match.  Skip host name. */
       cp = cp2;
       
       /* Extract the key from the line.  This will skip any leading 
-	 whitespace.  Ignore badly formatted lines. */
+         whitespace.  Ignore badly formatted lines. */
       if (!auth_rsa_read_key(&cp, &kbits, &ke, &kn))
-	continue;
+        continue;
 
       /* Check if the current key is the same as the previous one. */
       if (kbits == bits && mpz_cmp(&ke, e) == 0 && mpz_cmp(&kn, n) == 0)
-	{
-	  /* Ok, they match. */
-	  mpz_clear(&ke);
-	  mpz_clear(&kn);
-	  userfile_close(uf);
-	  return HOST_OK;
-	}
+        {
+          /* Ok, they match. */
+          mpz_clear(&ke);
+          mpz_clear(&kn);
+          userfile_close(uf);
+          return HOST_OK;
+        }
       
       /* They do not match.  We will continue to go through the file; however,
-	 we note that we will not return that it is new. */
+         we note that we will not return that it is new. */
       end_return = HOST_CHANGED;
     }
   /* Clear variables and close the file. */
@@ -276,7 +281,7 @@ HostStatus check_host_in_hostfile(uid_t uid,
    userfile. */
 
 int add_host_to_hostfile(uid_t uid, const char *filename, const char *host,
-			 unsigned int bits, MP_INT *e, MP_INT *n)
+                         unsigned int bits, MP_INT *e, MP_INT *n)
 {
   UserFile uf;
   char buf[1000], *cp;
@@ -287,7 +292,7 @@ int add_host_to_hostfile(uid_t uid, const char *filename, const char *host,
     return 0;
 
   /* Print the host name and key to the file. */
-  sprintf(buf, "%.500s %u ", host, bits);
+  snprintf(buf, sizeof(buf), "%.500s %u ", host, bits);
   userfile_write(uf, buf, strlen(buf));
   
   cp = xmalloc(mpz_sizeinbase(e, 10) + 2);

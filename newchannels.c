@@ -16,8 +16,32 @@ arbitrary tcp/ip connections, and the authentication agent connection.
 */
 
 /*
- * $Id: newchannels.c,v 1.16 1996/09/28 16:26:09 ylo Exp $
+ * $Id: newchannels.c,v 1.22 1996/10/29 22:42:43 kivinen Exp $
  * $Log: newchannels.c,v $
+ * Revision 1.22  1996/10/29 22:42:43  kivinen
+ * 	log -> log_msg. Fixed auth_input_request_forwarding to check
+ * 	that the parent directory of SSH_AGENT_SOCKET_DIR and the ..
+ * 	are same (check that the last component of agent directory
+ * 	isn't symlink).
+ * 	Disconnect if agent directory mkdir fails.
+ * 	Renamed remotech to remote_channel in
+ * 	auth_input_open_request.
+ *
+ * Revision 1.21  1996/10/29 14:18:51  ttsalo
+ *       Fixed a bug
+ *
+ * Revision 1.20  1996/10/29 14:07:24  ttsalo
+ *       Clarified some error messages
+ *
+ * Revision 1.19  1996/10/29 13:38:45  ttsalo
+ * 	Improved the security of auth_input_request_forwarding()
+ *
+ * Revision 1.18  1996/10/24 14:05:10  ttsalo
+ *       Cleaning up old fd-auth trash
+ *
+ * Revision 1.17  1996/10/20 16:27:34  ttsalo
+ * 	Many changes, agent stuff should now work as defined in the specs
+ *
  * Revision 1.16  1996/09/28 16:26:09  ylo
  * 	Added a workaround for channel deadlocks...  This may cause
  * 	sshd to grow occasionally, and indefinitely in some situations.
@@ -157,10 +181,12 @@ arbitrary tcp/ip connections, and the authentication agent connection.
 #define SSH_CHANNEL_OPENING		3 /* waiting for confirmation */
 #define SSH_CHANNEL_OPEN		4 /* normal open two-way channel */
 /* obsolete SSH_CHANNEL_CLOSED		5    waiting for close confirmation */
-#define SSH_CHANNEL_AUTH_FD		6 /* authentication fd */
-#define SSH_CHANNEL_AUTH_SOCKET		7 /* authentication socket */
-#define SSH_CHANNEL_AUTH_SOCKET_FD	8 /* connection to auth socket */
+/* obsolete SSH_CHANNEL_AUTH_FD		6    authentication fd */
+/* obsolete SSH_CHANNEL_AUTH_SOCKET	7    authentication socket */
+/* obsolete SSH_CHANNEL_AUTH_SOCKET_FD	8    connection to auth socket */
 #define SSH_CHANNEL_X11_OPEN		9 /* reading first X11 packet */
+#define SSH_CHANNEL_AUTH_LISTENER      10 /* Agent proxy listening for
+					     connections */
 
 /* Status flags */
 
@@ -585,9 +611,7 @@ void channel_prepare_select(fd_set *readset, fd_set *writeset)
 	{
 	case SSH_CHANNEL_X11_LISTENER:
 	case SSH_CHANNEL_PORT_LISTENER:
-	case SSH_CHANNEL_AUTH_SOCKET:
-	case SSH_CHANNEL_AUTH_SOCKET_FD:
-	case SSH_CHANNEL_AUTH_FD:
+	case SSH_CHANNEL_AUTH_LISTENER:
 	  FD_SET(ch->sock, readset);
 	  break;
 	  
@@ -688,9 +712,9 @@ void channel_prepare_select(fd_set *readset, fd_set *writeset)
 	reject:
 	  /* We have received an X11 connection that has bad authentication
 	     information. */
-	  log("X11 connection rejected because of wrong authentication.\r\n");
+	  log_msg("X11 connection rejected because of wrong authentication.\r\n");
 	  if (ch->remote_name)
-	    log("Rejected connection: %.200s\r\n", ch->remote_name);
+	    log_msg("Rejected connection: %.200s\r\n", ch->remote_name);
 	  buffer_clear(&ch->input);
 	  buffer_clear(&ch->output);
 	  channel_close_input(ch);
@@ -785,41 +809,25 @@ void channel_after_select(fd_set *readset, fd_set *writeset)
 	    }
 	  break;
 
-	case SSH_CHANNEL_AUTH_FD:
-	  /* This is the authentication agent file descriptor.  It is used to
-	     obtain the real connection to the agent. */
-	case SSH_CHANNEL_AUTH_SOCKET_FD:
-	  /* This is the temporary connection obtained by connecting the
-	     authentication agent socket. */
+	case SSH_CHANNEL_AUTH_LISTENER:
+	  /* This socket is listening for connections to a forwarded agent
+	     port. */
 	  if (FD_ISSET(ch->sock, readset))
 	    {
-	      len = recv(ch->sock, buf, sizeof(buf), 0);
-	      if (len <= 0)
+	      debug("Connection to agent proxy requested.");
+	      addrlen = sizeof(addr);
+	      newsock = accept(ch->sock, &addr, &addrlen);
+	      if (newsock < 0)
 		{
-		  channel_free(i);
+		  error("accept: %.100s", strerror(errno));
 		  break;
 		}
-	      if (len != 3 || (unsigned char)buf[0] != SSH_AUTHFD_CONNECT)
-		break; /* Ignore any messages of wrong length or type. */
-	      port = 256 * (unsigned char)buf[1] + (unsigned char)buf[2];
+	      sprintf(buf, "Forwarded agent connection");
+	      newch = channel_allocate(SSH_CHANNEL_OPENING, newsock, 
+				       xstrdup(buf));
 	      packet_start(SSH_SMSG_AGENT_OPEN);
-	      packet_put_int(port);
+	      packet_put_int(newch);
 	      packet_send();
-	    }
-	  break;
-
-	case SSH_CHANNEL_AUTH_SOCKET:
-	  /* This is the authentication agent socket listening for connections
-	     from clients. */
-	  if (FD_ISSET(ch->sock, readset))
-	    {
-	      len = sizeof(addr);
-	      newsock = accept(ch->sock, &addr, &len);
-	      if (newsock < 0)
-		error("Accept from authentication socket failed");
-	      else
-		(void)channel_allocate(SSH_CHANNEL_AUTH_SOCKET_FD, newsock,
-				       xstrdup("accepted auth socket"));
 	    }
 	  break;
 
@@ -971,9 +979,7 @@ int channel_not_very_much_buffered_data()
 	{
 	case SSH_CHANNEL_X11_LISTENER:
 	case SSH_CHANNEL_PORT_LISTENER:
-	case SSH_CHANNEL_AUTH_SOCKET:
-	case SSH_CHANNEL_AUTH_SOCKET_FD:
-	case SSH_CHANNEL_AUTH_FD:
+	case SSH_CHANNEL_AUTH_LISTENER:
 	  continue;
 	case SSH_CHANNEL_OPEN:
 	  if (buffer_len(&ch->input) > 32000)
@@ -1021,7 +1027,7 @@ void channel_input_open_confirmation()
       channels[channel].type != SSH_CHANNEL_OPENING)
     packet_disconnect("Received open confirmation for non-opening channel %d.",
 		      channel);
-
+  
   /* Get remote side's id for this channel. */
   remote_channel = packet_get_int();
 
@@ -1058,10 +1064,8 @@ void channel_stop_listening()
     {
       switch (channels[i].type)
 	{
-	case SSH_CHANNEL_AUTH_SOCKET:
-	  close(channels[i].sock);
-	  remove(channels[i].path);
-	  channel_free(i);
+	case SSH_CHANNEL_AUTH_LISTENER:
+	  auth_delete_socket(NULL);
 	  break;
 	case SSH_CHANNEL_PORT_LISTENER:
 	case SSH_CHANNEL_X11_LISTENER:
@@ -1105,9 +1109,7 @@ int channel_still_open()
       case SSH_CHANNEL_FREE:
       case SSH_CHANNEL_X11_LISTENER:
       case SSH_CHANNEL_PORT_LISTENER:
-      case SSH_CHANNEL_AUTH_FD:
-      case SSH_CHANNEL_AUTH_SOCKET:
-      case SSH_CHANNEL_AUTH_SOCKET_FD:
+      case SSH_CHANNEL_AUTH_LISTENER:
 	continue;
       case SSH_CHANNEL_OPENING:
       case SSH_CHANNEL_OPEN:
@@ -1139,9 +1141,7 @@ char *channel_open_message()
       case SSH_CHANNEL_FREE:
       case SSH_CHANNEL_X11_LISTENER:
       case SSH_CHANNEL_PORT_LISTENER:
-      case SSH_CHANNEL_AUTH_FD:
-      case SSH_CHANNEL_AUTH_SOCKET:
-      case SSH_CHANNEL_AUTH_SOCKET_FD:
+      case SSH_CHANNEL_AUTH_LISTENER:
 	continue;
       case SSH_CHANNEL_OPENING:
       case SSH_CHANNEL_OPEN:
@@ -1297,7 +1297,7 @@ void channel_input_port_open()
       if (i >= num_permitted_opens)
 	{
 	  /* The port is not permitted. */
-	  log("Received request to connect to %.100s:%d, but the request was denied.",
+	  log_msg("Received request to connect to %.100s:%d, but the request was denied.",
 	      host, host_port);
 	  packet_start(SSH_MSG_CHANNEL_OPEN_FAILURE);
 	  packet_put_int(remote_channel);
@@ -1806,171 +1806,183 @@ void auth_delete_socket(void *context)
 
 void auth_input_request_forwarding(struct passwd *pw)
 {
-  int ret, pfd = get_permanent_fd(pw->pw_shell);
+  int ret;
+  int sock, newch, directory_created;
+  struct sockaddr_un sunaddr;
+  struct stat st, st2, parent_st;
+  mode_t old_umask;
+  char *last_dir;
   
-  if (pfd < 0) 
+  if (auth_get_socket_name() != NULL)
+    fatal("Protocol error: authentication forwarding requested twice.");
+  
+  /* Allocate a buffer for the socket name, and format the name.
+     And directory name. */
+  channel_forwarded_auth_socket_name = xmalloc(strlen(SSH_AGENT_SOCKET_DIR) +
+					       strlen(SSH_AGENT_SOCKET) +
+					       strlen(pw->pw_name) + 10);
+  channel_forwarded_auth_socket_dir_name =
+    xmalloc(strlen(SSH_AGENT_SOCKET_DIR) +
+	    strlen(pw->pw_name) + 10);
+
+  sprintf(channel_forwarded_auth_socket_dir_name, 
+	  SSH_AGENT_SOCKET_DIR, pw->pw_name);
+  /* Use the plain socket name for now, change to absolute
+     path later */
+  sprintf(channel_forwarded_auth_socket_name,
+	  SSH_AGENT_SOCKET, (int)getpid());
+  
+  /* Register the cleanup function before making the directory */
+  fatal_add_cleanup(&auth_delete_socket, NULL);
+
+  /* Stat parent dir */
+  last_dir = strrchr(channel_forwarded_auth_socket_dir_name, '/');
+  if (last_dir == NULL || last_dir == channel_forwarded_auth_socket_dir_name)
     {
-      int sock, newch, directory_created;
-      struct sockaddr_un sunaddr;
-      struct stat st;
-      mode_t old_umask;
-      
-      if (auth_get_socket_name() != NULL)
-	fatal("Protocol error: authentication forwarding requested twice.");
-
-      /* Allocate a buffer for the socket name, and format the name.
-         And directory name. */
-      channel_forwarded_auth_socket_name = xmalloc(100);
-      channel_forwarded_auth_socket_dir_name = xmalloc(100);
-      sprintf(channel_forwarded_auth_socket_dir_name, 
-	      SSH_AGENT_SOCKET_DIR, pw->pw_name);
-      sprintf(channel_forwarded_auth_socket_name, 
-	      SSH_AGENT_SOCKET_DIR"/"SSH_AGENT_SOCKET,
-	      pw->pw_name, (int)getpid());
-
-      /* Register the cleanup function before making the directory */
-      fatal_add_cleanup(&auth_delete_socket, NULL);
-      
-      /* Check that the per-user socket directory either doesn't exist
-	 or has good modes */
-      
-      ret = stat(channel_forwarded_auth_socket_dir_name, &st);
-      directory_created = 0;
-      if (ret == -1 && errno != ENOENT)
-	packet_disconnect("stat: %.100s", strerror(errno));
+      packet_disconnect("Invalid SSH_AGENT_SOCKET_DIR \'%s\'",
+			channel_forwarded_auth_socket_dir_name);
+    }
+  *last_dir = '\0';
+  ret = stat(channel_forwarded_auth_socket_dir_name, &parent_st);
+  if (ret < 0)
+    {
+      packet_disconnect("Agent parent directory stat failed: %.100s",
+			strerror(errno));
+    }
+  *last_dir = '/';
+  
+  /* Check the per-user socket directory. Stat it, if it
+     doesn't exist, mkdir it and stat it. Then chdir to it
+     and stat "." and compare it with the earlier stat (dev
+     and inode) so that we can be sure we ended where we
+     wanted. Then stat ".." and check that it is sticky.
+     Only after this we can think about chowning the ".". */
+  
+  ret = stat(channel_forwarded_auth_socket_dir_name, &st);
+  directory_created = 0;
+  if (ret < 0 && errno != ENOENT)
+    packet_disconnect("stat: %.100s", strerror(errno));
+  if (ret < 0 && errno == ENOENT)
+    {
+      if (mkdir(channel_forwarded_auth_socket_dir_name, S_IRWXU) == 0)
+	{
+	  directory_created = 1;
+	  ret = stat(channel_forwarded_auth_socket_dir_name, &st);
+	}
       else
 	{
-	  if (mkdir(channel_forwarded_auth_socket_dir_name, S_IRWXU) == 0)
-	    {
-	      directory_created = 1;
-	    }
+	  packet_disconnect("Agent dir mkdir failed \'%s\' : %.50s",
+			    channel_forwarded_auth_socket_dir_name,
+			    strerror(errno));
 	}
-      if (ret == 0)
-	{
-	  if (st.st_uid != pw->pw_uid ||
-	      (st.st_mode & 077) != 0)
-	    {
-	      packet_disconnect("Bad modes for directory \'%s\'\n",
-				channel_forwarded_auth_socket_dir_name);
-	    }
-	}
-
-      /* Create the socket. */
-      sock = socket(AF_UNIX, SOCK_STREAM, 0);
-      if (sock < 0)
-	packet_disconnect("socket: %.100s", strerror(errno));
-
-      /* Bind it to the name. */
-      memset(&sunaddr, 0, AF_UNIX_SIZE(sunaddr));
-      sunaddr.sun_family = AF_UNIX;
-      strncpy(sunaddr.sun_path, channel_forwarded_auth_socket_name, 
-	      sizeof(sunaddr.sun_path));
-
-      /* Use umask to get desired permissions, chmod is too dangerous
-         NOTE: If your system doesn't handle umask correctly when
-	 creating unix-domain sockets, you might not be able to use
-	 ssh-agent connections on your system */
-      old_umask = umask(S_IRUSR|S_IXUSR|S_IRGRP|S_IXGRP|S_IROTH|S_IXOTH);
-      
-      if (bind(sock, (struct sockaddr *)&sunaddr, AF_UNIX_SIZE(sunaddr)) < 0)
-	packet_disconnect("bind: %.100s", strerror(errno));
-
-      umask(old_umask);
-      
-      if (directory_created)
-	chown(channel_forwarded_auth_socket_dir_name, pw->pw_uid, pw->pw_gid);
-
-      /* Start listening on the socket. */
-      if (listen(sock, 5) < 0)
-	packet_disconnect("listen: %.100s", strerror(errno));
-
-      /* Allocate a channel for the authentication agent socket. */
-      newch = channel_allocate(SSH_CHANNEL_AUTH_SOCKET, sock,
-			       xstrdup("auth socket"));
-      strcpy(channels[newch].path, channel_forwarded_auth_socket_name);
     }
-  else 
+  else
     {
-      int sockets[2], i, cnt, newfd;
-      int *dups = xmalloc(sizeof (int) * (pfd + 1));
-      
-      if (auth_get_fd() != -1)
-	fatal("Protocol error: authentication forwarding requested twice.");
-
-      /* Create a socket pair. */
-      if (socketpair(AF_UNIX, SOCK_STREAM, 0, sockets) < 0)
-	packet_disconnect("socketpair: %.100s", strerror(errno));
-    
-      /* Dup some descriptors to get the authentication fd to pfd,
-	 because some shells arbitrarily close descriptors below that.
-	 Don't use dup2 because maybe some systems don't have it?? */
-      for (cnt = 0;; cnt++) 
+      /* Simple owner & mode check. If directory has just been created,
+	 don't care about the owner yet. */
+      if ((st.st_uid != pw->pw_uid) || (st.st_mode & 077) != 0)
 	{
-	  if ((dups[cnt] = dup(packet_get_connection_in())) < 0)
-	    fatal("auth_input_request_forwarding: dup failed");
-	  if (dups[cnt] == pfd)
-	    break;
+	  packet_disconnect("Agent socket creation:"
+			    "Bad modes/owner for directory \'%s\' (modes %o)",
+			    channel_forwarded_auth_socket_dir_name,
+			    st.st_mode);
 	}
-      close(dups[cnt]);
-      
-      /* Move the file descriptor we pass to children up high where
-	 the shell won't close it. */
-      newfd = dup(sockets[1]);
-      if (newfd != pfd)
-	fatal ("auth_input_request_forwarding: dup didn't return %d.", pfd);
-      close(sockets[1]);
-      sockets[1] = newfd;
-      /* Close duped descriptors. */
-      for (i = 0; i < cnt; i++)
-	close(dups[i]);
-      free(dups);
-    
-      /* Record the file descriptor to be passed to children. */
-      channel_forwarded_auth_fd = sockets[1];
-    
-      /* Allcate a channel for the authentication fd. */
-      (void)channel_allocate(SSH_CHANNEL_AUTH_FD, sockets[0],
-			     xstrdup("auth fd"));
     }
+  chdir(channel_forwarded_auth_socket_dir_name);
+  
+  /* Check that we really are where we wanted to go */
+  if (stat(".", &st2) != 0)
+    packet_disconnect("stat \'.\' failed: %.100s", strerror(errno));
+  if (st.st_dev != st2.st_dev || st.st_ino != st2.st_ino)
+    packet_disconnect("Agent socket creation: wrong directory after chdir");
+
+  /* Check that parent is sticky, and it really is what it is supposed to be */
+  if (stat("..", &st) != 0)
+    packet_disconnect("stat \'..\' failed: %.100s", strerror(errno));
+  if ((st.st_mode & 01000) == 0)
+    packet_disconnect("Agent socket creation: Directory \'%s/..\' is not sticky, mode %o",
+		      channel_forwarded_auth_socket_dir_name, st.st_mode);
+  if (st.st_dev != parent_st.st_dev || st.st_ino != parent_st.st_ino)
+    packet_disconnect("Agent socket creation: wrong parent directory after chdir");
+  
+  
+  /* Create the socket. */
+  sock = socket(AF_UNIX, SOCK_STREAM, 0);
+  if (sock < 0)
+    packet_disconnect("socket: %.100s", strerror(errno));
+  
+  /* Bind it to the name. */
+  memset(&sunaddr, 0, AF_UNIX_SIZE(sunaddr));
+  sunaddr.sun_family = AF_UNIX;
+  strncpy(sunaddr.sun_path, channel_forwarded_auth_socket_name, 
+	  sizeof(sunaddr.sun_path));
+  
+  /* Use umask to get desired permissions, chmod is too dangerous
+     NOTE: If your system doesn't handle umask correctly when
+     creating unix-domain sockets, you might not be able to use
+     ssh-agent connections on your system */
+  old_umask = umask(S_IRUSR|S_IXUSR|S_IRGRP|S_IXGRP|S_IROTH|S_IXOTH);
+  
+  if (bind(sock, (struct sockaddr *)&sunaddr, AF_UNIX_SIZE(sunaddr)) < 0)
+    packet_disconnect("bind: %.100s", strerror(errno));
+  
+  umask(old_umask);
+  
+  if (directory_created)
+    chown(".", pw->pw_uid, pw->pw_gid);
+
+  /* Start listening on the socket. */
+  if (listen(sock, 5) < 0)
+    packet_disconnect("listen: %.100s", strerror(errno));
+
+  /* Change the relative socket name to absolute */
+  sprintf(channel_forwarded_auth_socket_name, 
+	  SSH_AGENT_SOCKET_DIR"/"SSH_AGENT_SOCKET,
+	  pw->pw_name, (int)getpid());
+    
+  /* Allocate a channel for the authentication agent socket. */
+  newch = channel_allocate(SSH_CHANNEL_AUTH_LISTENER, sock,
+			   xstrdup("auth socket"));
+  strcpy(channels[newch].path, channel_forwarded_auth_socket_name);
 }
 
 /* This is called to process an SSH_SMSG_AGENT_OPEN message. */
 
 void auth_input_open_request()
 {
-  int port, sock, newch;
+  int remote_channel, sock, newch;
   char *dummyname;
 
   /* Read the port number from the message. */
-  port = packet_get_int();
-  
+  remote_channel = packet_get_int();
+
   /* Get a connection to the local authentication agent (this may again get
      forwarded). */
   sock = ssh_get_authentication_connection_fd();
 
-  /* If we could not connect the agent, just return.  This will cause the
-     client to timeout and fail.  This should never happen unless the agent
-     dies, because authentication forwarding is only enabled if we have an
-     agent. */
+  /* If we could not connect the agent, inform the server side that
+     opening failed. This should never happen unless the agent
+     dies, because authentication forwarding is only enabled if we
+     have an agent. */
   if (sock < 0)
-    return;
-
+    {
+      packet_start(SSH_MSG_CHANNEL_OPEN_FAILURE);
+      packet_put_int(remote_channel);
+      packet_send();
+      return;
+    }
+  
   debug("Forwarding authentication connection.");
 
-  /* Dummy host name.  This will be freed when the channel is freed; it will
-     still be valid in the packet_put_string below since the channel cannot
-     yet be freed at that point. */
   dummyname = xstrdup("authentication agent connection");
   
-  /* Allocate a channel for the new connection. */
-  newch = channel_allocate(SSH_CHANNEL_OPENING, sock, dummyname);
-
-  /* Fake a forwarding request. */
-  packet_start(SSH_MSG_PORT_OPEN);
+  /* Allocate a channel for this connection. */
+  newch = channel_allocate(SSH_CHANNEL_OPEN, sock, dummyname);
+  channels[newch].remote_id = remote_channel;
+  
+  /* Send a confirmation to the remote host. */
+  packet_start(SSH_MSG_CHANNEL_OPEN_CONFIRMATION);
+  packet_put_int(remote_channel);
   packet_put_int(newch);
-  packet_put_string("localhost", strlen("localhost"));
-  packet_put_int(port);
-  if (have_hostname_in_open)
-    packet_put_string(dummyname, strlen(dummyname));
   packet_send();
 }

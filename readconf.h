@@ -14,8 +14,15 @@ Functions for reading the configuration file.
 */
 
 /*
- * $Id: readconf.h,v 1.4 1997/03/27 03:10:27 kivinen Exp $
+ * $Id: readconf.h,v 1.6 1997/04/23 00:01:35 kivinen Exp $
  * $Log: readconf.h,v $
+ * Revision 1.6  1997/04/23 00:01:35  kivinen
+ * 	Added number_of_password_prompts and clear_all_forwardings
+ * 	fields.
+ *
+ * Revision 1.5  1997/04/17 04:20:37  kivinen
+ * 	Updated strict_host_key_checking comment.
+ *
  * Revision 1.4  1997/03/27 03:10:27  kivinen
  * 	Added kerberos patches from Glenn Machin.
  *
@@ -70,7 +77,8 @@ typedef struct
   int fallback_to_rsh;		/* Use rsh if cannot connect with ssh. */
   int use_rsh;			/* Always use rsh (don\'t try ssh). */
   int batch_mode;		/* Batch mode: do not ask for passwords. */
-  int strict_host_key_checking;	/* Strict host key checking. */
+  int strict_host_key_checking;	/* Strict host key checking 0 = no, 1 = yes,
+				   2 = ask. */
   int compression;		/* Compress packets in both directions. */
   int compression_level;	/* Compression level 1 (fast) to 9 (best). */
   int keepalives;		/* Set SO_KEEPALIVE. */
@@ -78,6 +86,7 @@ typedef struct
 
   int port;			/* Port to connect. */
   int connection_attempts;	/* Max attempts (seconds) before giving up */
+  int number_of_password_prompts; /* Max number of password prompts */
   int cipher;			/* Cipher to use. */
   char *hostname;		/* Real host to connect. */
   char *proxy_command;		/* Proxy command for connecting the host. */
@@ -90,6 +99,8 @@ typedef struct
 
   int num_identity_files;	/* Number of files for RSA identities. */
   char *identity_files[SSH_MAX_IDENTITY_FILES];
+
+  int clear_all_forwardings;	/* Clear all forwardings (scp etc). */
 
   /* Local TCP/IP forward requests. */
   int num_local_forwards;

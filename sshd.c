@@ -18,8 +18,29 @@ agent connections.
 */
 
 /*
- * $Id: sshd.c,v 1.38 1997/04/05 22:03:38 kivinen Exp $
+ * $Id: sshd.c,v 1.42 1997/04/23 00:05:35 kivinen Exp $
  * $Log: sshd.c,v $
+ * Revision 1.42  1997/04/23 00:05:35  kivinen
+ * 	Added ifdefs around password expiration and inactivity checks,
+ * 	because some systems dont have sp_expire and sp_inact fields.
+ *
+ * Revision 1.41  1997/04/21 01:05:56  kivinen
+ * 	Added waitpid loop to main_sigchld_handler if we have it.
+ * 	Added check to pty_cleanup_proc so it will not cleanup pty
+ * 	twice.
+ * 	Changed argument to server_loop from ttyname to
+ * 	cleanup_context.
+ *
+ * Revision 1.40  1997/04/17 04:04:58  kivinen
+ * 	Removed extra variable err.
+ *
+ * Revision 1.39  1997/04/17 04:04:13  kivinen
+ * 	Added fatal: to all errors that cause sshd to exit.
+ * 	Added resetting of SIGCHLD before running libwrap code.
+ * 	Moved pty/pipe closing to server_loop. Added ttyname argument
+ * 	to server_loop.
+ * 	Server_loop will also now release the pty if it is allocated.
+ *
  * Revision 1.38  1997/04/05 22:03:38  kivinen
  * 	Added check that userfile_get_des_1_magic_phrase succeeded,
  * 	before using the passphrase. Moved closing of pty after the
@@ -540,7 +561,13 @@ RETSIGTYPE sigterm_handler(int sig)
 RETSIGTYPE main_sigchld_handler(int sig)
 {
   int status;
+#ifdef HAVE_WAITPID
+  /* Reap all childrens */
+  while (waitpid(-1, &status, WNOHANG) > 0)
+    ;
+#else
   wait(&status);
+#endif
   signal(SIGCHLD, main_sigchld_handler);
 }
 
@@ -678,12 +705,12 @@ int main(int ac, char **av)
   if (options.server_key_bits < 512 || 
       options.server_key_bits > 32768)
     {
-      fprintf(stderr, "Bad server key size.\n");
+      fprintf(stderr, "fatal: Bad server key size.\n");
       exit(1);
     }
   if (options.port < 1 || options.port > 65535)
     {
-      fprintf(stderr, "Bad port number.\n");
+      fprintf(stderr, "fatal: Bad port number.\n");
       exit(1);
     }
   if (options.umask != -1)
@@ -694,7 +721,7 @@ int main(int ac, char **av)
   /* Check that there are no remaining arguments. */
   if (optind < ac)
     {
-      fprintf(stderr, "Extra argument %s.\n", av[optind]);
+      fprintf(stderr, "fatal: Extra argument %s.\n", av[optind]);
       exit(1);
     }
 
@@ -732,13 +759,12 @@ int main(int ac, char **av)
 	{
 	  fprintf(stderr, "Could not load host key: %.200s\n",
 		  options.host_key_file);
-	  fprintf(stderr, "Please check that you have sufficient permissions and the file exists.\n");
+	  fprintf(stderr, "fatal: Please check that you have sufficient permissions and the file exists.\n");
 	}
       else
 	{
-	  int err = errno;
 	  log_init(av0, !inetd_flag, 1, 0, options.log_facility);
-	  error("Could not load host key: %.200s.  Check path and permissions.", 
+	  error("fatal: Could not load host key: %.200s.  Check path and permissions.", 
 		options.host_key_file);
 	}
       exit(1);
@@ -988,6 +1014,9 @@ int main(int ac, char **av)
 #ifdef LIBWRAP
 		  {
 		    struct request_info req;
+		    
+		    signal(SIGCHLD, SIG_DFL);
+		    
 		    request_init(&req, RQ_DAEMON, av0, RQ_FILE, newsock, NULL);
 		    fromhost(&req);
 		    if (!hosts_access(&req))
@@ -1464,7 +1493,8 @@ int login_permitted(char *user, struct passwd *pwd)
     else
       {
 	time_t today = time((time_t *)NULL)/24/60/60; /* what a day! */
-	
+
+#ifdef HAVE_STRUCT_SPWD_EXPIRE
 	/* Check for expiration date */
 	if (sp->sp_expire > 0 && today > sp->sp_expire)
 	  {
@@ -1472,7 +1502,9 @@ int login_permitted(char *user, struct passwd *pwd)
 	    endspent();
 	    return 0;
 	  }
+#endif
 	
+#ifdef HAVE_STRUCT_SPWD_INACT
 	/* Check for last login */
 	if (sp->sp_inact > 0)
 	  {
@@ -1488,6 +1520,7 @@ int login_permitted(char *user, struct passwd *pwd)
 	      return 0;
 	      }
 	  }
+#endif
 	
 	/* Check if password is valid */
 	if (sp->sp_lstchg == 0 ||
@@ -2553,13 +2586,10 @@ void do_exec_no_pty(const char *command, struct passwd *pw,
   close(pout[1]);
   close(perr[1]);
 
-  /* Enter the interactive session. */
-  server_loop(pid, pin[1], pout[0], perr[0]);
-
-  /* Close the server side of the socket pairs. */
-  close(pin[1]);
-  close(pout[0]);
-  close(perr[0]);
+  /* Enter the interactive session. Note server_loop will close all
+     filedescriptors.  */
+  server_loop(pid, pin[1], pout[0], perr[0], NULL);
+  /* server_loop has closed pin[1], pout[1], and perr[1]. */
 #else /* USE_PIPES */
   /* We are the parent.  Close the child sides of the socket pairs. */
   close(inout[0]);
@@ -2567,11 +2597,8 @@ void do_exec_no_pty(const char *command, struct passwd *pw,
   
   /* Enter the interactive session.  Note: server_loop must be able to handle
      the case that fdin and fdout are the same. */
-  server_loop(pid, inout[1], inout[1], err[1]);
-  
-  /* Close the server side of the socket pairs. */
-  close(inout[1]);
-  close(err[1]);
+  server_loop(pid, inout[1], inout[1], err[1], NULL);
+  /* server_loop has closed inout[1] and err[1]. */
 #endif /* USE_PIPES */
 }
 
@@ -2579,6 +2606,7 @@ struct pty_cleanup_context
 {
   const char *ttyname;
   int pid;
+  int alread_cleaned;
 };
 
 /* Function to perform cleanup if we get aborted abnormally (e.g., due to a
@@ -2588,13 +2616,22 @@ void pty_cleanup_proc(void *context)
 {
   struct pty_cleanup_context *cu = context;
 
-  debug("pty_cleanup_proc called");
-
-  /* Record that the user has logged out. */
-  record_logout(cu->pid, cu->ttyname);
-
-  /* Release the pseudo-tty. */
-  pty_release(cu->ttyname);
+  if (cu->alread_cleaned)
+    {
+      debug("pty_cleanup_proc called again, ignored");
+    }
+  else
+    {
+      debug("pty_cleanup_proc called");
+      
+      /* Record that the user has logged out. */
+      record_logout(cu->pid, cu->ttyname);
+      
+      /* Release the pseudo-tty. */
+      pty_release(cu->ttyname);
+      
+      cu->alread_cleaned = 1;
+    }
 }
 
 /* This is called to fork and execute a command when we have a tty.  This
@@ -2754,25 +2791,19 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
      in case we call fatal() (e.g., the connection gets closed). */
   cleanup_context.pid = pid;
   cleanup_context.ttyname = ttyname;
+  cleanup_context.alread_cleaned = 0;
   fatal_add_cleanup(pty_cleanup_proc, (void *)&cleanup_context);
 
-  /* Enter interactive session. */
-  server_loop(pid, ptyfd, fdout, -1);
-  
+  /* Enter interactive session, . */
+  server_loop(pid, ptyfd, fdout, -1, &cleanup_context);
+  /* server_loop has closed ptyfd and fdout. */
+  /* server_loop has already Released the pseudo-tty. */
+
   /* Cancel the cleanup function. */
   fatal_remove_cleanup(pty_cleanup_proc, (void *)&cleanup_context);
 
   /* Record that the user has logged out. */
   record_logout(pid, ttyname);
-
-  /* Release the pseudo-tty. */
-  pty_release(ttyname);
-  
-  /* Close the server side of the socket pairs.  We must do this after the
-     pty cleanup, so that another process doesn't get this pty while we're
-     still cleaning up. */
-  close(ptyfd);
-  close(fdout);
 }
 
 /* Sets the value of the given variable in the environment.  If the variable

@@ -14,8 +14,11 @@ Code for uid-swapping.
 */
 
 /*
- * $Id: uidswap.c,v 1.3 1995/09/11 17:36:26 ylo Exp $
+ * $Id: uidswap.c,v 1.4 1995/09/21 17:17:05 ylo Exp $
  * $Log: uidswap.c,v $
+ * Revision 1.4  1995/09/21  17:17:05  ylo
+ * 	Added include ssh.h.
+ *
  * Revision 1.3  1995/09/11  17:36:26  ylo
  * 	Removed support for setreuid().  It is deprecated in bsd 4.4.  Too bad.
  *
@@ -47,11 +50,11 @@ void temporarily_use_uid(uid_t uid)
 {
   /* Propagate the privileged uid to all of our uids. */
   if (setuid(geteuid()) < 0)
-    error("setuid %d: %.100s", (int)geteuid(), strerror(errno));
+    debug("setuid %d: %.100s", (int)geteuid(), strerror(errno));
 
   /* Set the effective uid to the given (unprivileged) uid. */
   if (seteuid(uid) == -1)
-    error("seteuid %d: %.100s", (int)uid, strerror(errno));
+    debug("seteuid %d: %.100s", (int)uid, strerror(errno));
 }
 
 /* Restores to the original uid. */
@@ -70,7 +73,7 @@ void restore_uid()
 void permanently_set_uid(uid_t uid)
 {
   if (setuid(uid) < 0)
-    error("setuid %d: %.100s", (int)uid, strerror(errno));
+    debug("setuid %d: %.100s", (int)uid, strerror(errno));
 }
 
 #else /* HAVE_SETEUID */
@@ -97,7 +100,7 @@ void restore_uid()
 void permanently_set_uid(uid_t uid)
 {
   if (setuid(uid) < 0)
-    error("setuid %d: %.100s", (int)uid, strerror(errno));
+    debug("setuid %d: %.100s", (int)uid, strerror(errno));
 }
 
 #endif /* HAVE_SETEUID */

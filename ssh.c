@@ -16,8 +16,14 @@ of X11, TCP/IP, and authentication connections.
 */
 
 /*
- * $Id: ssh.c,v 1.20 1997/03/27 03:10:56 kivinen Exp $
+ * $Id: ssh.c,v 1.22 1997/04/05 22:00:11 kivinen Exp $
  * $Log: ssh.c,v $
+ * Revision 1.22  1997/04/05 22:00:11  kivinen
+ * 	Added LIBWRAP stuff at the beginning.
+ *
+ * Revision 1.21  1997/03/27 13:46:23  kivinen
+ * 	Fixed typo.
+ *
  * Revision 1.20  1997/03/27 03:10:56  kivinen
  * 	Added kerberos patches from Glenn Machin.
  * 	Added -V and -k options.
@@ -157,6 +163,16 @@ of X11, TCP/IP, and authentication connections.
 #include "userfile.h"
 #include "emulate.h"
 
+#ifdef LIBWRAP
+#include <tcpd.h>
+#include <syslog.h>
+#ifdef NEED_SYS_SYSLOG_H
+#include <sys/syslog.h>
+#endif /* NEED_SYS_SYSLOG_H */
+int allow_severity = LOG_INFO;
+int deny_severity = LOG_WARNING;
+#endif /* LIBWRAP */
+
 /* Random number generator state.  This is initialized in ssh_login, and
    left initialized.  This is used both by the packet module and by various
    other functions. */
@@ -258,7 +274,7 @@ void usage()
 #endif /* WITH_BLOWFISH */
 	  "``3des''\n");
   fprintf(stderr, "  -p port     Connect to this port.  Server must be on the same port.\n");
-  fprintf(stderr, "  -P          Dont use priviledged source port.\n");
+  fprintf(stderr, "  -P          Don't use priviledged source port.\n");
 #ifndef SSH_NO_PORT_FORWARDING
   fprintf(stderr, "  -L listen-port:host:port   Forward local port to remote address\n");
   fprintf(stderr, "  -R listen-port:host:port   Forward remote port to local address\n");

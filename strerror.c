@@ -14,8 +14,11 @@ Replacement for strerror for systems that don't have it.
 */
 
 /*
- * $Id: strerror.c,v 1.1.1.1 1996/02/18 21:38:11 ylo Exp $
+ * $Id: strerror.c,v 1.2 1998/05/12 22:14:46 ylo Exp $
  * $Log: strerror.c,v $
+ * Revision 1.2  1998/05/12  22:14:46  ylo
+ * 	Fixed strerror to never return NULL.
+ *
  * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
  * 	Imported ssh-1.2.13.
  *
@@ -38,5 +41,5 @@ char *strerror(int error_number)
   if (error_number >= 0 && error_number < sys_nerr)
     return sys_errlist[error_number];
   else
-    return NULL;
+    return "Bad error code";
 }

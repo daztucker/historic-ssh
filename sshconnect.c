@@ -15,8 +15,12 @@ login (authentication) dialog.
 */
 
 /*
- * $Id: sshconnect.c,v 1.19 1997/03/27 03:11:35 kivinen Exp $
+ * $Id: sshconnect.c,v 1.20 1997/04/05 22:02:04 kivinen Exp $
  * $Log: sshconnect.c,v $
+ * Revision 1.20  1997/04/05 22:02:04  kivinen
+ * 	Removed restriction that ssh only used priviledged port if
+ * 	server port was < 1024. Fixed KRB5 support.
+ *
  * Revision 1.19  1997/03/27 03:11:35  kivinen
  * 	Added kerberos patches from Glenn Machin.
  *
@@ -482,8 +486,7 @@ int ssh_connect(const char *host, int port, int connection_attempts,
 
 	      /* Create a socket for connecting. */
 	      sock = ssh_create_socket(original_real_uid, 
-				       !anonymous && geteuid() == UID_ROOT && 
-				         port < 1024);
+				       !anonymous && geteuid() == UID_ROOT);
 
 	      /* Connect to the host. */
 #ifdef SOCKS
@@ -1619,7 +1622,9 @@ void ssh_login(RandomState *state, int host_key_valid,
         if (type != SSH_SMSG_FAILURE)
           packet_disconnect("Protocol error: got %d in response to Kerberos auth", type);
       }
+#ifdef KRB5
     }
+#endif
 #endif /* KERBEROS */
 
   /* Use rhosts authentication if running in privileged socket and we do not

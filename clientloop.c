@@ -15,8 +15,14 @@ The main loop for the interactive session (client side).
 */
 
 /*
- * $Id: clientloop.c,v 1.1 1995/09/25 00:05:00 ylo Exp $
+ * $Id: clientloop.c,v 1.2 1996/04/22 23:45:20 huima Exp $
  * $Log: clientloop.c,v $
+ * Revision 1.2  1996/04/22 23:45:20  huima
+ * Added support for the revised channel protocol.
+ *
+ * Revision 1.1.1.1  1996/02/18  21:38:12  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.1  1995/09/25  00:05:00  ylo
  * 	Created.  This file contains the client main loop, which used
  * 	to be in ssh.c.
@@ -329,6 +335,7 @@ void client_process_buffered_input_packets()
 	  channel_input_data();
 	  break;
 
+#ifdef SUPPORT_OLD_CHANNELS
 	case SSH_MSG_CHANNEL_CLOSE:
 	  channel_input_close();
 	  break;
@@ -336,6 +343,15 @@ void client_process_buffered_input_packets()
 	case SSH_MSG_CHANNEL_CLOSE_CONFIRMATION:
 	  channel_input_close_confirmation();
 	  break;
+#else
+	case SSH_MSG_CHANNEL_INPUT_EOF:
+	  channel_ieof();
+	  break;
+
+	case SSH_MSG_CHANNEL_OUTPUT_CLOSED:
+	  channel_oclosed();
+	  break;
+#endif
 
 	default:
 	  /* Any unknown packets received during the actual session

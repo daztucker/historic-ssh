@@ -14,8 +14,17 @@ This file includes most of the needed system headers.
 */
 
 /*
- * $Id: includes.h,v 1.12 1995/10/02 01:22:37 ylo Exp $
+ * $Id: includes.h,v 1.3 1996/04/26 00:33:48 ylo Exp $
  * $Log: includes.h,v $
+ * Revision 1.3  1996/04/26 00:33:48  ylo
+ * 	Added support for HPUX 7.x.
+ *
+ * Revision 1.2  1996/04/22 23:40:42  huima
+ * Added #define SUPPORT_OLD_CHANNELS.
+ *
+ * Revision 1.1.1.1  1996/02/18  21:38:10  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.12  1995/10/02  01:22:37  ylo
  * 	Added machine/endian.h on Paragon.
  *
@@ -184,7 +193,14 @@ struct	sockaddr_un {
 #include <netinet/ip.h>
 #endif /* !__PARAGON__ */
 #include <netinet/tcp.h>
+#if defined(HPSUX7_KLUDGES)
+struct linger {
+        int             l_onoff;/* option on/off */
+        int             l_linger;       /* linger time */
+};
+#else /* normal system */
 #include <arpa/inet.h>
+#endif
 #include <netdb.h>
 #ifdef HAVE_SYS_SELECT_H
 #include <sys/select.h>
@@ -291,5 +307,7 @@ struct	sockaddr_un {
 #else
 #define AF_UNIX_SIZE(unaddr) sizeof(unaddr)
 #endif
+
+#define SUPPORT_OLD_CHANNELS
 
 #endif /* INCLUDES_H */

@@ -14,8 +14,11 @@ Functions for reading passphrases and passwords.
 */
 
 /*
- * $Id: readpass.c,v 1.3 1997/03/26 07:15:23 kivinen Exp $
+ * $Id: readpass.c,v 1.4 1997/04/05 21:49:28 kivinen Exp $
  * $Log: readpass.c,v $
+ * Revision 1.4  1997/04/05 21:49:28  kivinen
+ * 	Fixed the '-quoting from \' to '\''.
+ *
  * Revision 1.3  1997/03/26 07:15:23  kivinen
  * 	Fixed prompt quoting so ' will be quoted only if in command
  * 	line.
@@ -105,12 +108,17 @@ char *read_passphrase(uid_t uid, const char *prompt, int from_stdin)
 	      fflush(stdout);
 	      fflush(stderr);
 	      for(p = prompt, i = 0;
-		  i < sizeof(quoted_prompt) - 4 && *p;
+		  i < sizeof(quoted_prompt) - 5 && *p;
 		  i++, p++)
 		{
 		  if (*p == '\'')
-		    quoted_prompt[i++] = '\\';
-		  if (isprint(*p) || isspace(*p))
+		    {
+		      quoted_prompt[i++] = '\'';
+		      quoted_prompt[i++] = '\\';
+		      quoted_prompt[i++] = '\'';
+		      quoted_prompt[i] = '\'';
+		    }
+		  else if (isprint(*p) || isspace(*p))
 		    quoted_prompt[i] = *p;
 		  else if (iscntrl(*p))
 		    {

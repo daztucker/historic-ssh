@@ -10,6 +10,17 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 /*
  * $Log: acconfig.h,v $
+ * Revision 1.15  1995/09/27  02:47:19  ylo
+ * 	Added SOCKS stuff.
+ *
+ * Revision 1.14  1995/09/27  02:09:52  ylo
+ * 	Added ETCDIR.
+ * 	Added SPEED_T_IN_STDTYPES_H.
+ *
+ * Revision 1.13  1995/09/21  17:06:23  ylo
+ * 	Added USE_STRLEN_FOR_AF_UNIX.
+ * 	Added USE_PIPES.
+ *
  * Revision 1.12  1995/09/13  12:05:51  ylo
  * 	Removed HPSUX_BROKEN_PTYS.
  *
@@ -116,6 +127,10 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define this if O_NONBLOCK does not work on your system (e.g., Ultrix). */
 #undef O_NONBLOCK_BROKEN
 
+/* Define this if sys/syslog.h needs to be included in addition to syslog.h.
+   This is the case on some Ultrix versions. */
+#undef NEED_SYS_SYSLOG_H
+
 /* Define this to leave out IDEA encryption. */
 #undef WITHOUT_IDEA
 
@@ -153,3 +168,26 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define this to use pipes instead of socketpairs for communicating with the
    client program.  Socketpairs do not seem to work on all systems. */
 #undef USE_PIPES
+
+/* Directory containing ssh_config, ssh_known_hosts, sshd_pid, etc.  Normally
+   /etc. */
+#undef ETCDIR
+
+/* Define this if speed_t is defined in stdtypes.h or otherwise gets included
+   into ttymodes.c from system headers. */
+#undef SPEED_T_IN_STDTYPES_H
+
+/* Define this if compiling with SOCKS (the firewall traversal library).
+   Also, you must define connect, getsockname, bind, accept, listen, and
+   select to their R-versions. */
+#undef SOCKS
+#undef connect
+#undef getsockname
+#undef bind
+#undef accept
+#undef listen
+#undef select
+
+/* Define these if on SCO Unix. */
+#undef HAVE_SCO_ETC_SHADOW
+#undef SCO

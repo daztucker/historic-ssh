@@ -2,10 +2,11 @@
 
 userfile.c
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Wed Jan 24 20:19:53 1996 ylo
 
@@ -13,10 +14,13 @@ Created: Wed Jan 24 20:19:53 1996 ylo
 
 /*
  * $Log: userfile.c,v $
+ * Revision 1.20  1999/11/17 17:05:01  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.19  1999/02/21 19:53:01  ylo
- * 	Intermediate commit of ssh1.2.27 stuff.
- * 	Main change is sprintf -> snprintf; however, there are also
- * 	many other changes.
+ *      Intermediate commit of ssh1.2.27 stuff.
+ *      Main change is sprintf -> snprintf; however, there are also
+ *      many other changes.
  *
  * Revision 1.18  1998/05/23 20:28:26  kivinen
  *      Changed () -> (void).

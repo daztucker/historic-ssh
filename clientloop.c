@@ -15,26 +15,31 @@ The main loop for the interactive session (client side).
 */
 
 /*
- * $Id: clientloop.c,v 1.5 1998/05/23 20:21:22 kivinen Exp $
+ * $Id: clientloop.c,v 1.6 1999/02/21 19:51:59 ylo Exp $
  * $Log: clientloop.c,v $
- * Revision 1.5  1998/05/23  20:21:22  kivinen
- * 	Changed () -> (void).
+ * Revision 1.6  1999/02/21 19:51:59  ylo
+ * 	Intermediate commit of ssh1.2.27 stuff.
+ * 	Main change is sprintf -> snprintf; however, there are also
+ * 	many other changes.
+ *
+ * Revision 1.5  1998/05/23 20:21:22  kivinen
+ *      Changed () -> (void).
  *
  * Revision 1.4  1997/03/26  07:12:28  kivinen
- * 	Added HAVE_NO_TZ_IN_GETTIMEOFDAY support.
+ *      Added HAVE_NO_TZ_IN_GETTIMEOFDAY support.
  *
  * Revision 1.3  1996/11/24 08:17:46  kivinen
- * 	Added all checks that check EAGAIN to check EWOULDBLOCK too.
+ *      Added all checks that check EAGAIN to check EWOULDBLOCK too.
  *
  * Revision 1.2  1996/04/22 23:45:20  huima
  * Added support for the revised channel protocol.
  *
  * Revision 1.1.1.1  1996/02/18  21:38:12  ylo
- * 	Imported ssh-1.2.13.
+ *      Imported ssh-1.2.13.
  *
  * Revision 1.1  1995/09/25  00:05:00  ylo
- * 	Created.  This file contains the client main loop, which used
- * 	to be in ssh.c.
+ *      Created.  This file contains the client main loop, which used
+ *      to be in ssh.c.
  *
  * $Endlog$
  */
@@ -255,26 +260,26 @@ void client_check_initial_eof_on_stdin(void)
       /* Check for immediate EOF on stdin. */
       len = read(fileno(stdin), buf, 1);
       if (len == 0)
-	{
-	  /* EOF.  Record that we have seen it and send EOF to server. */
-	  debug("Sending eof.");
-	  stdin_eof = 1;
-	  packet_start(SSH_CMSG_EOF);
-	  packet_send();
-	}
+        {
+          /* EOF.  Record that we have seen it and send EOF to server. */
+          debug("Sending eof.");
+          stdin_eof = 1;
+          packet_start(SSH_CMSG_EOF);
+          packet_send();
+        }
       else
-	if (len > 0)
-	  {
-	    /* Got data.  We must store the data in the buffer, and also
-	       process it as an escape character if appropriate. */
-	    if ((unsigned char)buf[0] == escape_char)
-	      escape_pending = 1;
-	    else
-	      {
-		buffer_append(&stdin_buffer, buf, 1);
-		stdin_bytes += 1;
-	      }
-	  }
+        if (len > 0)
+          {
+            /* Got data.  We must store the data in the buffer, and also
+               process it as an escape character if appropriate. */
+            if ((unsigned char)buf[0] == escape_char)
+              escape_pending = 1;
+            else
+              {
+                buffer_append(&stdin_buffer, buf, 1);
+                stdin_bytes += 1;
+              }
+          }
       
       /* Leave non-blocking mode. */
       leave_non_blocking();
@@ -294,87 +299,87 @@ void client_process_buffered_input_packets(void)
   while (!quit_pending && (type = packet_read_poll()) != SSH_MSG_NONE)
     {
       switch (type)
-	{
-	  
-	case SSH_SMSG_STDOUT_DATA:
-	  data = packet_get_string(&data_len);
-	  buffer_append(&stdout_buffer, data, data_len);
-	  stdout_bytes += data_len;
-	  memset(data, 0, data_len);
-	  xfree(data);
-	  break;
+        {
+          
+        case SSH_SMSG_STDOUT_DATA:
+          data = packet_get_string(&data_len);
+          buffer_append(&stdout_buffer, data, data_len);
+          stdout_bytes += data_len;
+          memset(data, 0, data_len);
+          xfree(data);
+          break;
 
-	case SSH_SMSG_STDERR_DATA:
-	  data = packet_get_string(&data_len);
-	  buffer_append(&stderr_buffer, data, data_len);
-	  stdout_bytes += data_len;
-	  memset(data, 0, data_len);
-	  xfree(data);
-	  break;
+        case SSH_SMSG_STDERR_DATA:
+          data = packet_get_string(&data_len);
+          buffer_append(&stderr_buffer, data, data_len);
+          stdout_bytes += data_len;
+          memset(data, 0, data_len);
+          xfree(data);
+          break;
 
-	case SSH_SMSG_EXITSTATUS:
-	  exit_status = packet_get_int();
-	  /* Acknowledge the exit. */
-	  packet_start(SSH_CMSG_EXIT_CONFIRMATION);
-	  packet_send();
-	  /* Must wait for packet to be sent since we are exiting the
-	     loop. */
-	  packet_write_wait();
-	  /* Flag that we want to exit. */
-	  quit_pending = 1;
-	  break;
+        case SSH_SMSG_EXITSTATUS:
+          exit_status = packet_get_int();
+          /* Acknowledge the exit. */
+          packet_start(SSH_CMSG_EXIT_CONFIRMATION);
+          packet_send();
+          /* Must wait for packet to be sent since we are exiting the
+             loop. */
+          packet_write_wait();
+          /* Flag that we want to exit. */
+          quit_pending = 1;
+          break;
 
-	case SSH_SMSG_X11_OPEN:
-	  x11_input_open();
-	  break;
+        case SSH_SMSG_X11_OPEN:
+          x11_input_open();
+          break;
 
-	case SSH_MSG_PORT_OPEN:
-	  channel_input_port_open();
-	  break;
+        case SSH_MSG_PORT_OPEN:
+          channel_input_port_open();
+          break;
 
-	case SSH_SMSG_AGENT_OPEN:
-	  auth_input_open_request();
-	  break;
+        case SSH_SMSG_AGENT_OPEN:
+          auth_input_open_request();
+          break;
 
-	case SSH_MSG_CHANNEL_OPEN_CONFIRMATION:
-	  channel_input_open_confirmation();
-	  break;
+        case SSH_MSG_CHANNEL_OPEN_CONFIRMATION:
+          channel_input_open_confirmation();
+          break;
 
-	case SSH_MSG_CHANNEL_OPEN_FAILURE:
-	  channel_input_open_failure();
-	  break;
+        case SSH_MSG_CHANNEL_OPEN_FAILURE:
+          channel_input_open_failure();
+          break;
 
-	case SSH_MSG_CHANNEL_DATA:
-	  channel_input_data();
-	  break;
+        case SSH_MSG_CHANNEL_DATA:
+          channel_input_data();
+          break;
 
 #ifdef SUPPORT_OLD_CHANNELS
-	case SSH_MSG_CHANNEL_CLOSE:
-	  channel_input_close();
-	  break;
+        case SSH_MSG_CHANNEL_CLOSE:
+          channel_input_close();
+          break;
 
-	case SSH_MSG_CHANNEL_CLOSE_CONFIRMATION:
-	  channel_input_close_confirmation();
-	  break;
+        case SSH_MSG_CHANNEL_CLOSE_CONFIRMATION:
+          channel_input_close_confirmation();
+          break;
 #else
-	case SSH_MSG_CHANNEL_INPUT_EOF:
-	  channel_ieof();
-	  break;
+        case SSH_MSG_CHANNEL_INPUT_EOF:
+          channel_ieof();
+          break;
 
-	case SSH_MSG_CHANNEL_OUTPUT_CLOSED:
-	  channel_oclosed();
-	  break;
+        case SSH_MSG_CHANNEL_OUTPUT_CLOSED:
+          channel_oclosed();
+          break;
 #endif
 
-	default:
-	  /* Any unknown packets received during the actual session
-	     cause the session to terminate.  This is intended to make
-	     debugging easier since no confirmations are sent.  Any
-	     compatible protocol extensions must be negotiated during
-	     the preparatory phase. */
-	  packet_disconnect("Protocol error during session: type %d",
-			    type);
-	}
+        default:
+          /* Any unknown packets received during the actual session
+             cause the session to terminate.  This is intended to make
+             debugging easier since no confirmations are sent.  Any
+             compatible protocol extensions must be negotiated during
+             the preparatory phase. */
+          packet_disconnect("Protocol error during session: type %d",
+                            type);
+        }
     }
 }
 
@@ -387,21 +392,21 @@ void client_make_packets_from_stdin_data(void)
 
   /* Send buffered stdin data to the server. */
   while (buffer_len(&stdin_buffer) > 0 && 
-	 packet_not_very_much_data_to_write())
+         packet_not_very_much_data_to_write())
     {
       len = buffer_len(&stdin_buffer);
       if (len > 32768)
-	len = 32768;  /* Keep the packets at reasonable size. */
+        len = 32768;  /* Keep the packets at reasonable size. */
       packet_start(SSH_CMSG_STDIN_DATA);
       packet_put_string(buffer_ptr(&stdin_buffer), len);
       packet_send();
       buffer_consume(&stdin_buffer, len);
       /* If we have a pending EOF, send it now. */
       if (stdin_eof && buffer_len(&stdin_buffer) == 0)
-	{
-	  packet_start(SSH_CMSG_EOF);
-	  packet_send();
-	}
+        {
+          packet_start(SSH_CMSG_EOF);
+          packet_send();
+        }
     }
 }
 
@@ -423,15 +428,15 @@ void client_check_window_change(void)
 
       /* Read new window size. */
       if (ioctl(fileno(stdin), TIOCGWINSZ, &ws) >= 0)
-	{
-	  /* Successful, send the packet now. */
-	  packet_start(SSH_CMSG_WINDOW_SIZE);
-	  packet_put_int(ws.ws_row);
-	  packet_put_int(ws.ws_col);
-	  packet_put_int(ws.ws_xpixel);
-	  packet_put_int(ws.ws_ypixel);
-	  packet_send();
-	}
+        {
+          /* Successful, send the packet now. */
+          packet_start(SSH_CMSG_WINDOW_SIZE);
+          packet_put_int(ws.ws_row);
+          packet_put_int(ws.ws_col);
+          packet_put_int(ws.ws_xpixel);
+          packet_put_int(ws.ws_ypixel);
+          packet_send();
+        }
     }
 #endif /* SIGWINCH */
 }
@@ -489,9 +494,9 @@ void client_wait_until_can_do_something(fd_set *readset, fd_set *writeset)
       FD_ZERO(readset);
       FD_ZERO(writeset);
       if (errno == EINTR)
-	return;
+        return;
       /* Note: we might still have data in the buffers. */
-      sprintf(buf, "select: %.100s\r\n", strerror(errno));
+      snprintf(buf, sizeof(buf), "select: %.100s\r\n", strerror(errno));
       buffer_append(&stderr_buffer, buf, strlen(buf));
       stderr_bytes += strlen(buf);
       quit_pending = 1;
@@ -507,12 +512,12 @@ void client_suspend_self(void)
   /* Flush stdout and stderr buffers. */
   if (buffer_len(&stdout_buffer) > 0)
     write(fileno(stdout), 
-	  buffer_ptr(&stdout_buffer), 
-	  buffer_len(&stdout_buffer));
+          buffer_ptr(&stdout_buffer), 
+          buffer_len(&stdout_buffer));
   if (buffer_len(&stderr_buffer) > 0)
     write(fileno(stderr), 
-	  buffer_ptr(&stderr_buffer), 
-	  buffer_len(&stderr_buffer));
+          buffer_ptr(&stderr_buffer), 
+          buffer_len(&stderr_buffer));
 
   /* Leave raw mode. */
   leave_raw_mode();
@@ -563,32 +568,34 @@ void client_process_input(fd_set *readset)
       /* Read as much as possible. */
       len = read(connection_in, buf, sizeof(buf));
       if (len == 0)
-	{ 
-	  /* Received EOF.  The remote host has closed the connection. */
-	  sprintf(buf, "Connection to %.300s closed by remote host.\r\n",
-		  host);
-	  buffer_append(&stderr_buffer, buf, strlen(buf));
-	  stderr_bytes += strlen(buf);
-	  quit_pending = 1;
-	  return;
-	}
+        { 
+          /* Received EOF.  The remote host has closed the connection. */
+          snprintf(buf, sizeof(buf),
+                   "Connection to %.300s closed by remote host.\r\n",
+                  host);
+          buffer_append(&stderr_buffer, buf, strlen(buf));
+          stderr_bytes += strlen(buf);
+          quit_pending = 1;
+          return;
+        }
 
       /* There is a kernel bug on Solaris that causes select to sometimes
-	 wake up even though there is no data available. */
+         wake up even though there is no data available. */
       if (len < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
-	len = 0;
+        len = 0;
 
       if (len < 0)
-	{
-	  /* An error has encountered.  Perhaps there is a network
-	     problem. */
-	  sprintf(buf, "Read from remote host %.300s: %.100s\r\n", 
-		  host, strerror(errno));
-	  buffer_append(&stderr_buffer, buf, strlen(buf));
-	  stderr_bytes += strlen(buf);
-	  quit_pending = 1;
-	  return;
-	}
+        {
+          /* An error has encountered.  Perhaps there is a network
+             problem. */
+          snprintf(buf, sizeof(buf),
+                   "Read from remote host %.300s: %.100s\r\n", 
+                   host, strerror(errno));
+          buffer_append(&stderr_buffer, buf, strlen(buf));
+          stderr_bytes += strlen(buf);
+          quit_pending = 1;
+          return;
+        }
       packet_process_incoming(buf, len);
     }
 
@@ -598,123 +605,124 @@ void client_process_input(fd_set *readset)
       /* Read as much as possible. */
       len = read(fileno(stdin), buf, sizeof(buf));
       if (len <= 0)
-	{
-	  /* Received EOF or error.  They are treated similarly,
-	     except that an error message is printed if it was
-	     an error condition. */
-	  if (len < 0)
-	    {
-	      sprintf(buf, "read: %.100s\r\n", strerror(errno));
-	      buffer_append(&stderr_buffer, buf, strlen(buf));
-	      stderr_bytes += strlen(buf);
-	    }
-	  /* Mark that we have seen EOF. */
-	  stdin_eof = 1;
-	  /* Send an EOF message to the server unless there is data
-	     in the buffer.  If there is data in the buffer, no message
-	     will be sent now.  Code elsewhere will send the EOF
-	     when the buffer becomes empty if stdin_eof is set. */
-	  if (buffer_len(&stdin_buffer) == 0)
-	    {
-	      packet_start(SSH_CMSG_EOF);
-	      packet_send();
-	    }
-	}
+        {
+          /* Received EOF or error.  They are treated similarly,
+             except that an error message is printed if it was
+             an error condition. */
+          if (len < 0)
+            {
+              snprintf(buf, sizeof(buf),
+                       "read: %.100s\r\n", strerror(errno));
+              buffer_append(&stderr_buffer, buf, strlen(buf));
+              stderr_bytes += strlen(buf);
+            }
+          /* Mark that we have seen EOF. */
+          stdin_eof = 1;
+          /* Send an EOF message to the server unless there is data
+             in the buffer.  If there is data in the buffer, no message
+             will be sent now.  Code elsewhere will send the EOF
+             when the buffer becomes empty if stdin_eof is set. */
+          if (buffer_len(&stdin_buffer) == 0)
+            {
+              packet_start(SSH_CMSG_EOF);
+              packet_send();
+            }
+        }
       else
-	if (escape_char == -1)
-	  {
-	    /* Normal successful read, and no escape character.  Just 
-	       append the data to buffer. */
-	    buffer_append(&stdin_buffer, buf, len);
-	    stdin_bytes += len;
-	  }
-	else
-	  {
-	    /* Normal, successful read.  But we have an escape character
-	       and have to process the characters one by one. */
-	    unsigned int i;
-	    for (i = 0; i < len; i++)
-	      {
-		unsigned char ch;
-		/* Get one character at a time. */
-		ch = buf[i];
-		
-		/* Check if we have a pending escape character. */
-		if (escape_pending)
-		  {
-		    /* We have previously seen an escape character. */
-		    /* Clear the flag now. */
-		    escape_pending = 0;
-		    /* Process the escaped character. */
-		    switch (ch)
-		      {
-		      case '.':
-			/* Terminate the connection. */
-			sprintf(buf, "%c.\r\n", escape_char);
-			buffer_append(&stderr_buffer, buf, strlen(buf));
-			stderr_bytes += strlen(buf);
-			quit_pending = 1;
-			return;
+        if (escape_char == -1)
+          {
+            /* Normal successful read, and no escape character.  Just 
+               append the data to buffer. */
+            buffer_append(&stdin_buffer, buf, len);
+            stdin_bytes += len;
+          }
+        else
+          {
+            /* Normal, successful read.  But we have an escape character
+               and have to process the characters one by one. */
+            unsigned int i;
+            for (i = 0; i < len; i++)
+              {
+                unsigned char ch;
+                /* Get one character at a time. */
+                ch = buf[i];
+                
+                /* Check if we have a pending escape character. */
+                if (escape_pending)
+                  {
+                    /* We have previously seen an escape character. */
+                    /* Clear the flag now. */
+                    escape_pending = 0;
+                    /* Process the escaped character. */
+                    switch (ch)
+                      {
+                      case '.':
+                        /* Terminate the connection. */
+                        snprintf(buf, sizeof(buf), "%c.\r\n", escape_char);
+                        buffer_append(&stderr_buffer, buf, strlen(buf));
+                        stderr_bytes += strlen(buf);
+                        quit_pending = 1;
+                        return;
 
-		      case 'Z' - 64:
-			  /* Suspend the program. */
-			  /* Print a message to that effect to the user. */
-			  sprintf(buf, "%c^Z\r\n", escape_char);
-			  buffer_append(&stderr_buffer, buf, strlen(buf));
-			  stderr_bytes += strlen(buf);
+                      case 'Z' - 64:
+                          /* Suspend the program. */
+                          /* Print a message to that effect to the user. */
+                          snprintf(buf, sizeof(buf), "%c^Z\r\n", escape_char);
+                          buffer_append(&stderr_buffer, buf, strlen(buf));
+                          stderr_bytes += strlen(buf);
 
-			  /* Restore terminal modes and suspend. */
-			  client_suspend_self();
+                          /* Restore terminal modes and suspend. */
+                          client_suspend_self();
 
-			  /* We have been continued. */
-			  continue;
-			
-		      case '&':
-			/* Detach the program (continue to serve connections,
-			   but put in background and no more new 
-			   connections). */
-			if (!stdin_eof)
-			  {
-			    /* Sending SSH_CMSG_EOF alone does not always
-			       appear to be enough.  So we try to send an
-			       EOF character first. */
-			    packet_start(SSH_CMSG_STDIN_DATA);
-			    packet_put_string("\004", 1);
-			    packet_send();
-			    /* Close stdin. */
-			    stdin_eof = 1;
-			    if (buffer_len(&stdin_buffer) == 0)
-			      {
-				packet_start(SSH_CMSG_EOF);
-				packet_send();
-			      }
-			  }
-			/* Restore tty modes. */
-			leave_raw_mode();
+                          /* We have been continued. */
+                          continue;
+                        
+                      case '&':
+                        /* Detach the program (continue to serve connections,
+                           but put in background and no more new 
+                           connections). */
+                        if (!stdin_eof)
+                          {
+                            /* Sending SSH_CMSG_EOF alone does not always
+                               appear to be enough.  So we try to send an
+                               EOF character first. */
+                            packet_start(SSH_CMSG_STDIN_DATA);
+                            packet_put_string("\004", 1);
+                            packet_send();
+                            /* Close stdin. */
+                            stdin_eof = 1;
+                            if (buffer_len(&stdin_buffer) == 0)
+                              {
+                                packet_start(SSH_CMSG_EOF);
+                                packet_send();
+                              }
+                          }
+                        /* Restore tty modes. */
+                        leave_raw_mode();
 
-			/* Stop listening for new connections. */
-			channel_stop_listening();
+                        /* Stop listening for new connections. */
+                        channel_stop_listening();
 
-			printf("%c& [backgrounded]\n", escape_char);
-			
-			/* Fork into background. */
-			pid = fork();
-			if (pid < 0)
-			  {
-			    error("fork: %.100s", strerror(errno));
-			    continue;
-			  }
-			if (pid != 0)
-			  { /* This is the parent. */
-			    /* The parent just exits. */
-			    exit(0);
-			  }
+                        printf("%c& [backgrounded]\n", escape_char);
+                        
+                        /* Fork into background. */
+                        pid = fork();
+                        if (pid < 0)
+                          {
+                            error("fork: %.100s", strerror(errno));
+                            continue;
+                          }
+                        if (pid != 0)
+                          { /* This is the parent. */
+                            /* The parent just exits. */
+                            exit(0);
+                          }
 
-			/* The child continues serving connections. */
-			continue;
+                        /* The child continues serving connections. */
+                        continue;
 
-		      case '?':
-			sprintf(buf, "%c?\r\n\
+                      case '?':
+                        snprintf(buf, sizeof(buf), "%c?\r\n\
 Supported escape sequences:\r\n\
 ~.  - terminate connection\r\n\
 ~^Z - suspend ssh\r\n\
@@ -723,58 +731,58 @@ Supported escape sequences:\r\n\
 ~?  - this message\r\n\
 ~~  - send the escape character by typing it twice\r\n\
 (Note that escapes are only recognized immediately after newline.)\r\n",
-				escape_char);
-			buffer_append(&stderr_buffer, buf, strlen(buf));
-			continue;
+                                escape_char);
+                        buffer_append(&stderr_buffer, buf, strlen(buf));
+                        continue;
 
-		      case '#':
-			sprintf(buf, "%c#\r\n", escape_char);
-			buffer_append(&stderr_buffer, buf, strlen(buf));
-			s = channel_open_message();
-			buffer_append(&stderr_buffer, s, strlen(s));
-			xfree(s);
-			continue;
+                      case '#':
+                        snprintf(buf, sizeof(buf), "%c#\r\n", escape_char);
+                        buffer_append(&stderr_buffer, buf, strlen(buf));
+                        s = channel_open_message();
+                        buffer_append(&stderr_buffer, s, strlen(s));
+                        xfree(s);
+                        continue;
 
-		      default:
-			if (ch != escape_char)
-			  {
-			    /* Escape character followed by non-special
-			       character.  Append both to the input
-			       buffer. */
-			    buf[0] = escape_char;
-			    buf[1] = ch;
-			    buffer_append(&stdin_buffer, buf, 2);
-			    stdin_bytes += 2;
-			    continue;
-			  }
-			/* Note that escape character typed twice falls through
-			   here; the latter gets processed as a normal
-			   character below. */
-			break;
-		      }
-		  }
-		else
-		  {
-		    /* The previous character was not an escape char. 
-		       Check if this is an escape. */
-		    if (last_was_cr && ch == escape_char)
-		      {
-			/* It is. Set the flag and continue to next
-			   character. */
-			escape_pending = 1;
-			continue;
-		      }
-		  }
+                      default:
+                        if (ch != escape_char)
+                          {
+                            /* Escape character followed by non-special
+                               character.  Append both to the input
+                               buffer. */
+                            buf[0] = escape_char;
+                            buf[1] = ch;
+                            buffer_append(&stdin_buffer, buf, 2);
+                            stdin_bytes += 2;
+                            continue;
+                          }
+                        /* Note that escape character typed twice falls through
+                           here; the latter gets processed as a normal
+                           character below. */
+                        break;
+                      }
+                  }
+                else
+                  {
+                    /* The previous character was not an escape char. 
+                       Check if this is an escape. */
+                    if (last_was_cr && ch == escape_char)
+                      {
+                        /* It is. Set the flag and continue to next
+                           character. */
+                        escape_pending = 1;
+                        continue;
+                      }
+                  }
 
-		/* Normal character.  Record whether it was a newline,
-		   and append it to the buffer. */
-		last_was_cr = (ch == '\r' || ch == '\n');
-		buf[0] = ch;
-		buffer_append(&stdin_buffer, buf, 1);
-		stdin_bytes += 1;
-		continue;
-	      }
-	  }
+                /* Normal character.  Record whether it was a newline,
+                   and append it to the buffer. */
+                last_was_cr = (ch == '\r' || ch == '\n');
+                buf[0] = ch;
+                buffer_append(&stdin_buffer, buf, 1);
+                stdin_bytes += 1;
+                continue;
+              }
+          }
     }
 }
 
@@ -788,22 +796,23 @@ void client_process_output(fd_set *writeset)
     {
       /* Write as much data as possible. */
       len = write(fileno(stdout), buffer_ptr(&stdout_buffer),
-		  buffer_len(&stdout_buffer));
+                  buffer_len(&stdout_buffer));
       if (len <= 0)
-	{
-	  if (errno == EAGAIN || errno == EWOULDBLOCK)
-	    len = 0;
-	  else
-	    {
-	      /* An error or EOF was encountered.  Put an error message
-		 to stderr buffer. */
-	      sprintf(buf, "write stdout: %.50s\r\n", strerror(errno));
-	      buffer_append(&stderr_buffer, buf, strlen(buf));
-	      stderr_bytes += strlen(buf);
-	      quit_pending = 1;
-	      return;
-	    }
-	}
+        {
+          if (errno == EAGAIN || errno == EWOULDBLOCK)
+            len = 0;
+          else
+            {
+              /* An error or EOF was encountered.  Put an error message
+                 to stderr buffer. */
+              snprintf(buf, sizeof(buf),
+                       "write stdout: %.50s\r\n", strerror(errno));
+              buffer_append(&stderr_buffer, buf, strlen(buf));
+              stderr_bytes += strlen(buf);
+              quit_pending = 1;
+              return;
+            }
+        }
       /* Consume printed data from the buffer. */
       buffer_consume(&stdout_buffer, len);
     }
@@ -813,16 +822,16 @@ void client_process_output(fd_set *writeset)
     {
       /* Write as much data as possible. */
       len = write(fileno(stderr), buffer_ptr(&stderr_buffer),
-		  buffer_len(&stderr_buffer));
+                  buffer_len(&stderr_buffer));
       if (len <= 0)
-	if (errno == EAGAIN || errno == EWOULDBLOCK)
-	  len = 0;
-	else
-	  {
-	    /* EOF or error, but can't even print error message. */
-	    quit_pending = 1;
-	    return;
-	  }
+        if (errno == EAGAIN || errno == EWOULDBLOCK)
+          len = 0;
+        else
+          {
+            /* EOF or error, but can't even print error message. */
+            quit_pending = 1;
+            return;
+          }
       /* Consume printed characters from the buffer. */
       buffer_consume(&stderr_buffer, len);
     }
@@ -892,27 +901,27 @@ int client_loop(int have_pty, int escape_char_arg)
       client_process_buffered_input_packets();
 
       /* Make packets of buffered stdin data, and buffer them for sending
-	 to the server. */
+         to the server. */
       client_make_packets_from_stdin_data();
 
       /* Make packets from buffered channel data, and buffer them for sending
-	 to the server. */
+         to the server. */
       if (packet_not_very_much_data_to_write())
-	channel_output_poll();
+        channel_output_poll();
 
       /* Check if the window size has changed, and buffer a message about
-	 it to the server if so. */
+         it to the server if so. */
       client_check_window_change();
 
       if (quit_pending)
-	break;
+        break;
 
       /* Wait until we have something to do (something becomes available
-	 on one of the descriptors). */
+         on one of the descriptors). */
       client_wait_until_can_do_something(&readset, &writeset);
 
       if (quit_pending)
-	break;
+        break;
 
       /* Do channel operations. */
       channel_after_select(&readset, &writeset);
@@ -927,7 +936,7 @@ int client_loop(int have_pty, int escape_char_arg)
 
       /* Send as much buffered packet data as possible to the sender. */
       if (FD_ISSET(connection_out, &writeset))
-	packet_write_poll();
+        packet_write_poll();
     }
 
   /* Terminate the session. */
@@ -945,7 +954,7 @@ int client_loop(int have_pty, int escape_char_arg)
      the connection has been closed. */
   if (have_pty && !quiet_flag)
     {
-      sprintf(buf, "Connection to %.64s closed.\r\n", host);
+      snprintf(buf, sizeof(buf), "Connection to %.64s closed.\r\n", host);
       buffer_append(&stderr_buffer, buf, strlen(buf));
       stderr_bytes += strlen(buf);
     }
@@ -954,12 +963,12 @@ int client_loop(int have_pty, int escape_char_arg)
   while (buffer_len(&stdout_buffer) > 0)
     {
       len = write(fileno(stdout), buffer_ptr(&stdout_buffer), 
-		  buffer_len(&stdout_buffer));
+                  buffer_len(&stdout_buffer));
       if (len <= 0)
-	{
-	  error("Write failed flushing stdout buffer.");
-	  break;
-	}
+        {
+          error("Write failed flushing stdout buffer.");
+          break;
+        }
       buffer_consume(&stdout_buffer, len);
     }
 
@@ -967,12 +976,12 @@ int client_loop(int have_pty, int escape_char_arg)
   while (buffer_len(&stderr_buffer) > 0)
     {
       len = write(fileno(stderr), buffer_ptr(&stderr_buffer), 
-		  buffer_len(&stderr_buffer));
+                  buffer_len(&stderr_buffer));
       if (len <= 0)
-	{
-	  error("Write failed flushing stderr buffer.");
-	  break;
-	}
+        {
+          error("Write failed flushing stderr buffer.");
+          break;
+        }
       buffer_consume(&stderr_buffer, len);
     }
 
@@ -989,11 +998,11 @@ int client_loop(int have_pty, int escape_char_arg)
   /* Report bytes transferred, and transfer rates. */
   total_time = get_current_time() - start_time;
   debug("Transferred: stdin %lu, stdout %lu, stderr %lu bytes in %.1f seconds",
-	stdin_bytes, stdout_bytes, stderr_bytes, total_time);
+        stdin_bytes, stdout_bytes, stderr_bytes, total_time);
   if (total_time > 0)
     debug("Bytes per second: stdin %.1f, stdout %.1f, stderr %.1f",
-	  stdin_bytes / total_time, stdout_bytes / total_time,
-	  stderr_bytes / total_time);
+          stdin_bytes / total_time, stdout_bytes / total_time,
+          stderr_bytes / total_time);
 
   /* Return the exit status of the program. */
   debug("Exit status %d", exit_status);

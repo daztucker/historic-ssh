@@ -2,10 +2,11 @@
 
 rsa.h
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Fri Mar  3 22:01:06 1995 ylo
 
@@ -14,23 +15,26 @@ RSA key generation, encryption and decryption.
 */
 
 /*
- * $Id: rsa.h,v 1.3 1997/03/26 07:11:51 kivinen Exp $
+ * $Id: rsa.h,v 1.4 1999/11/17 17:04:53 tri Exp $
  * $Log: rsa.h,v $
+ * Revision 1.4  1999/11/17 17:04:53  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.3  1997/03/26 07:11:51  kivinen
- * 	Fixed prototypes.
+ *      Fixed prototypes.
  *
  * Revision 1.2  1996/02/19 16:09:38  huima
- * 	Comments fixed.
+ *      Comments fixed.
  *
  * Revision 1.1.1.1  1996/02/18  21:38:10  ylo
- * 	Imported ssh-1.2.13.
+ *      Imported ssh-1.2.13.
  *
  * Revision 1.3  1995/07/13  01:33:11  ylo
- * 	Fixed comments and label used to protect again multiple inclusion.
+ *      Fixed comments and label used to protect again multiple inclusion.
  *
  * Revision 1.2  1995/07/13  01:31:43  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
+ *      Removed "Last modified" header.
+ *      Added cvs log.
  *
  * $Endlog$
  */
@@ -43,20 +47,20 @@ RSA key generation, encryption and decryption.
 
 typedef struct
 {
-  unsigned int bits;		/* Modulus size in bits. */
-  MP_INT e;			/* Public exponent. */
-  MP_INT n;			/* Modulus. */
+  unsigned int bits;            /* Modulus size in bits. */
+  MP_INT e;                     /* Public exponent. */
+  MP_INT n;                     /* Modulus. */
 } RSAPublicKey;
 
 typedef struct
 {
-  unsigned int bits;		/* Modulus size in bits. */
-  MP_INT n;			/* Modulus. */
-  MP_INT e;			/* Public exponent. */
-  MP_INT d;			/* Private exponent. */
-  MP_INT u;			/* Multiplicative inverse of p mod q. */
-  MP_INT p;			/* Prime number p. */
-  MP_INT q;			/* Prime number q. */
+  unsigned int bits;            /* Modulus size in bits. */
+  MP_INT n;                     /* Modulus. */
+  MP_INT e;                     /* Public exponent. */
+  MP_INT d;                     /* Private exponent. */
+  MP_INT u;                     /* Multiplicative inverse of p mod q. */
+  MP_INT p;                     /* Prime number p. */
+  MP_INT q;                     /* Prime number q. */
 } RSAPrivateKey;
 
 /* Generates a random integer of the desired number of bits. */
@@ -74,7 +78,7 @@ void rsa_random_prime(MP_INT *ret, RandomState *state, unsigned int bits);
    structures; they should be freed with rsa_clear_private_key and
    rsa_clear_public_key. */
 void rsa_generate_key(RSAPrivateKey *prv, RSAPublicKey *pub, 
-		      RandomState *state, unsigned int bits);
+                      RandomState *state, unsigned int bits);
 
 /* Frees any memory associated with the private key. */
 void rsa_clear_private_key(RSAPrivateKey *prv);
@@ -104,7 +108,7 @@ void rsa_set_verbose(int verbose);
 
 /* Encrypt input using the public key.  Input should be a 256 bit value. */
 void rsa_public_encrypt(MP_INT *output, MP_INT *input, RSAPublicKey *key,
-			RandomState *state);
+                        RandomState *state);
 
 /* Performs a private key decrypt operation. */
 void rsa_private_decrypt(MP_INT *output, MP_INT *input, RSAPrivateKey *key);

@@ -14,8 +14,15 @@ This file includes most of the needed system headers.
 */
 
 /*
- * $Id: includes.h,v 1.10 1998/01/02 06:18:20 kivinen Exp $
+ * $Id: includes.h,v 1.12 1998/04/30 01:51:53 kivinen Exp $
  * $Log: includes.h,v $
+ * Revision 1.12  1998/04/30 01:51:53  kivinen
+ * 	Added linux sparc fix.
+ *
+ * Revision 1.11  1998/01/21 14:01:11  kivinen
+ * 	Fixed bug raported Paul J. Sanchez <paul@spectrum.slu.edu>
+ * 	about S_ISLNK macro defination.
+ *
  * Revision 1.10  1998/01/02 06:18:20  kivinen
  * 	Added sys/resource.h include. Added _S_IFLNK and S_ISLNK
  * 	defines if not defined by system.
@@ -154,7 +161,11 @@ YOU_LOSE
 #include <signal.h>
 
 #ifdef sparc
+#ifdef linux
+#undef HAVE_UTMPX_H
+#else
 #undef HAVE_SYS_IOCTL_H
+#endif
 #endif
 
 #ifdef HAVE_SYS_IOCTL_H
@@ -350,7 +361,7 @@ struct linger {
 #define _S_IFLNK 0120000
 #endif
 #ifndef S_ISLNK
-#define S_ISLNK(m) (((mode)&(_S_IFMT))==(_S_IFLNK))
+#define S_ISLNK(mode) (((mode)&(_S_IFMT))==(_S_IFLNK))
 #endif
 
 #if USE_STRLEN_FOR_AF_UNIX

@@ -15,7 +15,14 @@ maximum core dump size.
 */
 
 /*
- * $Log$
+ * $Log: signals.c,v $
+ * Revision 1.2  1996/04/26 00:25:48  ylo
+ * 	Test for SIGURG == SIGIO (which appears to be the case on some
+ * 	Linux versions).
+ *
+ * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * $EndLog$
  */
 
@@ -54,7 +61,7 @@ void signals_prevent_core()
       case SIGTTIN:
       case SIGTTOU:
       case SIGIO:
-#ifdef SIGURG
+#if defined(SIGURG) && SIGURG != SIGIO
       case SIGURG:
 #endif
 #ifdef SIGWINCH

@@ -1,0 +1,350 @@
+.\"  -*- nroff -*-
+.\"
+.\" sshd.8
+.\"
+.\" Author: Tatu Ylonen <ylo@cs.hut.fi>
+.\"
+.\" Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
+.\"                    All rights reserved
+.\"
+.\" Created: Sat Apr 22 21:55:14 1995 ylo
+.\" Last modified: Wed Jul 12 15:39:16 1995 ylo
+.\"
+.\"
+.TH SSHD 8 "June 29, 1995" "SSH" "SSH"
+
+.SH NAME
+sshd \- secure shell daemon
+
+.SH SYNOPSIS
+.B sshd
+[-d]
+[-b bits]
+[-p port]
+[-g login_grace_time]
+[-h host_key_file]
+[-i]
+[-k key_gen_time]
+[-q]
+.br
+
+.SH DESCRIPTION 
+.B Sshd 
+(Secure Shell Daemon) is a daemon program for 
+.B ssh.
+Together these programs replace the rlogin and rsh with programs, and
+provide secure encrypted communications between two untrusted hosts
+over an insecure network.  The programs are intended to be as easy to
+install and use as possible.
+
+Sshd is the daemon that listens for connections from clients.  It is
+normally started at boot from /etc/rc or equivalent.  It forks a new
+daemon for each incoming connection.  The forked daemons handle
+encryption exchange, encryption, authentication, command execution,
+and data exchange.
+
+Sshd works as follows.  Each host has a host-specific RSA key
+(normally 1024 bits) used to identify the host.  Additionally, when
+the daemon starts, it generates a server RSA key (normally 768 bits).
+This key is normally regenerated every hour if it has been used.
+
+Whenever a client connects the daemon, it the daemon sends its host
+and server public keys to the client.  The client then compares the
+host key against its own database to verify that it has not changed.
+The client then generates a 256 bit random number.  It encrypts this
+random number using both the host key and the server key, and sends
+the encrypted number to the server.  Both sides then start to use this
+random number as a session key which is used to encrypt all further
+communications in the session.  The rest of the session is encrypted
+using an conventional cipher.  Currently, IDEA, DES, 3DES, RC4, and TSS (a
+fast home-grown algorithm) are supported.  IDEA is used by default.
+The client selects the encryption algorithm to use from those offered
+by the server.
+
+Next, the server and client enter an authentication dialog.  The
+client tries to authenticate itself using .rhosts authentication,
+\|.rhosts authentication combined with RSA host authentication, RSA
+challenge-response authentication, or password based authentication.
+Rhosts authentication is normally disabled because it is fundamentally
+insecure, but can be enabled at compile time if desired.  System
+security is not improved unless rshd, rlogind, rexecd, and rexd are
+disabled (thus completely disabling rlogin and rsh into that machine).
+
+If the client successfully authenticates itself, a dialog for
+preparing the session is entered.  At this time the client may request
+things like allocating a pseudo-tty, forwarding X11 connections over
+the secure channel, forwarding TCP/IP connections over the secure
+channel, or forwarding the authentication agent connection over the
+secure channel.
+
+Finally, the client either requests a shell or execution of a command.
+The sides then enter session mode.  In this mode, either side may send
+data at any time, and such data is forwarded to/from the shell or
+command on the server side, and user terminal in the client side.
+
+When the user program terminates, and all forwarded X11 and other
+connections have been closed, the server sends command exit status to
+the client, and both sides exit.
+
+.SH OPTIONS
+.B -d
+Debug mode.  The server sends verbose debug output to the system
+log, and does not put itself in the background.  The server also will
+not fork and will only process one connection.  This option is only
+intended for debugging for the server.
+
+.B -b bits
+Specifies the number of bits in the server key (default 768).
+
+.B -p port
+Specifies the port on which the server listens for connections
+(default 22).
+
+.B -g login_grace_time
+Gives the grace time for clients to authenticate themselves (default
+300 seconds).  If the client fails to authenticate the user within
+this many seconds, the server disconnects and exits.  A value of zero
+indicates no limit.
+
+.B -h host_key_file
+Specifies the file from which the host key is read (default
+/etc/ssh_host_key).  This option must be given if sshd is not run as
+root (as the normal host file is normally not readable by anyone but root).
+
+.B -i
+Specifies that sshd is being run from inetd.  Sshd is normally not run
+from inetd because it needs to generate the server key before it can
+respond to the client, and this may take tens of seconds.  Clients
+would have to wait too long if the key was regenerated every time.
+However, with small key sizes (e.g. 384) using sshd from inetd may be
+feasible.  However, key sizes below 512 are not secure.
+
+.B -k key_gen_time
+Specifies how often the server key is regenerated (default 3600
+seconds, or one hour).  The motivation for regenerating the key fairly
+often is that the key is not stored anywhere, and after about an hour,
+it becomes impossible to recover the key for decrypting intercepted
+communications even if the machine is cracked into or physically
+seized.  A value of zero indicates that the key will never be regenrated.
+
+.B -q
+Quiet mode.  Nothing is sent to the system log.  Normally, beginning,
+authentication, and termination of each connection is logged.
+
+.SH INSTALLATION
+
+.B Sshd 
+is normally run as root.  If it is not run as root, it can
+only log in as the user it is running as, and password authentication
+may not work if the system uses shadow passwords.
+
+Considerable work has been put to making
+.B sshd
+secure.  However, if you find a security problem, please report it
+immediately to <ssh-bugs@cs.hut.fi>.
+
+.B Sshd 
+is normally started from \f4/etc/rc\f1 or equivalent at system
+boot.
+
+.SH AUTHORIZED_KEYS FILE FORMAT
+
+The \f4$HOME/.ssh/authorized_keys\f1 file lists the RSA keys that are
+permitted for RSA authentication.  Each line of the file contains one
+key (empty lines and lines starting with a '#' are ignored as
+comments).  Each line consists of the following fields, separated by
+spaces: options, bits, exponent, modulus, comment.  The options field
+is optional; its presence is determined by whether the line starts
+with a number or not (the option field never starts with a number).
+The bits, exponent, modulus and comment fields give the RSA key; the
+comment field is not used for anything (but may be convenient to the
+user to identify the key).
+
+Note that lines in this file are usually several hundred bytes long
+(because of the size of the RSA key modulus).  You don't want to type
+them in; instead, take the \f4 identity.pub\f1 file and edit it.
+
+The options (if present) consists of comma-separated option
+specifications.  No spaces are permitted, except within double quotes.
+The following option specifications are supported:
+
+.B from="pattern-list" 
+Specifies that in addition to RSA authentication, the canonical name
+of the remote host must be present in the comma-separated list of
+patterns ('*' and '?' serve as wildcards).  The list may also contain
+patterns negated by prefixing them with '!'; if the canonical host
+name matches a negated pattern, the key is not accepted.  The purpose
+of this option is to optionally increase security: RSA authentication
+by itself does not trust the network or name servers or anything (but
+the key); however, if somebody somehow steals the key, the key
+permits an intruder to log in from anywhere in the world.  This
+additional option makes using a stolen key more difficult (name
+servers and/or routers would have to be compromised in addition to
+just the key).
+
+.B command="command"
+Specifies that the command is executed whenever this key is used for
+authentication.  The command supplied by the user (if any) is ignored.
+The command is run on a pty if the connection requests a pty;
+otherwise it is run without a tty.  A quote may be included in the
+command by quoting it with a backslash.  This option might be useful
+to restrict certain RSA keys to perform just a specific operation.  An
+example might be a key that permits rebooting the machine but nothing
+else.  Notice that the client may specify TCP/IP and/or X11
+forwardings unless they are explicitly prohibited.
+
+.B no-port-forwarding
+Forbids TCP/IP forwarding when this key is used for authentication.
+Any port forward requests by the client will return an error.
+This might be used e.g. in connection with the
+.B command
+option.
+
+.B no-X11-forwarding
+Forbids X11 forwarding when this key is used for authentication.
+Any X11 forward requests by the client will return an error.
+
+.B no-agent-forwarding
+Forbids authentication agent forwarding when this key is used for
+authentication.
+
+.B no-pty
+Prevents tty allocation (a request to allocate a pty will fail).
+
+XXX authorized_key options not yes implemented.
+
+.B Examples
+
+1024 33 12121...312314325 ylo@foo.bar
+
+host="*.niksula.hut.fi,!pc.niksula.hut.fi" 1024 35 23...2334 ylo@niksula
+
+command="dump /home",no-pty,no-port-forwarding 1024 33 23...2323 backup.hut.fi
+
+
+
+.SH SSH_KNOWN_HOSTS FILE FORMAT
+
+The \f4/etc/ssh_known_hosts\f1 and \f4$HOME/.ssh/known_hosts\f1 files
+contain host public keys for all known hosts.  The global file should
+be prepared by the admistrator (optional), and the per-user file is
+maintained automatically: whenever the user connects an unknown host
+its key is added to the per-user file.
+
+Each line in these files contains the following fields: hostnames,
+bits, exponent, modulus, comment.  The fields are separated by spaces.
+
+Hostnames is a comma-separated list of patterns ('*' and '?' act as
+wildcards); each pattern in turn is matched against the canonical host
+name (when authenticating a client) or against the user-supplied
+name (when authenticating a server).  A pattern may also be preceded
+by '!' to indicate negation: if the host name matches a negated
+pattern, it is not accepted (by that line) even if it matched another
+pattern on the line.
+
+Bits, exponent, and modulus are taken directly from the host key; they
+can be obtained e.g. from /etc/ssh_host_key.pub.  The optional comment
+field continues to the end of the line, and is not used.
+
+Lines starting with '#' and empty lines are ignored as comments.
+
+When performing host authentication, authentication is accepted if any
+matching line has the proper key.  It is thus permissible (but not
+recommended) to have several lines or different host keys for the same
+names.  This will inevitably happen when short forms of host names
+from different domains are put in the file.  Authentication is
+accepted if a matching key is found from either file.  It is possible
+that the files contain conflicting information; authentication is
+accepted if valid information can be found from either file.
+
+Note that the lines in this file are typically hundreds of characters
+long, and you definitely don't want to type in the host keys by hand.
+Rather, generate them by a script (see 
+.B make-ssh-known-hosts)
+or by taking /etc/ssh_host_key.pub and adding the host names at the front.
+
+.B Examples
+
+closenet,closenet.hut.fi,...,130.233.208.41 1024 37 159...93 closenet.hut.fi
+
+.SH FILES
+\f4/etc/ssh_host_key\f1
+Contains the private part of the host key.  This file is normally
+created automatically by "make install", but can also be created
+manually using
+.B ssh-keygen(1).
+This file should only be readable by root.
+.P
+\f4/etc/ssh_host_key.pub\f1
+Contains the public part of the host key.  This file is normally
+created automatically by "make install", but can also be created
+manually.  This file should be world-readable.  Its contents should match
+the private part.  This file is not really used for anything; it is
+only provided for the convenience of the user so its contents can be
+copied to known hosts files.
+.P
+\f4/etc/ssh_random_seed\f1
+This file contains a seed for the random number generator.  This file
+should only be readable by root.
+.P
+\f4/etc/sshd_pid\f1
+Contains the process id of the
+.B sshd
+listening for connections (if there are several daemons running
+concurrently for different ports, this contains the pid of the one
+started last).  The contents of this file are not sensitive; it can be
+world-readable.
+.P
+\f4$HOME/.ssh/authorized_keys\f1
+Lists the RSA keys that can be used to log into the user's account.
+This file must be readable by root (which may imply it being
+world-readable if the user's home directory resides on an NFS volume).
+The format of this file is described above.
+.P
+\f4/etc/ssh_known_hosts\f1 and \f4$HOME/.ssh/known_hosts\f1
+These files are consulted when using rhosts with RSA host
+authentication to check the public key of the host.  The key must be
+listed in one of these files to be accepted.  (The client uses the
+same files to verify that the remote host is the one we intended to
+connect.)  These files should be readable by root, and
+\f4/etc/ssh_known_hosts\f1 should be world-readable.
+.P
+\f4/etc/nologin\f1
+If this file exists, 
+.B sshd
+refuses to let anyone except root log in.  The contents of the file
+are displayed to anyone trying to log in, and non-root connections are
+refused.  The file should be world-readable.
+.P
+\f4$HOME/.rhosts\f1 
+This file contains host-username pairs, separated by a space, one per
+line.  The given user on the corresponding host is permitted to log in
+without password.  The same file is used by rlogind and rshd.
+.B Ssh 
+differs from rlogind
+and rshd in that it requires RSA host authentication in addition to
+validating the host name retrieved from domain name servers (unless
+compiled with the --with-rhosts configuration option).  The file must
+be readable by root.
+.P
+\f4$HOME/.shosts\f1
+For
+.B ssh,
+this file is exactly the same as for .rhosts.  However, this file is
+not used by rlogin and rshd, so using this permits access using
+.B ssh
+only.
+.P
+\f4/etc/hosts.equiv\f1
+This file is used during .rhosts authentication.  It contains
+canonical hosts names, one per line.  If the client host is found in
+this file, login is automatically permitted provided client and server
+user names are the same.  Additionally, successful RSA host
+authentication is normally required.  This file must be readable by root.
+.P
+
+.SH AUTHOR
+Tatu Ylonen <ylo@cs.hut.fi>
+
+.SH SEE ALSO
+ssh(1), ssh-keygen(1), ssh-agent(1), ssh-add(1), scp(1), rlogin(1), rsh(1)

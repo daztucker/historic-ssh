@@ -1,0 +1,65 @@
+.\"  -*- nroff -*-
+.\"
+.\" ssh-add.1
+.\"
+.\" Author: Tatu Ylonen <ylo@cs.hut.fi>
+.\"
+.\" Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
+.\"                    All rights reserved
+.\"
+.\" Created: Sat Apr 22 23:55:14 1995 ylo
+.\" Last modified: Mon Jul 10 21:44:48 1995 ylo
+.\"
+.\"
+.TH SSH-ADD 1 "June 29, 1995" "SSH" "SSH"
+
+.SH NAME
+ssh-add \- adds identities for the authentication agent
+
+.SH SYNOPSIS
+.B ssh-add [-l] [-d] [files]
+
+.SH DESCRIPTION 
+.B Ssh-add adds identities to the authentication agent,
+.B ssh-agent.
+When run without arguments, it adds the file
+\f4$HOME/.ssh/identity\f1.  Alternative file names can be given on the
+command line.  If any file has a passphrase,
+.B ssh-add
+asks for the passphrase from the user.  If the user is using X11, the
+passphrase is requested using a small X11 program; otherwise it is
+read from the user's tty.
+
+The authentication agent must be running and must be an ancestor of
+the current process for
+.B ssh-agent
+to work.
+
+All identities currently represented by the agent can be listed by
+giving the
+.B -l
+option.
+
+.SH OPTIONS
+.B -l
+Lists all identities currently represented by the agent.
+
+.B -d
+Instead of adding the identity, removes the identity from the agent.
+
+.SH FILES
+\f4\&$HOME/.ssh/identity\f1
+Contains the RSA authentication identity of the user.  This file
+should not be readable by anyone but the user.  It is possible to
+specify a passphrase when generating the key; that passphrase will be
+used to encrypt the private part of this file using IDEA.  This is the
+default file added by
+.B ssh-add
+when no other files have been specified.
+.P
+
+.SH AUTHOR
+Tatu Ylonen <ylo@cs.hut.fi>
+
+.SH SEE ALSO
+ssh-agent(1), ssh-keygen(1), ssh(1), sshd(8)

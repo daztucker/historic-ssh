@@ -1,0 +1,201 @@
+#
+# configure.in
+#
+# Author: Tatu Ylonen <ylo@cs.hut.fi>
+#
+# Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
+#                    All rights reserved
+#
+# Created: Wed Mar 22 18:02:48 1995 ylo
+# Last modified: Mon Jun 26 02:51:07 1995 ylo
+#
+
+AC_INIT(sshd.c)
+AC_CONFIG_HEADER(config.h)
+AC_PREREQ(2.0)
+
+AC_PROG_CC
+
+if test -n "$GCC"; then
+  AC_MSG_CHECKING([if the compiler understands -pipe])
+  OLDCC="$CC"
+  CC="$CC -pipe"
+  AC_TRY_COMPILE(,,
+    AC_MSG_RESULT(yes),
+    CC="$OLDCC"
+    AC_MSG_RESULT(no))
+fi
+
+if test -n "$GCC"; then CFLAGS="$CFLAGS -Wall"; fi
+
+AC_CHECK_FUNCS(waitpid wait4 gettimeofday times getrusage popen)
+AC_CHECK_FUNCS(strchr memcpy setlogin openpty _getpty clock setsid)
+AC_CHECK_FUNCS(gethostname vhangup)
+AC_REPLACE_FUNCS(strerror memmove remove random putenv)
+AC_FUNC_WAIT3
+
+AC_TYPE_SIGNAL
+AC_TYPE_SIZE_T
+AC_TYPE_UID_T
+AC_TYPE_OFF_T
+
+AC_C_BIGENDIAN
+AC_C_CONST
+AC_C_INLINE
+AC_CHECK_SIZEOF(long)
+
+AC_HEADER_STDC
+AC_HEADER_SYS_WAIT
+AC_CHECK_HEADERS(unistd.h rusage.h sys/time.h lastlog.h utmp.h utmpx.h)
+AC_CHECK_HEADERS(termios.h sys/termios.h sgtty.h sys/select.h sys/ioctl.h)
+AC_CHECK_HEADERS(paths.h usersec.h)
+AC_HEADER_TIME
+AC_HEADER_DIRENT
+AC_HEADER_STAT
+AC_EGREP_HEADER(ut_pid, utmp.h, AC_DEFINE(HAVE_PID_IN_UTMP))
+AC_EGREP_HEADER(ut_name, utmp.h, AC_DEFINE(HAVE_NAME_IN_UTMP))
+AC_EGREP_HEADER(ut_id, utmp.h, AC_DEFINE(HAVE_ID_IN_UTMP))
+AC_EGREP_HEADER(ut_host, utmp.h, AC_DEFINE(HAVE_HOST_IN_UTMP))
+
+AC_CHECK_LIB(c, crypt, [true], AC_CHECK_LIB(crypt, crypt))
+AC_CHECK_LIB(socket, socket)
+AC_CHECK_LIB(nsl, gethostbyaddr)
+AC_CHECK_LIB(sun, getpwnam)
+AC_CHECK_LIB(s, getuserattr)
+
+AC_PROG_LN_S
+AC_PROG_INSTALL
+AC_PROG_RANLIB
+AC_PROGRAMS_CHECK(MAKEDEP, makedepend makedep, makedepend)
+AC_PATH_PROG(WISH, wish, /usr/local/bin/wish)
+AC_PATH_PROG(XAUTH_PATH, xauth, xauth)
+AC_DEFINE_UNQUOTED(XAUTH_PATH, "$XAUTH_PATH")
+
+AC_MSG_CHECKING(for pseudo ttys)
+if test -c /dev/ptmx && test -c /dev/pts/0
+then
+  AC_DEFINE(HAVE_DEV_PTMX)
+  AC_MSG_RESULT(streams ptys)
+else
+if test -c /dev/pts && test -c /dev/ptc
+then
+  AC_DEFINE(HAVE_DEV_PTS_AND_PTC)
+  AC_MSG_RESULT(/dev/pts and /dev/ptc)
+else
+  AC_MSG_RESULT(bsd-style ptys)
+fi
+fi
+
+AC_MSG_CHECKING(for shadow passwords)
+if test -f /etc/master.passwd; then
+  AC_DEFINE(HAVE_ETC_MASTER_PASSWD)
+  AC_MSG_RESULT(/etc/master.passwd)
+elif test -f /etc/shadow; then
+  AC_DEFINE(HAVE_ETC_SHADOW)
+  AC_MSG_RESULT(/etc/shadow)
+elif test -x /bin/uname && test "`uname 2>/dev/null`" = "AIX"; then
+  AC_DEFINE(HAVE_ETC_SECURITY_PASSWD)
+  AC_MSG_RESULT(/etc/security/passwd)
+elif test -x /bin/uname && test "`uname 2>/dev/null`" = "SunOS" && test -d /etc/security; then
+  AC_DEFINE(HAVE_ETC_SECURITY_PASSWD_ADJUNCT)
+  AC_MSG_RESULT(/etc/security/passwd.adjunct)
+else
+  AC_MSG_RESULT(no)
+fi
+
+AC_MSG_CHECKING(whether to use rsaref)
+AC_ARG_WITH(rsaref,
+[  --with-rsaref           Use RSAREF (prevents patent problems in U.S.)
+  --without-rsaref        Use normal RSA routines. ],
+[ case "$withval" in
+  no)
+       AC_MSG_RESULT(no)
+       ;;
+  *)
+       AC_MSG_RESULT(yes)
+       AC_DEFINE(RSAREF)
+       RSAREFDEP="rsaref2/source/librsaref.a"
+       LIBS="-lrsaref $LIBS"
+       LDFLAGS="-Lrsaref2/source $LDFLAGS"
+       ;;
+  esac ],
+  AC_MSG_RESULT(no)
+)
+
+AC_MSG_CHECKING(whether to use rsh)
+AC_ARG_WITH(rsh, 
+[  --with-rsh=path         Specify where to find rsh.
+  --without-rsh           Do not use rsh under any conditions. ],
+[ case "$withval" in
+    no) 
+        AC_MSG_RESULT(no)
+	;;
+    yes) 
+	 AC_MSG_RESULT(yes)
+	 AC_PATH_PROGS(RSH_PATH, rsh remsh)
+         AC_DEFINE_UNQUOTED(RSH_PATH, "$RSH_PATH")
+	;;
+    *) 
+       AC_MSG_RESULT($withval)
+       AC_DEFINE_UNQUOTED(RSH_PATH, "$withval")
+       ;;
+  esac ],
+  [ AC_MSG_RESULT(yes)
+    AC_PATH_PROGS(RSH_PATH, rsh remsh)
+    AC_DEFINE_UNQUOTED(RSH_PATH, "$RSH_PATH") ]
+)
+
+AC_MSG_CHECKING(whether to permit rhosts authentication in server)
+AC_ARG_WITH(rhosts,
+[  --with-rhosts           Enable plain .rhosts and hosts.equiv authentication.],
+[ case "$withval" in
+  yes)
+    AC_MSG_RESULT(yes)
+    ;;
+  *)
+    AC_MSG_RESULT(no)
+    AC_DEFINE(NO_RHOSTS_AUTHENTICATION)
+    ;;
+  esac ],
+  AC_MSG_RESULT(no)
+  AC_DEFINE(NO_RHOSTS_AUTHENTICATION)
+)
+
+AC_CHECK_PROG(HAVE_TCSH, tcsh, yes, no)
+AC_CHECK_PROG(HAVE_ZSH, zsh, yes, no)
+AC_CHECK_PROG(HAVE_KSH, ksh, yes, no)
+AC_CHECK_PROG(HAVE_BASH, bash, yes, no)
+$CC $CFLAGS -o fd-check-1 $srcdir/fd-check-1.c >/dev/null 2>/dev/null
+$CC $CFLAGS -o fd-check-2 $srcdir/fd-check-2.c >/dev/null 2>/dev/null
+AC_MSG_CHECKING(if shells close all file descriptors)
+ok=`./fd-check-1 sh -c 'csh -c ./fd-check-2'`
+if test "$ok" = "yes" && test "$HAVE_TCSH" = "yes"; then
+  ok=`./fd-check-1 tcsh -c ./fd-check-2`; fi
+if test "$ok" = "yes" && test "$HAVE_ZSH" = "yes"; then
+  ok=`./fd-check-1 zsh -c ./fd-check-2`; fi
+if test "$ok" = "yes" && test "$HAVE_KSH" = "yes"; then
+  ok=`./fd-check-1 ksh -c ./fd-check-2`; fi
+if test "$ok" = "yes" && test "$HAVE_BASH" = "yes"; then
+  ok=`./fd-check-1 bash -c ./fd-check-2`; fi
+if test "$ok" = "yes"
+then
+  AC_MSG_RESULT(no - agent uses them)
+else
+  AC_MSG_RESULT(yes - agent uses sockets)
+  AC_DEFINE(AGENT_USES_SOCKET)
+fi
+
+AC_MSG_CHECKING(for lastlog directory)
+if test -d /var/adm/lastlog
+then
+  AC_MSG_RESULT(yes)
+  AC_DEFINE(LASTLOG_IS_DIR)
+else
+  AC_MSG_RESULT(no)
+fi
+
+AC_ARG_PROGRAM
+
+AC_SUBST(RSAREFDEP)
+
+AC_OUTPUT(Makefile)

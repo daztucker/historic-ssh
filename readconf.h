@@ -1,0 +1,94 @@
+/*
+
+readconf.h
+
+Author: Tatu Ylonen <ylo@cs.hut.fi>
+
+Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
+                   All rights reserved
+
+Created: Sat Apr 22 00:25:29 1995 ylo
+Last modified: Mon Jul 10 22:25:00 1995 ylo
+
+Functions for reading the configuration file.
+
+*/
+
+#ifndef READCONF_H
+#define READCONF_H
+
+/* Data structure for representing a forwarding request. */
+
+typedef struct
+{
+  int port;		/* Port to forward. */
+  char *host;		/* Host to connect. */
+  int host_port;	/* Port to connect on host. */
+} Forward;
+
+/* Data structure for representing option data. */
+
+typedef struct
+{
+  int forward_agent;		/* Forward authentication agent. */
+  int forward_x11;		/* Forward X11 display. */
+  int rhosts_authentication;	/* Try rhosts authentication. */
+  int rhosts_rsa_authentication;/* Try rhosts with RSA authentication. */
+  int rsa_authentication;	/* Try RSA authentication. */
+  int password_authentication;	/* Try password authentication. */
+  int fallback_to_rsh;		/* Use rsh if cannot connect with ssh. */
+  int use_rsh;			/* Always use rsh (don\'t try ssh). */
+
+  int port;			/* Port to connect. */
+  int cipher;			/* Cipher to use. */
+  char *hostname;		/* Real host to connect. */
+  char *user;			/* User to log in as. */
+  int escape_char;		/* Escape character; -2 = none */
+
+  int num_identity_files;	/* Number of files for RSA identities. */
+  char *identity_files[SSH_MAX_IDENTITY_FILES];
+
+  /* Local TCP/IP forward requests. */
+  int num_local_forwards;
+  Forward local_forwards[SSH_MAX_FORWARDS_PER_DIRECTION];
+
+  /* Remote TCP/IP forward requests. */
+  int num_remote_forwards;
+  Forward remote_forwards[SSH_MAX_FORWARDS_PER_DIRECTION];
+} Options;
+
+
+/* Initializes options to special values that indicate that they have not
+   yet been set.  Read_config_file will only set options with this value.
+   Options are processed in the following order: command line, user config
+   file, system config file.  Last, fill_default_options is called. */
+void initialize_options(Options *options);
+
+/* Called after processing other sources of option data, this fills those
+   options for which no value has been specified with their default values. */
+void fill_default_options(Options *options);
+
+/* Processes a single option line as used in the configuration files. 
+   This only sets those values that have not already been set. */
+void process_config_line(Options *options, const char *host,
+			 char *line, const char *filename, int linenum,
+			 int *activep);
+
+/* Reads the config file and modifies the options accordingly.  Options should
+   already be initialized before this call.  This never returns if there
+   is an error.  If the file does not exist, this returns immediately. */
+void read_config_file(const char *filename, const char *host, 
+		      Options *options);
+
+/* Adds a local TCP/IP port forward to options.  Never returns if there
+   is an error. */
+void add_local_forward(Options *options, int port, const char *host,
+		       int host_port);
+
+/* Adds a remote TCP/IP port forward to options.  Never returns if there
+   is an error. */
+void add_remote_forward(Options *options, int port, const char *host,
+			int host_port);
+
+
+#endif /* READCONF_H */

@@ -1,0 +1,258 @@
+#
+# Makefile.in
+#
+# Author: Tatu Ylonen <ylo@cs.hut.fi>
+#
+# Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
+#                    All rights reserved
+#
+# Created: Wed Mar 22 17:37:49 1995 ylo
+# Last modified: Wed Jul 12 01:34:24 1995 ylo
+#
+
+srcdir 		= @srcdir@
+
+VPATH 		= $(srcdir)
+
+prefix		= @prefix@
+exec_prefix	= @exec_prefix@
+bindir		= $(prefix)/bin
+mandir		= $(prefix)/man
+man1dir		= $(mandir)/man1
+man8dir		= $(mandir)/man8
+
+CC 		= @CC@
+CFLAGS 		= @CFLAGS@
+LDFLAGS		= @LDFLAGS@
+DEFS 		= @DEFS@
+LIBS		= @LIBS@
+LIBOBJS		= @LIBOBJS@
+
+MAKEDEP		= @MAKEDEP@
+LN_S		= @LN_S@
+RANLIB		= @RANLIB@
+INSTALL		= @INSTALL@
+INSTALL_PROGRAM = @INSTALL_PROGRAM@
+INSTALL_DATA	= @INSTALL_DATA@
+WISH		= @WISH@
+
+RSAREFDEP	= @RSAREFDEP@
+
+transform	= @program_transform_name@
+
+HOST_KEY_FILE 	= /etc/ssh_host_key
+HOST_CONFIG_FILE = /etc/ssh_config
+
+SHELL = /bin/sh
+
+GMPDIR 		= gmp-1.3.2
+GMPLIBS 	= -L$(GMPDIR) -lgmp
+GMPDEP 		= $(GMPDIR)/gmp.h $(GMPDIR)/libgmp.a
+
+RSAREFDIR	= rsaref2
+RSAREFSRCDIR 	= $(RSAREFDIR)/source
+
+SSHD_OBJS = sshd.o auth-rhosts.o auth-passwd.o auth-rsa.o auth-rh-rsa.o pty.o \
+	log-server.o login.o hostfile.o canohost.o
+SSH_OBJS = ssh.o sshconnect.o log-client.o readconf.o hostfile.o readpass.o \
+	tildexpand.o
+KEYGEN_OBJS = ssh-keygen.o log-client.o readpass.o
+COMMON_OBJS = $(LIBOBJS) rsa.o randoms.o md5.o idea.o buffer.o packet.o \
+	xmalloc.o ttymodes.o channels.o bufaux.o authfd.o authfile.o crc32.o \
+	rsaglue.o tss.o cipher.o des.o match.o rc4.o
+AGENT_OBJS = ssh-agent.o log-client.o
+ADD_OBJS = ssh-add.o log-client.o readpass.o
+SCP_OBJS = scp.o xmalloc.o
+
+SRCS = $(SSHD_OBJS:.o=.c) $(SSH_OBJS:.o=.c) $(KEYGEN_OBJS:.o=.c) \
+	$(AGENT_OBJS:.o=.c) $(ADD_OBJS:.o=.c) \
+	$(COMMON_OBJS:.o=.c) $(SCP_OBJS:.o=.c)
+EXTRA_SRCS = memmove.c strerror.c remove.c random.c
+MAN1PAGES = ssh.1 ssh-keygen.1 ssh-agent.1 ssh-add.1 scp.1
+MAN8PAGES = sshd.8
+
+DISTFILES = COPYING README INSTALL TODO libdes-README ssh-fix-key \
+	libdes-COPYING libdes-ARTISTIC gnu-COPYING-GPL \
+	configure configure.in Makefile.in ssh-askpass.wish \
+	check-fds.c host_config.sample config.sample \
+	fd-check-1.c fd-check-2.c acconfig.h config.h.in \
+	$(MAN1PAGES) $(MAN8PAGES) $(SRCS) $(EXTRA_SRCS) *.h install-sh \
+	make-ssh-known-hosts.pl make-ssh-known-hosts.1 RFC.nroff RFC rfc-pg.c
+
+DISTNAME = ssh-`sed 's/.*"\(.*\)".*/\1/' version.h`
+
+NORMAL_PROGRAMS = sshd ssh-keygen ssh-askpass ssh-agent ssh-add scp
+PROGRAMS = ssh $(NORMAL_PROGRAMS)
+SSH_PROGRAM = $(bindir)/ssh
+
+all: $(PROGRAMS)
+
+RFC: RFC.nroff rfc-pg
+	tbl RFC.nroff | nroff -ms | sed 's/FORMFEED\[Page/        [Page/' | ./rfc-pg -n5 >RFC
+
+rfc-pg: rfc-pg.c
+	$(CC) -o rfc-pg rfc-pg.c
+
+.c.o:
+	$(CC) -c -I. -I$(srcdir)/$(GMPDIR) $(DEFS) -DHOST_KEY_FILE=\"$(HOST_KEY_FILE)\" -DHOST_CONFIG_FILE=\"$(HOST_CONFIG_FILE)\" -DSSH_PROGRAM=\"$(SSH_PROGRAM)\" $(CFLAGS) $<
+
+sshd: $(SSHD_OBJS) $(COMMON_OBJS) $(GMPDEP) $(RSAREFDEP) $(DESDEP)
+	-rm -f sshd
+	$(CC) $(LDFLAGS) -o sshd $(SSHD_OBJS) $(COMMON_OBJS) $(GMPLIBS) $(DESLIBS) $(LIBS)
+
+ssh: $(SSH_OBJS) $(COMMON_OBJS) $(GMPDEP) $(RSAREFDEP) $(DESDEP)
+	-rm -f ssh
+	$(CC) $(LDFLAGS) -o ssh $(SSH_OBJS) $(COMMON_OBJS) $(GMPLIBS) $(DESLIBS) $(LIBS)
+
+ssh-keygen: $(KEYGEN_OBJS) $(COMMON_OBJS) $(GMPDEP) $(RSAREFDEP) $(DESDEP)
+	-rm -f ssh-keygen
+	$(CC) $(LDFLAGS) -o ssh-keygen $(KEYGEN_OBJS) $(COMMON_OBJS) $(GMPLIBS) $(DESLIBS) $(LIBS)
+
+ssh-agent: $(AGENT_OBJS) $(COMMON_OBJS) $(GMPDEP) $(RSAREFDEP) $(DESDEP)
+	-rm -f ssh-agent
+	$(CC) $(LDFLAGS) -o ssh-agent $(AGENT_OBJS) $(COMMON_OBJS) $(GMPLIBS) $(DESLIBS) $(LIBS)
+
+ssh-add: $(ADD_OBJS) $(COMMON_OBJS) $(GMPDEP) $(RSAREFDEP) $(DESDEP)
+	-rm -f ssh-add
+	$(CC) $(LDFLAGS) -o ssh-add $(ADD_OBJS) $(COMMON_OBJS) $(GMPLIBS) $(DESLIBS) $(LIBS)
+
+scp: $(SCP_OBJS) $(LIBOBJS)
+	-rm -f scp
+	$(CC) $(LDFLAGS) -o scp $(SCP_OBJS) $(LIBOBJS) $(LIBS)
+
+ssh-askpass: ssh-askpass.wish
+	-rm -f ssh-askpass
+	echo "#! $(WISH) -f" >ssh-askpass
+	cat $(srcdir)/ssh-askpass.wish >>ssh-askpass
+	chmod +x ssh-askpass
+
+GMP_COPY_SOURCES = mpz_gcd.c mpz_powm.c mpz_pow_ui.c mpz_add.c mpz_sub.c \
+		mpz_mul.c mpz_cmp.c mpz_sqrtrem.c
+$(GMPDIR)/libgmp.a:
+	-if test '!' -d $(GMPDIR); then \
+	  mkdir $(GMPDIR); mkdir $(GMPDIR)/tests; \
+	  cp $(srcdir)/$(GMPDIR)/Makefile $(GMPDIR); \
+	  cp $(srcdir)/$(GMPDIR)/cre-*.c $(GMPDIR); \
+	  cp $(srcdir)/$(GMPDIR)/tests/Makefile $(GMPDIR)/tests; \
+	  for i in $(GMP_COPY_SOURCES); do \
+	    cp $(srcdir)/$(GMPDIR)/$$i $(GMPDIR); done; \
+	fi
+	cd $(GMPDIR); $(MAKE) VPATH=$(srcdir)/$(GMPDIR):../$(srcdir)/$(GMPDIR)\
+              CC="$(CC)" CFLAGS="$(CFLAGS) -I. -I$(srcdir)/$(GMPDIR) \
+	       -I../$(srcdir)/$(GMPDIR)"
+
+$(RSAREFSRCDIR)/librsaref.a:
+	-if test '!' -d $(RSAREFDIR); then \
+	  (cd $(srcdir); tar cf - $(RSAREFSRCDIR)) | tar xf -; fi
+	cd $(RSAREFSRCDIR); $(MAKE) -f ../../Makefile librsaref.a
+
+RSAREFSRCS = desc.c digit.c md2c.c md5c.c nn.c prime.c r_dh.c r_encode.c \
+	r_enhanc.c r_keygen.c r_random.c r_stdlib.c rsa.c
+
+# Note: this target is used in a recursive make, with VPATH pointing to source
+librsaref.a:
+	for i in $(RSAREFSRCS); do $(CC) $(CFLAGS) -c $$i; done
+	$(AR) rc librsaref.a $(RSAREFSRCS:.c=.o)
+	$(RANLIB) librsaref.a
+
+generate-host-key:
+	-@if test -f $(HOST_KEY_FILE); \
+          then echo "You already have a host key in $(HOST_KEY_FILE)."; \
+	  else \
+	    echo "Generating 1024 bit host key."; \
+	    (echo "$(HOST_KEY_FILE)"; echo ""; echo "")| ./ssh-keygen -b 1024;\
+	  fi
+
+# Ssh is preferably installed suid root.  It can also be used non-root,
+# but then it cannot connect from a privileged socket, and rhosts
+# authentication will be disabled.
+#
+# Sshd is not suid root, but should preferably be run as root
+# (otherwise it can only log in as the user it runs as, and must be
+# bound to a non-privileged port).  Also, password authentication may
+# not be available if non-root and using shadow passwords.
+install: $(PROGRAMS) generate-host-key
+	-if test '!' -d $(prefix); then mkdir $(prefix); fi
+	-if test '!' -d $(bindir); then mkdir $(bindir); fi
+	-if test '!' -d $(mandir); then mkdir $(mandir); fi
+	-if test '!' -d $(man1dir); then mkdir $(man1dir); fi
+	-if test '!' -d $(man8dir); then mkdir $(man8dir); fi
+	$(INSTALL_PROGRAM) ssh-fix-key $(bindir)/ssh-fix-key
+	$(INSTALL_PROGRAM) -o root -m 4755 ssh $(bindir)/ssh
+	-if test "`echo ssh | sed '$(transform)'`" '!=' ssh; then \
+	  rm -f $(bindir)/`echo ssh | sed '$(transform)'`; \
+	  $(LN_S) ssh $(bindir)/`echo ssh | sed '$(transform)'`; fi
+	rm -f $(bindir)/slogin
+	$(LN_S) ssh $(bindir)/slogin
+	-if test "`echo slogin | sed '$(transform)'`" '!=' slogin; then \
+	  rm -f $(bindir)/`echo slogin | sed '$(transform)'`; \
+	  $(LN_S) ssh $(bindir)/`echo slogin | sed '$(transform)'`; fi
+	-for p in $(NORMAL_PROGRAMS); do \
+	  $(INSTALL_PROGRAM) $$p $(bindir)/$$p; \
+	  if test "`echo $$p | sed '$(transform)'`" '!=' $$p; then \
+	    rm -f $(bindir)/`echo $$p | sed '$(transform)'`; \
+	    $(LN_S) $$p $(bindir)/`echo $$p | sed '$(transform)'`; fi; \
+	done
+	-for p in $(MAN1PAGES); do \
+	  $(INSTALL_DATA) $(srcdir)/$$p $(man1dir)/`echo $$p \
+	      | sed '$(transform)'`; \
+	  if test "`echo $$p | sed '$(transform)'`" '!=' $$p; then \
+	    rm -f $(bindir)/`echo $$p | sed '$(transform)'`; \
+	    $(LN_S) $$p $(man1dir)/`echo $$p | sed '$(transform)'`; \
+	  fi; \
+	done
+	-for p in $(MAN8PAGES); do \
+	  $(INSTALL_DATA) $(srcdir)/$$p $(man8dir)/$$p; \
+	  if test "`echo $$p | sed '$(transform)'`" '!=' $$p; then \
+	    rm -f $(bindir)/`echo $$p | sed '$(transform)'`; \
+	    $(LN_S) $$p $(man8dir)/`echo $$p | sed '$(transform)'`; fi; \
+	done
+	-if test '!' -f $(HOST_CONFIG_FILE); then \
+	  $(INSTALL_DATA) $(srcdir)/host_config.sample $(HOST_CONFIG_FILE); fi
+
+uninstall:
+	for p in $(PROGRAMS); do \
+	  rm -f $(bindir)/$$p; \
+	  rm -f $(bindir)/`echo $$p | sed '$(transform)'`; \
+	done
+	rm -f $(bindir)/slogin
+	rm -f $(bindir)/`echo slogin | sed '$(transform)'`
+	for p in $(MAN1PAGES); do \
+	  rm -f $(man1dir)/$$p; \
+	  rm -f $(man1dir)/`echo $$p | sed '$(transform)'`; \
+	done
+	for p in $(MAN8PAGES); do \
+	  rm -f $(man8dir)/$$p; \
+	  rm -f $(man8dir)/`echo $$p | sed '$(transform)'`; \
+	done
+
+clean:
+	-rm -f *.o gmon.out core $(PROGRAMS) fd-check-1 fd-check-2
+	cd $(GMPDIR); $(MAKE) clean
+#	cd $(RSAREFSRCDIR); rm -f *.o *.a
+
+distclean: clean
+	-rm -f Makefile config.status config.cache config.log config.h
+	cd $(GMPDIR); $(MAKE) clean
+
+dist:
+	-rm -rf $(DISTNAME)
+	-mkdir $(DISTNAME)
+	cp $(DISTFILES) $(DISTNAME)
+	-rm $(DISTNAME)/config.h
+	tar cf - $(GMPDIR) | (cd $(DISTNAME); tar xf -)
+	cd $(DISTNAME)/$(GMPDIR); $(MAKE) clean
+#	tar cf - $(RSAREFDIR) | (cd $(DISTNAME); tar xf -)
+#	cd $(DISTNAME)/$(RSAREFSRCDIR); rm -f *.o *.a
+	tar cf $(DISTNAME).tar $(DISTNAME)
+	-rm -f $(DISTNAME).tar.gz
+	gzip $(DISTNAME).tar
+	rm -rf $(DISTNAME)
+	@echo Distribution left in $(DISTNAME).tar.gz
+	@echo Incrementing version number...
+	@old_version=`sed 's/.*\.\([0-9][0-9]*\)"$$/\1/' version.h`; \
+	 new_version=`expr $$old_version + 1`; \
+	 (echo "s/\.$$old_version\"/.$$new_version\"/g"; echo w; echo q) | ed version.h >/dev/null
+
+depend:
+	$(MAKEDEP) -I$(srcdir) -I. -I$(GMPDIR) $(DEFS) $(SRCS)

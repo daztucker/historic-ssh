@@ -1,0 +1,87 @@
+.\"  -*- nroff -*-
+.\"
+.\" scp.1
+.\"
+.\" Author: Tatu Ylonen <ylo@cs.hut.fi>
+.\"
+.\" Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
+.\"                    All rights reserved
+.\"
+.\" Created: Sun May  7 00:14:37 1995 ylo
+.\" Last modified: Sun May  7 00:41:26 1995 ylo
+.\"
+.\"
+.TH SCP 1 "May 7, 1995"
+
+.SH NAME
+.B scp
+\- secure copy (remote file copy program)
+
+.SH SYNOPSIS
+.B scp
+[-p]
+[-r]
+[-v]
+[-c cipher]
+[-i identity]
+[[user@]host:]filename1 [[user@]host:]filename2
+
+.B scp
+[-p] [-r] [-v] [-c cipher] [-i identity]
+[[user@]host:]filename... [[user@]host:]directory
+
+.SH DESCRIPTION 
+.B Scp
+copies files between hosts on a network.  It uses
+.B ssh
+for data transfer, and uses the same authentication and provides the
+same security as
+.B ssh.
+Unlike
+.B rcp,
+.B ssh
+will ask for passwords or passphrases if they are needed for
+authentication.
+
+Any file name may contain a host and user specification to indicate
+that the file is to be copied to/from that host.  Copies between two
+remote hosts are permitted.
+
+.SH OPTIONS
+
+.B -c cipher
+Selects the cipher to use for encrypting the data transfer.  This
+option is directly passed to
+.B ssh.
+
+.B -i identity_file
+Selects the file from which the identity (private key) for RSA
+authentication is read.  This option is directly passed to
+.B ssh.
+
+.B -p
+Preserves modification times, access times, and modes from the
+original file.
+
+.B -r
+Recursively copy entire directories.
+
+.B -v
+Verbose mode.  Causes
+.B scp
+and 
+.B ssh
+to print debugging messages about its progress.  This is helpful in
+debugging connection, authentication, and configuration problems.
+
+.SH AUTHOR
+Timo Rinne <tri@cirion.fi> and Tatu Ylonen <ylo@cs.hut.fi>
+
+.B Scp
+is based on the
+.B rcp
+program in BSD source code from the Regents of the University of
+California.
+
+.SH SEE ALSO
+ssh(1), sshd(8), ssh-keygen(1), ssh-agent(1), ssh-add(1), rcp(1)

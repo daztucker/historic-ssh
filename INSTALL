@@ -1,0 +1,280 @@
+This file describes how to install the Secure Shell (ssh).  Secure Shell is
+a replacement for rlogin and rsh.  It seamlessly encrypts all communications,
+provides improved security, and has useful new features.
+
+
+INSTALLATION
+
+For most machines and configurations, the following is all you need.
+
+  ./configure
+  make
+  make install
+
+The source is written in ANSI C, and requires an ANSI C compiler or GCC.
+A copy of GCC is available on all major FTP sites (e.g., in 
+ftp:/prep.ai.mit.edu/pub/gnu).
+
+You may also want to create the /etc/ssh_known_hosts for your site and update
+it periodically.  See the manual page for make-ssh-known-hosts on how to
+do this easily.  The file format is documented on the sshd manual page.
+
+
+CONFIGURATION OPTIONS
+
+The package comes with an Autoconf-generated configure script.  The
+script accepts several options
+ All standard options, including:
+  --prefix=PREFIX	where to install files (default: subdirs of /usr/local)
+  --exec_prefix=PREFIX	where to install executables (default: same as prefix)
+  --srcdir=DIR		find sources in DIR (default: where configure is)
+ Specific options:
+  --with-rsh=PATH	Use rsh specified by PATH when needed
+  --with-rhosts		Enable .rhosts and hosts.equiv authentication in server
+  --with-rsaref		Usa rsaref2 from rsaref2 subdirectory
+
+You may also want to configure the following variables:
+  CC=compiler		specify name of the C compiler (default: gcc or cc)
+  CFLAGS=flags		specify flags to C compiler (default: -O -g or just -O)
+  LDFLAGS=flags		specify flags to linker (default: none)
+
+Alternate values can be given to configure in the environment, e.g.:
+  CC=xcc CFLAGS="-O2" LDFLAGS="-L/lib/zzz" ./configure
+(Note that if you have already configured, and later decide to give
+some values on the command line, you may need to say "make distclean"
+before reconfiguring.)
+
+
+MAKEFILE
+
+The Makefile is generated from Makefile.in by running configure.  It supports
+the following targets:
+  all: 		compile everything
+  install:	install in $exec_prefix/bin and $prefix/man/man1.
+  uninstall:	remove installed files
+  clean:	remove object files and executables
+  distclean:	remove anything not in the distribution
+
+
+PORTABILITY
+
+This software has been used in the following environments.
+
+	AIX 3.2.5, RS6000
+	FreeBSD 1.x, Pentium
+	FreeBSD 2.0, Pentium
+	HPUX 9.x, PA
+	IRIX 5.x, SGI Indy
+	Linux 1.2.8 Slackware 2.1.0, i486
+	Mach3, Mips
+	Mach3/Lites, i386
+	NetBSD 1.0A, Pentium
+	OSF/1 3.0, Alpha
+	Solaris 2.3, Sparc
+	Sony BSD 4.2, m68k (client side only; problems in server pty code)
+	SunOS 4.1.3, Sparc
+
+Please report back any other environments where you have used this,
+and send back any patches you had to do so that they can be integrated
+to the distribution.  The proper address is ssh-bugs@cs.hut.fi.
+
+
+COMPILING WITH RSAREF2
+
+If you are using ssh in a country where RSA is patented, you may want
+to use the RSAREF2 library from RSADSI.  This may make it legal to use
+ssh without a separate license for non-commercial purposes in those
+countries.  RSAREF2 is not included in the distribution; however, it
+is available on any major ftp site around the world (e.g.,
+ftp://ftp.dsi.unimi.it/pub/security/crypt/math/rsaref2.tar.gz).  The
+rsaref2 distribution should be unpacked into rsaref2 subdirectory in
+the ssh distribution directory, and configure should be given the
+--with-rsaref option.  Using RSAREF in countries where RSA is not
+patented only causes legal complications and is not recommended.
+
+
+STARTING THE SERVER
+
+The server should be started at boot from /etc/rc or equivalent.  It
+need not be given any arguments; however, an optional "-b bits" flag
+may be used to specify RSA key size (default is 768).  Key sizes less
+than 512 can be broken; larger key sizes generally mean more security
+but require more time to generate and use.  1024 bits is secure for
+any practical time with current technology.
+
+The server is not started using inetd, because it needs to generate
+the RSA key before serving the connection, and this can take about a
+minute on slower machines.  On a fast machine, and small (breakable)
+key size (< 512 bits) it may be feasible to start the server from
+inetd on every connection.  The server must be given "-i" flag if
+started from inetd.
+
+
+REPLACING RLOGIN AND RSH
+
+This software has been designed so that it can be installed with the
+names rlogin, rsh, and rcp, and it will use the Secure Shell
+protocol whenever the remote machine supports it, and will
+automatically execute rlogin/rsh (after displaying a warning that
+there is no encryption) if the remote host does not support Secure
+Shell.
+
+Rlogin/rsh replacement is done as follows:
+  ./configure --with-rsh=RSH-PATH --program-transform-name='s/^s/r/'
+  make install
+
+where RSH-PATH is the complete pathname of the real rsh program.  (You
+may want to copy the old rsh program to a suitable location).
+
+This will create links for rlogin, rsh, and rcp.  If you are
+installing them in the same directory where rlogin etc. normally are
+(e.g., /usr/bin), you must first move the original programs to some
+other directory (e.g., /usr/lib/rsh).
+
+When doing this, you should also build a file containing the host keys of all
+machines in your organization, and copy this file to /etc/ssh_known_hosts
+on every machine.  This will make .rhosts and /etc/hosts.equiv authentication
+work for users without any changes to the user configuration, but will be
+much more secure than conventional .rhosts and /etc/hosts.equiv authentication.
+This will also protect the users against router attacks where someone (perhaps
+remotely) reconfigures the routers to direct connections to a certain host
+to a different machine, which can then grab any passwords which the user
+types thinking he/she is connected to the real machine.
+
+
+CLIENT SUID ROOT, SERVER RUN AS ROOT
+
+This package installs two programs that need special privileges.  Ssh
+is the client program, and it is by default installed as suid root,
+because it needs to create a privileged port in order to use .rhosts
+files for authentication.  If it is not installed as suid root, it will
+still be usable, but .rhosts authentication will not be available.  Also, the
+private host key file is readable by root only.
+
+Sshd is the daemon that listens for connections.  It should preferably
+be run as root, because it is by normally listening on a privileged
+port, and it needs to be able to do setuid(), update utmp, chown ptys
+etc. when a user logs in.  If it is not run as root, explicit "-p
+port" option must be given to specify an alternate port (same port
+must also be specified for clients), "-h host_key_file_path" must be
+given to specify an alternate host key file, and it cannot be used to
+log in as any other user than the user running it (because it cannot
+call setuid()).  Also, if your system uses shadow passwords, password
+authentication will not work when running as someone else than root.
+
+Both the server and the client have been carefully screened for
+possible security problems, and are believed to be secure.  However,
+there can be no guarantee.  If you find any problems, please report
+them immediately.
+
+
+COMMON PROBLEMS
+
+This section lists some common installation problems.
+
+Shadow passwords
+
+  There are many different shadow password schemes.  Ssh currently recognizes
+  and supports many of them; however, there are probably still many that
+  it does not understand.  This may not be visible at compile time.
+  If your system uses shadow passwords, and password authentication does not
+  work even if sshd is running as root, this is probably your problem.
+  Please contact the author if this happens.  Code to recognize (configure.in)
+  and use (auth-password.c) the shadow password mechanism on new systems
+  is highly welcome.
+
+login.c does not compile, or logging of logins does not work properly
+
+  Mechanisms for updating wtmp, utmp, lastlog, and similar mechanisms
+  are not standardized.  Ssh substitutes many of the functions of the 
+  conventional login program.  These functions are implemented in login.c.
+  You may need to modify this file to make it work on exotic systems.
+  Please send any modifications and bug fixes back to the author for inclusion
+  in the distribution.  If you just want to try ssh, and cannot get this file
+  to compile, if is safe to define all of the functions as empty; however,
+  in that case logins will not be logged.
+
+Sshd does not start or dies immediately
+
+  The easiest thing to do is to give the -d option to sshd.  It will then
+  send debugging output to stderr (and syslog).  The -d option also has other
+  side effects, e.g. the daemon will not fork and will only serve a single
+  connection before exiting.  However, it is very useful for debugging problems.
+
+  Sshd sends debugging output to the system log.  Check your system
+  log (and syslogd configuration) to see why it dies.  One possible
+  reason is that your system does not have a proper host key in
+  /etc/ssh_host_key.  You can either generate a key with ssh-keygen
+  (it is automatically generated by "make install"), or specify an
+  alternative key with the -h option to the server.  Another reason
+  could be that the port which the server tries to listen is already
+  reserved by some other program.
+
+Rhosts authentication does not work
+
+  By default, the server does not accept normal .rhosts or /etc/hosts.equiv
+  authentication, because they are fundamentally insecure and can be spoofed
+  by anyone with access to the local network.  Rhosts authentication can be
+  enabled at compile time by giving the --with-rhosts option to configure.
+  
+  The preferred alternative is to collect the public host keys of the entire
+  site to a file, and copy this to /etc/ssh_known_hosts on every machine in
+  the organization running sshd.  This will prevent all IP spoofing attacks
+  and provides improved security (provided rshd, rlogind, and rexecd are
+  disabled).
+
+Opening connections is too slow
+
+  On very slow machines, encrypting and decrypting the session key may
+  be too slow.  For example, on a heavily loaded sun3 it took
+  several minutes to log in with the default key sizes.  When we changed it
+  to use shorter host key (512 bits) and server key (384 bits),
+  login time dropped to about a second.  A symptom of this problem is
+  that "ssh -v hostname" waits for a long time after printing "Sent
+  encrypted session key". 
+
+  Shorter host keys can be generated with "ssh-keygen -b 512", giving
+  /etc/ssh_host_key as the file in which to save the key (with empty
+  passphrase).  The server key size can be specified with the -b
+  option on sshd command line (typically, in /etc/rc.local).  The
+  server must be restarted for changes to take effect.
+
+The program complains "Could not set controlling tty" or something similar
+
+  There are many different styles of pseudo ttys.  Ssh currently
+  supports about five different styles (plus variations of them).  It
+  is quite possible that there are more variations, some of which are
+  not supported by existing code.  Fixing the problem may require
+  adding new code in pty.c and configure.in.  You are encouraged to
+  write the needed code and send a patch to the author, or at least
+  report the problem.
+
+Ssh does not exit even when the shell on the remote side is exited (HPUX only)
+
+  HPUX ptys has a serious bug (documented on the manual page as a feature):
+  it does not give EOF on the master side when all descriptors on the
+  client side are closed.  This means that the daemon, waiting for
+  something to happen on the master side descriptor, never gets to
+  know the client has exited.  HP has devised proprietary ioctls that
+  could be used to get around the problem, but they would require a
+  substantial amount of HP-specific code in the server do_session
+  function.  So far this code has not been implemented, and when
+  logging into a HPUX machine, the session must be explicitly
+  terminated with "~.".
+
+General problem solving
+
+  The client has -v option, which sends verbose output to stdout.  It
+  is very helpful in solving problems.
+
+  The server has -d option, which causes it to send verbose debugging
+  output to system log and stderr.  This option also causes the server
+  to only serve a single connection and not fork, which helps debugging.
+
+
+REPORTING PROBLEMS
+
+Please report any bugs, problems, and enhancements to
+ssh-bugs@cs.hut.fi.
+
+Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland.

@@ -14,8 +14,11 @@ Cryptographically strong random number generation.
 */
 
 /*
- * $Id: randoms.c,v 1.1.1.1 1996/02/18 21:38:11 ylo Exp $
+ * $Id: randoms.c,v 1.2 1997/03/26 05:35:54 kivinen Exp $
  * $Log: randoms.c,v $
+ * Revision 1.2  1997/03/26 05:35:54  kivinen
+ * 	Added HAVE_NO_TZ_IN_GETTIMEOFDAY support.
+ *
  * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
  * 	Imported ssh-1.2.13.
  *
@@ -187,7 +190,11 @@ void random_acquire_light_environmental_noise(RandomState *state)
 #ifdef HAVE_GETTIMEOFDAY
   {
     struct timeval tv;
+#ifdef HAVE_NO_TZ_IN_GETTIMEOFDAY
+    gettimeofday(&tv);
+#else
     gettimeofday(&tv, NULL);
+#endif
     random_xor_noise(state, 0, (word32)tv.tv_usec);
     random_xor_noise(state, 1, (word32)tv.tv_sec);
 #ifdef HAVE_CLOCK

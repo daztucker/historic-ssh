@@ -14,8 +14,11 @@ Adds an identity to the authentication server, or removes an identity.
 */
 
 /*
- * $Id: ssh-add.c,v 1.4 1995/10/02 01:27:34 ylo Exp $
+ * $Id: ssh-add.c,v 1.1.1.1 1996/02/18 21:38:12 ylo Exp $
  * $Log: ssh-add.c,v $
+ * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.4  1995/10/02  01:27:34  ylo
  * 	Loop asking for a proper passphrase until the user aborts or
  * 	gives an empty passphrase.  (This avoids problems of

@@ -14,8 +14,11 @@ Allocating a pseudo-terminal, and making it the controlling tty.
 */
 
 /*
- * $Id: pty.c,v 1.5 1995/09/13 11:58:18 ylo Exp $
+ * $Id: pty.c,v 1.6 1995/09/21 17:12:07 ylo Exp $
  * $Log: pty.c,v $
+ * Revision 1.6  1995/09/21  17:12:07  ylo
+ * 	Push ttcompat into streams pty.
+ *
  * Revision 1.5  1995/09/13  11:58:18  ylo
  * 	Added Cray support.
  *

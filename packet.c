@@ -15,9 +15,15 @@ with the other side.  This same code is used both on client and server side.
 */
 
 /*
- * $Id: packet.c,v 1.9 1998/04/30 01:54:30 kivinen Exp $
+ * $Id: packet.c,v 1.11 1998/06/11 00:08:44 kivinen Exp $
  * $Log: packet.c,v $
- * Revision 1.9  1998/04/30 01:54:30  kivinen
+ * Revision 1.11  1998/06/11 00:08:44  kivinen
+ * 	Crc fixing detection code.
+ *
+ * Revision 1.10  1998/05/23  20:22:50  kivinen
+ * 	Changed () -> (void).
+ *
+ * Revision 1.9  1998/04/30  01:54:30  kivinen
  * 	Fixed SSH_MSG_IGNORE handling. Now it will skip the string
  * 	argument also.
  *
@@ -83,6 +89,7 @@ with the other side.  This same code is used both on client and server side.
 #include "cipher.h"
 #include "getput.h"
 #include "compress.h"
+#include "deattack.h"
 
 /* This variable contains the file descriptors used for communicating with
    the other side.  connection_in is used for reading; connection_out
@@ -164,7 +171,7 @@ void packet_set_connection(int fd_in, int fd_out, RandomState *state)
 
 /* Sets the connection into non-blocking mode. */
 
-void packet_set_nonblocking()
+void packet_set_nonblocking(void)
 {
   /* Set the socket into non-blocking mode. */
 #if defined(O_NONBLOCK) && !defined(O_NONBLOCK_BROKEN)
@@ -189,21 +196,21 @@ void packet_set_nonblocking()
 
 /* Returns the socket used for reading. */
 
-int packet_get_connection_in()
+int packet_get_connection_in(void)
 {
   return connection_in;
 }
 
 /* Returns the descriptor used for writing. */
 
-int packet_get_connection_out()
+int packet_get_connection_out(void)
 {
   return connection_out;
 }
 
 /* Closes the connection and clears and frees internal data structures. */
 
-void packet_close()
+void packet_close(void)
 {
   if (!initialized)
     return;
@@ -239,7 +246,7 @@ void packet_set_protocol_flags(unsigned int protocol_flags)
 
 /* Returns the remote protocol flags set earlier by the above function. */
 
-unsigned int packet_get_protocol_flags()
+unsigned int packet_get_protocol_flags(void)
 {
   return remote_protocol_flags;
 }
@@ -272,7 +279,34 @@ void packet_encrypt(CipherContext *cc, void *dest, void *src,
 void packet_decrypt(CipherContext *cc, void *dest, void *src, 
 		    unsigned int bytes)
 {
+  int i;
+  
   assert((bytes % 8) == 0);
+  
+  /* $Id: packet.c,v 1.11 1998/06/11 00:08:44 kivinen Exp $
+   * Cryptographic attack detector for ssh - Modifications for packet.c 
+   * (C)1998 CORE-SDI, Buenos Aires Argentina
+   * Ariel Futoransky(futo@core-sdi.com)
+   */
+  
+  switch (cc->type)
+    {
+#ifndef WITHOUT_IDEA
+    case SSH_CIPHER_IDEA :
+      i = detect_attack(src, bytes, cc->u.idea.iv);
+      break;
+#endif
+    case SSH_CIPHER_NONE :
+      i = DEATTACK_OK;
+      break;
+    default:
+      i = detect_attack(src, bytes, NULL);
+      break;
+    }
+  
+  if (i == DEATTACK_DETECTED)
+    packet_disconnect("crc32 compensation attack: network attack detected");
+  
   cipher_decrypt(cc, dest, src, bytes);
 }
 
@@ -351,7 +385,7 @@ void packet_put_mp_int(MP_INT *value)
 /* Finalizes and sends the packet.  If the encryption key has been set,
    encrypts the packet before sending. */
   
-void packet_send()
+void packet_send(void)
 {
   char buf[8], *cp;
   int i, padding, len;
@@ -419,7 +453,7 @@ void packet_send()
    no other data is processed until this returns, so this function should
    not be used during the interactive session. */
 
-int packet_read()
+int packet_read(void)
 {
   int type, len;
   fd_set set;
@@ -481,7 +515,7 @@ void packet_read_expect(int expected_type)
    SSH_MSG_IGNORE messages are skipped by this function and are never returned
    to higher levels. */
 
-int packet_read_poll()
+int packet_read_poll(void)
 {
   unsigned int len, padded_len;
   unsigned char *ucp;
@@ -599,14 +633,14 @@ void packet_process_incoming(const char *buf, unsigned int len)
 
 /* Returns the number of bytes left in the incoming packet. */
 
-unsigned int packet_get_len()
+unsigned int packet_get_len(void)
 {
   return buffer_len(&incoming_packet);
 }
 
 /* Returns a character from the packet. */
 
-unsigned int packet_get_char()
+unsigned int packet_get_char(void)
 {
   char ch;
   buffer_get(&incoming_packet, &ch, 1);
@@ -615,7 +649,7 @@ unsigned int packet_get_char()
 
 /* Returns an integer from the packet data. */
 
-unsigned int packet_get_int()
+unsigned int packet_get_int(void)
 {
   return buffer_get_int(&incoming_packet);
 }
@@ -640,7 +674,7 @@ char *packet_get_string(unsigned int *length_ptr)
 
 /* Clears incoming data buffer */
 
-void packet_get_all()
+void packet_get_all(void)
 {
   buffer_clear(&incoming_packet);
 }
@@ -708,7 +742,7 @@ void packet_disconnect(const char *fmt, ...)
 /* Checks if there is any buffered output, and tries to write some of the
    output. */
 
-void packet_write_poll()
+void packet_write_poll(void)
 {
   int len = buffer_len(&output);
   if (len > 0)
@@ -727,7 +761,7 @@ void packet_write_poll()
 /* Calls packet_write_poll repeatedly until all pending output data has
    been written. */
 
-void packet_write_wait()
+void packet_write_wait(void)
 {
   packet_write_poll();
   while (packet_have_data_to_write())
@@ -742,14 +776,14 @@ void packet_write_wait()
 
 /* Returns true if there is buffered data to write to the connection. */
 
-int packet_have_data_to_write()
+int packet_have_data_to_write(void)
 {
   return buffer_len(&output) != 0;
 }
 
 /* Returns true if there is not too much data to write to the connection. */
 
-int packet_not_very_much_data_to_write()
+int packet_not_very_much_data_to_write(void)
 {
   if (interactive_mode || sizeof(int) < 4)
     return buffer_len(&output) < 16384;
@@ -822,7 +856,7 @@ void packet_set_interactive(int interactive, int keepalives)
 
 /* Returns true if the current connection is interactive. */
 
-int packet_is_interactive()
+int packet_is_interactive(void)
 {
   return interactive_mode;
 }
@@ -836,7 +870,7 @@ void packet_set_max_size(unsigned int max_size)
 
 /* Returns the maximum packet size that can be sent to the other side. */
 
-unsigned int packet_max_size()
+unsigned int packet_max_size(void)
 {
   return max_packet_size;
 }

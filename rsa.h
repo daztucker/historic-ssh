@@ -1,6 +1,6 @@
 /*
 
-genprime.h
+rsa.h
 
 Author: Tatu Ylonen <ylo@cs.hut.fi>
 
@@ -8,14 +8,26 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Fri Mar  3 22:01:06 1995 ylo
-Last modified: Mon Apr 24 16:57:10 1995 ylo
 
-Code for generating large primes.
+RSA key generation, encryption and decryption.
 
 */
 
-#ifndef GENPRIME_H
-#define GENPRIME_H
+/*
+ * $Id: rsa.h,v 1.3 1995/07/13 01:33:11 ylo Exp $
+ * $Log: rsa.h,v $
+ * Revision 1.3  1995/07/13  01:33:11  ylo
+ * 	Fixed comments and label used to protect again multiple inclusion.
+ *
+ * Revision 1.2  1995/07/13  01:31:43  ylo
+ * 	Removed "Last modified" header.
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
+
+#ifndef RSA_H
+#define RSA_H
 
 #include "gmp.h"
 #include "randoms.h"
@@ -88,4 +100,4 @@ void rsa_public_encrypt(MP_INT *output, MP_INT *input, RSAPublicKey *key,
    the result must contain the value 0x000200. */
 void rsa_private_decrypt(MP_INT *output, MP_INT *input, RSAPrivateKey *key);
 
-#endif /* GENPRIME_H */
+#endif /* RSA_H */

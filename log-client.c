@@ -14,8 +14,18 @@ Client-side versions of debug(), log(), etc.  These print to stderr.
 */
 
 /*
- * $Id: log-client.c,v 1.3 1995/08/21 23:24:44 ylo Exp $
+ * $Id: log-client.c,v 1.3 1996/04/26 00:40:12 ylo Exp $
  * $Log: log-client.c,v $
+ * Revision 1.3  1996/04/26 00:40:12  ylo
+ * 	Changed \n\r to \r\n.  They are always written in this order,
+ * 	and deviating from this is likely to cause problems.
+ *
+ * Revision 1.2  1996/04/22 23:46:53  huima
+ * 	Changed '\n' to '\n\r'. \n alone isn't always enough.
+ *
+ * Revision 1.1.1.1  1996/02/18  21:38:12  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.3  1995/08/21  23:24:44  ylo
  * 	Added support for log_quiet.
  *
@@ -48,7 +58,7 @@ void log(const char *fmt, ...)
     return;
   va_start(args, fmt);
   vfprintf(stderr, fmt, args);
-  fprintf(stderr, "\n");
+  fprintf(stderr, "\r\n");
   va_end(args);
 }
 
@@ -60,7 +70,7 @@ void log_severity(SyslogSeverity severity, const char *fmt, ...)
     return;
   va_start(args, fmt);
   vfprintf(stderr, fmt, args);
-  fprintf(stderr, "\n");
+  fprintf(stderr, "\r\n");
   va_end(args);
 }  
 
@@ -71,7 +81,7 @@ void debug(const char *fmt, ...)
     return;
   va_start(args, fmt);
   vfprintf(stderr, fmt, args);
-  fprintf(stderr, "\n");
+  fprintf(stderr, "\r\n");
   va_end(args);
 }
 
@@ -82,7 +92,7 @@ void error(const char *fmt, ...)
     return;
   va_start(args, fmt);
   vfprintf(stderr, fmt, args);
-  fprintf(stderr, "\n");
+  fprintf(stderr, "\r\n");
   va_end(args);
 }
 

@@ -11,8 +11,23 @@ and ssh has the necessary privileges.)
 */
 
 /*
- * $Id: scp.c,v 1.1.1.1 1996/02/18 21:38:11 ylo Exp $
+ * $Id: scp.c,v 1.5 1997/03/26 07:15:57 kivinen Exp $
  * $Log: scp.c,v $
+ * Revision 1.5  1997/03/26 07:15:57  kivinen
+ * 	Use last @ to separate user from host in the user@host@host:
+ *
+ * Revision 1.4  1997/03/19 17:37:37  kivinen
+ * 	If configured ssh_program isn't found try if ssh can be found
+ * 	in the same directory as scp and if so use that one. Fixed
+ * 	typo:  execvp("ss", ...) -> execvp("ssh", ...).
+ *
+ * Revision 1.3  1996/11/24 08:24:36  kivinen
+ * 	Added code that will try to run ssh from path if builtin path
+ * 	fails.
+ *
+ * Revision 1.2  1996/11/07 18:17:56  kivinen
+ * 	Added #ifndef _PATH_CP around #define _PATH_CP.
+ *
  * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
  * 	Imported ssh-1.2.13.
  *
@@ -75,7 +90,7 @@ and ssh has the necessary privileges.)
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$Id: scp.c,v 1.1.1.1 1996/02/18 21:38:11 ylo Exp $
+ *	$Id: scp.c,v 1.5 1997/03/26 07:15:57 kivinen Exp $
  */
 
 #ifndef lint
@@ -103,7 +118,9 @@ struct utimbuf
 };
 #endif
 
+#ifndef _PATH_CP
 #define _PATH_CP "cp"
+#endif
 
 #ifndef STDIN_FILENO
 #define STDIN_FILENO 0
@@ -134,6 +151,8 @@ char *identity = NULL;
 
 /* This is the port to use in contacting the remote site (is non-NULL). */
 char *port = NULL;
+
+char *ssh_program = SSH_PROGRAM;
 
 /* This function executes the given command as the specified user on the given
    host.  This returns < 0 if execution fails, and >= 0 otherwise.
@@ -176,7 +195,7 @@ int do_cmd(char *host, char *remuser, char *cmd, int *fdin, int *fdout)
       close(pout[1]);
 
       i = 0;
-      args[i++] = SSH_PROGRAM;
+      args[i++] = ssh_program;
       args[i++] = "-x";
       args[i++] = "-a";
       args[i++] = "-oFallBackToRsh no";
@@ -210,8 +229,13 @@ int do_cmd(char *host, char *remuser, char *cmd, int *fdin, int *fdout)
       args[i++] = cmd;
       args[i++] = NULL;
 
-      execvp(SSH_PROGRAM, args);
-      perror(SSH_PROGRAM);
+      execvp(ssh_program, args);
+      if (errno == ENOENT)
+	{
+	  args[0] = "ssh";
+	  execvp("ssh", args);
+	}
+      perror(ssh_program);
       exit(1);
     }
   /* Parent.  Close the other side, and return the local side. */
@@ -278,6 +302,23 @@ main(argc, argv)
 	char *targ;
 	extern char *optarg;
 	extern int optind;
+	struct stat st;
+
+	if (stat(ssh_program, &st) < 0)
+	  {
+	    int len;
+	    len = strlen(argv[0]);
+	    if (len >= 3 && strcmp(argv[0] + len - 3, "scp") == 0)
+	      {
+		char *p;
+		p = xstrdup(argv[0]);
+		strcpy(p + len - 3, "ssh");
+		if (stat(p, &st) < 0)
+		  xfree(p);
+		else
+		  ssh_program = p;
+	      }
+	  }
 
 	fflag = tflag = 0;
 	while ((ch = getopt(argc, argv, "dfprtvBCc:i:P:")) != EOF)
@@ -377,7 +418,7 @@ toremote(targ, argc, argv)
 	if (*targ == 0)
 		targ = ".";
 
-	if ((thost = strchr(argv[argc - 1], '@'))) {
+	if ((thost = strrchr(argv[argc - 1], '@'))) {
 		/* user@host */
 		*thost++ = 0;
 		tuser = argv[argc - 1];
@@ -396,8 +437,8 @@ toremote(targ, argc, argv)
 			*src++ = 0;
 			if (*src == 0)
 				src = ".";
-			host = strchr(argv[i], '@');
-			len = strlen(SSH_PROGRAM) + strlen(argv[i]) +
+			host = strrchr(argv[i], '@');
+			len = strlen(ssh_program) + strlen(argv[i]) +
 			    strlen(src) + (tuser ? strlen(tuser) : 0) +
 			    strlen(thost) + strlen(targ) + CMDNEEDS + 32;
 		        bp = xmalloc(len);
@@ -410,14 +451,14 @@ toremote(targ, argc, argv)
 					continue;
 				(void)sprintf(bp, 
 				    "%s%s -x -o'FallBackToRsh no' -n -l %s %s %s %s '%s%s%s:%s'",
-				    SSH_PROGRAM, verbose ? " -v" : "",
+				    ssh_program, verbose ? " -v" : "",
 				    suser, host, cmd, src,
 				    tuser ? tuser : "", tuser ? "@" : "",
 				    thost, targ);
 			} else
 				(void)sprintf(bp,
 				    "exec %s%s -x -o'FallBackToRsh no' -n %s %s %s '%s%s%s:%s'",
-				    SSH_PROGRAM, verbose ? " -v" : "",
+				    ssh_program, verbose ? " -v" : "",
 				    argv[i], cmd, src,
 				    tuser ? tuser : "", tuser ? "@" : "",
 				    thost, targ);
@@ -469,7 +510,7 @@ tolocal(argc, argv)
 		*src++ = 0;
 		if (*src == 0)
 			src = ".";
-		if ((host = strchr(argv[i], '@')) == NULL) {
+		if ((host = strrchr(argv[i], '@')) == NULL) {
 			host = argv[i];
 			suser = NULL;
 		} else {
@@ -1002,7 +1043,7 @@ run_err(const char *fmt, ...)
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$Id: scp.c,v 1.1.1.1 1996/02/18 21:38:11 ylo Exp $
+ *	$Id: scp.c,v 1.5 1997/03/26 07:15:57 kivinen Exp $
  */
 
 char *
@@ -1048,7 +1089,8 @@ okname(cp0)
 		c = *cp;
 		if (c & 0200)
 			goto bad;
-		if (!isalpha(c) && !isdigit(c) && c != '_' && c != '-')
+		if (!isalpha(c) && !isdigit(c) && c != '_' && c != '-' &&
+		    c != '@' && c != '%' && c != '.' && c != '/')
 			goto bad;
 	} while (*++cp);
 	return (1);

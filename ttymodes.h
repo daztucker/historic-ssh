@@ -2,32 +2,36 @@
 
 ttymodes.h
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
-	SGTTY stuff contributed by Janne Snabb <snabb@niksula.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
+        SGTTY stuff contributed by Janne Snabb <snabb@niksula.hut.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (C) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (C) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Tue Mar 21 15:42:09 1995 ylo
 
 */
 
 /*
- * $Id: ttymodes.h,v 1.2 1996/11/03 15:57:14 ttsalo Exp $
+ * $Id: ttymodes.h,v 1.3 1999/11/17 17:05:00 tri Exp $
  * $Log: ttymodes.h,v $
+ * Revision 1.3  1999/11/17 17:05:00  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.2  1996/11/03 15:57:14  ttsalo
  *       tc_statusc -> ts_statusc (line 86)
  *
  * Revision 1.1.1.1  1996/02/18 21:38:10  ylo
- * 	Imported ssh-1.2.13.
+ *      Imported ssh-1.2.13.
  *
  * Revision 1.3  1995/08/18  22:59:00  ylo
- * 	Added acknowledgement about Janne Snabb contributing the sgtty
- * 	code.
+ *      Added acknowledgement about Janne Snabb contributing the sgtty
+ *      code.
  *
  * Revision 1.2  1995/07/13  01:41:22  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
+ *      Removed "Last modified" header.
+ *      Added cvs log.
  *
  * $Endlog$
  */
@@ -47,110 +51,110 @@ Created: Tue Mar 21 15:42:09 1995 ylo
 /* Some constants and prototypes are defined in packet.h; this file
    is only intended for including from ttymodes.h. */
 
-/* termios macro */		/* sgtty macro */
+/* termios macro */             /* sgtty macro */
 /* name, op */
-TTYCHAR(VINTR, 1) 		SGTTYCHAR(tiotc.t_intrc, 1)
-TTYCHAR(VQUIT, 2)		SGTTYCHAR(tiotc.t_quitc, 2)
-TTYCHAR(VERASE, 3)		SGTTYCHAR(tio.sg_erase, 3)
+TTYCHAR(VINTR, 1)               SGTTYCHAR(tiotc.t_intrc, 1)
+TTYCHAR(VQUIT, 2)               SGTTYCHAR(tiotc.t_quitc, 2)
+TTYCHAR(VERASE, 3)              SGTTYCHAR(tio.sg_erase, 3)
 #if defined(VKILL) || defined(USING_SGTTY)
-TTYCHAR(VKILL, 4)		SGTTYCHAR(tio.sg_kill, 4)
+TTYCHAR(VKILL, 4)               SGTTYCHAR(tio.sg_kill, 4)
 #endif /* VKILL */
-TTYCHAR(VEOF, 5)		SGTTYCHAR(tiotc.t_eofc, 5)
+TTYCHAR(VEOF, 5)                SGTTYCHAR(tiotc.t_eofc, 5)
 #if defined(VEOL) || defined(USING_SGTTY)
-TTYCHAR(VEOL, 6)		SGTTYCHAR(tiotc.t_brkc, 6)
+TTYCHAR(VEOL, 6)                SGTTYCHAR(tiotc.t_brkc, 6)
 #endif /* VEOL */
-#ifdef VEOL2			/* n/a */
+#ifdef VEOL2                    /* n/a */
 TTYCHAR(VEOL2, 7)
 #endif /* VEOL2 */
-TTYCHAR(VSTART, 8)		SGTTYCHAR(tiotc.t_startc, 8)
-TTYCHAR(VSTOP, 9)		SGTTYCHAR(tiotc.t_stopc, 9)
+TTYCHAR(VSTART, 8)              SGTTYCHAR(tiotc.t_startc, 8)
+TTYCHAR(VSTOP, 9)               SGTTYCHAR(tiotc.t_stopc, 9)
 #if defined(VSUSP) || defined(USING_SGTTY)
-TTYCHAR(VSUSP, 10)		SGTTYCHAR(tioltc.t_suspc, 10)
+TTYCHAR(VSUSP, 10)              SGTTYCHAR(tioltc.t_suspc, 10)
 #endif /* VSUSP */
 #if defined(VDSUSP) || defined(USING_SGTTY)
-TTYCHAR(VDSUSP, 11)		SGTTYCHAR(tioltc.t_dsuspc, 11)
+TTYCHAR(VDSUSP, 11)             SGTTYCHAR(tioltc.t_dsuspc, 11)
 #endif /* VDSUSP */
 #if defined(VREPRINT) || defined(USING_SGTTY)
-TTYCHAR(VREPRINT, 12)		SGTTYCHAR(tioltc.t_rprntc, 12)
+TTYCHAR(VREPRINT, 12)           SGTTYCHAR(tioltc.t_rprntc, 12)
 #endif /* VREPRINT */
 #if defined(VWERASE) || defined(USING_SGTTY)
-TTYCHAR(VWERASE, 13)		SGTTYCHAR(tioltc.t_werasc, 13)
+TTYCHAR(VWERASE, 13)            SGTTYCHAR(tioltc.t_werasc, 13)
 #endif /* VWERASE */
 #if defined(VLNEXT) || defined(USING_SGTTY)
-TTYCHAR(VLNEXT, 14)		SGTTYCHAR(tioltc.t_lnextc, 14)
+TTYCHAR(VLNEXT, 14)             SGTTYCHAR(tioltc.t_lnextc, 14)
 #endif /* VLNEXT */
 #if defined(VFLUSH) || defined(USING_SGTTY)
-TTYCHAR(VFLUSH, 15)		SGTTYCHAR(tioltc.t_flushc, 15)
+TTYCHAR(VFLUSH, 15)             SGTTYCHAR(tioltc.t_flushc, 15)
 #endif /* VFLUSH */
 #ifdef VSWTCH
-TTYCHAR(VSWTCH, 16)		/* n/a */
+TTYCHAR(VSWTCH, 16)             /* n/a */
 #endif /* VSWTCH */
 #if defined(VSTATUS) || (defined(USING_SGTTY) && defined(TIOCGSTAT))
-TTYCHAR(VSTATUS, 17)		SGTTYCHAR(tiots.ts_statusc, 17)
+TTYCHAR(VSTATUS, 17)            SGTTYCHAR(tiots.ts_statusc, 17)
 #endif /* VSTATUS */
 #ifdef VDISCARD
-TTYCHAR(VDISCARD, 18)		/* n/a */
+TTYCHAR(VDISCARD, 18)           /* n/a */
 #endif /* VDISCARD */
 
 /* name, field, op */
-TTYMODE(IGNPAR,	c_iflag, 30)	/* n/a */
-TTYMODE(PARMRK,	c_iflag, 31)	/* n/a */
-TTYMODE(INPCK, 	c_iflag, 32)	SGTTYMODEN(ANYP, tio.sg_flags, 32)
-TTYMODE(ISTRIP,	c_iflag, 33)	SGTTYMODEN(LPASS8, tiolm, 33)
-TTYMODE(INLCR, 	c_iflag, 34)	/* n/a */
-TTYMODE(IGNCR, 	c_iflag, 35)	/* n/a */
-TTYMODE(ICRNL, 	c_iflag, 36)	SGTTYMODE(CRMOD, tio.sg_flags, 36)
+TTYMODE(IGNPAR, c_iflag, 30)    /* n/a */
+TTYMODE(PARMRK, c_iflag, 31)    /* n/a */
+TTYMODE(INPCK,  c_iflag, 32)    SGTTYMODEN(ANYP, tio.sg_flags, 32)
+TTYMODE(ISTRIP, c_iflag, 33)    SGTTYMODEN(LPASS8, tiolm, 33)
+TTYMODE(INLCR,  c_iflag, 34)    /* n/a */
+TTYMODE(IGNCR,  c_iflag, 35)    /* n/a */
+TTYMODE(ICRNL,  c_iflag, 36)    SGTTYMODE(CRMOD, tio.sg_flags, 36)
 #if defined(IUCLC) || defined(USING_SGTTY)
-TTYMODE(IUCLC, 	c_iflag, 37)	SGTTYMODE(LCASE, tio.sg_flags, 37)
+TTYMODE(IUCLC,  c_iflag, 37)    SGTTYMODE(LCASE, tio.sg_flags, 37)
 #endif
-TTYMODE(IXON,  	c_iflag, 38)	/* n/a */
-TTYMODE(IXANY, 	c_iflag, 39)	SGTTYMODEN(LDECCTQ, tiolm, 39)
-TTYMODE(IXOFF, 	c_iflag, 40)	SGTTYMODE(TANDEM, tio.sg_flags, 40)
+TTYMODE(IXON,   c_iflag, 38)    /* n/a */
+TTYMODE(IXANY,  c_iflag, 39)    SGTTYMODEN(LDECCTQ, tiolm, 39)
+TTYMODE(IXOFF,  c_iflag, 40)    SGTTYMODE(TANDEM, tio.sg_flags, 40)
 #ifdef IMAXBEL
-TTYMODE(IMAXBEL,c_iflag, 41)	/* n/a */
+TTYMODE(IMAXBEL,c_iflag, 41)    /* n/a */
 #endif /* IMAXBEL */
 
-TTYMODE(ISIG,	c_lflag, 50)	/* n/a */
-TTYMODE(ICANON,	c_lflag, 51)	SGTTYMODEN(CBREAK, tio.sg_flags, 51)
+TTYMODE(ISIG,   c_lflag, 50)    /* n/a */
+TTYMODE(ICANON, c_lflag, 51)    SGTTYMODEN(CBREAK, tio.sg_flags, 51)
 #ifdef XCASE
-TTYMODE(XCASE,	c_lflag, 52)	/* n/a */
+TTYMODE(XCASE,  c_lflag, 52)    /* n/a */
 #endif
-TTYMODE(ECHO,	c_lflag, 53)	SGTTYMODE(ECHO, tio.sg_flags, 53)
-TTYMODE(ECHOE,	c_lflag, 54)	SGTTYMODE(LCRTERA, tiolm, 54)
-TTYMODE(ECHOK,	c_lflag, 55)	SGTTYMODE(LCRTKIL, tiolm, 55)
-TTYMODE(ECHONL,	c_lflag, 56)	/* n/a */
-TTYMODE(NOFLSH,	c_lflag, 57)	SGTTYMODE(LNOFLSH, tiolm, 57)
-TTYMODE(TOSTOP,	c_lflag, 58)	SGTTYMODE(LTOSTOP, tiolm, 58)
+TTYMODE(ECHO,   c_lflag, 53)    SGTTYMODE(ECHO, tio.sg_flags, 53)
+TTYMODE(ECHOE,  c_lflag, 54)    SGTTYMODE(LCRTERA, tiolm, 54)
+TTYMODE(ECHOK,  c_lflag, 55)    SGTTYMODE(LCRTKIL, tiolm, 55)
+TTYMODE(ECHONL, c_lflag, 56)    /* n/a */
+TTYMODE(NOFLSH, c_lflag, 57)    SGTTYMODE(LNOFLSH, tiolm, 57)
+TTYMODE(TOSTOP, c_lflag, 58)    SGTTYMODE(LTOSTOP, tiolm, 58)
 #ifdef IEXTEN
-TTYMODE(IEXTEN, c_lflag, 59)	/* n/a */
+TTYMODE(IEXTEN, c_lflag, 59)    /* n/a */
 #endif /* IEXTEN */
 #if defined(ECHOCTL) || defined(USING_SGTTY)
-TTYMODE(ECHOCTL,c_lflag, 60)	SGTTYMODE(LCTLECH, tiolm, 60)
+TTYMODE(ECHOCTL,c_lflag, 60)    SGTTYMODE(LCTLECH, tiolm, 60)
 #endif /* ECHOCTL */
 #ifdef ECHOKE
-TTYMODE(ECHOKE,	c_lflag, 61)	/* n/a */
+TTYMODE(ECHOKE, c_lflag, 61)    /* n/a */
 #endif /* ECHOKE */
 #if defined(PENDIN) || defined(USING_SGTTY)
-TTYMODE(PENDIN,	c_lflag, 62)	SGTTYMODE(LPENDIN, tiolm, 62)
+TTYMODE(PENDIN, c_lflag, 62)    SGTTYMODE(LPENDIN, tiolm, 62)
 #endif /* PENDIN */
 
-TTYMODE(OPOST,	c_oflag, 70)	/* n/a */
+TTYMODE(OPOST,  c_oflag, 70)    /* n/a */
 #if defined(OLCUC) || defined(USING_SGTTY)
-TTYMODE(OLCUC,	c_oflag, 71)	SGTTYMODE(LCASE, tio.sg_flags, 71)
+TTYMODE(OLCUC,  c_oflag, 71)    SGTTYMODE(LCASE, tio.sg_flags, 71)
 #endif
-TTYMODE(ONLCR,	c_oflag, 72)	SGTTYMODE(CRMOD, tio.sg_flags, 72)
+TTYMODE(ONLCR,  c_oflag, 72)    SGTTYMODE(CRMOD, tio.sg_flags, 72)
 #ifdef OCRNL
-TTYMODE(OCRNL,	c_oflag, 73)	/* n/a */
+TTYMODE(OCRNL,  c_oflag, 73)    /* n/a */
 #endif
 #ifdef ONOCR
-TTYMODE(ONOCR,	c_oflag, 74)	/* n/a */
+TTYMODE(ONOCR,  c_oflag, 74)    /* n/a */
 #endif
 #ifdef ONLRET
-TTYMODE(ONLRET,	c_oflag, 75)	/* n/a */
+TTYMODE(ONLRET, c_oflag, 75)    /* n/a */
 #endif
 
-TTYMODE(CS7,	c_cflag, 90)	/* n/a */
-TTYMODE(CS8,	c_cflag, 91)	SGTTYMODE(LPASS8, tiolm, 91)
-TTYMODE(PARENB,	c_cflag, 92)	/* n/a */
-TTYMODE(PARODD,	c_cflag, 93)	SGTTYMODE(ODDP, tio.sg_flags, 93)
+TTYMODE(CS7,    c_cflag, 90)    /* n/a */
+TTYMODE(CS8,    c_cflag, 91)    SGTTYMODE(LPASS8, tiolm, 91)
+TTYMODE(PARENB, c_cflag, 92)    /* n/a */
+TTYMODE(PARODD, c_cflag, 93)    SGTTYMODE(ODDP, tio.sg_flags, 93)
 

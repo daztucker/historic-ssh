@@ -15,8 +15,11 @@ authentication.
 */
 
 /*
- * $Id: auth-rh-rsa.c,v 1.4 1995/08/31 09:18:58 ylo Exp $
+ * $Id: auth-rh-rsa.c,v 1.5 1995/09/21 17:06:50 ylo Exp $
  * $Log: auth-rh-rsa.c,v $
+ * Revision 1.5  1995/09/21  17:06:50  ylo
+ * 	Added ignore_rhosts.
+ *
  * Revision 1.4  1995/08/31  09:18:58  ylo
  * 	Tilde-expand the name of user hostfile.
  *

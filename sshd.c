@@ -18,8 +18,22 @@ agent connections.
 */
 
 /*
- * $Id: sshd.c,v 1.44 1997/05/08 03:06:51 kivinen Exp $
+ * $Id: sshd.c,v 1.47 1998/01/03 06:42:43 kivinen Exp $
  * $Log: sshd.c,v $
+ * Revision 1.47  1998/01/03 06:42:43  kivinen
+ * 	Added allow/deny groups option support.
+ *
+ * Revision 1.46  1998/01/02 06:39:36  kivinen
+ * 	Added new mail checking. Added expiration checkind for bsdi,
+ * 	and warning when password is about to expire. Fixed kerberos
+ * 	ticket name handling. Added support for XAuthLocation option.
+ * 	Added support for login capabilities for bsdi, only support
+ * 	ignorelogin option.
+ * 	Added osfc2 resource limit setting.
+ *
+ * Revision 1.45  1997/10/01 19:16:32  ylo
+ * 	Clarified error message about xauth not being in path.
+ *
  * Revision 1.44  1997/05/08 03:06:51  kivinen
  * 	Fixed sighup handling (added select before accept, changed
  * 	execv to execvp so sshd is searched from path).
@@ -385,6 +399,11 @@ agent connections.
 #define SHADOW "/etc/shadow"
 #endif
 #endif /* HAVE_ETC_SHADOW */
+
+#if defined (__bsdi__) && _BSDI_VERSION >= 199510
+#include <tzfile.h>
+#include <login_cap.h>
+#endif /* __bsdi__  && _BSDI_VERISION >= 199510 */
 
 #ifdef LIBWRAP
 #include <tcpd.h>
@@ -1420,6 +1439,8 @@ void do_connection(int privileged_port)
 int login_permitted(char *user, struct passwd *pwd)
 {
   char passwd[6];		/* Only for account lock check */
+  struct group *grp;
+  char *group;
  
   strncpy(passwd, pwd->pw_passwd, sizeof(passwd));
   passwd[sizeof(passwd) - 1] = '\0';
@@ -1633,6 +1654,43 @@ int login_permitted(char *user, struct passwd *pwd)
 	  }
     }
   
+  /* Check whether logins are deneid for this group. */
+  grp = getgrgid(pwd->pw_gid);
+  if (grp)
+    group = grp->gr_name;
+  else
+    {
+      log_msg("Unknown group id %d\n", pwd->pw_gid);
+      group = "none";
+    }
+  
+  if (options.num_allow_groups > 0)
+    {
+      int i;
+      for (i = 0; i < options.num_allow_groups; i++)
+ 	if (match_pattern(group, options.allow_groups[i]))
+ 	  break;
+      if (i >= options.num_allow_groups)
+ 	{
+ 	  log_msg("Connection for %.200s not allowed from %s\n",
+ 		  group, get_canonical_hostname());
+ 	  return 0;
+ 	}
+    }
+  
+  /* Check whether logins are denied for this group. */
+  if (options.num_deny_groups > 0)
+    {
+      int i;
+      for (i = 0; i < options.num_deny_groups; i++)
+ 	if (match_pattern(group, options.deny_groups[i]))
+ 	  {
+ 	    log_msg("Connection for %.200s denied from %s\n",
+ 		    group, get_canonical_hostname());
+ 	    return 0;
+ 	  }
+    }
+  
   return 1;
 }
 
@@ -1761,6 +1819,11 @@ void do_authentication(char *user, int privileged_port, int cipher_type)
   pwcopy.pw_passwd = xstrdup(pw->pw_passwd);
   pwcopy.pw_uid = pw->pw_uid;
   pwcopy.pw_gid = pw->pw_gid;
+#if defined (__bsdi__) && _BSDI_VERSION >= 199510
+  pwcopy.pw_class = xstrdup(pw->pw_class);
+  pwcopy.pw_change = pw->pw_change;
+  pwcopy.pw_expire = pw->pw_expire;
+#endif /*  __bsdi__  && _BSDI_VERSION >= 199510 */
   pwcopy.pw_dir = xstrdup(pw->pw_dir);
   pwcopy.pw_shell = xstrdup(pw->pw_shell);
   pw = &pwcopy;
@@ -2218,7 +2281,8 @@ void do_authentication(char *user, int privileged_port, int cipher_type)
       /* If tgt was passed unlink file */
       if (ticket){
           if (strcmp(ticket,"none"))
-            unlink(ticket);
+ 	    /* ticket -> FILE:path */
+ 	    unlink(ticket + 5);
           else
             ticket = NULL;
       }
@@ -2428,7 +2492,7 @@ void do_authenticated(struct passwd *pw)
 
 	  /* Check whether we have xauth installed on this machine (in case
 	     the binary was moved from elsewhere). */
-	  if (stat(XAUTH_PATH, &st) < 0)
+	  if (stat(options.xauth_path, &st) < 0)
 	    {
 	      packet_get_all();
 	      packet_send_debug("Remote host has no X11 installed.");
@@ -2450,7 +2514,8 @@ void do_authenticated(struct passwd *pw)
 #else /* XAUTH_PATH */
 	  /* No xauth program; we won't accept forwarding with spoofing. */
 	  packet_get_all();
-	  packet_send_debug("No xauth program; cannot forward with spoofing.");
+	  packet_send_debug("Client requested X11 forwarding, but the server has no xauth program.");
+	  packet_send_debug("This is usually caused by \"xauth\" not being in PATH during compile.");
 	  goto fail;
 #endif /* XAUTH_PATH */
 #endif /* SSHD_NO_X11_FORWARDING */
@@ -2728,6 +2793,9 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
   struct sockaddr_in from;
   int fromlen;
   struct pty_cleanup_context cleanup_context;
+#if defined (__bsdi__) && _BSDI_VERSION >= 199510 
+  struct timeval tp;
+#endif /*  __bsdi__ && _BSDI_VERSION >= 199510 */
 
   /* We no longer need the child running on user's privileges. */
   userfile_uninit();
@@ -2839,6 +2907,26 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
 		fputs(line, stdout);
 	      fclose(f);
 	    }
+#if defined (__bsdi__) && _BSDI_VERSION >= 199510
+	  if (pw->pw_change || pw->pw_expire)
+	    (void)gettimeofday(&tp, (struct timezone *)NULL);
+	  if (pw->pw_change)
+	    if (tp.tv_sec >= pw->pw_change) {
+	      fprintf(stderr,"Sorry -- your password has expired.\n");
+	      exit(254);
+	    } else if (pw->pw_change - tp.tv_sec <
+		       2 * DAYSPERWEEK * SECSPERDAY)
+	      fprintf(stderr,"Warning: your password expires on %s",
+		      ctime(&pw->pw_change));
+	  if (pw->pw_expire)
+	    if (tp.tv_sec >= pw->pw_expire) {
+	      fprintf(stderr,"Sorry -- your account has expired.\n");
+	      exit(254);
+	    } else if (pw->pw_expire - tp.tv_sec <
+		       2 * DAYSPERWEEK * SECSPERDAY)
+	      fprintf(stderr,"Warning: your account expires on %s",
+		      ctime(&pw->pw_expire));
+#endif /* __bsdi__ & _BSDI_VERSION >= 199510   */
 	}
 
       /* Do common processing for the child, such as execing the command. */
@@ -3091,7 +3179,10 @@ void do_child(const char *command, struct passwd *pw, const char *term,
   char *user_shell;
   char *remote_ip;
   int remote_port;
-  
+#if defined (__bsdi__) && _BSDI_VERSION >= 199510
+  login_cap_t *lc = 0;
+#endif /* __bsdi__  && _BSDI_VERSION >= 199510  */
+
   /* Check /etc/nologin. */
   f = fopen("/etc/nologin", "r");
   if (f)
@@ -3102,8 +3193,15 @@ void do_child(const char *command, struct passwd *pw, const char *term,
       while (fgets(buf, sizeof(buf), f))
 	fputs(buf, stderr);
       fclose(f);
+#if defined (__bsdi__) && _BSDI_VERSION >= 199510
+      if ((lc = login_getclass(pw->pw_class)) == NULL)
+	lc = login_getclass("default") ; 
+      if (pw->pw_uid != UID_ROOT && !login_getcapbool(lc, "ignorenologin", 0))
+	exit(254);
+#else 
       if (pw->pw_uid != UID_ROOT)
 	exit(254);
+#endif /* __bsdi__  && _BSDI_VERSION >= 199510 */ 
     }
 
   if (command != NULL)
@@ -3244,6 +3342,23 @@ void do_child(const char *command, struct passwd *pw, const char *term,
   /* Reset signals to their default settings before starting the user
      process. */
   signals_reset();
+
+#if defined(HAVE_OSF1_C2_SECURITY)
+  {
+    /* jcastro@ist.utl.pt Sep 1997 */
+    extern unsigned long osflim[8];
+    struct rlimit rl;
+    int i;  
+    
+    for (i = 0; i < 8; i++) {    
+      if (osflim[i] != 0) {
+	rl.rlim_cur= osflim[i];
+	rl.rlim_max= osflim[i];
+	setrlimit(i, &rl);
+      }
+    }
+  }
+#endif
 
   /* Get the shell from the password data.  An empty shell field is legal,
      and means /bin/sh. */
@@ -3422,6 +3537,7 @@ void do_child(const char *command, struct passwd *pw, const char *term,
 	      {
 		int i;
 		char name[255], *p;
+		char line[256];
 		struct hostent *hp;
 		
 		strncpy(name, display, sizeof(name));
@@ -3432,11 +3548,12 @@ void do_child(const char *command, struct passwd *pw, const char *term,
 		
 		if (debug_flag)
 		  fprintf(stderr, "Running %.100s add %.100s %.100s %.100s\n",
-			  XAUTH_PATH, display, auth_proto, auth_data);
+			  options.xauth_path, display, auth_proto, auth_data);
 		
 		signal(SIGPIPE, SIG_IGN);
-		
-		f = popen(XAUTH_PATH " -q -", "w");
+
+		sprintf(line, "%.200s -q -", options.xauth_path);
+		f = popen(line, "w");
 		if (f)
 		  {
 		    fprintf(f, "add %s %s %s\n", display, auth_proto,
@@ -3458,7 +3575,7 @@ void do_child(const char *command, struct passwd *pw, const char *term,
 				if (debug_flag)
 				  {
 				    fprintf(stderr, "Running %s add %s%s %s %s\n",
-					    XAUTH_PATH,
+					    options.xauth_path,
 					    inet_ntoa(*((struct in_addr *)
 							hp->h_addr_list[i])),
 					    cp, auth_proto, auth_data);
@@ -3473,7 +3590,8 @@ void do_child(const char *command, struct passwd *pw, const char *term,
 		    pclose(f);
 		  }
 		else
-		  fprintf(stderr, "Could not run %s -q -\n", XAUTH_PATH);
+		  fprintf(stderr, "Could not run %s -q -\n",
+			  options.xauth_path);
 		
 		signal(SIGPIPE, SIG_DFL);
 	      }
@@ -3503,6 +3621,24 @@ void do_child(const char *command, struct passwd *pw, const char *term,
 #endif /* USELOGIN */
 	{
 	  char buf[256];
+
+	  if (options.check_mail)
+	    {
+	      char *mailbox;
+	      
+	      mailbox = getenv("MAIL");
+	      if(mailbox != NULL)
+		{
+		  struct stat mailbuf;
+		  
+		  if (stat(mailbox, &mailbuf) == -1 || mailbuf.st_size == 0)
+		    printf("No mail.\n");
+		  else if (mailbuf.st_atime > mailbuf.st_mtime)
+		    printf("You have mail.\n");
+		  else
+		    printf("You have new mail.\n");
+		}
+	    }
 	  
 	  /* Start the shell.  Set initial character to '-'. */
 	  buf[0] = '-';

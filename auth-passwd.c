@@ -15,8 +15,18 @@ the password is valid for the user.
 */
 
 /*
- * $Id: auth-passwd.c,v 1.6 1996/10/30 04:22:43 kivinen Exp $
+ * $Id: auth-passwd.c,v 1.9 1997/03/27 03:09:20 kivinen Exp $
  * $Log: auth-passwd.c,v $
+ * Revision 1.9  1997/03/27 03:09:20  kivinen
+ * 	Added kerberos patches from Glenn Machin.
+ *
+ * Revision 1.8  1997/03/26 06:59:18  kivinen
+ * 	Changed uid 0 to UID_ROOT.
+ *
+ * Revision 1.7  1997/03/19 15:57:21  kivinen
+ * 	Added SECURE_RPC, SECURE_NFS and NIS_PLUS support from Andy
+ * 	Polyakov <appro@fy.chalmers.se>.
+ *
  * Revision 1.6  1996/10/30 04:22:43  kivinen
  * 	Added #ifdef HAVE_SHADOW_H around shadow.h including.
  *
@@ -95,6 +105,134 @@ the password is valid for the user.
 #include "servconf.h"
 #include "xmalloc.h"
 
+#ifdef SECURE_RPC
+/*
+ * refer to ftp://playground.sun.com/pub/rpc/tirpcsrc2.3.tar.Z for
+ * detailed information about stuff you can't find in manual pages:-)
+ */
+#ifdef KEYBYTES
+#undef KEYBYTES       /* conflicts with blowfish.h */
+#endif
+
+#include <rpc/rpc.h>
+#include <rpc/key_prot.h>
+
+static uid_t uid_keylogged = 0;
+
+#ifdef SECURE_NFS
+#define uint32 rpc_uint32       /* conflicts with md5.h */
+#include <nfs/export.h>
+#include <nfs/nfs.h>
+#include <nfs/nfssys.h>
+
+void nfs_revauth(uid_t uid)
+{
+  struct nfs_revauth_args _nfssysarg;
+  
+  _nfssysarg.authtype = AUTH_DES;
+  _nfssysarg.uid      = uid;
+  _nfssys (NFS_REVAUTH,&_nfssysarg);
+}
+#undef uint32 /* conflicted with md5.h */
+#endif /* SECURE_NFS */
+
+/* do /usr/bin/keylogout's job */
+/* caller sets effective uid!  */
+void keylogout()
+{
+  char secret [HEXKEYBYTES];
+  
+  if (!uid_keylogged || uid_keylogged != geteuid())
+    return;
+  
+  /* revoke secret key from keyserv(1m) */
+  memset(secret, '\0', sizeof(secret));
+  key_setsecret(secret);     /* this one is keyserv.1 interface,
+				but it does the job even for keyserv.2
+				and takes the only argument:-) */
+#ifdef SECURE_NFS
+  /* as well as from nfs client module */
+  nfs_revauth(uid_keylogged);
+#endif /* SECURE_NFS */
+  
+  uid_keylogged = 0;
+}
+
+void keylogout_atexit ()
+{
+  if (!uid_keylogged || seteuid(uid_keylogged))
+    return;
+  keylogout();
+  seteuid(UID_ROOT);
+}
+
+#ifdef KEY_VERS2      /* keyserv protocol version 2 */
+int my_secretkey_is_set(char *netname)
+{
+  return key_secretkey_is_set();
+}
+#else /* KEY_VERS2 */
+/*
+ * for keyserv.1 we just try to encrypt a session key to talk to ourselves.
+ * this should fail if keyserv doesn't have our secret key. well, we can't
+ * say if it's the right one, but we can't do any better anyway:-)
+ */
+int my_secretkey_is_set(char *netname)
+{
+  des_block block;
+  memcpy (block.c, netname, sizeof(block.c));   /* well, whatever... */
+  return (key_encryptsession(netname, &block) == 0);
+}
+#endif /* KEY_VERS2 */
+
+/* do /usr/bin/keylogin's job */
+/* caller sets effective uid! */
+int keylogin(const char *passwd)
+{
+  int  ret = 0;
+  char netnam[MAXNETNAMELEN+1], phrase[9];
+#ifdef KEY_VERS2
+  key_netstarg key_setnet_arg;
+#define secret key_setnet_arg.st_priv_key
+#define public key_setnet_arg.st_pub_key
+  key_setnet_arg.st_netname = netnam;
+#else /* KEY_VERS2 */
+  char secret[HEXKEYBYTES], public[HEXKEYBYTES];
+#endif /* KEY_VERS2 */
+  
+  if (getnetname(netnam) &&	/* do i exists?            */
+      !(ret = my_secretkey_is_set(netnam)) && /* is it already set?      */
+      passwd)			/* do i have the password? */
+    {
+      strncpy(phrase, passwd, 8);
+      phrase[8] = '\0';
+      memset(public, '\0', sizeof(public));
+      memset(secret, '\0', sizeof(secret));
+      if (getsecretkey(netnam, secret, phrase) && *secret)
+	{
+#ifdef KEY_VERS2
+	  /*
+	   * key_setnet is keyserv.2 interface and is not documented,
+	   * but used by keylogin(1). and it's real mess with return
+	   * values:-( so far, namely up to Solaris 2.5.1, it returns
+	   * 1 on success and -1 when fails.
+	   */
+	  if (ret = (key_setnet(&key_setnet_arg) > 0))
+#else /* KEY_VERS2 */
+	  if (ret = !key_setsecret(secret))
+#endif /* KEY_VERS2 */
+	    {
+	      uid_keylogged = geteuid(); /* save it for keylogout */
+	      atexit(keylogout_atexit); /* clean up after ourselves */
+	    }
+	  memset(secret, '\0', sizeof (secret));
+	}
+      memset(phrase, '\0', sizeof(phrase));
+    }
+  return ret; /* secret key was set by whomever */
+}
+#endif /* SECURE_RPC */
+
 #ifdef HAVE_SECURID
 /* Support for Security Dynamics SecurID card.
    Contributed by Donald McKillican <dmckilli@qc.bell.ca>. */
@@ -108,11 +246,206 @@ union config_record configure;
 static int securid_initialized = 0;
 #endif /* HAVE_SECURID */
 
+#ifdef KERBEROS
+#if defined(KRB5)
+#include <krb5.h>
+extern  krb5_context ssh_context;
+extern  krb5_auth_context auth_context;
+#else
+#include <krb.h>
+#endif /* KRB5 */
+#endif /* KERBEROS */
+
+#ifdef AFS
+#include <afs/param.h>
+#include <afs/kautils.h>
+#endif /* AFS */
+
+#if defined(KERBEROS) || defined(AFS_KERBEROS)
+extern char *ticket;
+#endif /* KERBEROS || AFS_KERBEROS */
+
 /* Tries to authenticate the user using password.  Returns true if
    authentication succeeds. */
 
-int auth_password(const char *server_user, const char *password)
+#if defined(KERBEROS) && defined(KRB5)
+/*
+ * This routine with some modification is from the MIT V5B6 appl/bsd/login.c
+ *
+ * Verify the Kerberos ticket-granting ticket just retrieved for the
+ * user.  If the Kerberos server doesn't respond, assume the user is
+ * trying to fake us out (since we DID just get a TGT from what is
+ * supposedly our KDC).  If the host/<host> service is unknown (i.e.,
+ * the local keytab doesn't have it), let her in.
+ *
+ * Returns 1 for confirmation, -1 for failure, 0 for uncertainty.
+ */
+static
+int verify_krb_v5_tgt (krb5_context c, krb5_ccache ccache,
+		       krb5_error_code error_code)
 {
+  char phost[BUFSIZ];
+  int retval, have_keys;
+  krb5_principal princ;
+  krb5_keyblock *kb = 0;
+  krb5_error_code krbval;
+  krb5_data packet;
+  krb5_auth_context auth_context = NULL;
+  krb5_ticket *ticket = NULL;
+  
+  /* Set packet.data so that we do not free bogus memory below */
+  packet.data = 0;
+  
+  /* get the server principal for the local host */
+  /* (use defaults of "host" and canonicalized local name) */
+  krbval = krb5_sname_to_principal(c, 0, 0, KRB5_NT_SRV_HST, &princ);
+  if (krbval)
+    {
+      *error_code = krbval;
+      return -1;
+    }
+  
+  /* since krb5_sname_to_principal has done the work for us, just
+     extract the name directly */
+  strncpy(phost, krb5_princ_component(c, princ, 1)->data, BUFSIZ);
+  
+  /* Do we have host/<host> keys? */
+  /* (use default keytab, kvno IGNORE_VNO to get the first match,
+     and enctype is currently ignored anyhow.) */
+  krbval = krb5_kt_read_service_key (c, NULL, princ, 0,
+				     ENCTYPE_DES_CBC_CRC, &kb);
+  if (kb)
+    krb5_free_keyblock (c, kb);
+  /* any failure means we don't have keys at all. */
+  have_keys = krbval ? 0 : 1;
+  
+  /* talk to the kdc and construct the ticket */
+  krbval = krb5_mk_req(c, &auth_context, 0, "host", phost,
+		       0, ccache, &packet);
+  /* wipe the auth context for mk_req */
+  if (auth_context)
+    {
+      krb5_auth_con_free(c, auth_context);
+      auth_context = NULL;
+    }
+  if (krbval == KRB5KDC_ERR_S_PRINCIPAL_UNKNOWN)
+    {
+      /* we have a service key, so something should be 
+	 in the database, therefore this error packet could
+	 have come from an attacker. */
+      if (have_keys)
+	{
+	  retval = -1;
+	  goto EGRESS;
+	}
+      /* but if it is unknown and we've got no key, we don't
+	 have any security anyhow, so it is ok. */
+      else
+	{
+	  retval = 0;
+	  goto EGRESS;
+	}
+    }
+  else
+    if (krbval)
+      {
+	*error_code = krbval;
+	retval = -1;
+	goto EGRESS;
+      }
+  /* got ticket, try to use it */
+  krbval = krb5_rd_req(c, &auth_context, &packet, 
+		       princ, NULL, NULL, &ticket);
+  
+  
+  if (krbval)
+    {
+      if (!have_keys)
+	/* The krb5 errors aren't specified well, but I think
+	   these values cover the cases we expect.  */
+	switch (krbval)
+	  {
+	    /* no keytab */
+	  case KRB5_KT_NOTFOUND:
+	  case ENOENT:
+	    /* keytab found, missing entry */
+	    retval = 0;
+	    break;
+	  default:
+	    /* unexpected error: fail */
+	    retval = -1;
+	    break;
+	  }
+      else
+	/* Any error here is bad.  */
+	retval = -1;
+      *error_code = krbval;
+      goto EGRESS;
+    }
+  /*
+   * The host/<host> ticket has been received _and_ verified.
+   */
+  retval = 1;
+  /* do cleanup and return */
+EGRESS:
+  if (auth_context)
+    krb5_auth_con_free(c, auth_context);
+  if (ticket)
+    krb5_free_ticket(c, ticket);
+  if (packet.data)
+    {
+      free(packet.data);
+      packet.data = 0;
+    }
+  krb5_free_principal(c, princ);
+  /* possibly ticket and packet need freeing here as well */
+  /* memset (&ticket, 0, sizeof (ticket)); */
+  return retval;
+}
+
+krb5_data tgtname = {
+  0,
+  KRB5_TGS_NAME_SIZE,
+  KRB5_TGS_NAME
+};
+
+/*
+ * Preauthentication types should be listed prior to 0.
+ * The last one tried will be no preauthentication
+ * Type 5 is compatible with DCE timestamp
+ * Type 2 is MIT current timestamp implementation
+ */
+#ifdef KRB5_PADATA_ENC_UNIX_TIME
+krb5_preauthtype preauth_list[3] = { KRB5_PADATA_ENC_UNIX_TIME,
+                                     KRB5_PADATA_ENC_TIMESTAMP,
+                                     0 };
+#else
+krb5_preauthtype preauth_list[2] = { KRB5_PADATA_ENC_TIMESTAMP,
+                                     0 };
+#endif
+krb5_preauthtype * preauth = preauth_list;
+#endif /* KERBEROS */
+
+/* Tries to authenticate the user using password.  Returns true if
+   authentication succeeds. */
+#ifdef KERBEROS
+int auth_password(const char *server_user, const char *password,
+		  krb5_principal client)
+#else  /* KERBEROS */
+int auth_password(const char *server_user, const char *password)
+#endif /* KERBEROS */
+{
+#ifdef KERBEROS
+  krb5_error_code problem;
+  int krb5_options = KDC_OPT_RENEWABLE | KDC_OPT_FORWARDABLE;
+  krb5_deltat rlife = 0;
+  krb5_principal server = 0;
+  krb5_creds my_creds;
+  krb5_timestamp now;
+  krb5_ccache ccache;
+  char ccname[80];
+  int results;
+#endif  /* KERBEROS */
   extern ServerOptions options;
   extern char *crypt(const char *key, const char *salt);
   struct passwd *pw;
@@ -132,6 +465,130 @@ int auth_password(const char *server_user, const char *password)
     return 0;
   saved_pw_name = xstrdup(pw->pw_name);
   saved_pw_passwd = xstrdup(pw->pw_passwd);
+  
+#if defined(KERBEROS)
+  if (options.kerberos_authentication)
+    {
+#if defined(KRB5)
+      sprintf(ccname, "FILE:/tmp/krb5cc_l%d", getpid());
+      
+      if (problem = krb5_cc_resolve(ssh_context, ccname, &ccache))
+	goto errout2;
+      
+      if (problem = krb5_cc_initialize(ssh_context, ccache, client))
+	goto errout;
+      
+      problem =
+	krb5_build_principal_ext(ssh_context, &server,
+				 krb5_princ_realm(ssh_context, client)->length,
+				 krb5_princ_realm(ssh_context, client)->data,
+				 tgtname.length, tgtname.data,
+				 krb5_princ_realm(ssh_context, client)->length,
+				 krb5_princ_realm(ssh_context, client)->data,
+				 0);
+      if (problem)
+	goto errout;
+      
+      memset(&my_creds, 0, sizeof(my_creds));
+      my_creds.client = client;
+      my_creds.server = server;
+      problem = krb5_timeofday(ssh_context, &now);
+      if (problem)
+	goto errout;
+      my_creds.times.starttime = 0; /* start timer when
+				       request gets to KDC */
+      my_creds.times.endtime = now + 60*60*10;   /* 10 hours */
+      
+      problem = krb5_string_to_deltat("7d", &rlife); /* 7 days renew time */
+      if (problem || rlife == 0)
+        goto errout;
+      
+      my_creds.times.renew_till = now + rlife;
+      
+      
+      problem = krb5_get_in_tkt_with_password(ssh_context, krb5_options, 0,
+					      NULL, preauth,
+					      password, ccache,
+					      &my_creds, 0);
+      
+      /* If not successful try no preauthentication */
+      if (problem)
+	problem = krb5_get_in_tkt_with_password(ssh_context,
+						krb5_options, 0,
+						NULL, 0,
+						password, ccache,
+						&my_creds, 0);
+      krb5_free_principal(ssh_context, server);
+      server = 0;
+      if (problem)
+	goto errout;
+      else
+	{
+	  /* Verify tgt just obtained */
+	  results = verify_krb_v5_tgt(ssh_context, ccache, &problem);
+	  
+	  if (results  >= 0)
+	    {
+	      /* If results is 0 then put out a log message that
+		 the TGT was not verified, pass this back to the
+		 user as well */
+	      if (results == 0)
+		{
+		  log_msg("TGT for user %s was not verified.", server_user);
+		  packet_send_debug("Kerberos TGT could not be verified.");
+		}
+	      
+            /* get_name pulls out just the name not the
+               type */
+	      strcpy(ccname, krb5_cc_get_name(ssh_context, ccache));
+	      (void) chown(ccname, pw->pw_uid, pw->pw_gid);
+	      
+	      /* If tgt was passed unlink file */
+	      if (ticket)
+		{
+		  if (strcmp(ticket,"none"))
+            	    unlink(ticket);
+		  else
+                    ticket = NULL;
+		}
+	      
+	      ticket = xmalloc(strlen(ccname) + 1);
+	      (void) sprintf(ticket, "%s", ccname);
+	      
+	      /* We do not need this so free them up */
+	      xfree(saved_pw_name);
+	      xfree(saved_pw_passwd);
+	      
+	      return 1;
+	    }
+	  if (problem == KRB5_KT_NOTFOUND)
+	    {
+	      /* We have potential KDC spoofing here - log it */
+	      log_msg("WARNING: Verification of TGT indicates potential KDC spoofing: user %s address %s", server_user, get_remote_ipaddr());
+	      packet_send_debug("Verification of TGT indicates potential KDC spoofing.");
+	    }
+	}
+    errout:
+      krb5_cc_destroy (ssh_context, ccache);
+    errout2:
+      if (problem)
+	{
+	  log_msg("Password authentication of user %s using Kerberos failed: %s",
+		  server_user, error_message(problem));
+	  if (server) 
+	    krb5_free_principal(ssh_context, server);
+	  if (!options.kerberos_or_local_passwd )
+	    {
+	      /* We do not need this so free them up */
+	      xfree(saved_pw_name);
+	      xfree(saved_pw_passwd);
+	      return 0;
+	    }
+	}
+#endif /* KRB5 */
+    }
+#endif /* KERBEROS */
+  
 #ifdef HAVE_SECURID
   /* Support for Security Dynamics SecurId card.
      Contributed by Donald McKillican <dmckilli@qc.bell.ca>. */
@@ -195,6 +652,13 @@ int auth_password(const char *server_user, const char *password)
   /* Save the encrypted password. */
   strncpy(correct_passwd, saved_pw_passwd, sizeof(correct_passwd));
 
+#ifdef SECURE_RPC
+  /* try to register secret key for secure RPC */
+  seteuid(pw->pw_uid);       /* just let it fail if ran by user */
+  keylogin(password);
+  seteuid(UID_ROOT);                /* just let it fail if ran by user */
+#endif /* SECURE_RPC */
+
 #ifdef HAVE_OSF1_C2_SECURITY
     osf1c2_getprpwent(correct_passwd, saved_pw_name, sizeof(correct_passwd));
 #else /* HAVE_OSF1_C2_SECURITY */
@@ -213,7 +677,16 @@ int auth_password(const char *server_user, const char *password)
 #ifdef HAVE_ETC_SHADOW
   {
     struct spwd *sp = getspnam(saved_pw_name);
-    if (sp)
+#if defined(SECURE_RPC) && defined(NIS_PLUS)
+    if (!geteuid() && pw->pw_uid && /* do we have guts? */
+	(!sp || !sp->sp_pwdp || !strcmp(sp->sp_pwdp,"*NP*")))
+      if (seteuid(pw->pw_uid) == UID_ROOT)
+	{
+	  sp = getspnam(saved_pw_name); /* retry as user */   
+	  seteuid(UID_ROOT);
+	}
+#endif /* SECURE_RPC && NIS_PLUS */
+     if (sp)
       strncpy(correct_passwd, sp->sp_pwdp, sizeof(correct_passwd));
     endspent();
   }
@@ -270,7 +743,16 @@ int auth_password(const char *server_user, const char *password)
   /* Check for users with no password. */
   if (strcmp(password, "") == 0 && strcmp(correct_passwd, "") == 0)
     {
-      packet_send_debug("Login permitted without a password because the account has no password.");
+      if (options.forced_passwd_change)
+	{
+	  extern char *forced_command;
+          forced_command = "/bin/passwd";
+          packet_send_debug("Password if forced to be set at first login.");
+	}
+      else
+	{
+	  packet_send_debug("Login permitted without a password because the account has no password.");
+	}
       return 1; /* The user has no password and an empty password was tried. */
     }
 

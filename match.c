@@ -14,8 +14,17 @@ Simple pattern matching, with '*' and '?' as wildcards.
 */
 
 /*
- * $Id: match.c,v 1.4 1998/06/11 00:07:36 kivinen Exp $
+ * $Id: match.c,v 1.7 1998/07/08 01:08:02 kivinen Exp $
  * $Log: match.c,v $
+ * Revision 1.7  1998/07/08 01:08:02  kivinen
+ * 	Added more conts, fixed typo.
+ *
+ * Revision 1.6  1998/07/08 01:05:11  kivinen
+ * 	Added consts.
+ *
+ * Revision 1.5  1998/07/08 00:44:44  kivinen
+ * 	Added match_host. Changed match_user to use it.
+ *
  * Revision 1.4  1998/06/11 00:07:36  kivinen
  * 	Added match_user function.
  *
@@ -98,6 +107,35 @@ int match_pattern(const char *s, const char *pattern)
   /*NOTREACHED*/
 }
 
+/* Check that host name matches the pattern. If the pattern only contains
+   numbers and periods, and wildcards compare it against the ip address
+   otherwise assume it is host name */
+int match_host(const char *host, const char *ip, const char *pattern)
+{
+  int is_ip_pattern;
+  const char *p;
+
+  /* if the pattern does not contain any alpha characters then
+     assume that it is a IP address (with possible wildcards),
+     otherwise assume it is a hostname */
+  if (ip)
+    is_ip_pattern = 1;
+  else
+    is_ip_pattern = 0;
+
+  for(p = pattern; *p; p++)
+    if (!(isdigit(*p) || *p == '.' || *p == '?' || *p == '*'))
+      {
+	is_ip_pattern = 0;
+	break;
+      }
+  if (is_ip_pattern)
+    {
+      return match_pattern(ip, pattern);
+    } 
+  return match_pattern(host, pattern);
+}
+
 /* this combines the effect of match_pattern on a username, hostname
    and IP address. If the pattern contains a @ then the part preceding
    the @ is checked against the username. The part after the @ is
@@ -125,12 +163,11 @@ int match_user(const char *user, const char *host, const char *ip,
   
   *p = 0;
 
-  ret = match_pattern(user,p2) && 
-    (match_pattern(host, p+1) || match_pattern(ip, p+1));
+  ret = match_pattern(user,p2) && match_host(host, ip, p + 1);
   
   xfree(p2);
   return ret;
- }
+}
 
 #ifdef F_SECURE_COMMERCIAL
 

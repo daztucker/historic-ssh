@@ -14,8 +14,14 @@ This file includes most of the needed system headers.
 */
 
 /*
- * $Id: includes.h,v 1.6 1995/07/27 03:27:46 ylo Exp $
+ * $Id: includes.h,v 1.7 1995/08/18 22:54:59 ylo Exp $
  * $Log: includes.h,v $
+ * Revision 1.7  1995/08/18  22:54:59  ylo
+ * 	Added using netinet/in_system.h if netinet/in_systm.h does not
+ * 	exist (some old linux versions, at least).
+ *
+ * 	Added support for NextStep.
+ *
  * Revision 1.6  1995/07/27  03:27:46  ylo
  * 	Moved sparc HAVE_SYS_IOCTL_H stuff to the proper place.
  *
@@ -124,7 +130,11 @@ char *strchr(), *strrchr();
 
 #include <sys/socket.h>
 #include <netinet/in.h>
+#ifdef HAVE_NETINET_IN_SYSTM_H
 #include <netinet/in_systm.h>
+#else /* Some old linux systems at least have in_system.h instead. */
+#include <netinet/in_system.h>
+#endif /* HAVE_NETINET_IN_SYSTM_H */
 #include <sys/un.h>
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
@@ -219,6 +229,11 @@ char *strchr(), *strrchr();
 #ifndef S_ISGID
 #define S_ISGID 0x400
 #endif /* S_ISGID */
+
+#ifndef S_ISDIR
+/* NextStep apparently fails to define this. */
+#define S_ISDIR(mode)   (((mode)&(_S_IFMT))==(_S_IFDIR))
+#endif
 
 #ifdef STAT_MACROS_BROKEN
 /* Some systems have broken S_ISDIR etc. macros in sys/stat.h.  Please ask

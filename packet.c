@@ -15,8 +15,12 @@ with the other side.  This same code is used both on client and server side.
 */
 
 /*
- * $Id: packet.c,v 1.3 1996/09/22 21:58:38 ylo Exp $
+ * $Id: packet.c,v 1.4 1996/10/07 11:53:24 ttsalo Exp $
  * $Log: packet.c,v $
+ * Revision 1.4  1996/10/07 11:53:24  ttsalo
+ * 	From "Charles M. Hannum" <mycroft@gnu.ai.mit.edu>:
+ * 	Made the use of TCP_NODELAY conditional.
+ *
  * Revision 1.3  1996/09/22 21:58:38  ylo
  * 	Added code to clear keepalives properly when requested.
  *
@@ -733,9 +737,11 @@ void packet_set_interactive(int interactive, int keepalives)
 		     sizeof(lowdelay)) < 0)
 	error("setsockopt IPTOS_LOWDELAY: %.100s", strerror(errno));
 #endif /* IPTOS_LOWDELAY */
+#ifdef TCP_NODELAY
       if (setsockopt(connection_in, IPPROTO_TCP, TCP_NODELAY, (void *)&on, 
 		     sizeof(on)) < 0)
 	error("setsockopt TCP_NODELAY: %.100s", strerror(errno));
+#endif /* TCP_NODELAY */
     }
   else
     {
@@ -747,9 +753,11 @@ void packet_set_interactive(int interactive, int keepalives)
 		     sizeof(throughput)) < 0)
 	error("setsockopt IPTOS_THROUGHPUT: %.100s", strerror(errno));
 #endif /* IPTOS_THROUGHPUT */
+#ifdef TCP_NODELAY
       if (setsockopt(connection_in, IPPROTO_TCP, TCP_NODELAY, (void *)&off, 
 		     sizeof(off)) < 0)
 	error("setsockopt TCP_NODELAY: %.100s", strerror(errno));
+#endif /* TCP_NODELAY */
     }
 }
 

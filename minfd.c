@@ -14,6 +14,9 @@ Created: Tue Aug 22 17:25:30 1995 ylo
 
 /*
  * $Log: minfd.c,v $
+ * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.4  1995/10/02  01:24:36  ylo
  * 	Avoid a compiler warning.
  * 	Removed "Last modified" header.

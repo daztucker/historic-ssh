@@ -14,8 +14,12 @@ Adds an identity to the authentication server, or removes an identity.
 */
 
 /*
- * $Id: ssh-add.c,v 1.2 1996/10/20 16:19:33 ttsalo Exp $
+ * $Id: ssh-add.c,v 1.3 1997/03/19 17:37:59 kivinen Exp $
  * $Log: ssh-add.c,v $
+ * Revision 1.3  1997/03/19 17:37:59  kivinen
+ * 	Added SECURE_RPC, SECURE_NFS and NIS_PLUS support from Andy
+ * 	Polyakov <appro@fy.chalmers.se>.
+ *
  * Revision 1.2  1996/10/20 16:19:33  ttsalo
  *      Added global variable 'original_real_uid' and it's initialization
  *
@@ -125,7 +129,7 @@ void add_file(const char *filename)
   RSAPublicKey public_key;
   AuthenticationConnection *ac;
   char *saved_comment, *comment, *pass;
-  int first;
+  int query_cnt;
   
   if (!load_public_key(geteuid(), filename, &public_key, &saved_comment))
     {
@@ -136,7 +140,7 @@ void add_file(const char *filename)
   rsa_clear_public_key(&public_key);
   
   pass = xstrdup("");
-  first = 1;
+  query_cnt = 0;
   while (!load_private_key(geteuid(), filename, pass, &key, &comment))
     {
       char buf[1024];
@@ -146,11 +150,24 @@ void add_file(const char *filename)
       memset(pass, 0, strlen(pass));
       xfree(pass);
 
+#ifdef SECURE_RPC
+      if (query_cnt == 0)
+	{
+	  pass = userfile_get_des_1_magic_phrase(geteuid());
+	  query_cnt = 1;
+	  continue;
+	}
+#else
+      if (query_cnt == 0)
+	query_cnt = 1;
+#endif
+      
+      
       /* Ask for a passphrase. */
       if (getenv("DISPLAY") && !isatty(fileno(stdin)))
 	{
 	  sprintf(buf, "ssh-askpass '%sEnter passphrase for %.100s'", 
-		  first ? "" : "You entered wrong passphrase.  ", 
+		  query_cnt <= 1 ? "" : "You entered wrong passphrase.  ", 
 		  saved_comment);
 	  f = popen(buf, "r");
 	  if (!fgets(buf, sizeof(buf), f))
@@ -167,7 +184,7 @@ void add_file(const char *filename)
 	}
       else
 	{
-	  if (first)
+	  if (query_cnt <= 1)
 	    printf("Need passphrase for %s (%s).\n", filename, saved_comment);
 	  else
 	    printf("Bad passphrase.\n");
@@ -180,7 +197,7 @@ void add_file(const char *filename)
 	      return;
 	    }
 	}
-      first = 0;
+      query_cnt++;
     }
   memset(pass, 0, strlen(pass));
   xfree(pass);

@@ -14,13 +14,22 @@ Allocating a pseudo-terminal, and making it the controlling tty.
 */
 
 /*
- * $Id: pty.c,v 1.11 1997/03/26 07:09:31 kivinen Exp $
+ * $Id: pty.c,v 1.13 1999/05/12 10:27:38 sjl Exp $
  * $Log: pty.c,v $
- * Revision 1.11  1997/03/26  07:09:31  kivinen
- * 	Changed uid 0 to UID_ROOT.
+ * Revision 1.13  1999/05/12 10:27:38  sjl
+ * 	Fixed so, that works correctly on linux 2.2.x+glibc-2.1 with
+ * 	Unix98-style PTYs.
+ *
+ * Revision 1.12  1999/02/21 19:52:32  ylo
+ *      Intermediate commit of ssh1.2.27 stuff.
+ *      Main change is sprintf -> snprintf; however, there are also
+ *      many other changes.
+ *
+ * Revision 1.11  1997/03/26 07:09:31  kivinen
+ *      Changed uid 0 to UID_ROOT.
  *
  * Revision 1.10  1997/03/25 05:39:57  kivinen
- * 	HPUX pty code.
+ *      HPUX pty code.
  *
  * Revision 1.9  1996/11/12 15:51:39  ttsalo
  *       FreeBSD pty allocation patch from Andrey Chernov merged.
@@ -29,43 +38,43 @@ Allocating a pseudo-terminal, and making it the controlling tty.
  *       Window resizing fix for ultrix & NeXT from Corey Satten
  *
  * Revision 1.7  1996/09/27 17:19:47  ylo
- * 	Merged ultrix and Next patches from Corey Satten.
+ *      Merged ultrix and Next patches from Corey Satten.
  *
  * Revision 1.6  1996/09/05 19:06:09  ttsalo
- * 	Replaced setpgrp() with setpgid(), setpgrp() is not a portable
- * 	function.
+ *      Replaced setpgrp() with setpgid(), setpgrp() is not a portable
+ *      function.
  *
  * Revision 1.5  1996/08/11 22:28:55  ylo
- * 	Changed the way controlling tty is set on NeXT.
+ *      Changed the way controlling tty is set on NeXT.
  *
  * Revision 1.4  1996/07/12 07:26:04  ttsalo
- * 	2 new ways to allocate pty:s: sco-style numbered (/dev/ptyp...)
- * 	ptys and dynix/ptx getpseudotty(). 8 ways in total. (!)
+ *      2 new ways to allocate pty:s: sco-style numbered (/dev/ptyp...)
+ *      ptys and dynix/ptx getpseudotty(). 8 ways in total. (!)
  *
  * Revision 1.3  1996/05/30 22:08:21  ylo
- * 	Don't print errors about I_PUSH ttcompat failing.
+ *      Don't print errors about I_PUSH ttcompat failing.
  *
  * Revision 1.2  1996/04/26 00:26:06  ylo
- * 	Fixed process group setting on NeXT.
+ *      Fixed process group setting on NeXT.
  *
  * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
- * 	Imported ssh-1.2.13.
+ *      Imported ssh-1.2.13.
  *
  * Revision 1.6  1995/09/21  17:12:07  ylo
- * 	Push ttcompat into streams pty.
+ *      Push ttcompat into streams pty.
  *
  * Revision 1.5  1995/09/13  11:58:18  ylo
- * 	Added Cray support.
+ *      Added Cray support.
  *
  * Revision 1.4  1995/09/09  21:26:44  ylo
  * /m/shadows/u2/users/ylo/ssh/README
  *
  * Revision 1.3  1995/07/16  01:03:28  ylo
- * 	Added pty_release.
+ *      Added pty_release.
  *
  * Revision 1.2  1995/07/13  01:28:20  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
+ *      Removed "Last modified" header.
+ *      Added cvs log.
  *
  * $Endlog$
  */
@@ -78,15 +87,26 @@ Allocating a pseudo-terminal, and making it the controlling tty.
 #include <sys/sysmacros.h>
 #endif
 
+/* Newer Linux versions have /dev/ptmx and /dev/pts/ and they're use
+   is preferable, if they are found.*/
+#if defined(linux) && defined(HAVE_DEV_PTMX)
+#undef HAVE__GETPTY
+#undef HAVE_OPENPTY
+#endif /* linux && HAVE_DEV_PTMX */
+
 /* Pty allocated with _getpty gets broken if we do I_PUSH:es to it. */
 #if defined(HAVE__GETPTY) || defined(HAVE_OPENPTY)
 #undef HAVE_DEV_PTMX
 #endif
 
 #ifdef HAVE_DEV_PTMX
+#ifdef HAVE_SYS_STREAM_H
 #include <sys/stream.h>
+#endif /* HAVE_SYS_STREAM_H */
 #include <stropts.h>
+#ifdef HAVE_SYS_CONF_H
 #include <sys/conf.h>
+#endif /* HAVE_SYS_CONF_H */
 #endif /* HAVE_DEV_PTMX */
 
 #ifndef O_NOCTTY
@@ -175,8 +195,12 @@ int pty_allocate(int *ptyfd, int *ttyfd, char *namebuf)
 
   int ptm;
   char *pts;
-  
+
+#ifdef HAVE_GETPT
+  ptm = getpt();
+#else /* HAVE_GETPT */
   ptm = open("/dev/ptmx", O_RDWR|O_NOCTTY);
+#endif /* HAVE_GETPT */  
   if (ptm < 0)
     {
       error("/dev/ptmx: %.100s", strerror(errno));
@@ -206,18 +230,25 @@ int pty_allocate(int *ptyfd, int *ttyfd, char *namebuf)
       close(*ptyfd);
       return 0;
     }
-  /* Push the appropriate streams modules, as described in Solaris pts(7). */
-  if (ioctl(*ttyfd, I_PUSH, "ptem") < 0)
-    error("ioctl I_PUSH ptem: %.100s", strerror(errno));
-  if (ioctl(*ttyfd, I_PUSH, "ldterm") < 0)
-    error("ioctl I_PUSH ldterm: %.100s", strerror(errno));
+
+#ifdef HAVE_ISASTREAM
+  if (isastream(*ttyfd))
+#endif /* HAVE_ISASTREAM */
+      { 
+        /* Push the appropriate streams modules, as described in Solaris pts(7). */
+        if (ioctl(*ttyfd, I_PUSH, "ptem") < 0)
+          error("ioctl I_PUSH ptem: %.100s", strerror(errno));
+        if (ioctl(*ttyfd, I_PUSH, "ldterm") < 0)
+          error("ioctl I_PUSH ldterm: %.100s", strerror(errno));
 #if 0 /* HPUX does not have this, causes ugly log entries.  Some systems need
-	 this.  Let's not give any warnings if this fails. */
-  if (ioctl(*ttyfd, I_PUSH, "ttcompat") < 0)
-    error("ioctl I_PUSH ttcompat: %.100s", strerror(errno));
+         this.  Let's not give any warnings if this fails. */
+        if (ioctl(*ttyfd, I_PUSH, "ttcompat") < 0)
+          error("ioctl I_PUSH ttcompat: %.100s", strerror(errno));
 #else
-  ioctl(*ttyfd, I_PUSH, "ttcompat");
+        ioctl(*ttyfd, I_PUSH, "ttcompat");
 #endif
+      }
+  
   return 1;
 
 #else /* HAVE_DEV_PTMX */
@@ -241,7 +272,7 @@ int pty_allocate(int *ptyfd, int *ttyfd, char *namebuf)
   if (*ttyfd < 0)
     {
       error("Could not open pty slave side %.100s: %.100s", 
-	    name, strerror(errno));
+            name, strerror(errno));
       close(*ptyfd);
       return 0;
     }
@@ -265,7 +296,7 @@ int pty_allocate(int *ptyfd, int *ttyfd, char *namebuf)
       const char onumbers[]= "0123456789abcdef";
       const char letters[] = "pqrstuvwxyzabcefghijklmno";
       const char numbers[] = "0123456789";
-      /*	ptys are created in this order:
+      /*        ptys are created in this order:
       **              /dev/ptym/pty[p-z][0-f]
       **              /dev/ptym/pty[a-ce-o][0-f]
       **              /dev/ptym/pty[p-z][0-9][0-9]
@@ -278,84 +309,84 @@ int pty_allocate(int *ptyfd, int *ttyfd, char *namebuf)
       static const char *ptymdirs[]={"/dev/ptym/","/dev/", (const char *)NULL};
       
       for (loc=0;ptymdirs[loc] != (const char *)NULL;loc++) {
-	register int ltr,num1,num2,num3,len;
-	struct stat stb,stb2;
-	if (stat(ptymdirs[loc],&stb))
-	  continue;
-	
-	/* first try ptyp000-ptyo999 */
-	strcpy(buf,ptymdirs[loc]);
-	strcat(buf,"ptyp000");
-	if (stat(buf,&stb) == 0) {
-	  len=strlen(buf);
-	  for (ltr=0;letters[ltr];ltr++) {
-	    buf[len - 4] = letters[ltr];
-	    for (num1=0;numbers[num1];num1++) {
-	      buf[len - 3] = numbers[num1];
-	      for (num2=0;numbers[num2];num2++) {
-		buf[len - 2] = numbers[num2];
-		for (num3=0;numbers[num3];num3++) {
-		  buf[len - 1] = numbers[num3];
-		  if ((*ptyfd=open(buf,O_RDWR|O_NOCTTY)) < 0)
-		    continue;
-		  name=ptsname(*ptyfd);
-		  if (fstat(*ptyfd,&stb)<0 || stat(name,&stb2)<0 ||
-		      minor(stb.st_rdev) != minor(stb2.st_rdev)) {
-		    close (*ptyfd);
-		    continue;
-		  }
-		  goto gotit;
-		} /* num 3 */
-	      } /* num 2 */
-	    } /* num 1 */
-	  } /* letter */
-	} /* p000 exists */
-	
-	/* next try ptyp00-ptyo99 */
-	strcpy(buf,ptymdirs[loc]);
-	strcat(buf,"ptyp00");
-	if (stat(buf,&stb) == 0) {
-	  len=strlen(buf);
-	  for (ltr=0;letters[ltr];ltr++) {
-	    buf[len - 3] = letters[ltr];
-	    for (num1=0;numbers[num1];num1++) {
-	      buf[len - 2] = numbers[num1];
-	      for (num2=0;numbers[num2];num2++) {
-		buf[len - 1] = numbers[num2];
-		if ((*ptyfd=open(buf,O_RDWR|O_NOCTTY)) < 0)
-		  continue;
-		name=ptsname(*ptyfd);
-		if (fstat(*ptyfd,&stb)<0 || stat(name,&stb2)<0 ||
-		    minor(stb.st_rdev) != minor(stb2.st_rdev)) {
-		  close (*ptyfd);
-		  continue;
-		}
-		goto gotit;
-	      } /* num 2 */
-	    } /* num 1 */
-	  } /* letter */
-	} /* p00 exists */
+        register int ltr,num1,num2,num3,len;
+        struct stat stb,stb2;
+        if (stat(ptymdirs[loc],&stb))
+          continue;
+        
+        /* first try ptyp000-ptyo999 */
+        strcpy(buf,ptymdirs[loc]);
+        strcat(buf,"ptyp000");
+        if (stat(buf,&stb) == 0) {
+          len=strlen(buf);
+          for (ltr=0;letters[ltr];ltr++) {
+            buf[len - 4] = letters[ltr];
+            for (num1=0;numbers[num1];num1++) {
+              buf[len - 3] = numbers[num1];
+              for (num2=0;numbers[num2];num2++) {
+                buf[len - 2] = numbers[num2];
+                for (num3=0;numbers[num3];num3++) {
+                  buf[len - 1] = numbers[num3];
+                  if ((*ptyfd=open(buf,O_RDWR|O_NOCTTY)) < 0)
+                    continue;
+                  name=ptsname(*ptyfd);
+                  if (fstat(*ptyfd,&stb)<0 || stat(name,&stb2)<0 ||
+                      minor(stb.st_rdev) != minor(stb2.st_rdev)) {
+                    close (*ptyfd);
+                    continue;
+                  }
+                  goto gotit;
+                } /* num 3 */
+              } /* num 2 */
+            } /* num 1 */
+          } /* letter */
+        } /* p000 exists */
+        
+        /* next try ptyp00-ptyo99 */
+        strcpy(buf,ptymdirs[loc]);
+        strcat(buf,"ptyp00");
+        if (stat(buf,&stb) == 0) {
+          len=strlen(buf);
+          for (ltr=0;letters[ltr];ltr++) {
+            buf[len - 3] = letters[ltr];
+            for (num1=0;numbers[num1];num1++) {
+              buf[len - 2] = numbers[num1];
+              for (num2=0;numbers[num2];num2++) {
+                buf[len - 1] = numbers[num2];
+                if ((*ptyfd=open(buf,O_RDWR|O_NOCTTY)) < 0)
+                  continue;
+                name=ptsname(*ptyfd);
+                if (fstat(*ptyfd,&stb)<0 || stat(name,&stb2)<0 ||
+                    minor(stb.st_rdev) != minor(stb2.st_rdev)) {
+                  close (*ptyfd);
+                  continue;
+                }
+                goto gotit;
+              } /* num 2 */
+            } /* num 1 */
+          } /* letter */
+        } /* p00 exists */
 
-	/* next try ptyp0-ptyof */
-	strcpy(buf,ptymdirs[loc]);
-	strcat(buf,"ptyp0");
-	len=strlen(buf);
-	for (ltr=0;oletters[ltr];ltr++) {
-	  buf[len - 2] = oletters[ltr];
-	  for (num1=0;onumbers[num1];num1++) {
-	    buf[len - 1] = onumbers[num1];
-	    if ((*ptyfd=open(buf,O_RDWR|O_NOCTTY)) < 0)
-	      continue;
-	    name=ptsname(*ptyfd);
-	    if (fstat(*ptyfd,&stb)<0 || stat(name,&stb2)<0 ||
-		minor(stb.st_rdev) != minor(stb2.st_rdev)) {
-	      close (*ptyfd);
-	      continue;
-	    }
-	    goto gotit;
-	  } /* num 1 */
-	} /* letter */
-      }	/* for directory */
+        /* next try ptyp0-ptyof */
+        strcpy(buf,ptymdirs[loc]);
+        strcat(buf,"ptyp0");
+        len=strlen(buf);
+        for (ltr=0;oletters[ltr];ltr++) {
+          buf[len - 2] = oletters[ltr];
+          for (num1=0;onumbers[num1];num1++) {
+            buf[len - 1] = onumbers[num1];
+            if ((*ptyfd=open(buf,O_RDWR|O_NOCTTY)) < 0)
+              continue;
+            name=ptsname(*ptyfd);
+            if (fstat(*ptyfd,&stb)<0 || stat(name,&stb2)<0 ||
+                minor(stb.st_rdev) != minor(stb2.st_rdev)) {
+              close (*ptyfd);
+              continue;
+            }
+            goto gotit;
+          } /* num 1 */
+        } /* letter */
+      } /* for directory */
     } /* clone open failed */
 
 gotit:
@@ -366,7 +397,7 @@ gotit:
   if (*ttyfd < 0)
     {
       error("Could not open pty slave side %.100s: %.100s", 
-	    name, strerror(errno));
+            name, strerror(errno));
       close(*ptyfd);
       return 0;
     }
@@ -391,19 +422,19 @@ gotit:
 
   for (i = 0; i < highpty; i++)
     {
-      sprintf(buf, "/dev/pty/%03d", i);
+      snprintf(buf, sizeof(buf), "/dev/pty/%03d", i);
       *ptyfd = open(buf, O_RDWR|O_NOCTTY);
       if (*ptyfd < 0)
-	continue;
-      sprintf(namebuf, "/dev/ttyp%03d", i);
+        continue;
+      snprintf(namebuf, 64, "/dev/ttyp%03d", i);
       /* Open the slave side. */
       *ttyfd = open(namebuf, O_RDWR|O_NOCTTY);
       if (*ttyfd < 0)
-	{
-	  error("%.100s: %.100s", namebuf, strerror(errno));
-	  close(*ptyfd);
-	  return 0;
-	}
+        {
+          error("%.100s: %.100s", namebuf, strerror(errno));
+          close(*ptyfd);
+          return 0;
+        }
       return 1;
     }
   return 0;
@@ -412,39 +443,39 @@ gotit:
 
   /* BSD-style pty code. */
 
-#ifdef HAVE_DEV_PTYP10	/* SCO UNIX: similar to BSD, but different naming */
+#ifdef HAVE_DEV_PTYP10  /* SCO UNIX: similar to BSD, but different naming */
   char buf[64];
   int i;
   
-  for (i=0; i<256; i++)	/* max 256 pty's possible */
+  for (i=0; i<256; i++) /* max 256 pty's possible */
     {
-      sprintf(buf, "/dev/ptyp%d", i);
+      snprintf(buf, sizeof(buf), "/dev/ptyp%d", i);
       *ptyfd = open(buf, O_RDWR|O_NOCTTY);
       if (*ptyfd < 0)
-	{
-          if (errno == ENODEV)	    /* all used up */
-	    {
-	      error("pty_allocate: all allocated ptys (%d) used", i);
-	      return 0;
-	    }
-	  continue;
-	}
+        {
+          if (errno == ENODEV)      /* all used up */
+            {
+              error("pty_allocate: all allocated ptys (%d) used", i);
+              return 0;
+            }
+          continue;
+        }
       
-      sprintf(namebuf, "/dev/ttyp%d", i);
+      snprintf(namebuf, 64, "/dev/ttyp%d", i);
       
       /* Open the slave side. */
 
       *ttyfd = open(namebuf, O_RDWR|O_NOCTTY);
       if (*ttyfd < 0)
-	{
-	  error("%.100s: %.100s", namebuf, strerror(errno));
-	  close(*ptyfd);
-	  return 0;
-	}
+        {
+          error("%.100s: %.100s", namebuf, strerror(errno));
+          close(*ptyfd);
+          return 0;
+        }
       return 1;
     }
   
-#else			/* not SCO UNIX */
+#else                   /* not SCO UNIX */
   char buf[64];
   int i;
 #ifdef __FreeBSD__
@@ -460,27 +491,27 @@ gotit:
 
   for (i = 0; i < num_ptys; i++)
     {
-      sprintf(buf, "/dev/pty%c%c", ptymajors[i / num_minors], 
-	      ptyminors[i % num_minors]);
+      snprintf(buf, sizeof(buf), "/dev/pty%c%c", ptymajors[i / num_minors], 
+              ptyminors[i % num_minors]);
       *ptyfd = open(buf, O_RDWR|O_NOCTTY);
       if (*ptyfd < 0)
-	continue;
-      sprintf(namebuf, "/dev/tty%c%c", ptymajors[i / num_minors], 
-	      ptyminors[i % num_minors]);
+        continue;
+      snprintf(namebuf, 64, "/dev/tty%c%c", ptymajors[i / num_minors], 
+              ptyminors[i % num_minors]);
 
 #ifdef HAVE_REVOKE
       if (revoke(namebuf) == -1)
- 	error("pty_allocate: revoke failed for %.100s", namebuf);
+        error("pty_allocate: revoke failed for %.100s", namebuf);
 #endif
 
       /* Open the slave side. */
       *ttyfd = open(namebuf, O_RDWR|O_NOCTTY);
       if (*ttyfd < 0)
-	{
-	  error("%.100s: %.100s", namebuf, strerror(errno));
-	  close(*ptyfd);
-	  return 0;
-	}
+        {
+          error("%.100s: %.100s", namebuf, strerror(errno));
+          close(*ptyfd);
+          return 0;
+        }
 
 #if defined(ultrix) || defined(NeXT)
       (void) signal(SIGTTOU, SIG_IGN);  /* corey via nancy */
@@ -562,7 +593,7 @@ void pty_make_controlling_tty(int *ttyfd, const char *ttyname)
   fd = open("/dev/tty", O_WRONLY);
   if (fd < 0)
     error("open /dev/tty failed - could not set controlling tty: %.100s",
-	  strerror(errno));
+          strerror(errno));
   else
     {
       close(fd);
@@ -572,8 +603,8 @@ void pty_make_controlling_tty(int *ttyfd, const char *ttyname)
       signal(SIGHUP, SIG_DFL);
       fd = open(ttyname, O_RDWR);
       if (fd == -1)
-	error("pty_make_controlling_tty: reopening controlling tty after vhangup failed for %.100s",
-	      ttyname);
+        error("pty_make_controlling_tty: reopening controlling tty after vhangup failed for %.100s",
+              ttyname);
       close(*ttyfd);
       *ttyfd = fd;
 #endif /* HAVE_VHANGUP && !HAVE_REVOKE */
@@ -583,7 +614,7 @@ void pty_make_controlling_tty(int *ttyfd, const char *ttyname)
 /* Changes the window size associated with the pty. */
 
 void pty_change_window_size(int ptyfd, int row, int col,
-			    int xpixel, int ypixel)
+                            int xpixel, int ypixel)
 {
 #ifdef SIGWINCH
   struct winsize w;

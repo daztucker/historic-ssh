@@ -28,6 +28,7 @@ typedef struct
   int login_grace_time;		/* Disconnect if no auth in this time (sec). */
   int key_regeneration_time;	/* Server key lifetime (seconds). */
   int permit_root_login;	/* If true, permit root login. */
+  int ignore_rhosts;		/* Ignore .rhosts and .shosts. */
   int quiet_mode;		/* If true, don't log anything but fatals. */
   int fascist_logging;		/* Perform very verbose logging. */
   int print_motd;		/* If true, print /etc/motd. */

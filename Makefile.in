@@ -8,8 +8,18 @@
 #
 # Created: Wed Mar 22 17:37:49 1995 ylo
 #
-# $Id: Makefile.in,v 1.12 1995/09/06 15:56:25 ylo Exp $
+# $Id: Makefile.in,v 1.15 1995/09/10 23:25:10 ylo Exp $
 # $Log: Makefile.in,v $
+# Revision 1.15  1995/09/10  23:25:10  ylo
+# 	Added osfc2.c to EXTRA_SRCS.
+#
+# Revision 1.14  1995/09/10  22:44:02  ylo
+# 	Reorganized OBJS lists.
+# 	Added serverloop.o.
+#
+# Revision 1.13  1995/09/09  21:26:18  ylo
+# 	Added uidswap.o, ChangeLog.
+#
 # Revision 1.12  1995/09/06  15:56:25  ylo
 # 	Replace ETCDIR in server_config.sample.
 #
@@ -95,27 +105,34 @@ GMPDEP 		= $(GMPDIR)/gmp.h $(GMPDIR)/libgmp.a
 RSAREFDIR	= rsaref2
 RSAREFSRCDIR 	= $(RSAREFDIR)/source
 
-SSHD_OBJS = sshd.o auth-rhosts.o auth-passwd.o auth-rsa.o auth-rh-rsa.o pty.o \
-	log-server.o login.o hostfile.o canohost.o servconf.o tildexpand.o
-SSH_OBJS = ssh.o sshconnect.o log-client.o readconf.o hostfile.o readpass.o \
-	tildexpand.o
-KEYGEN_OBJS = ssh-keygen.o log-client.o readpass.o
 COMMON_OBJS = $(LIBOBJS) $(CONFOBJS) \
 	rsa.o randoms.o md5.o buffer.o packet.o \
 	xmalloc.o ttymodes.o channels.o bufaux.o authfd.o authfile.o crc32.o \
 	rsaglue.o tss.o cipher.o des.o match.o rc4.o mpaux.o minfd.o
-AGENT_OBJS = ssh-agent.o log-client.o
-ADD_OBJS = ssh-add.o log-client.o readpass.o
+SSHD_OBJS = sshd.o auth-rhosts.o auth-passwd.o auth-rsa.o auth-rh-rsa.o pty.o \
+	log-server.o login.o hostfile.o canohost.o servconf.o tildexpand.o \
+	uidswap.o serverloop.o $(COMMON_OBJS)
+SSH_OBJS = ssh.o sshconnect.o log-client.o readconf.o hostfile.o readpass.o \
+	tildexpand.o uidswap.o $(COMMON_OBJS)
+KEYGEN_OBJS = ssh-keygen.o log-client.o readpass.o rsa.o randoms.o md5.o \
+	buffer.o xmalloc.o authfile.o tss.o cipher.o des.o rc4.o mpaux.o \
+	bufaux.o $(LIBOBJS) $(CONFOBJS)
+AGENT_OBJS = ssh-agent.o log-client.o rsa.o randoms.o md5.o buffer.o \
+	xmalloc.o bufaux.o authfd.o authfile.o rsaglue.o tss.o cipher.o \
+	des.o rc4.o mpaux.o minfd.o $(LIBOBJS) $(CONFOBJS)
+ADD_OBJS = ssh-add.o log-client.o readpass.o rsa.o randoms.o md5.o buffer.o \
+	xmalloc.o bufaux.o authfd.o authfile.o tss.o cipher.o \
+	des.o rc4.o mpaux.o minfd.o $(LIBOBJS) $(CONFOBJS)
 SCP_OBJS = scp.o xmalloc.o
-GEN_MINFD_OBJS = gen_minfd.o
+GEN_MINFD_OBJS = gen_minfd.o $(LIBOBJS)
 
 USER_SHELLS = sh jsh ksh csh tcsh bash zsh ash
 
 SRCS = $(SSHD_OBJS:.o=.c) $(SSH_OBJS:.o=.c) $(KEYGEN_OBJS:.o=.c) \
 	$(AGENT_OBJS:.o=.c) $(ADD_OBJS:.o=.c) \
-	$(COMMON_OBJS:.o=.c) $(SCP_OBJS:.o=.c) \
+	$(SCP_OBJS:.o=.c) \
 	$(GEN_MINFD_OBJS:.o=.c)
-EXTRA_SRCS = memmove.c strerror.c remove.c random.c putenv.c crypt.c
+EXTRA_SRCS = memmove.c strerror.c remove.c random.c putenv.c crypt.c osfc2.c
 MAN1PAGES = ssh.1 ssh-keygen.1 ssh-agent.1 ssh-add.1 scp.1
 MAN8PAGES = sshd.8
 
@@ -125,7 +142,8 @@ DISTFILES = COPYING README README.SECURID INSTALL TODO libdes-README \
 	ssh-askpass.wish check-fds.c host_config.sample config.sample \
 	acconfig.h config.h.in server_config.sample \
 	$(MAN1PAGES) $(MAN8PAGES) $(SRCS) $(EXTRA_SRCS) *.h install-sh \
-	make-ssh-known-hosts.pl make-ssh-known-hosts.1 RFC.nroff RFC rfc-pg.c
+	make-ssh-known-hosts.pl make-ssh-known-hosts.1 RFC.nroff RFC rfc-pg.c \
+	ChangeLog
 
 DISTNAME = ssh-`sed 's/.*"\(.*\)".*/\1/' version.h`
 
@@ -145,25 +163,25 @@ rfc-pg: rfc-pg.c
 .c.o:
 	$(CC) -c -I. -I$(srcdir)/$(GMPDIR) $(DEFS) -DHOST_KEY_FILE=\"$(HOST_KEY_FILE)\" -DHOST_CONFIG_FILE=\"$(HOST_CONFIG_FILE)\" -DSERVER_CONFIG_FILE=\"$(SERVER_CONFIG_FILE)\" -DSSH_PROGRAM=\"$(SSH_PROGRAM)\" -DETCDIR=\"$(etcdir)\" $(CFLAGS) $<
 
-sshd: $(SSHD_OBJS) $(COMMON_OBJS) $(GMPDEP) $(RSAREFDEP)
+sshd: $(SSHD_OBJS) $(GMPDEP) $(RSAREFDEP)
 	-rm -f sshd
-	$(CC) $(LDFLAGS) -o sshd $(SSHD_OBJS) $(COMMON_OBJS) $(GMPLIBS) $(DESLIBS) $(LIBS)
+	$(CC) $(LDFLAGS) -o sshd $(SSHD_OBJS) $(GMPLIBS) $(DESLIBS) $(LIBS)
 
-ssh: $(SSH_OBJS) $(COMMON_OBJS) $(GMPDEP) $(RSAREFDEP)
+ssh: $(SSH_OBJS) $(GMPDEP) $(RSAREFDEP)
 	-rm -f ssh
-	$(CC) $(LDFLAGS) -o ssh $(SSH_OBJS) $(COMMON_OBJS) $(GMPLIBS) $(DESLIBS) $(LIBS)
+	$(CC) $(LDFLAGS) -o ssh $(SSH_OBJS) $(GMPLIBS) $(DESLIBS) $(LIBS)
 
-ssh-keygen: $(KEYGEN_OBJS) $(COMMON_OBJS) $(GMPDEP) $(RSAREFDEP)
+ssh-keygen: $(KEYGEN_OBJS) $(GMPDEP) $(RSAREFDEP)
 	-rm -f ssh-keygen
-	$(CC) $(LDFLAGS) -o ssh-keygen $(KEYGEN_OBJS) $(COMMON_OBJS) $(GMPLIBS) $(DESLIBS) $(LIBS)
+	$(CC) $(LDFLAGS) -o ssh-keygen $(KEYGEN_OBJS) $(GMPLIBS) $(DESLIBS) $(LIBS)
 
-ssh-agent: $(AGENT_OBJS) $(COMMON_OBJS) $(GMPDEP) $(RSAREFDEP)
+ssh-agent: $(AGENT_OBJS) $(GMPDEP) $(RSAREFDEP)
 	-rm -f ssh-agent
-	$(CC) $(LDFLAGS) -o ssh-agent $(AGENT_OBJS) $(COMMON_OBJS) $(GMPLIBS) $(DESLIBS) $(LIBS)
+	$(CC) $(LDFLAGS) -o ssh-agent $(AGENT_OBJS) $(GMPLIBS) $(DESLIBS) $(LIBS)
 
-ssh-add: $(ADD_OBJS) $(COMMON_OBJS) $(GMPDEP) $(RSAREFDEP)
+ssh-add: $(ADD_OBJS) $(GMPDEP) $(RSAREFDEP)
 	-rm -f ssh-add
-	$(CC) $(LDFLAGS) -o ssh-add $(ADD_OBJS) $(COMMON_OBJS) $(GMPLIBS) $(DESLIBS) $(LIBS)
+	$(CC) $(LDFLAGS) -o ssh-add $(ADD_OBJS) $(GMPLIBS) $(DESLIBS) $(LIBS)
 
 scp: $(SCP_OBJS) $(LIBOBJS)
 	-rm -f scp

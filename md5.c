@@ -1,3 +1,6 @@
+/* This code has been heavily hacked by Tatu Ylonen <ylo@cs.hut.fi> to
+   make it compile on machines like Cray that don't have a 32 bit integer
+   type. */
 /*
  * This code implements the MD5 message-digest algorithm.
  * The algorithm is due to Ron Rivest.  This code was
@@ -17,28 +20,7 @@
 
 #include "includes.h"
 #include "md5.h"
-
-#ifndef WORDS_BIGENDIAN /* XXX is this right??? //ylo */
-#define byteReverse(buf, len)	/* Nothing */
-#else
-void byteReverse(unsigned char *buf, unsigned longs);
-
-#ifndef ASM_MD5
-/*
- * Note: this code is harmless on little-endian machines.
- */
-void byteReverse(unsigned char *buf, unsigned longs)
-{
-    uint32 t;
-    do {
-	t = (uint32) ((unsigned) buf[3] << 8 | buf[2]) << 16 |
-	    ((unsigned) buf[1] << 8 | buf[0]);
-	*(uint32 *) buf = t;
-	buf += 4;
-    } while (--longs);
-}
-#endif
-#endif
+#include "getput.h"
 
 /*
  * Start MD5 accumulation.  Set bit count to 0 and buffer to mysterious
@@ -66,7 +48,7 @@ void MD5Update(struct MD5Context *ctx, unsigned char const *buf, unsigned len)
     /* Update bitcount */
 
     t = ctx->bits[0];
-    if ((ctx->bits[0] = t + ((uint32) len << 3)) < t)
+    if ((ctx->bits[0] = (t + ((uint32)len << 3)) & 0xffffffff) < t)
 	ctx->bits[1]++;		/* Carry from low to high */
     ctx->bits[1] += len >> 29;
 
@@ -75,7 +57,7 @@ void MD5Update(struct MD5Context *ctx, unsigned char const *buf, unsigned len)
     /* Handle any leading odd-sized chunks */
 
     if (t) {
-	unsigned char *p = (unsigned char *) ctx->in + t;
+	unsigned char *p = ctx->in + t;
 
 	t = 64 - t;
 	if (len < t) {
@@ -83,8 +65,7 @@ void MD5Update(struct MD5Context *ctx, unsigned char const *buf, unsigned len)
 	    return;
 	}
 	memcpy(p, buf, t);
-	byteReverse(ctx->in, 16);
-	MD5Transform(ctx->buf, (uint32 *) ctx->in);
+	MD5Transform(ctx->buf, ctx->in);
 	buf += t;
 	len -= t;
     }
@@ -92,8 +73,7 @@ void MD5Update(struct MD5Context *ctx, unsigned char const *buf, unsigned len)
 
     while (len >= 64) {
 	memcpy(ctx->in, buf, 64);
-	byteReverse(ctx->in, 16);
-	MD5Transform(ctx->buf, (uint32 *) ctx->in);
+	MD5Transform(ctx->buf, ctx->in);
 	buf += 64;
 	len -= 64;
     }
@@ -127,8 +107,7 @@ void MD5Final(unsigned char digest[16], struct MD5Context *ctx)
     if (count < 8) {
 	/* Two lots of padding:  Pad the first block to 64 bytes */
 	memset(p, 0, count);
-	byteReverse(ctx->in, 16);
-	MD5Transform(ctx->buf, (uint32 *) ctx->in);
+	MD5Transform(ctx->buf, ctx->in);
 
 	/* Now fill the next block with 56 bytes */
 	memset(ctx->in, 0, 56);
@@ -136,15 +115,16 @@ void MD5Final(unsigned char digest[16], struct MD5Context *ctx)
 	/* Pad block to 56 bytes */
 	memset(p, 0, count - 8);
     }
-    byteReverse(ctx->in, 14);
 
     /* Append length in bits and transform */
-    ((uint32 *) ctx->in)[14] = ctx->bits[0];
-    ((uint32 *) ctx->in)[15] = ctx->bits[1];
+    PUT_32BIT_LSB_FIRST(ctx->in + 56, ctx->bits[0]);
+    PUT_32BIT_LSB_FIRST(ctx->in + 60, ctx->bits[1]);
 
-    MD5Transform(ctx->buf, (uint32 *) ctx->in);
-    byteReverse((unsigned char *) ctx->buf, 4);
-    memcpy(digest, ctx->buf, 16);
+    MD5Transform(ctx->buf, ctx->in);
+    PUT_32BIT_LSB_FIRST(digest, ctx->buf[0]);
+    PUT_32BIT_LSB_FIRST(digest + 4, ctx->buf[1]);
+    PUT_32BIT_LSB_FIRST(digest + 8, ctx->buf[2]);
+    PUT_32BIT_LSB_FIRST(digest + 12, ctx->buf[3]);
     memset(ctx, 0, sizeof(ctx));	/* In case it's sensitive */
 }
 
@@ -167,9 +147,13 @@ void MD5Final(unsigned char digest[16], struct MD5Context *ctx)
  * reflect the addition of 16 longwords of new data.  MD5Update blocks
  * the data and converts bytes into longwords for this routine.
  */
-void MD5Transform(uint32 buf[4], uint32 const in[16])
+void MD5Transform(uint32 buf[4], const unsigned char inext[64])
 {
-    register uint32 a, b, c, d;
+    register word32 a, b, c, d, i;
+    word32 in[16];
+    
+    for (i = 0; i < 16; i++)
+      in[i] = GET_32BIT_LSB_FIRST(inext + 4 * i);
 
     a = buf[0];
     b = buf[1];

@@ -576,7 +576,7 @@ int main(int ac, char **av)
       memset(&sunaddr, 0, sizeof(sunaddr));
       sunaddr.sun_family = AF_UNIX;
       strncpy(sunaddr.sun_path, socket_name, sizeof(sunaddr.sun_path));
-      if (bind(sock, (struct sockaddr *)&sunaddr, sizeof(sunaddr)) < 0)
+      if (bind(sock, (struct sockaddr *)&sunaddr, AF_UNIX_SIZE(sunaddr)) < 0)
 	{
 	  perror("bind");
 	  exit(1);

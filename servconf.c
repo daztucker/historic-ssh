@@ -28,6 +28,7 @@ void initialize_server_options(ServerOptions *options)
   options->login_grace_time = -1;
   options->key_regeneration_time = -1;
   options->permit_root_login = -1;
+  options->ignore_rhosts = -1;
   options->quiet_mode = -1;
   options->fascist_logging = -1;
   options->print_motd = -1;
@@ -63,6 +64,8 @@ void fill_default_server_options(ServerOptions *options)
     options->key_regeneration_time = 3600;
   if (options->permit_root_login == -1)
     options->permit_root_login = 1;
+  if (options->ignore_rhosts == -1)
+    options->ignore_rhosts = 0;
   if (options->quiet_mode == -1)
     options->quiet_mode = 0;
   if (options->fascist_logging == -1)
@@ -90,7 +93,7 @@ typedef enum
   sPermitRootLogin, sQuietMode, sFascistLogging, sLogFacility,
   sRhostsAuthentication, sRhostsRSAAuthentication, sRSAAuthentication,
   sPasswordAuthentication, sAllowHosts, sDenyHosts, sListenAddress,
-  sPrintMotd
+  sPrintMotd, sIgnoreRhosts
 } ServerOpCodes;
 
 /* Textual representation of the tokens. */
@@ -117,6 +120,7 @@ static struct
   { "DenyHosts", sDenyHosts },
   { "ListenAddress", sListenAddress },
   { "PrintMotd", sPrintMotd },
+  { "IgnoreRhosts", sIgnoreRhosts },
   { NULL, 0 }
 };
 
@@ -263,6 +267,10 @@ void read_server_config(ServerOptions *options, const char *filename)
 	  if (*intptr == -1)
 	    *intptr = value;
 	  break;
+
+	case sIgnoreRhosts:
+	  intptr = &options->ignore_rhosts;
+	  goto parse_flag;
 	  
 	case sQuietMode:
 	  intptr = &options->quiet_mode;

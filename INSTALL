@@ -31,9 +31,10 @@ script accepts several options
  Specific options:
   --with-rsh=PATH	Use rsh specified by PATH when needed
   --with-path=PATH	Default path to pass to user shell.
-  --with-rsaref		Usa rsaref2 from rsaref2 subdirectory
-  --without-idea	Don't include IDEA.
-  --with-securid[=PATH] Include support for General Dynamics SecurID card.
+  --with-rsaref		Usa rsaref2 from rsaref2 subdirectory (see below).
+  --with-libwrap	Use libwrap (tcp_wrappers) and identd (see below).
+  --without-idea	Don't include IDEA (see below).
+  --with-securid[=PATH] Support for the SecurID card (see README.SECURID).
   --enable-warnings	Adds -Wall to CFLAGS if using gcc.
 
 You may also want to configure the following variables:
@@ -89,12 +90,15 @@ This software has been used at least in the following environments.
 	Linux 1.2.8 Slackware 2.1.0; i486
 	Mach3; Mips
 	Mach3/Lites; i386
-	NetBSD 1.0A; Pentium
+	Machten 2.2
+	NetBSD 1.0A; Pentium, Sparc
 	OSF/1 3.0, 3.2, 3.2a; Alpha
+	Sequent Dynix/ptx 3.2.0 V2.1.0; i386
 	Solaris 2.3, 2.4; Sparc
 	Sony NEWS-OS 3.3 (BSD 4.3); m68k
 	SunOS 4.1.2, 4.1.3, 4.1.4; Sparc
 	Ultrix x.x; Mips
+	Unicos 8.0.3; Cray C90
 
 Please report back any other environments where you have used this,
 and send back any patches you had to do so that they can be integrated
@@ -130,6 +134,41 @@ problem if you get "RSAPrivateDecrypt failed".
 
 On alpha, one should edit rsaref2/source/global.h, and make UINT4
 "unsigned int" instead of "unsigned long int".
+
+
+LIBWRAP AND IDENTD
+
+Ssh does not normally use identd or tcp-wrappers.  However, it can be
+compiled to use these by adding --with-libwrap on the command line.
+This requires that the tcp_wrappers libwrap.a library and the
+associated tcpd.h have been installed somewhere where the compiler can
+find them.  With libwrap support, ssh will process the
+/etc/hosts.allow and /etc/hosts.deny files, and use identd if required
+by them.  The name of the user on the client side (as returned by
+identd) will be logged if requested by the configuration files.  See
+tcp_wrappers documentation for more information.
+
+
+COMPILING WITHOUT IDEA
+
+The IDEA cipher can be freely used for non-commercial use.  However,
+commercial use may require a license in a number of countries.
+
+Ssh can be compiled without IDEA by using the --without-idea configure
+option.  This disables IDEA, and causes 3DES to be used for encrypting
+key/identity files and as the default session cipher.  (The default
+session cipher can be changed by editing SSH_FALLBACK_CIPHER in
+ssh.h.)
+
+If one disables IDEA after having used it for some time, it is
+possible that there are key files around that were encrypted with IDEA.
+
+Key files can be converted to use 3DES by creating a special version
+of ssh-keygen that includes IDEA (was compiled without
+--without-idea), but that generates key files encrypted with 3DES
+(edit SSH_AUTHFILE_CIPHER to be SSH_CIPHER_3DES even when WITHOUT_IDEA
+is not defined).  Any operation with re-encrypts the key file can be
+used, such as changing the comment or changing the passphrase.
 
 
 STARTING THE SERVER
@@ -299,9 +338,15 @@ General problem solving
   to only serve a single connection and not fork, which helps debugging.
 
 
-REPORTING PROBLEMS
+REPORTING PROBLEMS AND OTHER CONTACTS
 
 Please report any bugs, problems, and enhancements to
 ssh-bugs@cs.hut.fi.
+
+There is a mailing list for ssh.  It is ssh@clinet.fi.  If you would
+like to join, send a message to majordomo@clinet.fi with "subscribe
+ssh" in body.
+
+The WWW home page for ssh is http://www.cs.hut.fi/ssh.
 
 Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland.

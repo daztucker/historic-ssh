@@ -502,6 +502,17 @@ THERE IS NO WARRANTY FOR THIS PROGRAM.  Please consult the file
 COPYING for more information.
 
 
+MAILING LISTS AND OTHER INFORMATION
+
+There is a mailing list for ssh.  It is ssh@clinet.fi.  If you would
+like to join, send a message to majordomo@clinet.fi with "subscribe
+ssh" in body.
+
+The WWW home page for ssh is http://www.cs.hut.fi/ssh.  It contains an archive of the mailing list.
+
+Bug reports should be sent to ssh-bugs@cs.hut.fi.
+
+
 ABOUT THE AUTHOR
 
 This software was written by Tatu Ylonen <ylo@cs.hut.fi>.  I work as a

@@ -1,77 +1,30 @@
-Use IP address instead of host name in DISPLAY on HPSUX.
+merge netgroup patches
+
+identd shows remote user as root (uidswap problem?)
+
+Rewrite client main loop.
+
+Make ssh_login take the client option structure instead of individual fields.
+
+sunos 4.1.3, cray: scp: ssh hangs at sending end, sshd, tcsh, scp hang at
+receiving end
+
+Screen number is not passed in X11 forwarding.
+
+Server option to prevent login if client host is not found from known_hosts.
+
+Compression before encryption (optional).
 
 Add host name to "Waiting for forwarded connections to terminate" message.
 
-Check if /etc/hosts.equiv works.
-
-Check that utmp is updated on SunOS.
-
-Check PermitRootLogin and RSA auth command= workings.
+Permit user names in /etc/hosts.equiv.
 
 Should check for changed window size after coming back to foreground.
 
-OSF/1 C2 patches.
-
-check the libwrap patches.
-
 Replace PermitRootLogin by PermitRootLoginFrom
-
-Generate ChangeLog from cvs log messages.
-
-Having sshd show in ps information about the connection.
 
 Could probably safely forward INET X11 connection in every case, as we
 now check the fake cookie in the client.
 
 socks support?  (Or some other form of firewall traversing support)
-
-+ pablo@alli.fi: BTW, ssh voisi asentaa sshd-ohjelman binin sijasta sbiniin
-  ja pid-fileen /var/runiin tai /var/pidiin. 
-
-+ uid-swapping when reading .rhosts, authorized_keys etc.
-
-+ Merge improved file descriptor code (ssh-agent-fd-patch from David Mazieres).
-
-+ Add crypt.o (password encryption) into ssh sources, and include it if
-  crypt() is not found in libc.
-
-+ Reread config file on SIGHUP.  Also handlers for SIGTERM and SIGQUIT.
-
-+ Old ssh versions break new agent.
-
-+ Forwarding the authentication agent with fd patches does not work.
-
-+ Manual page changes from:
-   Andrew.Macpherson.1248566@bnr.co.uk    - or -    andrew@bnr.ca
-   Remember to send thanks and mention in release announcement!
-
-+ Check that -i works.
-
-+ ssh-add -d does not seem to fully work (agent dies sometimes).
-
-+ Ability to delete all identities from the agent.
-
-+ tri says it prints "Waiting for forwarded connections to terminate"
-  every time ssh is run with a command - even if there are no open
-  connections.
-  --> Make SIGCHLD kludge only used on HPSUX
-
-+ IP-osoitteiden k{ytt| allow/deny riveill{, .rhosts:ssa,
-  authorized_keys from-optiossa.
-
-+ Should permit root login if RSA+command.
-
-+ Make printing /etc/motd configurable server option.
-
-+ Remove frequent select kludge from sshd.c and really fix TCP forwarding.
-
-+ tri: Ja sitten.  Eikös sille ssh-keygenille pitäisi voida antaa se
-  tulostiedosto parametrina.
-
-+ Moved checking for Allow/Deny after protocol version negotiation
-
-+ tri: .*rc ja .*login eiv{t tule luettua seuraavissa ymp{rist|iss{:
-  indy, solaris, osf/1, hpsux
-
-+ now uses the same socket for stdin and stderr, which means rdist (-P ssh) 
-  might work
+  - problems, socks does not seem to support getpeername

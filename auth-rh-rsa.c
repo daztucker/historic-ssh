@@ -32,12 +32,14 @@ authentication.
 #include "xmalloc.h"
 
 /* Tries to authenticate the user using the .rhosts file and the host using
-   its host key.  Returns true if authentication succeeds. */
+   its host key.  Returns true if authentication succeeds. 
+   .rhosts and .shosts will be ignored if ignore_rhosts is non-zero. */
 
 int auth_rhosts_rsa(RandomState *state,
 		    struct passwd *pw, const char *client_user,
 		    unsigned int client_host_key_bits,
-		    MP_INT *client_host_key_e, MP_INT *client_host_key_n)
+		    MP_INT *client_host_key_e, MP_INT *client_host_key_n,
+		    int ignore_rhosts)
 {
   char *user_hostfile;
   const char *canonical_hostname;
@@ -45,7 +47,7 @@ int auth_rhosts_rsa(RandomState *state,
   debug("Trying rhosts with RSA host authentication for %.100s", client_user);
 
   /* Check if we would accept it using rhosts authentication. */
-  if (!auth_rhosts(pw, client_user))
+  if (!auth_rhosts(pw, client_user, ignore_rhosts))
     return 0;
 
   canonical_hostname = get_canonical_hostname();

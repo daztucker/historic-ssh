@@ -245,13 +245,19 @@ The value must be
 Root login with RSA authentication when the "command" option has been
 specified will be allowed regardless of the value of this setting.
 .TP
+.B IgnoreRhosts
+Specifies that rhosts and shosts files will not be used in
+authentication.  /etc/hosts.equiv is still used.  The argument must be
+.YN
+.TP
 .B QuietMode
 Specifies whether the system runs in quiet mode.  In quiet mode,
 nothing is logged in the system log, except fatal errors.
 .TP
 .B FacistLogging
 Specifies whether to use verbose logging.  Verbose logging violates
-the privacy of users and is not recommended.
+the privacy of users and is not recommended.  The argument must be
+.YN
 .TP
 .B PrintMotd
 Specifies whether

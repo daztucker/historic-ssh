@@ -1,0 +1,135 @@
+Thu Sep 21 00:07:56 1995  Tatu Ylonen  <ylo@shadows.cs.hut.fi>
+
+	* Added IgnoreRhosts server option.
+
+	* Added USE_STRLEN_FOR_AF_UNIX; it is needed at least on MachTen.
+
+Wed Sep 20 02:41:02 1995  Tatu Ylonen  <ylo@shadows.cs.hut.fi>
+
+	* sshd.c (do_child): don't call packet_close when /etc/nologin,
+	  because packet_close does shutdown, and the message does not get
+	  sent.
+
+	* pty.c (pty_allocate): Push ttcompat streams module.
+
+	* randoms.c (random_acquire_light_environmental_noise): Don't use
+	  the second argument to gettimeofday as it is not supported on
+	  all systems.
+
+	* login.c (record_login): Added NULL second argument to gettimeofday.
+
+Tue Sep 19 13:25:48 1995  Tatu Ylonen  <ylo@shadows.cs.hut.fi>
+
+	* fixed pclose wait() in sshd key regeneration (now only collects
+	  easily available noise).
+
+	* configure.in: test for bsdi before bsd*.
+
+	* ssh.c: Don't print "Connection closed" if -q.
+
+Wed Sep 13 04:19:52 1995  Tatu Ylonen  <ylo@shadows.cs.hut.fi>
+
+	* Released ssh-1.2.5.
+
+	* Hopefully fixed "Waiting for forwarded connections to terminate"
+	  message.
+
+	* randoms.c, md5.c: Large modifications to make these work on Cray
+	  (which has no 32 bit integer type).
+
+	* Fixed a problem with forwarded connection closes not being
+	  reported immediately.
+
+	* ssh.c: fixed rhosts authentication (broken by uid-swapping).
+
+	* scp.c: Don't use -l if server user not specified (it made
+	  setting User in the configuration file not work).
+
+	* configure.in: don't use -pipe on BSDI.
+
+	* randoms.c: Major modifications to make it work without 32 bit
+	  integers (e.g. Cray).
+
+	* md5.c: Major modifications to make it work without 32 bit
+	  integers (e.g. Cray).
+
+	* Eliminated HPSUX_BROKEN_PTYS.  The code is now enabled by 
+	  default on all systems.
+
+Mon Sep 11 00:53:12 1995  Tatu Ylonen  <ylo@shadows.cs.hut.fi>
+
+	* sshd.c: don't include sshd pathname in log messages.
+
+	* Added libwrap stuff (includes support for identd).
+
+	* Added OSF/1 C2 extended security stuff.
+
+	* Fixed interactions between getuid() and uid-swap stuff.
+
+Sun Sep 10 00:29:27 1995  Tatu Ylonen  <ylo@shadows.cs.hut.fi>
+
+	* serverloop.c: Don't send stdout data to client until after a few
+	  milliseconds if there is very little data.  This is because some
+	  systems give data from pty one character at a time, which would
+	  multiply data size by about 16.
+
+	* serverloop.c: Moved server do_session to a separate file and
+	  renamed it server_loop.  Split it into several functions and
+	  partially rewrote it.  Fixed "cat /etc/termcap | ssh foo cat" hangup.
+
+	* Screwed up something while checking stuff in under cvs.  No harm,
+	  but bogus log entries...
+
+Sat Sep  9 02:24:51 1995  Tatu Ylonen  <ylo@shadows.cs.hut.fi>
+
+	* minfd.c (_get_permanent_fd): Use SHELL environment variable.
+
+	* channels.c (x11_create_display_inet): Created
+	  HPSUX_NONSTANDARD_X11_KLUDGE; it causes DISPLAY to contain the
+	  IP address of the host instead of the name, because HPSUX uses
+	  some magic shared memory communication for local connections.
+
+	* Changed SIGHUP processing in server; it should now work multiple
+	  times.
+
+	* Added length limits in many debug/log/error/fatal calls just in
+ 	  case.
+
+	* login.c (get_last_login_time): Fixed location of lastlog.
+
+	* Rewrote all uid-swapping code.  New files uidswap.h, uidswap.c.
+
+	* Fixed several security problems involving chmod and chgrp (race
+	  conditions).  Added warnings about dubious modes for /tmp/.X11-unix.
+
+Fri Sep  8 20:03:36 1995  Tatu Ylonen  <ylo@shadows.cs.hut.fi>
+
+	* Changed readconf.c to never display anything from the config
+	  file.  This should now be prevented otherwise, but let's play safe.
+
+	* log-server.c: Use %.500s in syslog() just to be sure (they
+	  should already be shorter than 1024 though).
+
+	* sshd.c: Moved setuid in child a little earlier (just to be
+	  conservative, there was no security problem that I could detect).
+
+	* README, INSTALL: Added info about mailing list and WWW page.
+
+	* sshd.c: Added code to use SIGCHLD and wait zombies immediately.
+
+	* Merged patch to set ut_addr in utmp.
+
+	* Created ChangeLog and added it to Makefile.in.
+
+	* Use read_passphrase instead of getpass().
+
+	* Added SSH_FALLBACK_CIPHER.  Fixed a bug in default cipher
+ 	  selection (IDEA used to be selected even if not supported by the
+ 	  server).
+
+	* Use no encryption for key files if empty passphrase.
+
+	* Added section about --without-idea in INSTALL.
+
+	* Version 1.2.0 was released a couple of days ago.
+

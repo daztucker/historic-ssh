@@ -13,6 +13,9 @@ Created: Wed Jan 24 20:19:53 1996 ylo
 
 /*
  * $Log: userfile.c,v $
+ * Revision 1.16  1997/05/13 22:30:05  kivinen
+ * 	Added some casts.
+ *
  * Revision 1.15  1997/03/26 07:10:04  kivinen
  * 	Changed uid 0 to UID_ROOT.
  *
@@ -293,7 +296,7 @@ static int userfile_read_raw()
       bytes = read(userfile_input, buf, bytes);
       if (bytes <= 0)
 	fatal("userfile_read_raw: child has died: %s", strerror(errno));
-      buffer_append(&packet, buf, bytes);
+      buffer_append(&packet, (char *) buf, bytes);
     }
   return buffer_get_char(&packet);
 }

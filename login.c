@@ -18,8 +18,11 @@ on a tty.
 */
 
 /*
- * $Id: login.c,v 1.4 1996/07/12 07:20:49 ttsalo Exp $
+ * $Id: login.c,v 1.5 1996/10/29 22:38:58 kivinen Exp $
  * $Log: login.c,v $
+ * Revision 1.5  1996/10/29 22:38:58  kivinen
+ * 	log -> log_msg.
+ *
  * Revision 1.4  1996/07/12 07:20:49  ttsalo
  * 	utmp fix for cray (handled like sgi)
  *
@@ -284,7 +287,7 @@ void record_login(int pid, const char *ttyname, const char *user, uid_t uid,
   if (fd >= 0)
     {
       if (write(fd, &u, sizeof(u)) != sizeof(u))
-	log("Could not write %.100s: %.100s", wtmp, strerror(errno));
+	log_msg("Could not write %.100s: %.100s", wtmp, strerror(errno));
       close(fd);
     }
 
@@ -300,7 +303,7 @@ void record_login(int pid, const char *ttyname, const char *user, uid_t uid,
 	    {
 	      lseek(fd, offset, 0);
 	      if (write(fd, &u, sizeof(u)) != sizeof(u))
-		log("Could not append to %.100s: %.100s", 
+		log_msg("Could not append to %.100s: %.100s", 
 		    utmp, strerror(errno));
 	      break;
 	    }
@@ -308,7 +311,7 @@ void record_login(int pid, const char *ttyname, const char *user, uid_t uid,
 	    {
 	      lseek(fd, offset, 0);
 	      if (write(fd, &u, sizeof(u)) != sizeof(u))
-		log("Could not write to %.100s: %.100s", 
+		log_msg("Could not write to %.100s: %.100s", 
 		    utmp, strerror(errno));
 	      break;
 	    }
@@ -416,13 +419,13 @@ void record_login(int pid, const char *ttyname, const char *user, uid_t uid,
       if (fd >= 0)
 	{
 	  if (write(fd, &ll, sizeof(ll)) != sizeof(ll))
-	    log("Could not write %.100s: %.100s", 
+	    log_msg("Could not write %.100s: %.100s", 
 		lastlogfile, strerror(errno));
 	  close(fd);
 	} 
       else 
 	{
-	  log("Could not open %.100s: %.100s", lastlogfile, strerror(errno));
+	  log_msg("Could not open %.100s: %.100s", lastlogfile, strerror(errno));
 	}
 #else /* LASTLOG_IS_DIR */
       fd = open(lastlog, O_RDWR);
@@ -430,7 +433,7 @@ void record_login(int pid, const char *ttyname, const char *user, uid_t uid,
 	{
 	  lseek(fd, (off_t)((long)uid * sizeof(ll)), 0);
 	  if (write(fd, &ll, sizeof(ll)) != sizeof(ll))
-	    log("Could not write %.100s: %.100s", lastlog, strerror(errno));
+	    log_msg("Could not write %.100s: %.100s", lastlog, strerror(errno));
 	  close(fd);
 	}
 #endif /* LASTLOG_IS_DIR */
@@ -443,20 +446,20 @@ void record_login(int pid, const char *ttyname, const char *user, uid_t uid,
     {
       int lasttime = time(NULL);
       if (setuserdb(S_WRITE) < 0)
-	log("setuserdb S_WRITE failed: %.100s", strerror(errno));
+	log_msg("setuserdb S_WRITE failed: %.100s", strerror(errno));
       if (putuserattr((char *)user, S_LASTTIME, (void *)lasttime, SEC_INT) < 0)
-	log("putuserattr S_LASTTIME failed: %.100s", strerror(errno));
+	log_msg("putuserattr S_LASTTIME failed: %.100s", strerror(errno));
       if (putuserattr((char *)user, S_LASTTTY, (void *)(ttyname + 5), 
 		      SEC_CHAR) < 0)
-	log("putuserattr S_LASTTTY %.900s failed: %.100s", 
+	log_msg("putuserattr S_LASTTTY %.900s failed: %.100s", 
 	    ttyname, strerror(errno));
       if (putuserattr((char *)user, S_LASTHOST, (void *)host, SEC_CHAR) < 0)
-	log("putuserattr S_LASTHOST %.900s failed: %.100s", 
+	log_msg("putuserattr S_LASTHOST %.900s failed: %.100s", 
 	    host, strerror(errno));
       if (putuserattr((char *)user, 0, NULL, SEC_COMMIT) < 0)
-	log("putuserattr SEC_COMMIT failed: %.100s", strerror(errno));
+	log_msg("putuserattr SEC_COMMIT failed: %.100s", strerror(errno));
       if (enduserdb() < 0)
-	log("enduserdb failed: %.100s", strerror(errno));
+	log_msg("enduserdb failed: %.100s", strerror(errno));
     }
 #endif   
 }

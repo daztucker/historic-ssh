@@ -11,8 +11,11 @@ and ssh has the necessary privileges.)
 */
 
 /*
- * $Id: scp.c,v 1.8 1995/09/27 02:14:56 ylo Exp $
+ * $Id: scp.c,v 1.9 1995/10/02 01:26:02 ylo Exp $
  * $Log: scp.c,v $
+ * Revision 1.9  1995/10/02  01:26:02  ylo
+ * 	Fixed code for no HAVE_FCHMOD case.
+ *
  * Revision 1.8  1995/09/27  02:14:56  ylo
  * 	Added support for SCO.
  *
@@ -69,7 +72,7 @@ and ssh has the necessary privileges.)
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$Id: scp.c,v 1.8 1995/09/27 02:14:56 ylo Exp $
+ *	$Id: scp.c,v 1.9 1995/10/02 01:26:02 ylo Exp $
  */
 
 #ifndef lint
@@ -112,6 +115,9 @@ struct utimbuf
 /* This is set to non-zero to enable verbose mode. */
 int verbose = 0;
 
+/* This is set to non-zero if compression is desired. */
+int compress = 0;
+
 /* This is set to the cipher type string if given on the command line. */
 char *cipher = NULL;
 
@@ -128,17 +134,25 @@ char *port = NULL;
 
 int do_cmd(char *host, char *remuser, char *cmd, int *fdin, int *fdout)
 {
-  int pin[2], pout[2];
+  int pin[2], pout[2], reserved[2];
 
   if (verbose)
     fprintf(stderr, "Executing: host %s, user %s, command %s\n",
 	    host, remuser ? remuser : "(unspecified)", cmd);
+
+  /* Reserve two descriptors so that the real pipes won't get descriptors
+     0 and 1 because that will screw up dup2 below. */
+  pipe(reserved);
 
   /* Create a socket pair for communicating with ssh. */
   if (pipe(pin) < 0)
     fatal("pipe: %s", strerror(errno));
   if (pipe(pout) < 0)
     fatal("pipe: %s", strerror(errno));
+
+  /* Free the reserved descriptors. */
+  close(reserved[0]);
+  close(reserved[1]);
 
   /* For a child to execute the command on the remote host using ssh. */
   if (fork() == 0) 
@@ -157,9 +171,12 @@ int do_cmd(char *host, char *remuser, char *cmd, int *fdin, int *fdout)
       i = 0;
       args[i++] = SSH_PROGRAM;
       args[i++] = "-x";
+      args[i++] = "-a";
       args[i++] = "-oFallBackToRsh no";
       if (verbose)
 	args[i++] = "-v";
+      if (compress)
+	args[i++] = "-C";
       if (cipher != NULL)
 	{
 	  args[i++] = "-c";
@@ -254,7 +271,7 @@ main(argc, argv)
 	extern int optind;
 
 	fflag = tflag = 0;
-	while ((ch = getopt(argc, argv, "dfprtvc:i:P:")) != EOF)
+	while ((ch = getopt(argc, argv, "dfprtvCc:i:P:")) != EOF)
 		switch(ch) {			/* User-visible flags. */
 		case 'p':
 			pflag = 1;
@@ -285,6 +302,9 @@ main(argc, argv)
 			break;
 		case 'v':
 			verbose = 1;
+		  	break;
+		case 'C':
+		  	compress = 1;
 		  	break;
 		case '?':
 		default:
@@ -963,7 +983,7 @@ run_err(const char *fmt, ...)
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$Id: scp.c,v 1.8 1995/09/27 02:14:56 ylo Exp $
+ *	$Id: scp.c,v 1.9 1995/10/02 01:26:02 ylo Exp $
  */
 
 char *

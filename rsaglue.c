@@ -18,8 +18,16 @@ using the --with-rsaref configure option.
 */
 
 /*
- * $Id: rsaglue.c,v 1.1.1.1 1996/02/18 21:38:12 ylo Exp $
+ * $Id: rsaglue.c,v 1.3 1996/07/31 07:02:32 huima Exp $
  * $Log: rsaglue.c,v $
+ * Revision 1.3  1996/07/31 07:02:32  huima
+ * *** empty log message ***
+ *
+ * Revision 1.2  1996/07/07 12:48:14  ylo
+ * 	A fixed size buffer was used to store decrypted value without
+ * 	checking bounds, which could cause stack to be overwritten
+ * 	with very large keys.  Changed to use xmallocated buffer.
+ *
  * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
  * 	Imported ssh-1.2.13.
  *
@@ -43,6 +51,7 @@ using the --with-rsaref configure option.
 #include "rsa.h"
 #include "getput.h"
 #include "mpaux.h"
+#include "xmalloc.h"
 
 #ifdef RSAREF
 
@@ -207,11 +216,12 @@ void rsa_private_decrypt(MP_INT *output, MP_INT *input, RSAPrivateKey *key)
 {
   MP_INT aux;
   unsigned int len, i;
-  unsigned char value[1024];
+  unsigned char *value;
 
   rsa_private(output, input, key);
 
   len = (key->bits + 7) / 8;
+  value = xmalloc(len);
 
   mpz_init_set(&aux, output);
   for (i = len; i >= 4; i -= 4)
@@ -233,6 +243,8 @@ void rsa_private_decrypt(MP_INT *output, MP_INT *input, RSAPrivateKey *key)
   for (i = 2; i < len && value[i]; i++)
     ;
 
+  xfree(value);
+  
   mpz_mod_2exp(output, output, 8 * (len - i - 1));
 }
 

@@ -14,8 +14,11 @@ Generic header file for ssh.
 */
 
 /*
- * $Id: ssh.h,v 1.20 1997/04/27 21:55:35 kivinen Exp $
+ * $Id: ssh.h,v 1.21 1998/01/02 06:23:01 kivinen Exp $
  * $Log: ssh.h,v $
+ * Revision 1.21  1998/01/02 06:23:01  kivinen
+ * 	Renamed SSH_AUTHENTICATION_SOCKET to SSH_AUTH_SOCK.
+ *
  * Revision 1.20  1997/04/27 21:55:35  kivinen
  * 	Added channel_add_{allow,deny}_forwd_{to,port} prototypes.
  * 	Added match_port prototype.
@@ -264,12 +267,9 @@ only by root, whereas ssh_config should be world-readable. */
 #define SSH_AGENT_SOCKET_DIR    "/tmp/ssh-%.50s"
 #define SSH_AGENT_SOCKET	"agent-socket-%d"
 
-/* Name of the environment variable containing the authentication fd. */
-#define SSH_AUTHFD_ENV_NAME	"SSH_AUTHENTICATION_FD"
-
 /* Name of the environment variable containing the pathname of the
    authentication socket. */
-#define SSH_AUTHSOCKET_ENV_NAME	"SSH_AUTHENTICATION_SOCKET"
+#define SSH_AUTHSOCKET_ENV_NAME		"SSH_AUTH_SOCK"
 
 /* Force host key length and server key length to differ by at least this
    many bits.  This is to make double encryption with rsaref work. */

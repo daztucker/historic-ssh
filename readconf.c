@@ -14,8 +14,11 @@ Functions for reading the configuration files.
 */
 
 /*
- * $Id: readconf.c,v 1.10 1997/08/21 22:16:45 ylo Exp $
+ * $Id: readconf.c,v 1.11 1998/01/02 06:19:58 kivinen Exp $
  * $Log: readconf.c,v $
+ * Revision 1.11  1998/01/02 06:19:58  kivinen
+ * 	Added xauthlocation option.
+ *
  * Revision 1.10  1997/08/21 22:16:45  ylo
  * 	Fixed security bug with port number > 65535 in local forwarding.
  *
@@ -154,7 +157,8 @@ typedef enum
   oGlobalKnownHostsFile, oUserKnownHostsFile, oConnectionAttempts,
   oBatchMode, oStrictHostKeyChecking, oCompression, oCompressionLevel,
   oKeepAlives, oUsePriviledgedPort, oKerberosAuthentication,
-  oKerberosTgtPassing, oClearAllForwardings, oNumberOfPasswordPrompts
+  oKerberosTgtPassing, oClearAllForwardings, oNumberOfPasswordPrompts,
+  oXauthPath
 } OpCodes;
 
 /* Textual representations of the tokens. */
@@ -197,6 +201,7 @@ static struct
   { "kerberostgtpassing", oKerberosTgtPassing },
   { "clearallforwardings", oClearAllForwardings },
   { "numberofpasswordprompts", oNumberOfPasswordPrompts },
+  { "xauthlocation", oXauthPath },
   { NULL, 0 }
 };
 
@@ -572,6 +577,20 @@ void process_config_line(Options *options, const char *host,
 	*intptr = value;
       break;
       
+    case oXauthPath:
+      charptr = &options->xauth_path;
+    parse_pathname:
+      cp = strtok(NULL, WHITESPACE);
+      if (!cp)
+ 	{
+ 	  fprintf(stderr, "%s line %d: missing file name.\n",
+ 		  filename, linenum);
+ 	  exit(1);
+ 	}
+      if (*charptr == NULL)
+ 	*charptr = tilde_expand_filename(cp, getuid());
+      break;
+      
     default:
       fatal("parse_config_file: Unimplemented opcode %d", opcode);
     }
@@ -656,6 +675,7 @@ void initialize_options(Options *options)
   options->num_remote_forwards = 0;
   options->use_priviledged_port = -1;
   options->no_user_given = 0;
+  options->xauth_path = NULL;
 }
 
 /* Called after processing other sources of option data, this fills those
@@ -735,5 +755,12 @@ void fill_default_options(Options *options)
   /* options->proxy_command should not be set by default */
   /* options->user will be set in the main program if appropriate */
   /* options->hostname will be set in the main program if appropriate */
+#ifdef XAUTH_PATH
+  if (options->xauth_path == NULL)
+    options->xauth_path = XAUTH_PATH;
+#else   /* !XAUTH_PATH */
+  if (options->xauth_path == NULL)
+    options->xauth_path = "xauth";
+#endif  /* !XAUTH_PATH */
 }
 

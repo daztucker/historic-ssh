@@ -16,7 +16,7 @@ of X11, TCP/IP, and authentication connections.
 */
 
 #include "includes.h"
-RCSID("$Id: ssh.c,v 1.13 1999/05/11 19:27:16 bg Exp $");
+RCSID("$Id: ssh.c,v 1.1 1999/09/26 20:53:38 deraadt Exp $");
 
 #include "xmalloc.h"
 #include "randoms.h"
@@ -322,7 +322,9 @@ int main(int ac, char **av)
 		  SSH_VERSION, PROTOCOL_MAJOR, PROTOCOL_MINOR);
 #ifdef RSAREF
 	  fprintf(stderr, "Compiled with RSAREF.\n");
-#else /* RSAREF */
+#elif defined(DO_SSL)
+	  fprintf(stderr, "Compiled with SSL.\n");
+#else  /* RSAREF */
 	  fprintf(stderr, "Standard version.  Does not use RSAREF.\n");
 #endif /* RSAREF */
 	  break;

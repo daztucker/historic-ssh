@@ -12,7 +12,7 @@ Created: Wed Apr 19 17:41:39 1995 ylo
 */
 
 #include "includes.h"
-RCSID("$Id: cipher.c,v 1.12 1999/05/28 15:21:51 bg Exp $");
+RCSID("$Id: cipher.c,v 1.1 1999/09/26 20:53:34 deraadt Exp $");
 
 #include "ssh.h"
 #include "cipher.h"

@@ -1,3 +1,4 @@
+# Generated automatically from Makefile.in by configure.
 #
 # Makefile.in
 #
@@ -8,52 +9,51 @@
 #
 # Created: Wed Mar 22 17:37:49 1995 ylo
 #
-# $Id: Makefile.in,v 1.1 1999/09/26 20:53:32 deraadt Exp $
+# $Id: Makefile,v 1.1 1999/09/26 20:53:32 deraadt Exp $
 #
 
-srcdir 		= @srcdir@
+srcdir 		= .
 
-VPATH 		= $(srcdir)
 
 install_prefix	=
-prefix		= @prefix@
-exec_prefix	= @exec_prefix@
+prefix		= /usr/local
+exec_prefix	= ${prefix}
 bindir		= $(exec_prefix)/bin
 sbindir		= $(exec_prefix)/sbin
 mandir		= $(prefix)/man
 man1dir		= $(mandir)/man1
 man8dir		= $(mandir)/man8
-etcdir		= @ETCDIR@
-piddir		= @PIDDIR@
+etcdir		= /etc
+piddir		= /var/run
 
-CC 		= @CC@
-CFLAGS 		= @CFLAGS@
-LDFLAGS		= @LDFLAGS@
-DEFS 		= @DEFS@
-LIBS		= @LIBS@
-LIBOBJS		= @LIBOBJS@
-CONFOBJS	= @CONFOBJS@
+CC 		= gcc -pipe
+CFLAGS 		= -g -O2
+LDFLAGS		= 
+DEFS 		= -DHAVE_CONFIG_H
+LIBS		= -lkrb -lz -lcrypto -ldes -lgmp  -lutil
+LIBOBJS		= 
+CONFOBJS	=  bf_skey.o bf_enc.o compress.o
 
-MAKEDEP		= @MAKEDEP@
-LN_S		= @LN_S@
-RANLIB		= @RANLIB@
-INSTALL		= @INSTALL@
-INSTALL_PROGRAM = @INSTALL_PROGRAM@
-INSTALL_DATA	= @INSTALL_DATA@
-WISH		= @WISH@
+MAKEDEP		= makedepend
+LN_S		= ln -s
+RANLIB		= ranlib
+INSTALL		= /usr/bin/install -c
+INSTALL_PROGRAM = ${INSTALL}
+INSTALL_DATA	= ${INSTALL} -m 644
+WISH		= /usr/local/bin/wish
 
-GMPLIBS	= @GMPLIBS@
-GMPINCS	= @GMPINCS@
+GMPLIBS	= -lgmp
+GMPINCS	= 
 
-KRB4_AUTH   = @KRB4_AUTH@
-KRB4_ROOT   = @KRB4_ROOT@
-KRB4_INCS   = @KRB4_INCS@
-KRB4_LIBS   = @KRB4_LIBS@
-RADIX       = @RADIX@
+KRB4_AUTH   = 
+KRB4_ROOT   = 
+KRB4_INCS   = 
+KRB4_LIBS   = 
+RADIX       = 
 
-RSAREFDEP	= @RSAREFDEP@
+RSAREFDEP	= 
 
-transform	= @program_transform_name@
+transform	= s,x,x,
 
 HOST_KEY_FILE 	= $(etcdir)/ssh_host_key
 HOST_CONFIG_FILE = $(etcdir)/ssh_config

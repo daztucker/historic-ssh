@@ -13,7 +13,7 @@ Cryptographically strong random number generator.
 
 */
 
-/* RCSID("$Id: randoms.h,v 1.3 1999/05/04 11:58:59 bg Exp $"); */
+/* RCSID("$Id: randoms.h,v 1.1 1999/09/26 20:53:37 deraadt Exp $"); */
 
 #ifndef RANDOM_H
 #define RANDOM_H

@@ -14,7 +14,7 @@ Interface to packet compression for ssh.
 */
 
 #include "includes.h"
-RCSID("$Id: compress.c,v 1.2 1999/05/04 11:58:38 bg Exp $");
+RCSID("$Id: compress.c,v 1.1 1999/09/26 20:53:34 deraadt Exp $");
 
 #include "ssh.h"
 #include "buffer.h"

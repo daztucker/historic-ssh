@@ -14,7 +14,7 @@ Identity and host key generation and maintenance.
 */
 
 #include "includes.h"
-RCSID("$Id: ssh-keygen.c,v 1.2 1999/05/04 11:59:17 bg Exp $");
+RCSID("$Id: ssh-keygen.c,v 1.1 1999/09/26 20:53:37 deraadt Exp $");
 
 #ifndef HAVE_GETHOSTNAME
 #include <sys/utsname.h>

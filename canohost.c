@@ -14,7 +14,7 @@ Functions for returning the canonical host name of the remote site.
 */
 
 #include "includes.h"
-RCSID("$Id: canohost.c,v 1.3 1999/05/11 19:27:15 bg Exp $");
+RCSID("$Id: canohost.c,v 1.1 1999/09/26 20:53:34 deraadt Exp $");
 
 #include "packet.h"
 #include "xmalloc.h"

@@ -12,7 +12,7 @@ Created: Tue Aug 22 17:21:32 1995 ylo
 
 */
 
-/* RCSID("$Id: fdlim.h,v 1.2 1999/05/04 11:58:42 bg Exp $"); */
+/* RCSID("$Id: fdlim.h,v 1.1 1999/09/26 20:53:36 deraadt Exp $"); */
 
 #ifndef FDLIM_H
 #define FDLIM_H

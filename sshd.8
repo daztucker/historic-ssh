@@ -9,7 +9,7 @@
 .\"
 .\" Created: Sat Apr 22 21:55:14 1995 ylo
 .\"
-.\" $Id: sshd.8.in,v 1.1 1999/09/26 20:53:38 deraadt Exp $
+.\" $Id: sshd.8,v 1.1 1999/09/26 20:53:38 deraadt Exp $
 .\"
 .TH SSHD 8 "November 8, 1995" "SSH" "SSH"
 
@@ -144,7 +144,7 @@ intended for debugging for the server.
 .TP
 .BI \-f \ configuration_file
 Specifies the name of the configuration file.  The default is
-.IR @ETCDIR@/sshd_config ".
+.IR /etc/sshd_config ".
 .TP
 .BI \-g \ login_grace_time
 Gives the grace time for clients to authenticate themselves (default
@@ -154,7 +154,7 @@ indicates no limit.
 .TP
 .BI \-h \ host_key_file
 Specifies the file from which the host key is read (default
-.IR @ETCDIR@/ssh_host_key).  
+.IR /etc/ssh_host_key).  
 This option must be given if sshd is not run as root (as the normal
 host file is normally not readable by anyone but root).
 .TP
@@ -186,7 +186,7 @@ authentication, and termination of each connection is logged.
 
 .B Sshd
 reads configuration data from 
-.I @ETCDIR@/sshd_config
+.I /etc/sshd_config
 (or the file specified with -f on the command line).  The file
 contains keyword-value pairs, one per line.  Lines starting with '#'
 and empty lines are interpreted as comments.
@@ -223,14 +223,14 @@ the privacy of users and is not recommended.  The argument must be
 .TP
 .B HostKey
 Specifies the file containing the private host key (default
-.IR @ETCDIR@/ssh_host_key ").
+.IR /etc/ssh_host_key ").
 .TP
 .B IgnoreRhosts
 Specifies that rhosts and shosts files will not be used in
 authentication.
 .I /etc/hosts.equiv
 and
-.I @ETCDIR@/shosts.equiv 
+.I /etc/shosts.equiv 
 are still used.  The default is "no".
 .TP
 .B KeepAlive
@@ -322,7 +322,7 @@ is "no".
 .B RandomSeed
 Specifies the file containing the random seed for the server; this
 file is created automatically and updated regularly.  The default is
-.IR @ETCDIR@/ssh_random_seed ".
+.IR /etc/ssh_random_seed ".
 .TP
 .B RhostsAuthentication
 Specifies whether authentication using rhosts or /etc/hosts.equiv
@@ -388,7 +388,7 @@ Reads $HOME/.ssh/environment if it exists.
 .IP 8.
 Changes to user's home directory.
 .IP 9.
-If $HOME/.ssh/rc exists, runs it; else if @ETCDIR@/sshrc exists, runs
+If $HOME/.ssh/rc exists, runs it; else if /etc/sshrc exists, runs
 it; otherwise runs xauth.  The "rc" files are given the X11
 authentication protocol and cookie in standard input.
 .IP 10.
@@ -489,14 +489,14 @@ command="dump /home",no-pty,no-port-forwarding 1024 33 23.\|.\|.\|2323 backup.hu
 .SH SSH_KNOWN_HOSTS FILE FORMAT
 .LP
 The 
-.I @ETCDIR@/ssh_known_hosts
+.I /etc/ssh_known_hosts
 and 
 .I \&$HOME/\s+2.\s0ssh/known_hosts
 files contain host public keys for all known hosts.  The global file should
 be prepared by the admistrator (optional), and the per-user file is
 maintained automatically: whenever the user connects an unknown host
 its key is added to the per-user file.  The recommended way to create
-.I @ETCDIR@/ssh_known_hosts
+.I /etc/ssh_known_hosts
 is to use the
 .B make-ssh-known-hosts
 command.
@@ -514,7 +514,7 @@ pattern on the line.
 .LP
 Bits, exponent, and modulus are taken directly from the host key; they
 can be obtained e.g.  from
-.IR @ETCDIR@/ssh_host_key.pub ".
+.IR /etc/ssh_host_key.pub ".
 The optional comment field continues to the end of the line, and is not used.
 .LP
 Lines starting with '#' and empty lines are ignored as comments.
@@ -532,7 +532,7 @@ long, and you definitely don't want to type in the host keys by hand.
 Rather, generate them by a script (see 
 .BR make-ssh-known-hosts (1))
 or by taking 
-.I @ETCDIR@/ssh_host_key.pub
+.I /etc/ssh_host_key.pub
 and adding the host names at the front.
 
 .SS Examples
@@ -541,13 +541,13 @@ closenet,closenet.hut.fi,.\|.\|.\|,130.233.208.41 1024 37 159.\|.\|.93 closenet.
 
 .SH FILES
 .TP
-.I @ETCDIR@/sshd_config
+.I /etc/sshd_config
 Contains configuration data for
 .BR sshd .  
 This file should be writable by root only, but it is recommended
 (though not necessary) that it be world-readable.
 .TP
-.I @ETCDIR@/ssh_host_key
+.I /etc/ssh_host_key
 Contains the private part of the host key.  This file is normally
 created automatically by "make install", but can also be created
 manually using
@@ -555,7 +555,7 @@ manually using
 This file should only be owned by root, readable only by root, and not
 accessible to others.
 .TP
-.I @ETCDIR@/ssh_host_key.pub
+.I /etc/ssh_host_key.pub
 Contains the public part of the host key.  This file is normally
 created automatically by "make install", but can also be created
 manually.  This file should be world-readable but writable only by
@@ -563,11 +563,11 @@ root.  Its contents should match the private part.  This file is not
 really used for anything; it is only provided for the convenience of
 the user so its contents can be copied to known hosts files.
 .TP
-.I @ETCDIR@/ssh_random_seed
+.I /etc/ssh_random_seed
 This file contains a seed for the random number generator.  This file
 should only be accessible by root.
 .TP
-.I @PIDDIR@/sshd.pid
+.I /var/run/sshd.pid
 Contains the process id of the
 .B sshd
 listening for connections (if there are several daemons running
@@ -582,13 +582,13 @@ it being world-readable if the user's home directory resides on an NFS
 volume).  It is recommended that it not be accessible by others.  The
 format of this file is described above.
 .TP
-.I "@ETCDIR@/ssh_known_hosts\fR and \fI$HOME/\s+2.\s0ssh/known_hosts\fR
+.I "/etc/ssh_known_hosts\fR and \fI$HOME/\s+2.\s0ssh/known_hosts\fR
 These files are consulted when using rhosts with RSA host
 authentication to check the public key of the host.  The key must be
 listed in one of these files to be accepted.  (The client uses the
 same files to verify that the remote host is the one we intended to
 connect.)  These files should be writable only by root/the owner.
-.I @ETCDIR@/ssh_known_hosts
+.I /etc/ssh_known_hosts
 should be world-readable, and \fI$HOME/\s+2.\s0ssh/known_hosts\fR can
 but need not be world-readable.
 .TP
@@ -649,7 +649,7 @@ user root access.  The only valid use for user names that I can think
 of is in negative entries.
 \fBNote that this warning also applies to rsh/rlogin.\fR
 .TP
-.I @ETCDIR@/shosts.equiv
+.I /etc/shosts.equiv
 This is processed exactly as
 .I /etc/hosts.equiv.
 However, this file may be useful in environments that want to run both
@@ -684,13 +684,13 @@ This file will probably contain some initialization code followed by
 something similar to: "if read proto cookie; then echo add $DISPLAY
 $proto $cookie | xauth -q -; fi".
 
-If this file does not exist, @ETCDIR@/sshrc is run, and if that
+If this file does not exist, /etc/sshrc is run, and if that
 does not exist either, xauth is used to store the cookie.
 
 This file should be writable only by the user, and need not be
 readable by anyone else.
 .TP
-.I @ETCDIR@/sshrc
+.I /etc/sshrc
 Like $HOME/\s+2.\s0ssh/rc.  This can be used to specify
 machine-specific login-time initializations globally.  This file
 should be writable only by root, and should be world-readable.

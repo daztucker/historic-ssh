@@ -15,7 +15,7 @@ failure (they call fatal if they encounter an error).
 */
 
 #include "includes.h"
-RCSID("$Id: xmalloc.c,v 1.2 1999/05/04 11:59:28 bg Exp $");
+RCSID("$Id: xmalloc.c,v 1.1 1999/09/26 20:53:38 deraadt Exp $");
 
 #include "ssh.h"
 

@@ -14,7 +14,7 @@ Code for uid-swapping.
 */
 
 #include "includes.h"
-RCSID("$Id: uidswap.c,v 1.2 1999/05/04 11:59:27 bg Exp $");
+RCSID("$Id: uidswap.c,v 1.1 1999/09/26 20:53:38 deraadt Exp $");
 
 #include "ssh.h"
 #include "uidswap.h"

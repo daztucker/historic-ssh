@@ -15,7 +15,7 @@ with the other side.  This same code is used both on client and server side.
 */
 
 #include "includes.h"
-RCSID("$Id: packet.c,v 1.7 1999/06/14 14:41:39 bg Exp $");
+RCSID("$Id: packet.c,v 1.1 1999/09/26 20:53:36 deraadt Exp $");
 
 #include "xmalloc.h"
 #include "randoms.h"

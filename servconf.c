@@ -12,7 +12,7 @@ Created: Mon Aug 21 15:48:58 1995 ylo
 */
 
 #include "includes.h"
-RCSID("$Id: servconf.c,v 1.8 1999/06/12 09:22:04 bg Exp $");
+RCSID("$Id: servconf.c,v 1.1 1999/09/26 20:53:37 deraadt Exp $");
 
 #include "ssh.h"
 #include "servconf.h"

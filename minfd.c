@@ -13,7 +13,7 @@ Created: Tue Aug 22 17:25:30 1995 ylo
 */
 
 #include "includes.h"
-RCSID("$Id: minfd.c,v 1.2 1999/05/04 11:58:51 bg Exp $");
+RCSID("$Id: minfd.c,v 1.1 1999/09/26 20:53:36 deraadt Exp $");
 
 #include <sys/resource.h> /* Needed by fdlim.h */
 #include "fdlim.h"

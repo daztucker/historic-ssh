@@ -14,7 +14,7 @@ Allocating a pseudo-terminal, and making it the controlling tty.
 */
 
 #include "includes.h"
-RCSID("$Id: pty.c,v 1.2 1999/05/04 11:58:56 bg Exp $");
+RCSID("$Id: pty.c,v 1.1 1999/09/26 20:53:36 deraadt Exp $");
 
 #include "pty.h"
 #include "ssh.h"

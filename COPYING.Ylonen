@@ -16,6 +16,7 @@ source code is used in accordance with the relevant license agreements
 and can be used freely for any purpose (the GNU license being the most
 restrictive); see below for details.
 
+[ IDEA is now *only* included if configured with --with-rsa. ]
 The RSA algorithm and even the concept of public key encryption are
 claimed to patented in the United States.  These patents may interfere
 with your right to use this software.  It is possible to compile the

@@ -14,7 +14,7 @@ Adds an identity to the authentication server, or removes an identity.
 */
 
 #include "includes.h"
-RCSID("$Id: ssh-add.c,v 1.2 1999/05/04 11:59:12 bg Exp $");
+RCSID("$Id: ssh-add.c,v 1.1 1999/09/26 20:53:37 deraadt Exp $");
 
 #include "randoms.h"
 #include "rsa.h"

@@ -8,7 +8,7 @@
 #
 # Created: Wed Mar 22 18:02:48 1995 ylo
 #
-# $Id: configure.in,v 1.19 1999/06/30 16:51:14 bg Exp $
+# $Id: configure.in,v 1.1 1999/09/26 20:53:35 deraadt Exp $
 #
 
 AC_INIT(sshd.c)
@@ -143,6 +143,9 @@ case "$host" in
   *-*-netbsd*)
     # From Ollivier Robert: FreeBSD and NetBSD use master.passwd, but set
     # pw_passwd automatically when running as root.
+    no_shadow_password_checking=yes
+    ;;
+  *-*-openbsd*)
     no_shadow_password_checking=yes
     ;;
   *)
@@ -499,6 +502,23 @@ AC_ARG_WITH(rsaref,
        RSAREFDEP="rsaref2/source/librsaref.a"
        LIBS="-lrsaref $LIBS"
        LDFLAGS="-Lrsaref2/source $LDFLAGS"
+       ;;
+  esac ],
+  AC_MSG_RESULT(no)
+)
+
+AC_MSG_CHECKING(whether to use ssl)
+AC_ARG_WITH(ssl,
+[  --with-ssl           Use SSL (try to avoid patent problems in U.S.)
+  --without-ssl         Use normal RSA routines (default). ],
+[ case "$withval" in
+  no)
+       AC_MSG_RESULT(no)
+       ;;
+  *)
+       AC_MSG_RESULT(yes)
+       AC_DEFINE(DO_SSL)
+       LIBS="-lcrypto $LIBS"
        ;;
   esac ],
   AC_MSG_RESULT(no)

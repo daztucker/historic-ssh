@@ -13,7 +13,7 @@ Code for manipulating FIFO buffers.
 
 */
 
-/* RCSID("$Id: buffer.h,v 1.2 1999/05/04 11:58:31 bg Exp $"); */
+/* RCSID("$Id: buffer.h,v 1.1 1999/09/26 20:53:34 deraadt Exp $"); */
 
 #ifndef BUFFER_H
 #define BUFFER_H

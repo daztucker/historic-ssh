@@ -18,7 +18,7 @@ on a tty.
 */
 
 #include "includes.h"
-RCSID("$Id: login.c,v 1.3 1999/05/04 11:58:49 bg Exp $");
+RCSID("$Id: login.c,v 1.1 1999/09/26 20:53:36 deraadt Exp $");
 
 #ifdef HAVE_UTMP_H
 #include <utmp.h>

@@ -14,7 +14,7 @@ Cryptographically strong random number generation.
 */
 
 #include "includes.h"
-RCSID("$Id: randoms.c,v 1.3 1999/05/04 11:58:58 bg Exp $");
+RCSID("$Id: randoms.c,v 1.1 1999/09/26 20:53:36 deraadt Exp $");
 
 #include "randoms.h"
 #include "getput.h"

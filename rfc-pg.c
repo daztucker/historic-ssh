@@ -11,7 +11,7 @@ Created: Fri Jul  7 02:14:16 1995 ylo
 
 */
 
-/* RCSID("$Id: rfc-pg.c,v 1.2 1999/05/04 11:59:04 bg Exp $"); */
+/* RCSID("$Id: rfc-pg.c,v 1.1 1999/09/26 20:53:37 deraadt Exp $"); */
 
 #include <stdio.h>
 

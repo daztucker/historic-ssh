@@ -15,7 +15,7 @@ the password is valid for the user.
 */
 
 #include "includes.h"
-RCSID("$Id: auth-passwd.c,v 1.10 1999/05/04 17:57:18 bg Exp $");
+RCSID("$Id: auth-passwd.c,v 1.1 1999/09/26 20:53:33 deraadt Exp $");
 
 #ifdef HAVE_SCO_ETC_SHADOW
 # include <sys/security.h>

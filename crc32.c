@@ -3,7 +3,7 @@
    crc32-function (including changing the interface). //ylo */
 
 #include "includes.h"
-RCSID("$Id: crc32.c,v 1.2 1999/05/04 11:58:40 bg Exp $");
+RCSID("$Id: crc32.c,v 1.1 1999/09/26 20:53:35 deraadt Exp $");
 
 #include "crc32.h"
 

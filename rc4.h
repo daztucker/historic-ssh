@@ -4,7 +4,7 @@ Alleged RC4 (based on the Usenet posting in Spring-95)
 
 */
 
-/* RCSID("$Id: rc4.h,v 1.2 1999/05/04 11:59:01 bg Exp $"); */
+/* RCSID("$Id: rc4.h,v 1.1 1999/09/26 20:53:37 deraadt Exp $"); */
 
 #ifndef RC4_H
 #define RC4_H

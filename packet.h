@@ -13,7 +13,7 @@ Interface for the packet protocol functions.
 
 */
 
-/* RCSID("$Id: packet.h,v 1.9 1999/06/14 15:00:03 bg Exp $"); */
+/* RCSID("$Id: packet.h,v 1.1 1999/09/26 20:53:36 deraadt Exp $"); */
 
 #ifndef PACKET_H
 #define PACKET_H

@@ -16,7 +16,7 @@ arbitrary tcp/ip connections, and the authentication agent connection.
 */
 
 #include "includes.h"
-RCSID("$Id: channels.c,v 1.7 1999/06/14 14:41:38 bg Exp $");
+RCSID("$Id: channels.c,v 1.1 1999/09/26 20:53:34 deraadt Exp $");
 
 #ifndef HAVE_GETHOSTNAME
 #include <sys/utsname.h>

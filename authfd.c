@@ -14,7 +14,7 @@ Functions for connecting the local authentication agent.
 */
 
 #include "includes.h"
-RCSID("$Id: authfd.c,v 1.2 1999/05/04 11:58:26 bg Exp $");
+RCSID("$Id: authfd.c,v 1.1 1999/09/26 20:53:33 deraadt Exp $");
 
 #include "ssh.h"
 #include "rsa.h"

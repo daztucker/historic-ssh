@@ -5,7 +5,7 @@ Alleged RC4 (based on the Usenet posting in Spring-95)
 */
 
 #include "includes.h"
-RCSID("$Id: rc4.c,v 1.2 1999/05/04 11:59:00 bg Exp $");
+RCSID("$Id: rc4.c,v 1.1 1999/09/26 20:53:37 deraadt Exp $");
 
 #include "rc4.h"
 

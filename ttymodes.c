@@ -17,7 +17,7 @@ suitable code.
 */
 
 #include "includes.h"
-RCSID("$Id: ttymodes.c,v 1.3 1999/05/04 11:59:25 bg Exp $");
+RCSID("$Id: ttymodes.c,v 1.1 1999/09/26 20:53:38 deraadt Exp $");
 
 #include "packet.h"
 #include "ssh.h"

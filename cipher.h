@@ -11,7 +11,7 @@ Created: Wed Apr 19 16:50:42 1995 ylo
 
 */
 
-/* RCSID("$Id: cipher.h,v 1.9 1999/05/28 15:21:52 bg Exp $"); */
+/* RCSID("$Id: cipher.h,v 1.1 1999/09/26 20:53:34 deraadt Exp $"); */
 
 #ifndef CIPHER_H
 #define CIPHER_H

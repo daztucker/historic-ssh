@@ -15,7 +15,7 @@ Buffers.
 */
 
 #include "includes.h"
-RCSID("$Id: bufaux.c,v 1.3 1999/06/14 14:41:36 bg Exp $");
+RCSID("$Id: bufaux.c,v 1.1 1999/09/26 20:53:33 deraadt Exp $");
 
 #include "ssh.h"
 #include "gmp.h"

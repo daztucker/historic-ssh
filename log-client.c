@@ -14,7 +14,7 @@ Client-side versions of debug(), log(), etc.  These print to stderr.
 */
 
 #include "includes.h"
-RCSID("$Id: log-client.c,v 1.2 1999/05/04 11:58:47 bg Exp $");
+RCSID("$Id: log-client.c,v 1.1 1999/09/26 20:53:36 deraadt Exp $");
 
 #include "xmalloc.h"
 #include "ssh.h"

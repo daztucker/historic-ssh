@@ -12,7 +12,7 @@ Created: Sat Apr  8 00:25:04 1995 ylo
 */
 
 #include <stdio.h>
-RCSID("$Id: check-fds.c,v 1.2 1999/05/04 11:58:34 bg Exp $");
+RCSID("$Id: check-fds.c,v 1.1 1999/09/26 20:53:34 deraadt Exp $");
 
 #include <sys/types.h>
 #include <fcntl.h>

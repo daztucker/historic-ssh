@@ -12,7 +12,7 @@ Created: Wed Jul 12 01:07:36 1995 ylo
 */
 
 #include "includes.h"
-RCSID("$Id: tildexpand.c,v 1.2 1999/05/04 11:59:24 bg Exp $");
+RCSID("$Id: tildexpand.c,v 1.1 1999/09/26 20:53:38 deraadt Exp $");
 
 #include "xmalloc.h"
 #include "ssh.h"

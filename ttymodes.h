@@ -12,7 +12,7 @@ Created: Tue Mar 21 15:42:09 1995 ylo
 
 */
 
-/* RCSID("$Id: ttymodes.h,v 1.2 1999/05/04 11:59:26 bg Exp $"); */
+/* RCSID("$Id: ttymodes.h,v 1.1 1999/09/26 20:53:38 deraadt Exp $"); */
 
 /* The tty mode description is a stream of bytes.  The stream consists of
    opcode-arguments pairs.  It is terminated by opcode TTY_OP_END (0).

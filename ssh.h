@@ -13,7 +13,7 @@ Generic header file for ssh.
 
 */
 
-/* RCSID("$Id: ssh.h,v 1.9 1999/06/06 08:35:30 bg Exp $"); */
+/* RCSID("$Id: ssh.h,v 1.1 1999/09/26 20:53:38 deraadt Exp $"); */
 
 #ifndef SSH_H
 #define SSH_H

@@ -15,7 +15,7 @@ login (authentication) dialog.
 */
 
 #include "includes.h"
-RCSID("$Id: sshconnect.c,v 1.19 1999/06/14 14:41:41 bg Exp $");
+RCSID("$Id: sshconnect.c,v 1.1 1999/09/26 20:53:38 deraadt Exp $");
 
 #include <gmp.h>
 #include "xmalloc.h"

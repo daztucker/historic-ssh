@@ -13,7 +13,7 @@ Functions for computing 32-bit CRC.
 
 */
 
-/* RCSID("$Id: crc32.h,v 1.2 1999/05/04 11:58:41 bg Exp $"); */
+/* RCSID("$Id: crc32.h,v 1.1 1999/09/26 20:53:35 deraadt Exp $"); */
 
 #ifndef CRC32_H
 #define CRC32_H

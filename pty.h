@@ -14,7 +14,7 @@ tty.
 
 */
 
-/* RCSID("$Id: pty.h,v 1.2 1999/05/04 11:58:57 bg Exp $"); */
+/* RCSID("$Id: pty.h,v 1.1 1999/09/26 20:53:36 deraadt Exp $"); */
 
 #ifndef PTY_H
 #define PTY_H

@@ -14,7 +14,7 @@ Simple pattern matching, with '*' and '?' as wildcards.
 */
 
 #include "includes.h"
-RCSID("$Id: match.c,v 1.2 1999/05/04 11:58:50 bg Exp $");
+RCSID("$Id: match.c,v 1.1 1999/09/26 20:53:36 deraadt Exp $");
 
 #include "ssh.h"
 

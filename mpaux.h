@@ -14,7 +14,7 @@ precision integers.
 
 */
 
-/* RCSID("$Id: mpaux.h,v 1.2 1999/05/04 11:58:52 bg Exp $"); */
+/* RCSID("$Id: mpaux.h,v 1.1 1999/09/26 20:53:36 deraadt Exp $"); */
 
 #ifndef MPAUX_H
 #define MPAUX_H

@@ -9,7 +9,7 @@
 .\"
 .\" Created: Sat Apr 22 21:55:14 1995 ylo
 .\"
-.\" $Id: ssh.1.in,v 1.1 1999/09/26 20:53:37 deraadt Exp $
+.\" $Id: ssh.1,v 1.1 1999/09/26 20:53:37 deraadt Exp $
 .\"
 .TH SSH 1 "November 8, 1995" "SSH" "SSH"
 
@@ -99,7 +99,7 @@ his/her identity to the remote machine using one of several methods.
 First, if the machine the user logs in from is listed in
 .I /etc/hosts.equiv
 or
-.I @ETCDIR@/shosts.equiv
+.I /etc/shosts.equiv
 on the remote machine, and the user names are
 the same on both sides, the user is immediately permitted to log in.
 Second, if 
@@ -125,12 +125,12 @@ means that if the login would be permitted by
 .IR /etc/hosts.equiv\c
 \|,
 or
-.IR @ETCDIR@/shosts.equiv ",
+.IR /etc/shosts.equiv ",
 and additionally it can verify the client's
 host key (see 
 .I \&$HOME/\s+2.\s0ssh/known_hosts
 and
-.I @ETCDIR@/ssh_known_hosts
+.I /etc/ssh_known_hosts
 in the
 .B \s-1FILES\s0
 section), only then login is
@@ -272,7 +272,7 @@ identifications for all hosts it has ever been used with.  The
 database is stored in 
 .I \&\s+2.\s0ssh/known_hosts
 in the user's home directory.  Additionally, the file 
-.I @ETCDIR@/ssh_known_hosts
+.I /etc/ssh_known_hosts
 is automatically checked for known hosts.  Any new hosts are
 automatically added to the user's file.  If a host's identification
 ever changes,
@@ -445,7 +445,7 @@ logging in as root on the remote machine.
 obtains configuration data from the following sources (in this order):
 command line options, user's configuration file
 (\fI\&$HOME/\s+2.\s0ssh/config\fR), and system-wide configuration file
-(\fI@ETCDIR@/ssh_config\fR).  For each parameter, the first obtained value
+(\fI/etc/ssh_config\fR).  For each parameter, the first obtained value
 will be used.  The configuration files contain sections bracketed by
 "Host" specifications, and that section is only applied for hosts that
 match one of the patterns given in the specification.  The matched
@@ -559,7 +559,7 @@ set.  The argument must be
 .TP
 .B GlobalKnownHostsFile
 Specifies a file to use instead of 
-.IR @ETCDIR@/ssh_known_hosts ".
+.IR /etc/ssh_known_hosts ".
 .ne 3
 .TP
 .B HostName
@@ -811,7 +811,7 @@ on Solaris.
 .TP
 .I \&$HOME/\s+2.\s0ssh/known_hosts
 Records host keys for all hosts the user has logged into (that are not
-in \fI@ETCDIR@/ssh_known_hosts\fR).  See
+in \fI/etc/ssh_known_hosts\fR).  See
 .B sshd
 manual page.
 .ne 3
@@ -863,7 +863,7 @@ spaces).  This file is not highly sensitive, but the recommended
 permissions are read/write for the user, and not accessible by others.
 .ne 3
 .TP
-.I @ETCDIR@/ssh_known_hosts
+.I /etc/ssh_known_hosts
 Systemwide list of known host keys.  This file should be prepared by the
 system administrator to contain the public host keys of all machines in the
 organization.  This file should be world-readable.  This file contains
@@ -884,7 +884,7 @@ checking the key, because someone with access to the name servers
 would then be able to fool host authentication.
 .ne 3
 .TP
-.I @ETCDIR@/ssh_config
+.I /etc/ssh_config
 Systemwide configuration file.  This file provides defaults for those
 values that are not specified in the user's configuration file, and
 for those users who do not have a configuration file.  This file must
@@ -911,7 +911,7 @@ Note that by default
 will be installed so that it requires successful RSA host
 authentication before permitting \s+2.\s0rhosts authentication.  If your
 server machine does not have the client's host key in
-\fI@ETCDIR@/ssh_known_hosts\fR, you can store it in
+\fI/etc/ssh_known_hosts\fR, you can store it in
 \fI$HOME/\s+2.\s0ssh/known_hosts\fR.  The easiest way to do this is to
 connect back to the client from the server machine using ssh; this
 will automatically add the host key in \fI$HOME/\s+2.\s0ssh/known_hosts\fR.
@@ -934,7 +934,7 @@ automatically permitted provided client and server user names are the
 same.  Additionally, successful RSA host authentication is normally
 required.  This file should only be writable by root.
 .TP
-.I @ETCDIR@/shosts.equiv
+.I /etc/shosts.equiv
 This file is processed exactly as 
 .IR /etc/hosts.equiv ".  
 This file may be useful to permit logins using
@@ -942,7 +942,7 @@ This file may be useful to permit logins using
 but not using rsh/rlogin.
 .ne 3
 .TP
-.I @ETCDIR@/sshrc
+.I /etc/sshrc
 Commands in this file are executed by
 .B ssh
 when the user logs in just before the user's shell (or command) is started.
@@ -967,7 +967,7 @@ is normally installed as suid root.  It needs root privileges only for
 rhosts authentication (rhosts authentication requires that the
 connection must come from a privileged port, and allocating such a
 port requires root privileges).  It also needs to be able to read
-\fI@ETCDIR@/ssh_host_key\fR to perform
+\fI/etc/ssh_host_key\fR to perform
 .B \s-1RSA\s0
 host authentication.  It is possible to use
 .B ssh

@@ -15,7 +15,7 @@ precision integers.
 */
 
 #include "includes.h"
-RCSID("$Id: mpaux.c,v 1.3 1999/05/04 11:58:51 bg Exp $");
+RCSID("$Id: mpaux.c,v 1.1 1999/09/26 20:53:36 deraadt Exp $");
 
 #include <gmp.h>
 #include "getput.h"

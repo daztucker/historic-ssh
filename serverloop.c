@@ -35,7 +35,8 @@ static long fdout_bytes = 0;	/* Number of stdout bytes read from program. */
 static int stdin_eof = 0;	/* EOF message received from client. */
 static int fdout_eof = 0;	/* EOF encountered reading from fdout. */
 static int fderr_eof = 0;	/* EOF encountered readung from fderr. */
-static int connection; 		/* Connection to client. */
+static int connection_in;	/* Connection to client (input). */
+static int connection_out;	/* Connection to client (output). */
 static unsigned int buffer_high;/* "Soft" max buffer size. */
 static int max_fd;		/* Max file descriptor number for select(). */
 
@@ -223,7 +224,7 @@ void wait_until_can_do_something(fd_set *readset, fd_set *writeset,
      or channel data. */
   if (buffer_len(&stdin_buffer) < 4096 &&
       channel_not_very_much_buffered_data())
-    FD_SET(connection, readset);
+    FD_SET(connection_in, readset);
   
   /* If there is not too much data already buffered going to the client,
      try to get some more data from the program. */
@@ -243,7 +244,7 @@ void wait_until_can_do_something(fd_set *readset, fd_set *writeset,
   /* If we have buffered packet data going to the client, mark that
      descriptor. */
   if (packet_have_data_to_write())
-    FD_SET(connection, writeset);
+    FD_SET(connection_out, writeset);
   
   /* If we have buffered data, try to write some of that data to the
      program. */
@@ -307,11 +308,17 @@ void process_input(fd_set *readset)
   char buf[16384];
 
   /* Read and buffer any input data from the client. */
-  if (FD_ISSET(connection, readset))
+  if (FD_ISSET(connection_in, readset))
     {
-      len = read(connection, buf, sizeof(buf));
+      len = read(connection_in, buf, sizeof(buf));
       if (len == 0)
 	fatal("Connection closed by remote host.");
+
+      /* There is a kernel bug on Solaris that causes select to sometimes
+	 wake up even though there is no data available. */
+      if (len < 0 && errno == EAGAIN)
+	len = 0;
+
       if (len < 0)
 	fatal("Read error from remote host: %.100s", strerror(errno));
 
@@ -343,6 +350,8 @@ void process_input(fd_set *readset)
     }
 }
 
+/* Sends data from internal buffers to client program stdin. */
+
 void process_output(fd_set *writeset)
 {
   int len;
@@ -370,7 +379,7 @@ void process_output(fd_set *writeset)
     }
   
   /* Send any buffered packet data to the client. */
-  if (FD_ISSET(connection, writeset))
+  if (FD_ISSET(connection_out, writeset))
     packet_write_poll();
 }
 
@@ -431,7 +440,8 @@ void server_loop(int pid, int fdin_arg, int fdout_arg, int fderr_arg)
   fdin = fdin_arg;
   fdout = fdout_arg;
   fderr = fderr_arg;
-  connection = packet_get_connection();
+  connection_in = packet_get_connection_in();
+  connection_out = packet_get_connection_out();
   
   previous_stdout_buffer_bytes = 0;
 
@@ -447,8 +457,10 @@ void server_loop(int pid, int fdin_arg, int fdout_arg, int fderr_arg)
     max_fd = fdout;
   if (fderr != -1 && fderr > max_fd)
     max_fd = fderr;
-  if (connection > max_fd)
-    max_fd = connection;
+  if (connection_in > max_fd)
+    max_fd = connection_in;
+  if (connection_out > max_fd)
+    max_fd = connection_out;
 
   /* Initialize Initialize buffers. */
   buffer_init(&stdin_buffer);
@@ -487,7 +499,7 @@ void server_loop(int pid, int fdin_arg, int fdout_arg, int fderr_arg)
       /* Make packets from buffered stdout data to send to the client.
 	 If there is very little to send, this arranges to not send them
 	 now, but to wait a short while to see if we are getting more data.
-	 This is necessary, as some systems wait readers from a pty after
+	 This is necessary, as some systems wake up readers from a pty after
 	 each separate character. */
       max_time_milliseconds = 0;
       stdout_buffer_bytes = buffer_len(&stdout_buffer);
@@ -514,8 +526,14 @@ void server_loop(int pid, int fdin_arg, int fdout_arg, int fderr_arg)
 	    {
 	      const char *s = 
 		"Waiting for forwarded connections to terminate...\r\n";
+	      char *cp;
 	      waiting_termination = 1;
 	      buffer_append(&stderr_buffer, s, strlen(s));
+
+	      /* Display list of open channels. */
+	      cp = channel_open_message();
+	      buffer_append(&stderr_buffer, cp, strlen(cp));
+	      xfree(cp);
 	    }
 	}
 

@@ -129,6 +129,15 @@ void buffer_consume(Buffer *buffer, unsigned int bytes)
   buffer->offset += bytes;
 }  
 
+/* Consumes the given number of bytes from the end of the buffer. */
+
+void buffer_consume_end(Buffer *buffer, unsigned int bytes)
+{
+  if (bytes > buffer->end - buffer->offset)
+    fatal("buffer_get trying to get more bytes than in buffer");
+  buffer->end -= bytes;
+}  
+
 /* Returns a pointer to the first used byte in the buffer. */
 
 char *buffer_ptr(Buffer *buffer)

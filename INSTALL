@@ -11,13 +11,17 @@ For most machines and configurations, the following is all you need.
   make
   make install
 
-The source is written in ANSI C, and requires an ANSI C compiler or GCC.
-A copy of GCC is available on all major FTP sites (e.g., in 
-ftp:/prep.ai.mit.edu/pub/gnu).
+Then check (and edit if needed) the following files:
+  /etc/sshd_config   (server configuration file)
+  /etc/ssh_config    (client configuration file - defaults for users)
 
 You may also want to create the /etc/ssh_known_hosts for your site and update
 it periodically.  See the manual page for make-ssh-known-hosts on how to
 do this easily.  The file format is documented on the sshd manual page.
+
+The source is written in ANSI C, and requires an ANSI C compiler or GCC.
+A copy of GCC is available on all major FTP sites (e.g., in 
+ftp:/prep.ai.mit.edu/pub/gnu).
 
 
 CONFIGURATION OPTIONS
@@ -32,9 +36,9 @@ script accepts several options
   --with-rsh=PATH	Use rsh specified by PATH when needed
   --with-etcdir=PATH    Store system files in the given dir (default: /etc)
   --with-path=PATH	Default path to pass to user shell.
-  --with-rsaref		Usa rsaref2 from rsaref2 subdirectory (see below).
-  --with-libwrap[=LIB]	Use libwrap (tcp_wrappers) and identd (see below).
-  --with-socsk[=LIB]	Include SOCKS (firewall traversal) support.
+  --with-rsaref		Use rsaref2 from rsaref2 subdirectory (see below).
+  --with-libwrap[=PATH] Use libwrap (tcp_wrappers) and identd (see below).
+  --with-socks[=PATH]	Include SOCKS (firewall traversal) support.
   --without-idea	Don't include IDEA (see below).
   --with-securid[=PATH] Support for the SecurID card (see README.SECURID).
   --enable-warnings	Adds -Wall to CFLAGS if using gcc.
@@ -81,12 +85,13 @@ This software has been used at least in the following environments.
 
 	386BSD 0.1; i386
 	AIX 3.2.5, 4.1; RS6000, PowerPC
+	BSD 4.4; several platforms
 	BSD/OS 1.1; i486
 	BSD/386 1.1; i386
 	ConvexOS 10.1; Convex
 	DGUX 5.4R2.10; DGUX
 	FreeBSD 1.x, 2.0; Pentium
-	HPUX 9.0x; HPPA
+	HPUX 9.0x, 10.0; HPPA
 	IRIX 5.2, 5.3; SGI Indy
 	IRIX 6.0.1; Mips-R8000
 	Linux 1.2.8 Slackware 2.1.0; i486
@@ -97,9 +102,11 @@ This software has been used at least in the following environments.
 	OSF/1 3.0, 3.2, 3.2a; Alpha
 	Sequent Dynix/ptx 3.2.0 V2.1.0; i386
 	SCO Unix; i386 (client only)
+	SINIX 5.42; Mips R4000
 	Solaris 2.3, 2.4; Sparc
 	Sony NEWS-OS 3.3 (BSD 4.3); m68k
 	SunOS 4.1.2, 4.1.3, 4.1.4; Sparc
+	SysV 4.x; several platforms
 	Ultrix x.x; Mips (client only)
 	Unicos 8.0.3; Cray C90
 
@@ -115,6 +122,9 @@ Not all compilers work in all environments.  If you have problems, try
 compiling with gcc-2.7.  *** SPARC NOTE: gcc-2.7.0 appears to generate
 bad code on Sparc (Solaris 2.3) when compiling without -O.  Try
 gcc-2.6.3 or compile with -O. ***
+
+Solaris 2.4 note: you need to install "kernel jumbo patch number
+101945-32" (dated August 31, 1995) for ssh to work.
 
 
 COMPILING WITH RSAREF2

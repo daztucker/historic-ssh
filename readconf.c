@@ -74,6 +74,7 @@ Functions for reading the configuration files.
 
    Host puukko.hut.fi
      User t35124p
+     ProxyCommand ssh-proxy %h %p
 
    Host *.fr
      UseRsh yes
@@ -92,6 +93,7 @@ Functions for reading the configuration files.
      RhostsRSAAuthentication yes
      FallBackToRsh no
      UseRsh no
+     StrictHostKeyChecking yes
      IdentityFile ~/.ssh/identity
      Port 22
      Cipher idea
@@ -112,8 +114,9 @@ typedef enum
   oForwardAgent, oForwardX11, oRhostsAuthentication,
   oPasswordAuthentication, oRSAAuthentication, oFallBackToRsh, oUseRsh,
   oIdentityFile, oHostName, oPort, oCipher, oRemoteForward, oLocalForward, 
-  oUser, oHost, oEscapeChar, oRhostsRSAAuthentication,
-  oGlobalKnownHostsFile, oUserKnownHostsFile, oConnectionAttempts
+  oUser, oHost, oEscapeChar, oRhostsRSAAuthentication, oProxyCommand,
+  oGlobalKnownHostsFile, oUserKnownHostsFile, oConnectionAttempts,
+  oBatchMode, oStrictHostKeyChecking, oCompression, oCompressionLevel
 } OpCodes;
 
 /* Textual representations of the tokens. */
@@ -133,6 +136,7 @@ static struct
   { "UseRsh", oUseRsh },
   { "IdentityFile", oIdentityFile },
   { "HostName", oHostName },
+  { "ProxyCommand", oProxyCommand },
   { "Port", oPort },
   { "Cipher", oCipher },
   { "RemoteForward", oRemoteForward },
@@ -144,6 +148,10 @@ static struct
   { "GlobalKnownHostsFile", oGlobalKnownHostsFile },
   { "UserKnownHostsFile", oUserKnownHostsFile },
   { "ConnectionAttempts", oConnectionAttempts },
+  { "BatchMode", oBatchMode },
+  { "StrictHostKeyChecking", oStrictHostKeyChecking },
+  { "Compression", oCompression },
+  { "CompressionLevel", oCompressionLevel },
   { NULL, 0 }
 };
 
@@ -206,7 +214,7 @@ void process_config_line(Options *options, const char *host,
 			 char *line, const char *filename, int linenum,
 			 int *activep)
 {
-  char buf[256], *cp, **charptr;
+  char buf[256], *cp, *string, **charptr;
   int opcode, *intptr, value, fwd_port, fwd_host_port;
 
   /* Skip leading whitespace. */
@@ -268,7 +276,23 @@ void process_config_line(Options *options, const char *host,
     case oUseRsh:
       intptr = &options->use_rsh;
       goto parse_flag;
+
+    case oBatchMode:
+      intptr = &options->batch_mode;
+      goto parse_flag;
+
+    case oStrictHostKeyChecking:
+      intptr = &options->strict_host_key_checking;
+      goto parse_flag;
       
+    case oCompression:
+      intptr = &options->compression;
+      goto parse_flag;
+
+    case oCompressionLevel:
+      intptr = &options->compression_level;
+      goto parse_int;
+
     case oIdentityFile:
       cp = strtok(NULL, WHITESPACE);
       if (!cp)
@@ -304,6 +328,21 @@ void process_config_line(Options *options, const char *host,
       charptr = &options->hostname;
       goto parse_string;
       
+    case oProxyCommand:
+      charptr = &options->proxy_command;
+      string = xstrdup("");
+      while ((cp = strtok(NULL, WHITESPACE)) != NULL)
+	{
+	  string = xrealloc(string, strlen(string) + strlen(cp) + 2);
+	  strcat(string, " ");
+	  strcat(string, cp);
+	}
+      if (*activep && *charptr == NULL)
+	*charptr = string;
+      else
+	xfree(string);
+      return;
+
     case oPort:
       intptr = &options->port;
     parse_int:
@@ -464,11 +503,16 @@ void initialize_options(Options *options)
   options->rhosts_rsa_authentication = -1;
   options->fallback_to_rsh = -1;
   options->use_rsh = -1;
+  options->batch_mode = -1;
+  options->strict_host_key_checking = -1;
+  options->compression = -1;
+  options->compression_level = -1;
   options->port = -1;
   options->connection_attempts = -1;
   options->cipher = -1;
   options->num_identity_files = 0;
   options->hostname = NULL;
+  options->proxy_command = NULL;
   options->user = NULL;
   options->escape_char = -1;
   options->system_hostfile = NULL;
@@ -498,6 +542,14 @@ void fill_default_options(Options *options)
     options->fallback_to_rsh = 1;
   if (options->use_rsh == -1)
     options->use_rsh = 0;
+  if (options->batch_mode == -1)
+    options->batch_mode = 0;
+  if (options->strict_host_key_checking == -1)
+    options->strict_host_key_checking = 0;
+  if (options->compression == -1)
+    options->compression = 0;
+  if (options->compression_level == -1)
+    options->compression_level = 6;
   if (options->port == -1)
     options->port = 0; /* Filled in ssh_connect. */
   if (options->connection_attempts == -1)
@@ -517,6 +569,7 @@ void fill_default_options(Options *options)
     options->system_hostfile = SSH_SYSTEM_HOSTFILE;
   if (options->user_hostfile == NULL)
     options->user_hostfile = SSH_USER_HOSTFILE;
+  /* options->proxy_command should not be set by default */
   /* options->user will be set in the main program if appropriate */
   /* options->hostname will be set in the main program if appropriate */
 }

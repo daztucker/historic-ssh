@@ -58,7 +58,7 @@ RETSIGTYPE intr_handler(int sig)
 /* Reads a passphrase from /dev/tty with echo turned off.  Returns the 
    passphrase (allocated with xmalloc).  Exits if EOF is encountered. 
    The passphrase if read from stdin if from_stdin is true (as is the
-   case with ssh-keygen, which we want to be able to use in batch mode). */
+   case with ssh-keygen).  */
 
 char *read_passphrase(const char *prompt, int from_stdin)
 {

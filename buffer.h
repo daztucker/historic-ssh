@@ -61,6 +61,9 @@ void buffer_get(Buffer *buffer, char *buf, unsigned int len);
 /* Consumes the given number of bytes from the beginning of the buffer. */
 void buffer_consume(Buffer *buffer, unsigned int bytes);
 
+/* Consumes the given number of bytes from the end of the buffer. */
+void buffer_consume_end(Buffer *buffer, unsigned int bytes);
+
 /* Returns a pointer to the first used byte in the buffer. */
 char *buffer_ptr(Buffer *buffer);
 

@@ -12,8 +12,9 @@ called by a name other than "ssh" or "Secure Shell".
 However, I am not implying to give any licenses to any patents or
 copyrights held by third parties, and the software includes parts that
 are not under my direct control.  As far as I know, all included
-source code is used in accordance with the relevant license
-agreements; see below for details.
+source code is used in accordance with the relevant license agreements
+and can be used freely for any purpose (the GNU license being the most
+restrictive); see below for details.
 
 The RSA algorithm and even the concept of public key encryption are
 claimed to patented in the United States.  These patents may interfere
@@ -22,15 +23,18 @@ software using the RSAREF2 library by giving --with-rsaref on the
 configure command line.  This may or may not make it legal to use this
 software for non-commercial purposes in the United States (I have sent
 a query about this to RSADSI (on July 10, 1995), but have not received
-any response yet).  The RSAREF2 distribution is not included in this
+an answer yet).  The RSAREF2 distribution is not included in this
 distribution, but can be obtained from almost any ftp site worldwide
 containing cryptographic materials.  Using RSAREF is not recommended
-outside the United States.
+outside the United States.  See "http://www.cs.hut.fi/crypto" if you
+have trouble finding the RSAREF library.
 
 The IDEA algorithm is claimed to be patented in the United States and
 several other countries.  I have been told by Ascom-Tech (the patent
 holder) that IDEA can be used freely for non-commercial use.  A copy
-of their letter is at the end.
+of their letter is at the end.  The software can be compiled without
+IDEA by specifying the --without-idea option on the configure command
+line.
 
 The DES implementation in this distribution is derived from the libdes
 library by Eric Young <eay@mincom.oz.au>.  It can be used under the
@@ -43,6 +47,10 @@ SSLeay-0.4.3a by Eric Young; he permits free use.
 The GNU Multiple Precision Library, included in this release and
 linked into the executable, is distributed under the GNU General
 Public License.  A copy can be found in gmp-1.3.2/COPYING.
+
+The zlib compression library is copyright Jean-loup Gailly and Mark
+Adler.  Anyone is permitted to use the library for any purpose.  A
+copy of the license conditions can be found in zlib095/README.
 
 The make-ssh-known-hosts script is distributed under the GNU General
 Public License.  A copy can be found in gnu-COPYING-GPL.
@@ -65,9 +73,10 @@ Comments in the file indicate it may be used as desired without
 restrictions.
 
 
-In some countries, particularly France, Russia, and Iraq, it may be
-illegal to use any encryption at all without a special permit, and the
-rumor is that you cannot get a permit for any strong encryption.
+In some countries, particularly France, Russia, Iraq, and Pakistan, it
+may be illegal to use any encryption at all without a special permit,
+and the rumor is that you cannot get a permit for any strong
+encryption.
 
 If you are in the United States, you should be aware that while this
 software was written outside the United States using information

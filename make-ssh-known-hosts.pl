@@ -28,8 +28,8 @@
 #
 #	  Creation          : 19:52 Jun 27 1995 kivinen
 #	  Last Modification : 17:39 Sep 27 1995 kivinen
-#	  Last check in     : $Date: 1995/08/29 22:37:39 $
-#	  Revision number   : $Revision: 1.3 $
+#	  Last check in     : $Date: 1995/10/02 01:23:45 $
+#	  Revision number   : $Revision: 1.4 $
 #	  State             : $State: Exp $
 #	  Version	    : 1.215
 #	  Edit time	    : 66 min
@@ -37,6 +37,9 @@
 #	  Description       : Make ssh-known-host file from dns data.
 #
 #	  $Log: make-ssh-known-hosts.pl,v $
+# Revision 1.4  1995/10/02  01:23:45  ylo
+# 	Ping packet size fixes from Kivinen.
+#
 # Revision 1.3  1995/08/29  22:37:39  ylo
 # 	Now uses GlobalKnownHostsFile and UserKnownHostsFile.
 #

@@ -100,7 +100,7 @@ void process_request_identity(SocketEntry *e)
 void process_authentication_challenge(SocketEntry *e)
 {
   int i, pub_bits;
-  MP_INT pub_e, pub_n, challenge, aux;
+  MP_INT pub_e, pub_n, challenge;
   Buffer msg;
   struct MD5Context md;
   unsigned char buf[32], mdbuf[16], session_id[16];
@@ -138,22 +138,10 @@ void process_authentication_challenge(SocketEntry *e)
 	switch (response_type)
 	  {
 	  case 0: /* As of protocol 1.0 */
-	    /* Convert the decrypted data into a 32 byte buffer. */
-	    mpz_init(&aux);
-	    for (i = 0; i < 32; i++)
-	      {
-		mpz_mod_2exp(&aux, &challenge, 8);
-		buf[i] = mpz_get_ui(&aux);
-		mpz_div_2exp(&challenge, &challenge, 8);
-	      }
-	    mpz_clear(&aux);
-	
-	    /* Compute the MD5 of the resulting buffer.  The purpose of 
-	       computing MD5 is to prevent chosen plaintext attack. */
-	    MD5Init(&md);
-	    MD5Update(&md, buf, 32);
-	    MD5Final(mdbuf, &md);
-	    break;
+	    /* This response type is no longer supported. */
+	    log("Compatibility with ssh protocol 1.0 no longer supported.");
+	    buffer_put_char(&msg, SSH_AGENT_FAILURE);
+	    goto send;
 
 	  case 1: /* As of protocol 1.1 */
 	    /* The response is MD5 of decrypted challenge plus session id. */

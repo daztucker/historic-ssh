@@ -53,11 +53,16 @@ typedef struct
   int password_authentication;	/* Try password authentication. */
   int fallback_to_rsh;		/* Use rsh if cannot connect with ssh. */
   int use_rsh;			/* Always use rsh (don\'t try ssh). */
+  int batch_mode;		/* Batch mode: do not ask for passwords. */
+  int strict_host_key_checking;	/* Strict host key checking. */
+  int compression;		/* Compress packets in both directions. */
+  int compression_level;	/* Compression level 1 (fast) to 9 (best). */
 
   int port;			/* Port to connect. */
   int connection_attempts;	/* Max attempts (seconds) before giving up */
   int cipher;			/* Cipher to use. */
   char *hostname;		/* Real host to connect. */
+  char *proxy_command;		/* Proxy command for connecting the host. */
   char *user;			/* User to log in as. */
   int escape_char;		/* Escape character; -2 = none */
 

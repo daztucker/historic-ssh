@@ -32,14 +32,14 @@
 .ds RF FORMFEED[Page %]
 .ds CF
 .ds LH RFC nnnn
-.ds RH 25 July 1995
+.ds RH 26 October 1995
 .ds CH SSH (Secure Shell) Remote Login Protocol
 .na
 .hy 0
 .in 0
 Network Working Group					       T. Ylonen
 Request for Comments: nnnn	       Helsinki University of Technology
-Category: Experimental					    25 July 1995
+Category: Experimental					 26 October 1995
 
 .in 3
 
@@ -206,6 +206,25 @@ algorithm to use is selected by the client.
 
 
 .ti 0
+Packet Compression
+
+If compression is supported (it is an optional feature, see
+SSH_CMSG_REQUEST_COMPRESSION below), the packet type and data fields
+of the packet are compressed using the gzip deflate algorithm [GZIP].
+If compression is in effect, the packet length field indicates the
+length of the compressed data, plus 4 for the crc.  The amount of
+padding is computed from the compressed data, so that the amount of
+data to be encrypted becomes a multiple of 8 bytes.
+
+When compressing, the packets (type + data portions) in each direction
+are compressed as if they formed a continuous data stream, with only the
+current compression block flushed between packets.  This corresponds
+to the GNU ZLIB library Z_PARTIAL_FLUSH option.  The compression
+dictionary is not flushed between packets.  The two directions are
+compressed independently of each other.
+
+
+.ti 0
 Packet Encryption
 
 The protocol supports several encryption types.  During session
@@ -351,7 +370,7 @@ using the binary packet protocol.
 By convention, changes which keep the protocol compatible with
 previous versions keep the same major protocol version; changes that
 are not compatible increment the major version (which will hopefully
-never happen).  The version described in this document is 1.1.
+never happen).  The version described in this document is 1.2.
 
 .ti 0
 Key Exchange and Server Host Authentication
@@ -624,6 +643,9 @@ returns SSH_SMSG_FAILURE.  It is expected that new message types might
 be added to this phase in future.
 
 The following messages are currently defined for this phase.
+.IP SSH_CMSG_REQUEST_COMPRESSION
+Requests that compression be enabled for this session.  A
+gzip-compatible compression level (1-9) is passed as an argument.
 .IP SSH_CMSG_REQUEST_PTY
 Requests that a pseudo terminal device be allocated for this session.
 The user terminal type and terminal modes are supplied as arguments.
@@ -821,6 +843,10 @@ The following flags are currently defined (the values are bit masks):
 .IP "1 SSH_PROTOFLAG_SCREEN_NUMBER"
 This flag can only be sent by the client.  It indicates that the X11
 forwarding requests it sends will include the screen number.
+.IP "2 SSH_PROTOFLAG_HOST_IN_FWD_OPEN"
+If both sides specify this flag, SSH_SMSG_X11_OPEN and
+SSH_MSG_PORT_OPEN messages will contain an additional field specifying
+the name of the host at the other end of the connection.
 .RT
 
 .ti 0
@@ -1188,6 +1214,7 @@ optional.
 ;
 l l.
 32-bit int	local_channel
+string	originating_host_name (see below)
 .TE
 This message can be sent by the server during the interactive session
 mode to indicate that a client has connected the fake X server.
@@ -1195,6 +1222,10 @@ Local_channel is the channel number that the server has allocated for
 the connection.  The client should try to open a connection to the
 real X server, and respond with SSH_MSG_CHANNEL_OPEN_CONFIRMATION or
 SSH_MSG_CHANNEL_OPEN_FAILURE.
+
+The field originating_host_name is present if and only if both sides
+specified SSH_PROTOFLAG_HOST_IN_FWD_OPEN in the protocol flags.  It
+contains the name of the host originating the connection.
 .IP "28 SSH_CMSG_PORT_FORWARD_REQUEST"
 .TS
 ;
@@ -1219,6 +1250,7 @@ l l.
 32-bit int	local_channel
 string	host_name
 32-bit int	port
+string	originating_host_name (see below)
 .TE
 Sent by either party in interactive session mode, this message
 indicates that a connection has been opened to a forwarded TCP/IP
@@ -1232,6 +1264,10 @@ side check the host_name and port for validity to avoid compromising
 local security by compromised remote side software.  Particularly, it
 is recommended that the client permit connections only to those ports
 for which it has requested forwarding with SSH_CMSG_PORT_FORWARD_REQUEST.
+
+The field originating_host_name is present if and only if both sides
+specified SSH_PROTOFLAG_HOST_IN_FWD_OPEN in the protocol flags.  It
+contains the name of the host originating the connection.
 .IP "30 SSH_CMSG_AGENT_REQUEST_FORWARDING"
 
 (no arguments)
@@ -1344,6 +1380,18 @@ The server can log debugging data sent by the client (if any).  Either
 party is free to ignore any received debugging data.  Every
 implementation must be able to receive this message, but no
 implementation is required to send these.
+.IP "37 SSH_CMSG_REQUEST_COMPRESSION"
+.TS
+;
+l l.
+32-bit int	gzip compression level (1-9)
+.TE
+This message can be sent by the client in the preparatory operations
+phase.  The server responds with SSH_SMSG_FAILURE if it does not
+support compression or does not support compression; it responds with
+SSH_SMSG_SUCCESS if it accepted the compression request.  In the
+latter case the response to this packet will still be uncompressed,
+but all further packets in either direction will be compressed by gzip.
 .RT
 
 
@@ -1605,6 +1653,9 @@ National Bureau of Standards, December 1980.  Bruce Schneier: Applied
 Cryptography.  John Wiley & Sons, 1994.  J. Seberry and J. Pieprzyk:
 Cryptography: An Introduction to Computer Security.  Prentice-Hall,
 1989.
+.IP "[GZIP] "
+The GNU GZIP program; available for anonymous ftp at prep.ai.mit.edu.
+Please let me know if you know a paper describing the algorithm.
 .IP "[IDEA] "
 Xuejia Lai: On the Design and Security of Block Ciphers, ETH Series in
 Information Processing, vol. 1, Hartung-Gorre Verlag, Konstanz,

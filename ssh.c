@@ -163,6 +163,7 @@ void usage()
   fprintf(stderr, "  -R listen-port:host:port   Forward remote port to local address\n");
   fprintf(stderr, "              These cause %s to listen for connections on a port, and\n", av0);
   fprintf(stderr, "              forward them to the other side by connecting to host:port.\n");
+  fprintf(stderr, "  -C          Enable compression.\n");
   fprintf(stderr, "  -o 'option' Process the option as if it was read from a configuration file.\n");
   exit(1);
 }
@@ -214,7 +215,7 @@ void rsh_connect(char *host, char *user, Buffer *command)
 
 int main(int ac, char **av)
 {
-  int i, opt, optind, type, exit_status, sock, fwd_port, fwd_host_port, authfd;
+  int i, opt, optind, type, exit_status, ok, fwd_port, fwd_host_port, authfd;
   char *optarg, *cp, buf[256];
   Buffer command;
   struct winsize ws;
@@ -252,6 +253,15 @@ int main(int ac, char **av)
 
   /* Parse command-line arguments. */
   host = NULL;
+
+  /* If program name is not one of the standard names, use it as host name. */
+  if (strchr(av0, '/'))
+    cp = strrchr(av0, '/') + 1;
+  else
+    cp = av0;
+  if (strcmp(cp, "rsh") != 0 && strcmp(cp, "ssh") != 0 &&
+      strcmp(cp, "rlogin") != 0 && strcmp(cp, "slogin") != 0)
+    host = cp;
   
   for (optind = 1; optind < ac; optind++)
     {
@@ -400,6 +410,10 @@ int main(int ac, char **av)
 	  add_local_forward(&options, fwd_port, buf, fwd_host_port);
 	  break;
 
+	case 'C':
+	  options.compression = 1;
+	  break;
+
 	case 'o':
 	  dummy = 1;
 	  process_config_line(&options, host ? host : "", optarg,
@@ -518,16 +532,16 @@ int main(int ac, char **av)
 
   /* Open a connection to the remote host.  This needs root privileges if
      rhosts_authentication is true. */
-  sock = ssh_connect(host, options.port, options.connection_attempts,
-		     !options.rhosts_authentication &&
-		     !options.rhosts_rsa_authentication,
-		     original_real_uid);
+  ok = ssh_connect(host, options.port, options.connection_attempts,
+		   !options.rhosts_authentication &&
+		   !options.rhosts_rsa_authentication,
+		   original_real_uid, options.proxy_command, &random_state);
 
   /* If we successfully made the connection, load the host private key in
      case we will need it later for combined rsa-rhosts authentication. 
      This must be done before releasing extra privileges, because the file
      is only readable by root. */
-  if (sock != -1)
+  if (ok)
     {
       if (load_private_key(HOST_KEY_FILE, "", &host_private_key, NULL))
 	host_private_key_loaded = 1;
@@ -547,7 +561,7 @@ int main(int ac, char **av)
       error("Could not create directory '%.200s'.", buf);
 
   /* Check if the connection failed, and try "rsh" if appropriate. */
-  if (sock == -1)
+  if (!ok)
     {
       if (options.port != 0)
 	log("Secure connection to %.100s on port %d refused%s.", 
@@ -579,7 +593,7 @@ int main(int ac, char **av)
   /* Log into the remote system.  This never returns if the login fails. 
      Note: this initializes the random state, and leaves it initialized. */
   ssh_login(&random_state, host_private_key_loaded, &host_private_key, 
-	    sock, host, &options, original_real_uid);
+	    host, &options, original_real_uid);
 
   /* We no longer need the host private key.  Clear it now. */
   if (host_private_key_loaded)
@@ -596,6 +610,26 @@ int main(int ac, char **av)
 #ifdef HAVE_SETSID
       setsid();
 #endif /* HAVE_SETSID */
+    }
+
+  /* Enable compression if requested. */
+  if (options.compression)
+    {
+      debug("Requesting compression at level %d.", options.compression_level);
+
+      if (options.compression_level < 1 || options.compression_level > 9)
+	fatal("Compression level must be from 1 (fast) to 9 (slow, best).");
+
+      /* Send the request. */
+      packet_start(SSH_CMSG_REQUEST_COMPRESSION);
+      packet_put_int(options.compression_level);
+      packet_send();
+      packet_write_wait();
+      type = packet_read();
+      if (type == SSH_SMSG_SUCCESS)
+	packet_start_compression(options.compression_level);
+      else
+	log("Warning: Remote host refused compression.");
     }
 
   /* Allocate a pseudo tty if appropriate. */
@@ -641,7 +675,7 @@ int main(int ac, char **av)
     {
       char line[512], proto[512], data[512];
       FILE *f;
-      int forwarded = 0;
+      int forwarded = 0, got_data = 0, i;
 
 #ifdef XAUTH_PATH
       /* Try to get Xauthority information for the display. */
@@ -650,34 +684,44 @@ int main(int ac, char **av)
       f = popen(line, "r");
       if (f && fgets(line, sizeof(line), f) && 
 	  sscanf(line, "%*s %s %s", proto, data) == 2)
-	{
-	  /* Got Reasonable information.  Request forwarding with
-	     authentication spoofing. */
-	  debug("Requesting X11 connection forwarding with authentication spoofing.");
-	  x11_request_forwarding_with_spoofing(&random_state, proto, data);
-
-	  /* Read response from the server. */
-	  type = packet_read();
-	  if (type == SSH_SMSG_SUCCESS)
-	    {
-	      forwarded = 1;
-	      interactive = 1;
-	    }
-
-	  else
-	    log("Warning: Remote host denied X11 authentication spoofing.");
-	}
+	got_data = 1;
       if (f)
 	pclose(f);
 #endif /* XAUTH_PATH */
+      /* If we didn't get authentication data, just make up some data.  The
+	 forwarding code will check the validity of the response anyway, and
+	 substitute this data.  The X11 server, however, will ignore this
+	 fake data and use whatever authentication mechanisms it was using
+	 otherwise for the local connection. */
+      if (!got_data)
+	{
+	  strcpy(proto, "MIT-MAGIC-COOKIE-1");
+	  for (i = 0; i < 16; i++)
+	    sprintf(data + 2 * i, "%02x", random_get_byte(&random_state));
+	}
+
+      /* Got local authentication reasonable information.  Request forwarding
+	 with authentication spoofing. */
+      debug("Requesting X11 forwarding with authentication spoofing.");
+      x11_request_forwarding_with_spoofing(&random_state, proto, data);
+
+      /* Read response from the server. */
+      type = packet_read();
+      if (type == SSH_SMSG_SUCCESS)
+	{
+	  forwarded = 1;
+	  interactive = 1;
+	}
+      else
+	log("Warning: Remote host denied X11 authentication spoofing.");
 
       if (!forwarded)
 	{
-	  /* We were unable to obtain Xauthority data.  Just forward the
-	     connection, but only use a unix domain socket for security
-	     reasons.  The user should have "xhost localhost" done (or for
-	     whatever host the user is running the client from). */
-	  debug("Requesting X11 connection forwarding for unix domain socket.");
+	  /* We were unable to use inet-domain X11 forwarding.  Try with
+	     unix domain sockets.  The user should have "xhost localhost"
+	     done (or for whatever host the user is running the client 
+	     from). */
+	  debug("Requesting X11 forwarding for unix domain socket.");
 	  x11_request_forwarding();
 
 	  /* Read response from the server. */

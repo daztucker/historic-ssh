@@ -1,16 +1,17 @@
-When run without arguments, should ssh use its won name as the host
-name (that way, you can make link by host name... This works with
-rsh.)
+Julkaise RFC/Internet Draft.
+
+uidswap on POSIX (AIX): see POSIX 4.2.2.2(1): it just might work.
 
 Consider changing AllowHosts/DenyHosts semantic to match that used in tcp_wrappers.
 
-Some way to disable password and passphrase queries from scripts.
+keylogin?
 
-Compression before encryption (optional).
+Check impact of unix-domain socket protections, particularly on HPUX.
+Message from mark.martinec@nsc.ijs.si.
 
-Could probably safely forward INET X11 connection in every case, as we
-now check the fake cookie in the client.
+Put rdist distribution and patches available in ssh ftp directory.
 
-Some problems with NIS+?
+Check server waiting 10 ms before sending a small packet.
 
-libwrap shows remote user as root.
+HPSUX has utmp problems.  (Bert Gijsbers <bert@mc.bio.uva.nl>)
+HPUX utmp: pty/ttyp1 vs. ttyp1

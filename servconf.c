@@ -32,6 +32,9 @@ void initialize_server_options(ServerOptions *options)
   options->quiet_mode = -1;
   options->fascist_logging = -1;
   options->print_motd = -1;
+  options->x11_inet_forwarding = -1;
+  options->x11_unix_forwarding = -1;
+  options->strict_modes = -1;
   options->log_facility = (SyslogFacility)-1;
   options->rhosts_authentication = -1;
   options->rhosts_rsa_authentication = -1;
@@ -72,6 +75,12 @@ void fill_default_server_options(ServerOptions *options)
     options->fascist_logging = 1;
   if (options->print_motd == -1)
     options->print_motd = 1;
+  if (options->x11_inet_forwarding == -1)
+    options->x11_inet_forwarding = 1;
+  if (options->x11_unix_forwarding == -1)
+    options->x11_unix_forwarding = 1;
+  if (options->strict_modes == -1)
+    options->strict_modes = 1;
   if (options->log_facility == (SyslogFacility)(-1))
     options->log_facility = SYSLOG_FACILITY_DAEMON;
   if (options->rhosts_authentication == -1)
@@ -93,7 +102,8 @@ typedef enum
   sPermitRootLogin, sQuietMode, sFascistLogging, sLogFacility,
   sRhostsAuthentication, sRhostsRSAAuthentication, sRSAAuthentication,
   sPasswordAuthentication, sAllowHosts, sDenyHosts, sListenAddress,
-  sPrintMotd, sIgnoreRhosts
+  sPrintMotd, sIgnoreRhosts, sX11InetForwarding, sX11UnixForwarding,
+  sStrictModes
 } ServerOpCodes;
 
 /* Textual representation of the tokens. */
@@ -121,6 +131,9 @@ static struct
   { "ListenAddress", sListenAddress },
   { "PrintMotd", sPrintMotd },
   { "IgnoreRhosts", sIgnoreRhosts },
+  { "X11InetForwarding", sX11InetForwarding },
+  { "X11UnixForwarding", sX11UnixForwarding },
+  { "StrictModes", sStrictModes },
   { NULL, 0 }
 };
 
@@ -298,6 +311,18 @@ void read_server_config(ServerOptions *options, const char *filename)
 
 	case sPrintMotd:
 	  intptr = &options->print_motd;
+	  goto parse_flag;
+
+	case sX11InetForwarding:
+	  intptr = &options->x11_inet_forwarding;
+	  goto parse_flag;
+
+	case sX11UnixForwarding:
+	  intptr = &options->x11_unix_forwarding;
+	  goto parse_flag;
+
+	case sStrictModes:
+	  intptr = &options->strict_modes;
 	  goto parse_flag;
 	  
 	case sLogFacility:

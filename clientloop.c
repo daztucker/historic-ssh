@@ -76,7 +76,8 @@ static Buffer stdout_buffer; /* Buffer for stdout data. */
 static Buffer stderr_buffer; /* Buffer for stderr data. */
 static unsigned int buffer_high; /* Soft max buffer size. */
 static int max_fd; /* Maximum file descriptor number in select(). */
-static int connection; /* Connection to server. */
+static int connection_in; /* Connection to server (input). */
+static int connection_out; /* Connection to server (output). */
 static unsigned long stdin_bytes, stdout_bytes, stderr_bytes;
 static int quit_pending; /* Set to non-zero to quit the client loop. */
 static int escape_char; /* Escape character. */
@@ -429,7 +430,7 @@ void client_wait_until_can_do_something(fd_set *readset, fd_set *writeset)
   if (buffer_len(&stdout_buffer) < buffer_high &&
       buffer_len(&stderr_buffer) < buffer_high &&
       channel_not_very_much_buffered_data())
-    FD_SET(connection, readset);
+    FD_SET(connection_in, readset);
 
   /* Read from stdin, unless we have seen EOF or have very much buffered
      data to send to the server. */
@@ -443,7 +444,7 @@ void client_wait_until_can_do_something(fd_set *readset, fd_set *writeset)
   
   /* Select server connection if have data to write to the server. */
   if (packet_have_data_to_write())
-    FD_SET(connection, writeset);
+    FD_SET(connection_out, writeset);
 
   /* Select stdout if have data in buffer. */
   if (buffer_len(&stdout_buffer) > 0)
@@ -539,10 +540,10 @@ void client_process_input(fd_set *readset)
 
   /* Read input from the server, and add any such data to the buffer of the
      packet subsystem. */
-  if (FD_ISSET(connection, readset))
+  if (FD_ISSET(connection_in, readset))
     {
       /* Read as much as possible. */
-      len = read(connection, buf, sizeof(buf));
+      len = read(connection_in, buf, sizeof(buf));
       if (len == 0)
 	{ 
 	  /* Received EOF.  The remote host has closed the connection. */
@@ -553,6 +554,12 @@ void client_process_input(fd_set *readset)
 	  quit_pending = 1;
 	  return;
 	}
+
+      /* There is a kernel bug on Solaris that causes select to sometimes
+	 wake up even though there is no data available. */
+      if (len < 0 && errno == EAGAIN)
+	len = 0;
+
       if (len < 0)
 	{
 	  /* An error has encountered.  Perhaps there is a network
@@ -756,8 +763,11 @@ int client_loop(int have_pty, int escape_char_arg)
   exit_status = -1;
   stdin_eof = 0;
   buffer_high = 64 * 1024;
-  connection = packet_get_connection();
-  max_fd = connection;
+  connection_in = packet_get_connection_in();
+  connection_out = packet_get_connection_out();
+  max_fd = connection_in;
+  if (connection_out > max_fd)
+    max_fd = connection_out;
   stdin_bytes = 0;
   stdout_bytes = 0;
   stderr_bytes = 0;
@@ -773,6 +783,7 @@ int client_loop(int have_pty, int escape_char_arg)
   signal(SIGINT, signal_handler);
   signal(SIGQUIT, signal_handler);
   signal(SIGTERM, signal_handler);
+  signal(SIGPIPE, SIG_IGN);
 #ifdef SIGWINCH
   if (have_pty)
     signal(SIGWINCH, window_change_handler);
@@ -828,7 +839,7 @@ int client_loop(int have_pty, int escape_char_arg)
       client_process_output(&writeset);
 
       /* Send as much buffered packet data as possible to the sender. */
-      if (FD_ISSET(connection, &writeset))
+      if (FD_ISSET(connection_out, &writeset))
 	packet_write_poll();
     }
 
@@ -893,7 +904,7 @@ int client_loop(int have_pty, int escape_char_arg)
   debug("Transferred: stdin %lu, stdout %lu, stderr %lu bytes in %.1f seconds",
 	stdin_bytes, stdout_bytes, stderr_bytes, total_time);
   if (total_time > 0)
-    debug("Bytes per second: stdin %.1f, stdout %.1f, stderr %.1f\n",
+    debug("Bytes per second: stdin %.1f, stdout %.1f, stderr %.1f",
 	  stdin_bytes / total_time, stdout_bytes / total_time,
 	  stderr_bytes / total_time);
 

@@ -30,6 +30,8 @@ Host ngs.fi *.ngs.fi
   FallBackToRsh no
   PasswordAuthentication no
   IdentityFile ~/.identityfiles/ngs
+  Compression yes
+  CompressionLevel 9
 
 Host *.fr
   UseRsh yes

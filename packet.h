@@ -37,13 +37,22 @@ Interface for the packet protocol functions.
 #include "randoms.h"
 
 /* Sets the socket used for communication.  Disables encryption until
-   packet_set_encryption_key is called. */
-void packet_set_connection(int socket, RandomState *state);
+   packet_set_encryption_key is called.  It is permissible that fd_in
+   and fd_out are the same descriptor; in that case it is assumed to
+   be a socket. */
+void packet_set_connection(int fd_in, int fd_out, RandomState *state);
 
-/* Returns the socket used for communication. */
-int packet_get_connection();
+/* Puts the connection file descriptors into non-blocking mode. */
+void packet_set_nonblocking();
 
-/* Closes the connection and clears and frees internal data structures. */
+/* Returns the file descriptor used for input. */
+int packet_get_connection_in();
+
+/* Returns the file descriptor used for output. */
+int packet_get_connection_out();
+
+/* Closes the connection (both descriptors) and clears and frees
+   internal data structures. */ 
 void packet_close();
 
 /* Causes any further packets to be encrypted using the given key.  The same
@@ -59,6 +68,9 @@ void packet_set_protocol_flags(unsigned int flags);
 
 /* Returns the remote protocol flags set earlier by the above function. */
 unsigned int packet_get_protocol_flags();
+
+/* Enables compression in both directions starting from the next packet. */
+void packet_start_compression(int level);
 
 /* Informs that the current session is interactive.  Sets IP flags for optimal
    performance in interactive use. */

@@ -8,8 +8,16 @@
 #
 # Created: Wed Mar 22 18:02:48 1995 ylo
 #
-# $Id: configure.in,v 1.25 1995/09/27 03:13:24 ylo Exp $
+# $Id: configure.in,v 1.26 1995/10/02 01:22:16 ylo Exp $
 # $Log: configure.in,v $
+# Revision 1.26  1995/10/02  01:22:16  ylo
+# 	Check that the compiler understands at least basic ANSI C.
+# 	Check sys/syslog.h on Ultrix.
+# 	Fixes for SCO.
+# 	Fixed --with-etcdir.
+# 	Put extra libraries at head of LIBS.
+# 	Check existence of /var/run; set and substitute PIDDIR.
+#
 # Revision 1.25  1995/09/27  03:13:24  ylo
 # 	Fixed a syntax error.
 #
@@ -248,11 +256,10 @@ case "$host" in
     AC_DEFINE(USE_STRLEN_FOR_AF_UNIX)
     ;;
   i*86-unknown-sco*)
-    LIBS="$LIBS -L/usr/lib/libp"
     AC_DEFINE(HAVE_SCO_ETC_SHADOW)
     AC_DEFINE(SCO)
-    AC_CHECK_LIB(prot, accept_pw)
-    AC_CHECK_LIB(x, chsize)
+    no_ranlib=yes
+    LIBS="-L/usr/lib/libp -lprot -lx $LIBS"
     ;;
   *)
     ;;
@@ -290,7 +297,7 @@ if test -z "$no_setsid"; then
 fi
 
 AC_CHECK_FUNCS(gettimeofday times getrusage popen)
-AC_CHECK_FUNCS(strchr memcpy setlogin openpty _getpty clock fchmod)
+AC_CHECK_FUNCS(strchr memcpy setlogin openpty _getpty clock fchmod ulimit)
 AC_CHECK_FUNCS(gethostname seteuid getdtablesize umask innetgr initgroups)
 
 AC_TYPE_SIGNAL
@@ -315,7 +322,7 @@ AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
 AC_CHECK_HEADERS(unistd.h rusage.h sys/time.h lastlog.h utmp.h utmpx.h)
 AC_CHECK_HEADERS(sgtty.h sys/select.h sys/ioctl.h)
-AC_CHECK_HEADERS(paths.h usersec.h utime.h netinet/in_systm.h)
+AC_CHECK_HEADERS(paths.h usersec.h utime.h netinet/in_systm.h ulimit.h)
 AC_HEADER_TIME
 AC_HEADER_DIRENT
 AC_HEADER_STAT
@@ -333,14 +340,24 @@ fi
 if test -z "$no_libsun"; then
   AC_CHECK_LIB(sun, getpwnam)
 fi
+AC_CHECK_LIB(util, login, AC_DEFINE(HAVE_LIBUTIL_LOGIN)
+			  LIBS="$LIBS -lutil")
 
 AC_REPLACE_FUNCS(strerror memmove remove random putenv crypt socketpair)
 
 AC_PROG_LN_S
 AC_PROG_INSTALL
-AC_PROG_RANLIB
+if test -z "$no_ranlib"; then
+  AC_PROG_RANLIB
+else
+  RANLIB=":"
+fi
 AC_PROGRAMS_CHECK(MAKEDEP, makedepend makedep, makedepend)
-AC_PATH_PROG(WISH, wish, /usr/local/bin/wish)
+AC_PATH_PROGS(WISH, wish wishx wish4.1 true)
+if test `basename $WISH` = "true"; then
+  AC_MSG_WARN(the wish program was not found - ssh-askpass will not work.)
+  WISH="/usr/local/bin/wish"
+fi
 AC_PATH_PROG(XAUTH_PATH, xauth)
 if test -n "$XAUTH_PATH"; then
   AC_DEFINE_UNQUOTED(XAUTH_PATH, "$XAUTH_PATH")
@@ -361,6 +378,14 @@ else
 fi
 fi
 
+AC_MSG_CHECKING(for /etc/default/login)
+if test -f /etc/default/login; then
+  AC_DEFINE(HAVE_ETC_DEFAULT_LOGIN)
+  AC_MSG_RESULT(yes)
+else
+  AC_MSG_RESULT(no)
+fi
+
 AC_MSG_CHECKING(for shadow passwords)
 if test -f /etc/master.passwd; then
   AC_DEFINE(HAVE_ETC_MASTER_PASSWD)
@@ -377,6 +402,20 @@ elif test -n "$os_sunos"; then
 else
   AC_MSG_RESULT(no)
 fi
+
+AC_MSG_CHECKING(location of mail spool files)
+for dir in /usr/spool/mail /usr/mail /var/spool/mail /var/mail NEWMAIL
+do
+  if test "$dir" = "NEWMAIL"; then
+    AC_DEFINE(HAVE_TILDE_NEWMAIL)
+    AC_MSG_RESULT(\$HOME/newmail)
+    AC_MSG_WARN(mail spool directory was not found: assuming you use \$HOME/newmail)
+  elif test -d $dir; then
+    AC_DEFINE_UNQUOTED(MAIL_SPOOL_DIRECTORY, "$dir")
+    AC_MSG_RESULT($dir)
+    break
+  fi
+done
 
 AC_MSG_CHECKING(location of utmp)
 if test -f /var/run/utmp; then
@@ -418,18 +457,22 @@ fi
 AC_MSG_CHECKING(location of lastlog)
 if test -f /var/log/lastlog || test -d /var/log/lastlog; then
   AC_DEFINE(SSH_LASTLOG, "/var/log/lastlog")
+  AC_DEFINE(HAVE_LASTLOG)
   LASTLOG=/var/log/lastlog
   AC_MSG_RESULT(/var/log/lastlog)
 elif test -f /var/adm/lastlog || test -d /var/adm/lastlog; then
   AC_DEFINE(SSH_LASTLOG, "/var/adm/lastlog")
+  AC_DEFINE(HAVE_LASTLOG)
   LASTLOG=/var/adm/lastlog
   AC_MSG_RESULT(/var/adm/lastlog)
 elif test -f /usr/adm/lastlog || test -d /usr/adm/lastlog; then
   AC_DEFINE(SSH_LASTLOG, "/usr/adm/lastlog")
+  AC_DEFINE(HAVE_LASTLOG)
   LASTLOG=/usr/adm/lastlog
   AC_MSG_RESULT(/usr/adm/lastlog)
 elif test -f /etc/lastlog || test -d /etc/lastlog; then
   AC_DEFINE(SSH_LASTLOG, "/etc/lastlog")
+  AC_DEFINE(HAVE_LASTLOG)
   LASTLOG=/etc/lastlog
   AC_MSG_RESULT(/etc/lastlog)
 else
@@ -467,8 +510,8 @@ AC_ARG_WITH(idea,
 
 AC_MSG_CHECKING(whether to use rsaref)
 AC_ARG_WITH(rsaref,
-[  --with-rsaref           Use RSAREF (prevents patent problems in U.S.)
-  --without-rsaref        Use normal RSA routines. ],
+[  --with-rsaref           Use RSAREF (try to avoid patent problems in U.S.)
+  --without-rsaref        Use normal RSA routines (default). ],
 [ case "$withval" in
   no)
        AC_MSG_RESULT(no)
@@ -486,7 +529,7 @@ AC_ARG_WITH(rsaref,
 
 AC_MSG_CHECKING(whether to use rsh)
 AC_ARG_WITH(rsh, 
-[  --with-rsh=path         Specify where to find rsh.
+[  --with-rsh=PATH         Specify where to find rsh.
   --without-rsh           Do not use rsh under any conditions. ],
 [ case "$withval" in
     no) 
@@ -577,7 +620,7 @@ AC_ARG_WITH(securid,
 
 AC_MSG_CHECKING(whether to use libwrap)
 AC_ARG_WITH(libwrap,
-[  --with-libwrap[=LIB]    Compile in libwrap (tcp_wrappers) support.],
+[  --with-libwrap[=PATH]   Compile in libwrap (tcp_wrappers) support.],
 [ case "$withval" in
   no)
     AC_MSG_RESULT(no)

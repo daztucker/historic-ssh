@@ -26,13 +26,13 @@
 .TH SCP 1 "Aug 24, 1995"
 
 .SH NAME
-.BR scp "\ \(em secure copy (remote file copy program)
+scp "\ \(em secure copy (remote file copy program)
 
 .SH SYNOPSIS
 .LP
 .B scp
 [\c
-.B \-prv\c
+.B \-prvC\c
 ]
 [\c
 .BI \-P "\ port\c
@@ -108,6 +108,11 @@ and
 .B ssh
 to print debugging messages about its progress.  This is helpful in
 debugging connection, authentication, and configuration problems.
+.B \-C
+Compression enable.  Passes the -C flag to
+.B ssh
+to enable compression.
+.TP
 
 .SH AUTHORS
 .LP

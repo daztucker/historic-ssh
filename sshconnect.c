@@ -90,23 +90,126 @@ login (authentication) dialog.
 #include "cipher.h"
 #include "md5.h"
 #include "mpaux.h"
-
-/* This variable is set to true if remote protocol version is 1.1 or higher. 
-   XXX remove this variable later. */
-int remote_protocol_1_1 = 0;
+#include "uidswap.h"
 
 /* Session id for the current session. */
 unsigned char session_id[16];
+
+/* Connect to the given ssh server using a proxy command. */
+
+int ssh_proxy_connect(const char *host, int port, uid_t original_real_uid,
+		      const char *proxy_command, RandomState *random_state)
+{
+  Buffer command;
+  const char *cp;
+  char *command_string;
+  int pin[2], pout[2];
+  int pid;
+  char portstring[100];
+
+  /* Convert the port number into a string. */
+  sprintf(portstring, "%d", port);
+
+  /* Build the final command string in the buffer by making the appropriate
+     substitutions to the given proxy command. */
+  buffer_init(&command);
+  for (cp = proxy_command; *cp; cp++)
+    {
+      if (cp[0] == '%' && cp[1] == '%')
+	{
+	  buffer_append(&command, "%", 1);
+	  cp++;
+	  continue;
+	}
+      if (cp[0] == '%' && cp[1] == 'h')
+	{
+	  buffer_append(&command, host, strlen(host));
+	  cp++;
+	  continue;
+	}
+      if (cp[0] == '%' && cp[1] == 'p')
+	{
+	  buffer_append(&command, portstring, strlen(portstring));
+	  cp++;
+	  continue;
+	}
+      buffer_append(&command, cp, 1);
+    }
+  buffer_append(&command, "\0", 1);
+
+  /* Get the final command string. */
+  command_string = buffer_ptr(&command);
+
+  /* Create pipes for communicating with the proxy. */
+  if (pipe(pin) < 0 || pipe(pout) < 0)
+    fatal("Could not create pipes to communicate with the proxy: %.100s",
+	  strerror(errno));
+
+  debug("Executing proxy command: %.500s", command_string);
+
+  /* Fork and execute the proxy command. */
+  if ((pid = fork()) == 0)
+    {
+      char *argv[10];
+
+      /* Child.  Permanently give up superuser privileges. */
+      permanently_set_uid(original_real_uid);
+
+      /* Redirect stdin and stdout. */
+      close(pin[1]);
+      if (pin[0] != 0)
+	{
+	  if (dup2(pin[0], 0) < 0)
+	    perror("dup2 stdin");
+	  close(pin[0]);
+	}
+      close(pout[0]);
+      if (dup2(pout[1], 1) < 0)
+	perror("dup2 stdout");
+      close(pout[1]); /* Cannot be 1 because pin allocated two descriptors. */
+
+      /* Stderr is left as it is so that error messages get printed on
+	 the user's terminal. */
+      argv[0] = "/bin/sh";
+      argv[1] = "-c";
+      argv[2] = command_string;
+      argv[3] = NULL;
+      
+      /* Execute the proxy command.  Note that we gave up any extra 
+	 privileges above. */
+      execv("/bin/sh", argv);
+      perror("/bin/sh");
+      exit(1);
+    }
+  /* Parent. */
+  if (pid < 0)
+    fatal("fork failed: %.100s", strerror(errno));
+  
+  /* Close child side of the descriptors. */
+  close(pin[0]);
+  close(pout[1]);
+
+  /* Free the command name. */
+  buffer_free(&command);
+  
+  /* Set the connection file descriptors. */
+  packet_set_connection(pout[0], pin[1], random_state);
+
+  return 1;
+}
 
 /* Opens a TCP/IP connection to the remote server on the given host.  If
    port is 0, the default port will be used.  If anonymous is zero,
    a privileged port will be allocated to make the connection. 
    This requires super-user privileges if anonymous is false. 
    Connection_attempts specifies the maximum number of tries (one per
-   second). */
+   second).  If proxy_command is non-NULL, it specifies the command (with %h 
+   and %p substituted for host and port, respectively) to use to contact
+   the daemon. */
 
 int ssh_connect(const char *host, int port, int connection_attempts,
-		int anonymous, uid_t original_real_uid)
+		int anonymous, uid_t original_real_uid, 
+		const char *proxy_command, RandomState *random_state)
 {
   int sock = -1, attempt, i;
   int on = 1;
@@ -130,6 +233,13 @@ int ssh_connect(const char *host, int port, int connection_attempts,
 	port = SSH_DEFAULT_PORT;
     }
 
+  /* If a proxy command is given, connect using it. */
+  if (proxy_command != NULL)
+    return ssh_proxy_connect(host, port, original_real_uid, proxy_command,
+			     random_state);
+
+  /* No proxy command. */
+
   /* No host lookup made yet. */
   hp = NULL;
   
@@ -151,9 +261,14 @@ int ssh_connect(const char *host, int port, int connection_attempts,
 	  int p;
 	  for (p = 1023; p > 512; p--)
 	    {
+	      /* Use the user's uid to create the socket.  I am hoping
+		 this might solve the problem with tcp_wrappers displaying
+		 the client user as root. */
 	      sock = socket(AF_INET, SOCK_STREAM, 0);
 	      if (sock < 0)
 		fatal("socket: %.100s", strerror(errno));
+
+	      /* Initialize the desired sockaddr_in structure. */
 	      memset(&sin, 0, sizeof(sin));
 	      sin.sin_family = AF_INET;
 	      sin.sin_addr.s_addr = INADDR_ANY;
@@ -171,10 +286,13 @@ int ssh_connect(const char *host, int port, int connection_attempts,
 	}
       else
 	{ 
-	  /* Just create an ordinary socket on arbitrary port. */
+	  /* Just create an ordinary socket on arbitrary port.  We use the
+	     user's uid to create the socket. */
+	  temporarily_use_uid(original_real_uid);
 	  sock = socket(AF_INET, SOCK_STREAM, 0);
 	  if (sock < 0)
 	    fatal("socket: %.100s", strerror(errno));
+	  restore_uid();
 	}
 
       /* Try to parse the host name as a numeric inet address. */
@@ -192,11 +310,18 @@ int ssh_connect(const char *host, int port, int connection_attempts,
 	  debug("Connecting to %.100s port %d.", 
 		inet_ntoa(hostaddr.sin_addr), port);
       
-	  /* Connect to the host. */
+	  /* Connect to the host.  We use the user's uid in the hope that
+	     it will help with the problems of tcp_wrappers showing the
+	     remote uid as root. */
+	  temporarily_use_uid(original_real_uid);
 	  if (connect(sock, (struct sockaddr *)&hostaddr, sizeof(hostaddr))
 	      >= 0)
-	    break;
+	    {
+	      restore_uid();
+	      break;
+	    }
 	  debug("connect: %.100s", strerror(errno));
+	  restore_uid();
 	}
       else
 	{ 
@@ -218,11 +343,18 @@ int ssh_connect(const char *host, int port, int connection_attempts,
 		     sizeof(hostaddr.sin_addr));
 	      debug("Connecting to %.200s [%.100s] port %d.",
 		    host, inet_ntoa(hostaddr.sin_addr), port);
-	      /* Connect to the host. */
+	      /* Connect to the host.  We use the user's uid in the hope that
+	         it will help with tcp_wrappers showing the remote uid as
+		 root. */
+	      temporarily_use_uid(original_real_uid);
 	      if (connect(sock, (struct sockaddr *)&hostaddr, 
 			  sizeof(hostaddr)) >= 0)
-		break;
+		{
+		  restore_uid();
+		  break;
+		}
 	      debug("connect: %.100s", strerror(errno));
+	      restore_uid();
 	    }
 	  if (hp->h_addr_list[i])
 	    break; /* Successful connection. */
@@ -236,13 +368,13 @@ int ssh_connect(const char *host, int port, int connection_attempts,
     }
   /* Return failure if we didn't get a successful connection. */
   if (attempt >= connection_attempts)
-    return -1;
+    return 0;
 
   debug("Connection established.");
 
   /* Set socket options.  We would like the socket to disappear as soon as
      it has been closed for whatever reason. */
-  setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (void *)&on, sizeof(on));
+  /* setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (void *)&on, sizeof(on)); */
 #ifdef TCP_NODELAY
   setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (void *)&on, sizeof(on));
 #endif /* TCP_NODELAY */
@@ -252,7 +384,10 @@ int ssh_connect(const char *host, int port, int connection_attempts,
   setsockopt(sock, SOL_SOCKET, SO_LINGER, (void *)&linger, sizeof(linger));
 #endif /* SO_LINGER */
 
-  return sock;
+  /* Set the connection. */
+  packet_set_connection(sock, sock, random_state);
+
+  return 1;
 }
 
 /* Checks if the user has an authentication agent, and if so, tries to
@@ -313,8 +448,7 @@ int try_agent_authentication()
 
       /* Ask the agent to decrypt the challenge. */
       if (!ssh_decrypt_challenge(auth, bits, &e, &n, &challenge, 
-				 session_id, remote_protocol_1_1, 
-				 response))
+				 session_id, 1, response))
 	{
 	  /* The agent failed to authenticate this identifier although it
 	     advertised it supports this.  Just return a wrong value. */
@@ -371,36 +505,12 @@ void respond_to_rsa_challenge(MP_INT *challenge, RSAPrivateKey *prv)
   rsa_private_decrypt(challenge, challenge, prv);
 
   /* Compute the response. */
-  if (remote_protocol_1_1)
-    {
-      /* The response is MD5 of decrypted challenge plus session id. */
-      mp_linearize_msb_first(buf, 32, challenge);
-      MD5Init(&md);
-      MD5Update(&md, buf, 32);
-      MD5Update(&md, session_id, 16);
-      MD5Final(response, &md);
-    }
-  else
-    { /* XXX remove this compatibility code later */
-      /* The challenge used to be interpreted with the first byte in lsb
-	 (againt the spec). */
-      /* Convert the decrypted data into a 32 byte buffer. */
-      MP_INT aux;
-      mpz_init(&aux);
-      for (i = 0; i < 32; i++)
-	{
-	  mpz_mod_2exp(&aux, challenge, 8);
-	  buf[i] = mpz_get_ui(&aux);
-	  mpz_div_2exp(challenge, challenge, 8);
-	}
-      mpz_clear(&aux);
-  
-      /* Compute the MD5 of the resulting buffer.  The purpose of computing 
-	 MD5 is to prevent chosen plaintext attack. */
-      MD5Init(&md);
-      MD5Update(&md, buf, 32);
-      MD5Final(response, &md);
-    }
+  /* The response is MD5 of decrypted challenge plus session id. */
+  mp_linearize_msb_first(buf, 32, challenge);
+  MD5Init(&md);
+  MD5Update(&md, buf, 32);
+  MD5Update(&md, session_id, 16);
+  MD5Final(response, &md);
   
   debug("Sending response to host key RSA challenge.");
 
@@ -419,7 +529,8 @@ void respond_to_rsa_challenge(MP_INT *challenge, RSAPrivateKey *prv)
 /* Checks if the user has authentication file, and if so, tries to authenticate
    the user using it. */
 
-int try_rsa_authentication(struct passwd *pw, const char *authfile)
+int try_rsa_authentication(struct passwd *pw, const char *authfile,
+			   int may_ask_passphrase)
 {
   MP_INT challenge;
   RSAPrivateKey private_key;
@@ -470,9 +581,18 @@ int try_rsa_authentication(struct passwd *pw, const char *authfile)
     {
       char buf[300];
       /* Request passphrase from the user.  We read from /dev/tty to make
-         this work even if stdin has been redirected. */
+         this work even if stdin has been redirected.  If running in
+	 batch mode, we just use the empty passphrase, which will fail and
+	 return. */
       sprintf(buf, "Enter passphrase for RSA key '%.100s': ", comment);
-      passphrase = read_passphrase(buf, 0);
+      if (may_ask_passphrase)
+	passphrase = read_passphrase(buf, 0);
+      else
+	{
+	  debug("Will not query passphrase for %.100s in batch mode.", 
+		comment);
+	  passphrase = xstrdup("");
+	}
       
       /* Load the authentication file using the pasphrase. */
       if (!load_private_key(authfile, passphrase, &private_key, NULL))
@@ -584,45 +704,20 @@ int try_rhosts_rsa_authentication(const char *local_user,
   return 0;
 }
 
-/* Starts a dialog with the server, and authenticates the current user on the
-   server.  This does not need any extra privileges.  The basic connection
-   to the server must already have been established before this is called. 
-   User is the remote user; if it is NULL, the current local user name will
-   be used.  Anonymous indicates that no rhosts authentication will be used.
-   If login fails, this function prints an error and never returns. 
-   This function does not require super-user privileges. */
+/* Waits for the server identification string, and sends our own identification
+   string. */
 
-void ssh_login(RandomState *state, int host_key_valid, 
-	       RSAPrivateKey *own_host_key,
-	       int sock, const char *orighost, 
-	       Options *options, uid_t original_real_uid)
+void ssh_exchange_identification()
 {
-  int i, type, remote_major, remote_minor;
-  char buf[1024]; /* Must not be larger than remote_version. */
-  char remote_version[1024]; /* Must be at least as big as buf. */
-  char *password;
-  struct passwd *pw;
-  MP_INT key;
-  RSAPublicKey host_key;
-  RSAPublicKey public_key;
-  unsigned char session_key[SSH_SESSION_KEY_LENGTH];
-  const char *server_user, *local_user;
-  char *cp, *host;
-  struct stat st;
-  unsigned char check_bytes[8];
-  unsigned int supported_ciphers, supported_authentications, protocol_flags;
-  HostStatus host_status;
-
-  /* Convert the user-supplied hostname into all lowercase. */
-  host = xstrdup(orighost);
-  for (cp = host; *cp; cp++)
-    if (isupper(*cp))
-      *cp = tolower(*cp);
+  char buf[256], remote_version[256]; /* must be same size! */
+  int remote_major, remote_minor, i;
+  int connection_in = packet_get_connection_in();
+  int connection_out = packet_get_connection_out();
 
   /* Read other side\'s version identification. */
   for (i = 0; i < sizeof(buf) - 1; i++)
     {
-      if (read(sock, &buf[i], 1) != 1)
+      if (read(connection_in, &buf[i], 1) != 1)
 	fatal("read: %.100s", strerror(errno));
       if (buf[i] == '\r')
 	{
@@ -653,31 +748,56 @@ void ssh_login(RandomState *state, int host_key_valid,
 	  PROTOCOL_MAJOR, remote_major);
 #endif
 
-  /* Check if remote side has protocol version >= 1.1. XXX remove this later.*/
-  remote_protocol_1_1 = (remote_major >= 1 && remote_minor >= 1);
-  if (!remote_protocol_1_1)
-    {
-      log("Warning: Remote machine has old SSH software version.");
-      log("Warning: Installing a newer version is recommended.");
-    }
+  /* Check if the remote protocol version is too old. */
+  if (remote_major == 1 && remote_minor == 0)
+    fatal("Remote machine has too old SSH software version.");
 
   /* Send our own protocol version identification. */
   sprintf(buf, "SSH-%d.%d-%.100s\n", 
 	  PROTOCOL_MAJOR, PROTOCOL_MINOR, SSH_VERSION);
-  if (write(sock, buf, strlen(buf)) != strlen(buf))
+  if (write(connection_out, buf, strlen(buf)) != strlen(buf))
     fatal("write: %.100s", strerror(errno));
+}
 
-  /* The minor version is currently not used for anything but
-     might be used to enable certain features in future. */
+/* Starts a dialog with the server, and authenticates the current user on the
+   server.  This does not need any extra privileges.  The basic connection
+   to the server must already have been established before this is called. 
+   User is the remote user; if it is NULL, the current local user name will
+   be used.  Anonymous indicates that no rhosts authentication will be used.
+   If login fails, this function prints an error and never returns. 
+   This function does not require super-user privileges. */
 
-  /* Set the socket into non-blocking mode. */
-#ifdef O_NONBLOCK
-  if (fcntl(sock, F_SETFL, O_NONBLOCK) < 0)
-    error("fcntl O_NONBLOCK: %.100s", strerror(errno));
-#else /* O_NONBLOCK */  
-  if (fcntl(sock, F_SETFL, O_NDELAY) < 0)
-    error("fcntl O_NDELAY: %.100s", strerror(errno));
-#endif /* O_NONBLOCK */
+void ssh_login(RandomState *state, int host_key_valid, 
+	       RSAPrivateKey *own_host_key,
+	       const char *orighost, 
+	       Options *options, uid_t original_real_uid)
+{
+  int i, type;
+  char buf[1024];
+  char *password;
+  struct passwd *pw;
+  MP_INT key;
+  RSAPublicKey host_key;
+  RSAPublicKey public_key;
+  unsigned char session_key[SSH_SESSION_KEY_LENGTH];
+  const char *server_user, *local_user;
+  char *cp, *host;
+  struct stat st;
+  unsigned char check_bytes[8];
+  unsigned int supported_ciphers, supported_authentications, protocol_flags;
+  HostStatus host_status;
+
+  /* Convert the user-supplied hostname into all lowercase. */
+  host = xstrdup(orighost);
+  for (cp = host; *cp; cp++)
+    if (isupper(*cp))
+      *cp = tolower(*cp);
+
+  /* Exchange protocol version identification strings with the server. */
+  ssh_exchange_identification();
+
+  /* Put the connection into non-blocking mode. */
+  packet_set_nonblocking();
 
   /* Get local user name.  Use it as server user if no user name
      was given. */
@@ -686,9 +806,6 @@ void ssh_login(RandomState *state, int host_key_valid,
     fatal("User id %d not found from user database.", original_real_uid);
   local_user = xstrdup(pw->pw_name);
   server_user = options->user ? options->user : local_user;
-
-  /* Initialize the connection in the packet protocol module. */
-  packet_set_connection(sock, state);
 
   debug("Waiting for server public key.");
 
@@ -761,6 +878,14 @@ void ssh_login(RandomState *state, int host_key_valid,
       break;
     case HOST_NEW:
       /* The host is new. */
+      if (options->strict_host_key_checking)
+	{ /* User has requested strict host key checking.  We will not
+	     add the host key automatically.  The only alternative left
+	     is to abort. */
+	  fatal("No host key is known for %.200s and you have requested strict checking.", host);
+	}
+      /* If not in strict mode, add the key automatically to the local
+	 known_hosts file. */
       if (!add_host_to_hostfile(options->user_hostfile, host, host_key.bits, 
 				&host_key.e, &host_key.n))
 	log("Failed to add the host to the list of known hosts (%.500s).", 
@@ -774,11 +899,19 @@ void ssh_login(RandomState *state, int host_key_valid,
       error("@       WARNING: HOST IDENTIFICATION HAS CHANGED!         @");
       error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
       error("IT IS POSSIBLE THAT SOMEONE IS DOING SOMETHING NASTY!");
-      error("Someone could be eavesdropping on you right now!");
+      error("Someone could be eavesdropping on you right now (man-in-the-middle attack)!");
       error("It is also possible that the host key has just been changed.");
       error("Please contact your system administrator.");
       error("Add correct host key in %s to get rid of this message.", 
 	    options->user_hostfile);
+
+      /* If strict host key checking is in use, the user will have to edit
+	 the key manually and we can only abort. */
+      if (options->strict_host_key_checking)
+	fatal("Host key for %.200s has changed and you have requested strict checking.", host);
+
+      /* If strict host key checking has not been requested, allow the
+	 connection but without password authentication. */
       error("Password authentication is disabled to avoid trojan horses.");
       options->password_authentication = 0;
       /* XXX Should permit the user to change to use the new id.  This could
@@ -809,32 +942,17 @@ void ssh_login(RandomState *state, int host_key_valid,
   random_save(state, buf);
   random_stir(state); /* This is supposed to be irreversible. */
 
-  if (remote_protocol_1_1)
+  /* According to the protocol spec, the first byte of the session key is
+     the highest byte of the integer.  The session key is xored with the
+     first 16 bytes of the session id. */
+  mpz_init_set_ui(&key, 0);
+  for (i = 0; i < SSH_SESSION_KEY_LENGTH; i++)
     {
-      /* According to the protocol spec, the first byte of the session key is
-	 the highest byte of the integer.  The session key is xored with the
-	 first 16 bytes of the session id. */
-      mpz_init_set_ui(&key, 0);
-      for (i = 0; i < SSH_SESSION_KEY_LENGTH; i++)
-	{
-	  mpz_mul_2exp(&key, &key, 8);
-	  if (i < 16)
-	    mpz_add_ui(&key, &key, session_key[i] ^ session_id[i]);
-	  else
-	    mpz_add_ui(&key, &key, session_key[i]);
-	}
-    }
-  else
-    { /* XXX remove this compatibility code later. */
-      /* In the old version, the session key was stored in the integer 
-	 with the first byte in the lowermost bits of the integer (i.e, lsb
-	 first).  Additionally, there was no xoring. */
-      mpz_init_set_ui(&key, 0);
-      for (i = 0; i < SSH_SESSION_KEY_LENGTH; i++)
-	{
-	  mpz_mul_2exp(&key, &key, 8);
-	  mpz_add_ui(&key, &key, session_key[SSH_SESSION_KEY_LENGTH - i - 1]);
-	}
+      mpz_mul_2exp(&key, &key, 8);
+      if (i < 16)
+	mpz_add_ui(&key, &key, session_key[i] ^ session_id[i]);
+      else
+	mpz_add_ui(&key, &key, session_key[i]);
     }
 
   /* Encrypt the integer using the public key and host key of the server
@@ -885,7 +1003,7 @@ void ssh_login(RandomState *state, int host_key_valid,
   packet_put_mp_int(&key);
 
   /* Send protocol flags. */
-  packet_put_int(SSH_PROTOFLAG_SCREEN_NUMBER);
+  packet_put_int(SSH_PROTOFLAG_SCREEN_NUMBER | SSH_PROTOFLAG_HOST_IN_FWD_OPEN);
 
   /* Send the packet now. */
   packet_send();
@@ -969,13 +1087,14 @@ void ssh_login(RandomState *state, int host_key_valid,
 
       /* Try RSA authentication for each identity. */
       for (i = 0; i < options->num_identity_files; i++)
-	if (try_rsa_authentication(pw, options->identity_files[i]))
+	if (try_rsa_authentication(pw, options->identity_files[i],
+				   !options->batch_mode))
 	  return; /* Successful connection. */
     }
   
   /* Try password authentication if the server supports it. */
   if ((supported_authentications & (1 << SSH_AUTH_PASSWORD)) &&
-      options->password_authentication)
+      options->password_authentication && !options->batch_mode)
     {
       debug("Doing password authentication.");
       if (options->cipher == SSH_CIPHER_NONE)

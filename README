@@ -534,9 +534,16 @@ The author can be contacted via ordinary mail at
 ACKNOWLEDGEMENTS
 
 I thank Tero Kivinen, Timo Rinne, Janne Snabb, and Heikki Suonsivu for
-their help in the design, implementation and porting the this
-software.  Eric Young has kindly provided his DES library for public use.
-Many other people have provided bug reports, patches, code, or other help.
+their help and comments in the design, implementation and porting the
+this software.  I also thank numerous contributors, including but not
+limited to Walker Aumann, Hans-Werner Braun, Stephane Bortzmeyer,
+David Dombek, Jerome Etienne, Bill Fithen, Mark Fullmer, Bert
+Gijsbers, Andreas Gustafsson, Michael Henits, Steve Johnson, Thomas
+Koenig, Felix Leitner, Gunnar Lindberg, Andrew Macpherson, Marc
+Martinec, Paul Mauvais, Donald McKillican, Leon Mlakar, Robert
+Muchsel, Mark Treacy, Bryan O'Sullivan, Ollivier Robert, Jakob
+Schlyter, Tomasz Surmacz, Alvar Vinacua, Michael Warfield, and
+Cristophe Wolfhugel.
 
 Thanks also go to Philip Zimmermann, whose PGP software and the
 associated legal battle provided inspiration, motivation, and many

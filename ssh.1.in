@@ -9,8 +9,11 @@
 .\"
 .\" Created: Sat Apr 22 21:55:14 1995 ylo
 .\"
-.\" $Id: ssh.1,v 1.8 1995/09/25 00:00:49 ylo Exp $
-.\" $Log: ssh.1,v $
+.\" $Id: ssh.1.in,v 1.9 1995/10/02 01:28:11 ylo Exp $
+.\" $Log: ssh.1.in,v $
+.\" Revision 1.9  1995/10/02  01:28:11  ylo
+.\" 	Make substitutions in configure.
+.\"
 .\" Revision 1.8  1995/09/25  00:00:49  ylo
 .\" 	Added ConnectionAttempts.
 .\"
@@ -38,7 +41,7 @@
 .TH SSH 1 "Aug 24, 1995" "SSH" "SSH"
 
 .SH NAME
-.BR ssh "\ \(em secure shell client (remote login program)
+ssh "\ \(em secure shell client (remote login program)
 
 .SH SYNOPSIS
 .B ssh
@@ -88,6 +91,9 @@
 ]
 [\c
 .BR \-x \c
+]
+[\c
+.BR \-C \c
 ]
 [\c
 .BI \-L \ port\fB:\fIhost\fB:\fIhostport\fR\c
@@ -390,6 +396,10 @@ Disables X11 forwarding.  This can also be specified on a per-host
 basis in a configuration file.
 .ne 3
 .TP
+.B \-C
+Requests gzip compression of all data.
+.ne 3
+.TP
 .BI \-L "\ port:host:hostport
 Specifies that the given port on the local (client) host is to be
 forwarded to the given host and port on the remote side.  This works
@@ -479,6 +489,27 @@ should automatically be used instead (after a suitable warning about
 the session being unencrypted).  The argument must be
 .YN
 .ne 3
+.B BatchMode
+If set to "yes", passphrase/password querying will be disabled.  This
+option is useful in scripts and other batch jobs where you have no
+user to supply the password.  The argument must be
+.YN
+.ne 3
+.TP
+.B StrictHostKeyChecking
+If this flag is set to "yes", 
+.B ssh
+ssh will never automatically add host keys to the
+$HOME/.ssh/known_hosts file.  This provides maximum protection against
+trojan horse attacks.  However, it can be somewhat annoying if you
+don't have good /etc/ssh_known_hosts files installed and frequently
+connect new hosts.  Basically this option forces the user to manually
+add any new hosts.  Normally this option is disabled, and new hosts
+will automatically be added to the known host files.  The host keys of
+known hosts will be verified automatically in either case.  The
+argument must be
+.YN
+.ne3
 .TP
 .B HostName
 Specifies the real host name to log into.  This can be used to specify
@@ -492,6 +523,20 @@ specifications).
 .B Port
 Specifies the port number to connect on the remote host.  Default is
 22.
+.ne 3
+.TP
+.B ProxyCommand
+Specifies the command to use to connect to the server.  The command
+string extend to the end of the line, and is executed with /bin/sh.
+In the command string, %h will be substituted by the host name to
+connect, and %p by the port.  The command can be basically anything,
+and should read from its stdin and write to its stdout.  It should
+eventually connect an
+.B sshd
+server running on some machine, or execute
+"sshd -i" somewhere.  Host key management will be done using the
+HostName of the host being connected (defaulting to the name typed by
+the user).
 .ne 3
 .TP
 .B ConnectionAttempts
@@ -520,6 +565,18 @@ Specifies the cipher to use for encrypting the session.  Currently,
 and
 .I none
 are supported.  \fB\s-1IDEA\s0\fR is the default.
+.ne 3
+.TP
+.B Compression
+Specifies whether to use compression.  The argument must be
+.YN
+.ne 3
+.TP
+.B CompressionLevel
+Specifies the compression level to use if compression is enable.  The
+argument must be an integer from 1 (fast) to 9 (slow, best).  The
+default level is 6.  The meaning of the values is the same as in GNU
+GZIP.
 .ne 3
 .TP
 .B RhostsAuthentication
@@ -634,18 +691,18 @@ manual page.
 .TP
 .I \&$HOME/\s+2.\s0ssh/random_seed
 Used for seeding the random number generator.  This file contains
-sensitive data and should not be readable by anyone but the user.
-This file is created the first time the program is run and updated
-automatically.  The user should never need to read or modify this
-file.
+sensitive data and should read/write for the user and not accessible
+for others.  This file is created the first time the program is run
+and updated automatically.  The user should never need to read or
+modify this file.
 .ne 5
 .TP
 .I \&$HOME/\s+2.\s0ssh/identity
 Contains the RSA authentication identity of the user.  This file
-contains sensitive data and should not be readable by anyone but the
-user.  It is possible to specify a passphrase when generating the key;
-the passphrase will be used to encrypt the sensitive part of this file
-using 
+contains sensitive data and should be readable by the user but not
+accessible by others.  It is possible to specify a passphrase when
+generating the key; the passphrase will be used to encrypt the
+sensitive part of this file using
 .BR \s-1IDEA\s0 ".
 .ne 3
 .TP
@@ -663,7 +720,9 @@ the convenience of the user.
 This is the per-user configuration file.  The format of this file is
 described above.  This file is used by the
 .B ssh
-client.  This file does not usually contain any sensitive information.
+client.  This file does not usually contain any sensitive information,
+but the recommended permissions are read/write for the user, and not
+accessible by others.
 .ne 3
 .TP
 .I \&$HOME/\s+2.\s0ssh/authorized_keys
@@ -673,7 +732,8 @@ format of this file is described in the
 manual page.  In the simplest form the format is the same as the .pub
 identity files (that is, each line contains the number of bits in
 modulus, public exponent, modulus, and comment fields, separated by
-spaces).
+spaces).  This file is not highly sensitive, but the recommended
+permissions are read/write for the user, and not accessible by others.
 .ne 3
 .TP
 .I @ETCDIR@/ssh_known_hosts
@@ -705,16 +765,19 @@ be world-readable.
 .ne 3
 .TP
 .I $HOME/\s+2.\s0rhosts
-This file is used in \s+2.\s0rhosts authentication to list the host/user
-pairs that are permitted to log in.  (Note that this file is also used
-by rlogin and rsh, which makes using this file insecure.)  Each line
-of the file contains a host name (in the canonical form returned by
-name servers), and then a user name on that host, separated by a
-space.  This file may need to be world-readable if the user's home
-directory is on a NFS partition, because 
+This file is used in \s+2.\s0rhosts authentication to list the
+host/user pairs that are permitted to log in.  (Note that this file is
+also used by rlogin and rsh, which makes using this file insecure.)
+Each line of the file contains a host name (in the canonical form
+returned by name servers), and then a user name on that host,
+separated by a space.  One some machines this file may need to be
+world-readable if the user's home directory is on a NFS partition,
+because
 .B sshd 
 reads it as root.  Additionally, this file must be owned by the user,
-and must not have write permissions for anyone else.
+and must not have write permissions for anyone else.  The recommended
+permission for most machines is read/write for the user, and not
+accessible by others.
 .IP
 Note that by default
 .B sshd
@@ -739,11 +802,10 @@ This file is used during \s+2.\s0rhosts authentication.  It contains
 canonical hosts names, one per line (the full format is described on
 the
 .B sshd
-manual page).  If the client host is found in
-this file, login is automatically permitted provided client and server
-user names are the same.  Additionally, successful RSA host
-authentication is normally required.  This file must be readable by
-root.
+manual page).  If the client host is found in this file, login is
+automatically permitted provided client and server user names are the
+same.  Additionally, successful RSA host authentication is normally
+required.  This file should only be writable by root.
 .TP
 .I @ETCDIR@/shosts.equiv
 This file is processed exactly as /etc/hosts.equiv.  This file may be

@@ -67,7 +67,7 @@ on a tty.
 unsigned long get_last_login_time(uid_t uid, const char *name, 
 				  char *buf, unsigned int bufsize)
 {
-#ifdef HAVE_LASTLOG_H
+#if defined(HAVE_LASTLOG_H) || define(HAVE_LASTLOG)
   struct lastlog ll;
   char lastlogfile[500];
   int fd;
@@ -99,19 +99,22 @@ unsigned long get_last_login_time(uid_t uid, const char *name,
   buf[bufsize - 1] = 0;
   return ll.ll_time;
   
-#else /* HAVE_LASTLOG_H */
+#else /* HAVE_LASTLOG_H || HAVE_LASTLOG */
 
   return 0;
 
-#endif /* HAVE_LASTLOG_H */
+#endif /* HAVE_LASTLOG_H || HAVE_LASTLOG */
 }
 
 #else /* LASTLOG_IS_DIR */
 
+/* Returns the time when the user last logged in (or 0 if no previous login
+   is found).  The name of the host used last time is returned in buf. */
+
 unsigned long get_last_login_time(uid_t uid, const char *logname,
 				  char *buf, unsigned int bufsize)
 {
-#ifdef HAVE_LASTLOG_H
+#if defined(HAVE_LASTLOG_H) || defined(HAVE_LASTLOG)
 
   struct lastlog ll;
   char *lastlog;
@@ -145,7 +148,7 @@ unsigned long get_last_login_time(uid_t uid, const char *logname,
   buf[bufsize - 1] = 0;
   return ll.ll_time;
 
-#else /* HAVE_LASTLOG_H */
+#else /* HAVE_LASTLOG_H || HAVE_LASTLOG */
 
 #ifdef HAVE_USERSEC_H
 
@@ -175,7 +178,7 @@ unsigned long get_last_login_time(uid_t uid, const char *logname,
 
 #endif /* HAVE_USERSEC_H */
 
-#endif /* HAVE_LASTLOG_H */
+#endif /* HAVE_LASTLOG_H || HAVE_LASTLOG */
 }
 #endif /* LASTLOG_IS_DIR */
 
@@ -187,13 +190,13 @@ void record_login(int pid, const char *ttyname, const char *user, uid_t uid,
 {
   int fd;
 
-#ifdef HAVE_LASTLOG_H
+#if defined(HAVE_LASTLOG_H) || defined(HAVE_LASTLOG)
   struct lastlog ll;
   char *lastlog;
 #ifdef LASTLOG_IS_DIR
   char lastlogfile[100];
 #endif /* LASTLOG_IS_DIR */
-#endif /* HAVE_LASTLOG_H */
+#endif /* HAVE_LASTLOG_H || HAVE_LASTLOG */
 
 #if defined(HAVE_UTMP_H) && !defined(HAVE_UTMPX_H)
   struct utmp u, u2;
@@ -252,6 +255,9 @@ void record_login(int pid, const char *ttyname, const char *user, uid_t uid,
 #endif
 #endif
   
+#ifdef HAVE_LIBUTIL_LOGIN
+  login(&u);
+#else /* HAVE_LIBUTIL_LOGIN */
   /* Append an entry to wtmp. */
   fd = open(wtmp, O_WRONLY|O_APPEND);
   if (fd >= 0)
@@ -288,6 +294,7 @@ void record_login(int pid, const char *ttyname, const char *user, uid_t uid,
 	}
       close(fd);
     }
+#endif /* HAVE_LIBUTIL_LOGIN */
 #endif /* HAVE_UTMP_H && !HAVE_UTMPX_H */
 
 #ifdef HAVE_UTMPX_H
@@ -323,7 +330,7 @@ void record_login(int pid, const char *ttyname, const char *user, uid_t uid,
   }
 #endif /* HAVE_UTMPX_H */
 
-#ifdef HAVE_LASTLOG_H
+#if defined(HAVE_LASTLOG_H) || defined(HAVE_LASTLOG)
 
 #ifdef _PATH_LASTLOG
   lastlog = _PATH_LASTLOG;
@@ -371,7 +378,7 @@ void record_login(int pid, const char *ttyname, const char *user, uid_t uid,
 	}
 #endif /* LASTLOG_IS_DIR */
     }
-#endif /* HAVE_LASTLOG_H */
+#endif /* HAVE_LASTLOG_H || HAVE_LASTLOG */
 
 #ifdef HAVE_USERSEC_H
 
@@ -401,5 +408,11 @@ void record_login(int pid, const char *ttyname, const char *user, uid_t uid,
 
 void record_logout(int pid, const char *ttyname)
 {
+#ifdef HAVE_LIBUTIL_LOGIN
+  const char *line = ttyname + 8; /* /dev/ttyq8 -> q8 */
+  if (logout(line))
+    logwtmp(line, "", "");
+#else /* HAVE_LIBUTIL_LOGIN */
   record_login(pid, ttyname, "", -1, "", NULL);
+#endif /* HAVE_LIBUTIL_LOGIN */  
 }

@@ -21,6 +21,8 @@
 #   PasswordAuthentication yes
 #   FallBackToRsh yes
 #   UseRsh no
+#   BatchMode no
+#   StrictHostKeyChecking no
 #   IdentityFile ~/.ssh/identity
 #   Port 22
 #   Cipher idea

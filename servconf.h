@@ -32,6 +32,9 @@ typedef struct
   int quiet_mode;		/* If true, don't log anything but fatals. */
   int fascist_logging;		/* Perform very verbose logging. */
   int print_motd;		/* If true, print /etc/motd. */
+  int x11_inet_forwarding;	/* If true, permit inet (spoofing) X11 fwd. */
+  int x11_unix_forwarding;	/* If true, permit unix domain X11 fwd. */
+  int strict_modes;		/* If true, require string home dir modes. */
   SyslogFacility log_facility;	/* Facility for system logging. */
   int rhosts_authentication;	/* If true, permit rhosts authentication. */
   int rhosts_rsa_authentication;/* If true, permit rhosts RSA authentication.*/

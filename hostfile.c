@@ -187,7 +187,7 @@ HostStatus check_host_in_hostfile(const char *filename,
       if (stat(filename, &st) >= 0)
 	{
 	  packet_send_debug("Could not open %.900s for reading.", filename);
-	  packet_send_debug("If your home is on an NFS volume, it may need to be world-readable.");
+	  packet_send_debug("If your home directory is on an NFS volume, it may need to be world-readable.");
 	}
       return HOST_NEW;
     }

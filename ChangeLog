@@ -1,5 +1,146 @@
+Thu Oct 26 01:28:07 1995  Tatu Ylonen  <ylo@soikko.cs.hut.fi>
+
+	* scp.c: disable agent forwarding when running ssh from scp.
+
+	* Added compression of plaintext packets using the gzip library
+ 	  (zlib).  Client configuration options Compression and
+	  CompressionLevel (1-9 as in gzip).  New ssh and scp option -C
+	  (to enable compression).
+
+Wed Oct 25 05:11:55 1995  Tatu Ylonen  <ylo@soikko.cs.hut.fi>
+
+	* Implemented ProxyCommand stuff based on patches from Bryan
+	  O'Sullivan <bos@serpentine.com>.
+
+	* Merged BSD login/logout/lastlog patches from Mark Treacy
+	  <mark@labtam.oz.au>.
+	
+	* sshd.c: Added chdir("/").
+
+Tue Oct 24 00:29:01 1995  Tatu Ylonen  <ylo@soikko.cs.hut.fi>
+
+	* Merged RSA environment= patches from Felix Leitner
+	  <leitner@prz.tu-berlin.de> with some changes.
+	
+	* sshd.c: Made the packet code use two separate descriptors for
+	  the connection (one for input, the other for output).  This will
+	  make future extensions easier (e.g., non-socket transports, etc.).
+
+Mon Oct 23 21:29:28 1995  Tatu Ylonen  <ylo@soikko.cs.hut.fi>
+
+	* sshd.c: Merged execle -> execve patches from Mark Martinec
+ 	  <Mark.Martinec@nsc.ijs.si>.  This may help with execle bugs on
+ 	  Convex (environment not getting passed properly).  This might
+ 	  also solve similar problems on Sonys; please test!
+
+	* Removed all compatibility code for protocol version 1.0.
+	  THIS MEANS THAT WE ARE NO LONGER COMPATIBLE WITH SSH VERSIONS
+	  PRIOR TO 1.1.0.
+
+	* randoms.c (random_acquire_light_environmental_noise): If
+	  /dev/random is available, read up to 32 bytes (256 bits) from
+	  there in non-blocking mode, and mix the new random bytes into
+	  the pool.
+
+	* Added client configuration option StrictHostKeyChecking
+	  (disabled by default).  If this is enabled, the client will not
+	  automatically add new host keys to $HOME/.ssh/known_hosts;
+	  instead the connection will be refused if the host key is not
+	  known.  Similarly, if the host key has changed, the connection
+	  will be refused instead if just issuing a warning.  This
+	  provides additional security against man-in-the-middle/trojan
+	  horse attacks (especially in scripts where there is no-one to
+	  see the warnings), but may be quite inconvenient in everyday
+	  interactive use unless /etc/ssh_known_hosts is very complete,
+	  because new host keys must now be added manually.
+	
+	* sshconnect.c (ssh_connect): Use the user's uid when creating the
+	  socket and connecting it.  I am hoping that this might help with
+	  tcp_wrappers showing the remote user as root.
+
+	* ssh.c: Try inet-domain X11 forwarding regardless of whether we
+	  can get local authorization information.  If we don't, we just
+	  come up with fake information; the forwarding code will anyway
+	  generate its own fake information and validate that the client
+	  knows that information.  It will then substitute our fake
+	  information for that, but that info should get ignored by the
+	  server if it doesn't support it.
+
+	* Added option BatchMode to disable password/passphrase querying
+	  in scripts.
+
+	* auth-rh-rsa.c: Changed to use uid-swapping when reading
+	  .ssh/known_hosts.
+
+	* sshd.8.in (command): Improved documentation of file permissions
+	  on the manual pages.
+
+Thu Oct 19 21:05:51 1995  Tatu Ylonen  <ylo@soikko.cs.hut.fi>
+
+	* ssh-add.c (add_file): Fixed a bug causing ssh to sometimes refer
+	  to freed memory (comment -> saved_comment).
+
+	* log-server.c: Added a prefix to debug/warning/error/fatal
+	  messages describing message types.  Syslog does not include that
+	  information automatically.
+
+Sun Oct  8 01:56:01 1995  Tatu Ylonen  <ylo@shadows.cs.hut.fi>
+
+	* Merged /etc/default/login and MAIL environment variable changes
+	  from Bryan O'Sullivan <bos@serpentine.com>.
+	    - mail spool file location
+	    - process /etc/default/login
+	    - add HAVE_ETC_DEFAULT_LOGIN
+	    - new function child_get_env and read_etc_default_login (sshd.c)
+	
+	* ssh-add.c (add_file): Fixed asking for passphrase.
+
+	* Makefile.in: Fixed installing configure-generated man pages when
+	  compiling in a separate object directory.
+
+	* sshd.c (main): Moved RSA key generation until after allocating
+	  the port number.  (Actually, the code got duplicated because we
+	  never listen when run from inetd.)
+
+	* ssh.c: Fixed a problem that caused scp to hang when called with
+	  stdin closed.
+
+Sat Oct  7 03:08:06 1995  Tatu Ylonen  <ylo@shadows.cs.hut.fi>
+
+	* Added server config option StrictModes.  It specifies whether to
+	  check ownership and modes of home directory and .rhosts files.
+
+	* ssh.c: If ssh is renamed/linked to a host name, connect to that
+	  host.
+
+	* serverloop.c, clientloop.c: Ignore EAGAIN reported on read from
+	  connection.  Solaris has a kernel bug which causes select() to
+	  sometimes wake even though there is no data available.
+
+	* Display all open connections when printing the "Waiting for
+	  forwarded connections to terminate" message.
+
+	* sshd.c, readconf.c: Added X11InetForwarding and
+	  X11UnixForwarding server config options.
+
+Thu Oct  5 17:41:16 1995  Tatu Ylonen  <ylo@shadows.cs.hut.fi>
+
+	* Some more SCO fixes.
+
+Tue Oct  3 01:04:34 1995  Tatu Ylonen  <ylo@shadows.cs.hut.fi>
+
+	* Fixes and cleanups in README, INSTALL, COPYING.
+
+Mon Oct  2 03:36:08 1995  Tatu Ylonen  <ylo@shadows.cs.hut.fi>
+
+	* ssh-add.c (add_file): Fixed a bug in ssh-add (xfree: NULL ...).
+
+	* Removed .BR from ".SH NAME" in man pages.
+
 Sun Oct  1 04:16:07 1995  Tatu Ylonen  <ylo@shadows.cs.hut.fi>
 
+	* ssh-1.2.10.
+	
 	* configure.in: When checking that the compiler works, check that
 	  it understands ANSI C prototypes.
 

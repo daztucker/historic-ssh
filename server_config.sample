@@ -8,7 +8,11 @@ LoginGraceTime 600
 KeyRegenerationInterval 3600
 PermitRootLogin yes
 IgnoreRhosts no
+StrictModes yes
+StrictHostKeyChecking no
 QuietMode no
+X11InetForwarding yes
+X11UnixForwarding yes
 FascistLogging no
 PrintMotd yes
 SyslogFacility DAEMON

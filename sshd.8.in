@@ -9,8 +9,11 @@
 .\"
 .\" Created: Sat Apr 22 21:55:14 1995 ylo
 .\"
-.\" $Id: sshd.8,v 1.9 1995/09/27 02:17:12 ylo Exp $
-.\" $Log: sshd.8,v $
+.\" $Id: sshd.8.in,v 1.10 1995/10/02 01:31:37 ylo Exp $
+.\" $Log: sshd.8.in,v $
+.\" Revision 1.10  1995/10/02  01:31:37  ylo
+.\" 	Make substitutions in configure.
+.\"
 .\" Revision 1.9  1995/09/27  02:17:12  ylo
 .\" 	Added a section on what happens at login.
 .\" 	Other additions.
@@ -42,7 +45,7 @@
 .TH SSHD 8 "Aug 24, 1995" "SSH" "SSH"
 
 .SH NAME
-.BR sshd "\ \(em secure shell daemon
+sshd "\ \(em secure shell daemon
 
 .SH SYNOPSIS
 .na
@@ -278,6 +281,24 @@ should print /etc/motd when a user logs in interactively.  (On some
 systems it is also printed by the shell.)  The argument must be
 .YN
 .TP
+.B X11InetForwarding
+Specifies whether X11 forwarding from an internet domain socket (with
+authentication spoofing) is enabled (the normal state is enabled).
+The argument must be
+.YN
+.TP
+.B X11UnixForwarding
+Specifies whether X11 forwarding from a unix domain socket is
+enabled (the normal state is enabled).  The argument must be
+.YN
+.TP
+.B StrictModes
+Specifies whether ssh should check file modes and ownership of the
+user's home directory and rhosts files before accepting login.  This
+is normally desirable because novices sometimes accidentally leave their
+directory or files world-writable.  The argument must be
+.YN
+.TP
 .B SyslogFacility
 Gives the facility code that is used when logging messages from
 .B sshd.
@@ -418,6 +439,14 @@ to restrict certain RSA keys to perform just a specific operation.  An
 example might be a key that permits remote backups but nothing
 else.  Notice that the client may specify TCP/IP and/or X11
 forwardings unless they are explicitly prohibited.
+.IP
+.ti -.5i
+\fBenvironment="NAME=value"\fR
+.br
+Specifies that the string is to be added to the environment when
+logging in using this key.  Environment variables set this way
+override other default environment values.  Multiple options of this
+type are permitted.
 .TP
 .B no-port-forwarding
 Forbids TCP/IP forwarding when this key is used for authentication.
@@ -507,26 +536,28 @@ closenet,closenet.hut.fi,.\|.\|.\|,130.233.208.41 1024 37 159.\|.\|.93 closenet.
 .SH FILES
 .I @ETCDIR@/sshd_config
 Contains configuration data for
-.B sshd.
+.B sshd.  This file should be writable by root only, but it is recommended
+(though not necessary) that it be world-readable.
 .TP
 .I @ETCDIR@/ssh_host_key
 Contains the private part of the host key.  This file is normally
 created automatically by "make install", but can also be created
 manually using
 .BR ssh-keygen (1).
-This file should only be readable by root.
+This file should only be owned by root, readable only by root, and not
+accessible to others.
 .TP
 .I @ETCDIR@/ssh_host_key.pub
 Contains the public part of the host key.  This file is normally
 created automatically by "make install", but can also be created
-manually.  This file should be world-readable.  Its contents should match
-the private part.  This file is not really used for anything; it is
-only provided for the convenience of the user so its contents can be
-copied to known hosts files.
+manually.  This file should be world-readable but writable only by
+root.  Its contents should match the private part.  This file is not
+really used for anything; it is only provided for the convenience of
+the user so its contents can be copied to known hosts files.
 .TP
 .I @ETCDIR@/ssh_random_seed
 This file contains a seed for the random number generator.  This file
-should only be readable by root.
+should only be accessible by root.
 .TP
 .I @PIDDIR@/sshd.pid
 Contains the process id of the
@@ -538,18 +569,20 @@ world-readable.
 .TP
 .I \&$HOME/\s+2.\s0ssh/authorized_keys
 Lists the RSA keys that can be used to log into the user's account.
-This file must be readable by root (which may imply it being
-world-readable if the user's home directory resides on an NFS volume).
-The format of this file is described above.
+This file must be readable by root (which may on some machines imply
+it being world-readable if the user's home directory resides on an NFS
+volume).  It is recommended that it not be accessible by others.  The
+format of this file is described above.
 .TP
 .I "@ETCDIR@/ssh_known_hosts\fR and \fI$HOME/\s+2.\s0ssh/known_hosts\fR
 These files are consulted when using rhosts with RSA host
 authentication to check the public key of the host.  The key must be
 listed in one of these files to be accepted.  (The client uses the
 same files to verify that the remote host is the one we intended to
-connect.)  These files should be readable by root, and
+connect.)  These files should be writable only by root/the owner.
 .I @ETCDIR@/ssh_known_hosts
-should be world-readable.
+should be world-readable, and \fI$HOME/\s+2.\s0ssh/known_hosts\fR can
+but need not be world-readable.
 .TP
 .I /etc/nologin
 If this file exists, 
@@ -567,7 +600,8 @@ differs from rlogind
 and rshd in that it requires RSA host authentication in addition to
 validating the host name retrieved from domain name servers (unless
 compiled with the \-\-with\-rhosts configuration option).  The file must
-be readable by root.
+be writable only by the user; it is recommended that it not be
+accessible by others.
 
 If is also possible to use netgroups in the file.  Either host or user
 name may be of the form +@groupname to specify all hosts or all users
@@ -594,7 +628,8 @@ can be used to specify netgroups.  Negated entries start with '-'.
 If the client host/user is successfully matched in this file, login is
 automatically permitted provided the client and server user names are the
 same.  Additionally, successful RSA host authentication is normally
-required.  This file must be readable by root.
+required.  This file must be writable only by root; it is recommended
+that it be world-readable.
 
 \fBWarning: It is almost never a good idea to use user names in 
 hosts.equiv.\fR
@@ -618,11 +653,13 @@ This file is read into the environment at login (if it exists).  It
 can only contain empty lines, comment lines (that start with '#'), and
 assignment lines of the form name=value.  This file is processed in
 all environments (normal rsh/rlogin only process it on AIX and
-potentially some other systems).
+potentially some other systems).  The file should be writable only by
+root, and should be world-readable.
 .TP
 .I \&$HOME/\s+2.\s0environment
 This file is read into the environment after /etc/environment.  It has
-the same format.
+the same format.  The file should be writable only by the user; it
+need not be readable by anyone else.
 .TP
 .I \&$HOME/\s+2.\s0ssh/rc
 If this file exists, it is run with /bin/sh after reading the
@@ -641,11 +678,14 @@ $proto $cookie | xauth -q -; fi".
 
 If this file does not exist, @ETCDIR@/sshrc is run, and if that
 does not exist either, xauth is used to store the cookie.
+
+This file should be writable only by the user, and need not be
+readable by anyone else.
 .TP
 .I @ETCDIR@/sshrc
 Like $HOME/\s+2.\s0ssh/rc.  This can be used to specify
-machine-specific login-time initializations globally.
-
+machine-specific login-time initializations globally.  This file
+should be writable only by root, and should be world-readable.
 
 .SH AUTHOR
 .LP

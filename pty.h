@@ -15,8 +15,11 @@ tty.
 */
 
 /*
- * $Id: pty.h,v 1.3 1995/07/16 01:03:40 ylo Exp $
+ * $Id: pty.h,v 1.1.1.1 1996/02/18 21:38:10 ylo Exp $
  * $Log: pty.h,v $
+ * Revision 1.1.1.1  1996/02/18 21:38:10  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.3  1995/07/16  01:03:40  ylo
  * 	Added pty_release.
  *

@@ -16,67 +16,78 @@ arbitrary tcp/ip connections, and the authentication agent connection.
 */
 
 /*
- * $Id: newchannels.c,v 1.46 1998/07/08 00:46:01 kivinen Exp $
+ * $Id: newchannels.c,v 1.49 1999/02/22 08:14:01 tri Exp $
  * $Log: newchannels.c,v $
+ * Revision 1.49  1999/02/22 08:14:01  tri
+ * 	Final fixes for 1.2.27.
+ *
+ * Revision 1.48  1999/02/21 19:52:27  ylo
+ *      Intermediate commit of ssh1.2.27 stuff.
+ *      Main change is sprintf -> snprintf; however, there are also
+ *      many other changes.
+ *
+ * Revision 1.47  1998/11/16 13:38:03  kivinen
+ *      Changed strdup to xstrdup.
+ *
  * Revision 1.46  1998/07/08 00:46:01  kivinen
- * 	Splitted ip address display name from
- * 	HPSUX_NONSTANDARD_X11_KLUDGE to separate
- * 	NONSTANDARD_IP_ADDRESS_X11_KLUDGE ifdef.
- * 	Changed deny/allow stuff to use match_host instead of
- * 	match_pattern.
+ *      Splitted ip address display name from
+ *      HPSUX_NONSTANDARD_X11_KLUDGE to separate
+ *      NONSTANDARD_IP_ADDRESS_X11_KLUDGE ifdef.
+ *      Changed deny/allow stuff to use match_host instead of
+ *      match_pattern.
  *
  * Revision 1.45  1998/06/11 00:25:48  kivinen
- * 	Fixed typo in strncpy call.
+ *      Fixed typo in strncpy call.
  *
  * Revision 1.44  1998/06/11 00:08:20  kivinen
- * 	Added date to X11 connection rejected message. Added checking
- * 	of /var/X directory first and if that doesn't exists then try
- * 	X11_DIR and if that doesn't exists try /tmp/.X11-unix.
+ *      Added date to X11 connection rejected message. Added checking
+ *      of /var/X directory first and if that doesn't exists then try
+ *      X11_DIR and if that doesn't exists try /tmp/.X11-unix.
  *
  * Revision 1.43  1998/05/23  20:22:30  kivinen
- * 	Changed () -> (void). Fixed typo in debug text. Added check
- * 	that chown succeeds.
+ *      Changed () -> (void). Fixed typo in debug text. Added check
+ *      that chown succeeds.
  *
  * Revision 1.42  1998/03/27  16:58:26  kivinen
- * 	Added gatewayports support.
+ *      Added gatewayports support.
  *
  * Revision 1.41  1998/01/03 06:41:38  kivinen
- * 	Fixed bug in allow/deny forward to host name handling.
+ *      Fixed bug in allow/deny forward to host name handling.
  *
  * Revision 1.40  1997/08/21 22:16:26  ylo
- * 	Fixed security bug with port number > 65535 in remote forwarding.
+ *      Fixed security bug with port number > 65535 in remote forwarding.
  *
  * Revision 1.39  1997/04/27 22:20:11  kivinen
- * 	Fixed bug in port number parsing in
- * 	channel_add_{allow,deny}_forwd_to.
+ *      Fixed bug in port number parsing in
+ *      channel_add_{allow,deny}_forwd_to.
  *
  * Revision 1.38  1997/04/27 21:52:42  kivinen
- * 	Added F-SECURE stuff. Added {Allow,Deny}Forwarding{To,Port}
- * 	feature.
+ *      Added F-SECURE stuff. Added {Allow,Deny}Forwarding{To,Port}
+ *      feature.
  *
  * Revision 1.37  1997/04/17 04:01:22  kivinen
- * 	Removed extra port variable. Added return -1 to
- * 	channel_allocate to get rid of warning.
+ *      Removed extra port variable. Added return -1 to
+ *      channel_allocate to get rid of warning.
  *
  * Revision 1.36  1997/04/05 21:48:54  kivinen
- * 	Fixed some debug messages (removed extra newline at the end).
- * 	Added clearing of input buffer after output have closed.
+ *      Fixed some debug messages (removed extra newline at the end).
+ *      Added clearing of input buffer after output have closed.
  *
  * Revision 1.35  1997/03/26 07:14:47  kivinen
- * 	Added checks about failed read and write for open channel.
+ *      Added checks about failed read and write for open channel.
  *
  * Revision 1.34  1997/03/25 05:39:36  kivinen
- * 	Added check that hp == NULL in hpux kludge display setting.
+ *      Added check that hp == NULL in hpux kludge display setting.
  *
  * Revision 1.33  1997/03/19 19:25:01  kivinen
- * 	Added input buffer clearing for error conditions, so packet.c
- * 	can check that buffer must be empty before new packet is read
- * 	in.
+ *      Added input buffer clearing for error conditions, so packet.c
+ *      can check that buffer must be empty before new packet is read
+ *      in.
  *
  * Revision 1.32  1997/03/19 17:58:10  kivinen
- * 	Added checks that x11 and authentication agent forwarding is
- * 	really requested when open requests is received.
- * 	Added checks that strlen(hostname) <= 255.
+ *      Added checks that x11 and authentication agent forwarding is
+ *      really requested when open requests is received.
+ *      Added checks that strlen(hostname) <= 255.
  *
  * Revision 1.31  1997/01/23 14:41:35  ttsalo
  *     Fixed a typo (%.200d -> %.200s)
@@ -94,33 +105,33 @@ arbitrary tcp/ip connections, and the authentication agent connection.
  *     Added X11DisplayOffset-option
  *
  * Revision 1.26  1996/11/24 08:22:39  kivinen
- * 	Added tcp wrapper code to x11 and port forwarding.
- * 	Removed extra channel_send_ieof from rejected
- * 	X11 channel open.
- * 	Fixed channel_request_remote_forwarding so it wont call fatal
- * 	if the other ends doens't permit forwarding.
- * 	Changed auth_input_request_forwarding to return true if it
- * 	succeeds and false otherwise. Changed it to send errors with
- * 	packet_send_debug to client instead of disconnect. Made the
- * 	error messages more verbose.
+ *      Added tcp wrapper code to x11 and port forwarding.
+ *      Removed extra channel_send_ieof from rejected
+ *      X11 channel open.
+ *      Fixed channel_request_remote_forwarding so it wont call fatal
+ *      if the other ends doens't permit forwarding.
+ *      Changed auth_input_request_forwarding to return true if it
+ *      succeeds and false otherwise. Changed it to send errors with
+ *      packet_send_debug to client instead of disconnect. Made the
+ *      error messages more verbose.
  *
  * Revision 1.25  1996/11/09 17:00:32  ttsalo
  *       Chdir out from socket directory before deleting it
  *
  * Revision 1.24  1996/11/04 06:34:45  ylo
- * 	Fixed a number of erroneous messages.
+ *      Fixed a number of erroneous messages.
  *
  * Revision 1.23  1996/10/30 14:24:53  ttsalo
  *       Changed two stats to lstats
  *
  * Revision 1.22  1996/10/29 22:42:43  kivinen
- * 	log -> log_msg. Fixed auth_input_request_forwarding to check
- * 	that the parent directory of SSH_AGENT_SOCKET_DIR and the ..
- * 	are same (check that the last component of agent directory
- * 	isn't symlink).
- * 	Disconnect if agent directory mkdir fails.
- * 	Renamed remotech to remote_channel in
- * 	auth_input_open_request.
+ *      log -> log_msg. Fixed auth_input_request_forwarding to check
+ *      that the parent directory of SSH_AGENT_SOCKET_DIR and the ..
+ *      are same (check that the last component of agent directory
+ *      isn't symlink).
+ *      Disconnect if agent directory mkdir fails.
+ *      Renamed remotech to remote_channel in
+ *      auth_input_open_request.
  *
  * Revision 1.21  1996/10/29 14:18:51  ttsalo
  *       Fixed a bug
@@ -129,68 +140,68 @@ arbitrary tcp/ip connections, and the authentication agent connection.
  *       Clarified some error messages
  *
  * Revision 1.19  1996/10/29 13:38:45  ttsalo
- * 	Improved the security of auth_input_request_forwarding()
+ *      Improved the security of auth_input_request_forwarding()
  *
  * Revision 1.18  1996/10/24 14:05:10  ttsalo
  *       Cleaning up old fd-auth trash
  *
  * Revision 1.17  1996/10/20 16:27:34  ttsalo
- * 	Many changes, agent stuff should now work as defined in the specs
+ *      Many changes, agent stuff should now work as defined in the specs
  *
  * Revision 1.16  1996/09/28 16:26:09  ylo
- * 	Added a workaround for channel deadlocks...  This may cause
- * 	sshd to grow occasionally, and indefinitely in some situations.
+ *      Added a workaround for channel deadlocks...  This may cause
+ *      sshd to grow occasionally, and indefinitely in some situations.
  *
  * Revision 1.15  1996/09/27 17:21:39  ylo
- * 	Merged ultrix, Next and Linux patches from Corey Satten. This
- * 	effectively puts all file descriptors in non-blocking mode,
- * 	because these systems appear to sometimes wake up from select
- * 	and then block in write even when they are not supposed to.
+ *      Merged ultrix, Next and Linux patches from Corey Satten. This
+ *      effectively puts all file descriptors in non-blocking mode,
+ *      because these systems appear to sometimes wake up from select
+ *      and then block in write even when they are not supposed to.
  *
  * Revision 1.14  1996/09/27 14:00:11  ttsalo
- * 	Replaced a chmod with umask setting, chmod was dangerous.
+ *      Replaced a chmod with umask setting, chmod was dangerous.
  *
  * Revision 1.13  1996/09/14 08:44:12  ylo
- * 	Print X11 auth protocols if different.
+ *      Print X11 auth protocols if different.
  *
  * Revision 1.12  1996/09/14 08:42:14  ylo
- * 	Fixed a (minor) bug in interactive output packet sizing.
- * 	Reduced maximum non-interactive packet size to 8192.
+ *      Fixed a (minor) bug in interactive output packet sizing.
+ *      Reduced maximum non-interactive packet size to 8192.
  *
  * Revision 1.11  1996/09/12 18:31:11  ttsalo
- * 	st->uid to st->st.uid
+ *      st->uid to st->st.uid
  *
  * Revision 1.10  1996/09/11 17:56:22  kivinen
- * 	Fixed serious security bug in auth_input_request_forwarding,
- * 	now we chown the directory only if we created it. Changed
- * 	auth_input_request_forwarding to check the permissions of
- * 	directory itself and not to call
- * 	userfile_check_owner_permissions (it doesn't check for read
- * 	and execute permissions).
+ *      Fixed serious security bug in auth_input_request_forwarding,
+ *      now we chown the directory only if we created it. Changed
+ *      auth_input_request_forwarding to check the permissions of
+ *      directory itself and not to call
+ *      userfile_check_owner_permissions (it doesn't check for read
+ *      and execute permissions).
  *
  * Revision 1.9  1996/09/08 17:21:06  ttsalo
- * 	A lot of changes in agent-socket handling
+ *      A lot of changes in agent-socket handling
  *
  * Revision 1.8  1996/09/04 12:41:49  ttsalo
- * 	Minor fixes
+ *      Minor fixes
  *
  * Revision 1.7  1996/08/29 14:51:25  ttsalo
- * 	Agent-socket directory handling implemented
+ *      Agent-socket directory handling implemented
  *
  * Revision 1.6  1996/08/21 20:43:54  ttsalo
- * 	Made ssh-agent use a different, more secure way of storing
- * 	it's initial socket.
+ *      Made ssh-agent use a different, more secure way of storing
+ *      it's initial socket.
  *
  * Revision 1.5  1996/07/31 07:10:35  huima
- * 	Fixed the connection closing bug.
+ *      Fixed the connection closing bug.
  *
  * Revision 1.4  1996/07/15 00:28:57  ylo
- * 	When an X11 connection is rejected, log where the rejected
- * 	connection came from.
+ *      When an X11 connection is rejected, log where the rejected
+ *      connection came from.
  *
  * Revision 1.3  1996/07/12 07:22:47  ttsalo
- * 	Patch from <Rein.Tollevik@si.sintef.no> to handle HP-UX
- * 	nonstandard X11 socket kludging.
+ *      Patch from <Rein.Tollevik@si.sintef.no> to handle HP-UX
+ *      nonstandard X11 socket kludging.
  *
  * Revision 1.2  1996/05/06 09:53:24  huima
  * Fixed a major in the channels allocation.
@@ -199,55 +210,55 @@ arbitrary tcp/ip connections, and the authentication agent connection.
  * New channels code added to the repository.
  *
  * Revision 1.1.1.1  1996/02/18  21:38:12  ylo
- * 	Imported ssh-1.2.13
+ *      Imported ssh-1.2.13
  *
  * Revision 1.13  1995/10/02  01:20:08  ylo
- * 	Added a cast to avoid compiler warning.
+ *      Added a cast to avoid compiler warning.
  *
  * Revision 1.12  1995/09/24  23:58:49  ylo
- * 	Added support for screen number in X11 forwarding.
- * 	Reduced max packet size in interactive mode from 1024 bytes to
- * 	512 bytes for forwarded connections.
+ *      Added support for screen number in X11 forwarding.
+ *      Reduced max packet size in interactive mode from 1024 bytes to
+ *      512 bytes for forwarded connections.
  *
  * Revision 1.11  1995/09/21  17:08:40  ylo
- * 	Support AF_UNIX_SIZE.
+ *      Support AF_UNIX_SIZE.
  *
  * Revision 1.10  1995/09/10  23:25:35  ylo
- * 	Fixed HPSUX DISPLAY kludge.
+ *      Fixed HPSUX DISPLAY kludge.
  *
  * Revision 1.9  1995/09/10  22:45:23  ylo
- * 	Changed Unix domain socket and umask stuff.
+ *      Changed Unix domain socket and umask stuff.
  *
  * Revision 1.8  1995/09/09  21:26:39  ylo
  * /m/shadows/u2/users/ylo/ssh/README
  *
  * Revision 1.7  1995/09/06  15:58:14  ylo
- * 	Added BROKEN_INET_ADDR.
+ *      Added BROKEN_INET_ADDR.
  *
  * Revision 1.6  1995/08/29  22:20:40  ylo
- * 	New file descriptor code for agent forwarding.
+ *      New file descriptor code for agent forwarding.
  *
  * Revision 1.5  1995/08/21  23:22:49  ylo
- * 	Clear sockaddr_in structures before use.
+ *      Clear sockaddr_in structures before use.
  *
- * 	Reject X11 connections that don't match fake data.
+ *      Reject X11 connections that don't match fake data.
  *
  * Revision 1.4  1995/08/18  22:47:11  ylo
- * 	Fixed a typo (missing parentheses in packet_is_interactive
- * 	call).
+ *      Fixed a typo (missing parentheses in packet_is_interactive
+ *      call).
  *
- * 	Removed extra shutdown in channel_close_all().  This caused
- * 	the "accept: software caused connection abort" messages and
- * 	busy looping that made the previous version of ssh unusable on
- * 	most systems.
+ *      Removed extra shutdown in channel_close_all().  This caused
+ *      the "accept: software caused connection abort" messages and
+ *      busy looping that made the previous version of ssh unusable on
+ *      most systems.
  *
  * Revision 1.3  1995/07/27  02:16:43  ylo
- * 	Fixed output draining on forwarded TCP/IP connections.
- * 	Use smaller packets for interactive sessions.
+ *      Fixed output draining on forwarded TCP/IP connections.
+ *      Use smaller packets for interactive sessions.
  *
  * Revision 1.2  1995/07/13  01:19:29  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
+ *      Removed "Last modified" header.
+ *      Added cvs log.
  *
  * $Endlog$
  */
@@ -280,31 +291,31 @@ arbitrary tcp/ip connections, and the authentication agent connection.
 #define MAX_DISPLAYS  1000
 
 /* Definitions for channel types. */
-#define SSH_CHANNEL_FREE		0 /* This channel is free (unused). */
-#define SSH_CHANNEL_X11_LISTENER	1 /* Listening for inet X11 conn. */
-#define SSH_CHANNEL_PORT_LISTENER	2 /* Listening on a port. */
-#define SSH_CHANNEL_OPENING		3 /* waiting for confirmation */
-#define SSH_CHANNEL_OPEN		4 /* normal open two-way channel */
-/* obsolete SSH_CHANNEL_CLOSED		5    waiting for close confirmation */
-/* obsolete SSH_CHANNEL_AUTH_FD		6    authentication fd */
-/* obsolete SSH_CHANNEL_AUTH_SOCKET	7    authentication socket */
-/* obsolete SSH_CHANNEL_AUTH_SOCKET_FD	8    connection to auth socket */
-#define SSH_CHANNEL_X11_OPEN		9 /* reading first X11 packet */
+#define SSH_CHANNEL_FREE                0 /* This channel is free (unused). */
+#define SSH_CHANNEL_X11_LISTENER        1 /* Listening for inet X11 conn. */
+#define SSH_CHANNEL_PORT_LISTENER       2 /* Listening on a port. */
+#define SSH_CHANNEL_OPENING             3 /* waiting for confirmation */
+#define SSH_CHANNEL_OPEN                4 /* normal open two-way channel */
+/* obsolete SSH_CHANNEL_CLOSED          5    waiting for close confirmation */
+/* obsolete SSH_CHANNEL_AUTH_FD         6    authentication fd */
+/* obsolete SSH_CHANNEL_AUTH_SOCKET     7    authentication socket */
+/* obsolete SSH_CHANNEL_AUTH_SOCKET_FD  8    connection to auth socket */
+#define SSH_CHANNEL_X11_OPEN            9 /* reading first X11 packet */
 #define SSH_CHANNEL_AUTH_LISTENER      10 /* Agent proxy listening for
-					     connections */
+                                             connections */
 
 /* Status flags */
 
-#define STATUS_INPUT_SOCKET_CLOSED	0x0001
-#define STATUS_OUTPUT_SOCKET_CLOSED	0x0002
-#define STATUS_EOF_SENT			0x0004
-#define STATUS_EOF_RECEIVED		0x0008
-#define STATUS_CLOSE_SENT		0x0010
-#define STATUS_CLOSE_RECEIVED		0x0020
-#define STATUS_KLUDGE_A			0x0040
-#define STATUS_KLUDGE_B       		0x0080
+#define STATUS_INPUT_SOCKET_CLOSED      0x0001
+#define STATUS_OUTPUT_SOCKET_CLOSED     0x0002
+#define STATUS_EOF_SENT                 0x0004
+#define STATUS_EOF_RECEIVED             0x0008
+#define STATUS_CLOSE_SENT               0x0010
+#define STATUS_CLOSE_RECEIVED           0x0020
+#define STATUS_KLUDGE_A                 0x0040
+#define STATUS_KLUDGE_B                 0x0080
 
-#define STATUS_TERMINATE		0x003f
+#define STATUS_TERMINATE                0x003f
 
 /* Data structure for channel data.  This is iniailized in channel_allocate
    and cleared in channel_free. */
@@ -395,8 +406,8 @@ unsigned int x11_fake_data_len;
    local network (which might be behind a firewall). */
 typedef struct
 {
-  char *host;		/* Host name. */
-  int port;		/* Port number. */
+  char *host;           /* Host name. */
+  int port;             /* Port number. */
 } ForwardPermission;
 
 /* List of all permitted host/port pairs to connect. */
@@ -450,10 +461,10 @@ int channel_allocate(int type, int sock, char *remote_name)
       channels_alloc = 10;
       channels = xmalloc(channels_alloc * sizeof(Channel));
       for (i = 0; i < channels_alloc; i++)
-	channels[i].type = SSH_CHANNEL_FREE;
+        channels[i].type = SSH_CHANNEL_FREE;
 
       /* Kludge: arrange a call to channel_stop_listening if we terminate
-	 with fatal(). */
+         with fatal(). */
       fatal_add_cleanup((void (*)(void *))channel_stop_listening, NULL);
     }
 
@@ -466,32 +477,32 @@ int channel_allocate(int type, int sock, char *remote_name)
       debug("Expanding the array...");
       channels = xrealloc(channels, channels_alloc * sizeof(Channel));
       for (i = channels_used; i < channels_alloc; i++)
-	channels[i].type = SSH_CHANNEL_FREE;
+        channels[i].type = SSH_CHANNEL_FREE;
       i = channels_used;
       debug("Array now %d channels [first free at %d].",
-	    channels_alloc, i);
+            channels_alloc, i);
     }
 
   /* Try to find a free slot where to put the new channel. */
   while (i < channels_alloc)
     {
       if (channels[i].type == SSH_CHANNEL_FREE)
-	{
-	  /* Found a free slot. 
-	     Initialize the fields and return its number. */
-	  buffer_init(&channels[i].input);
-	  buffer_init(&channels[i].output);
-	  channels[i].type = type;
-	  channels[i].sock = sock;
-	  channels[i].remote_id = -1;
-	  channels[i].remote_name = remote_name;
-	  channels[i].status_flags = 0;
-	  channels[i].local_id = i;
-	  channels[i].is_x_connection = 0;
-	  channels_used++;
-	  debug("Allocated channel %d of type %d.", i, type);
-	  return i;
-	}
+        {
+          /* Found a free slot. 
+             Initialize the fields and return its number. */
+          buffer_init(&channels[i].input);
+          buffer_init(&channels[i].output);
+          channels[i].type = type;
+          channels[i].sock = sock;
+          channels[i].remote_id = -1;
+          channels[i].remote_name = remote_name;
+          channels[i].status_flags = 0;
+          channels[i].local_id = i;
+          channels[i].is_x_connection = 0;
+          channels_used++;
+          debug("Allocated channel %d of type %d.", i, type);
+          return i;
+        }
       i++;
     }
   fatal ("Internal bug in channel_allocate.");
@@ -503,7 +514,7 @@ int channel_allocate(int type, int sock, char *remote_name)
 void channel_free(int channel)
 {
   assert(channel >= 0 && channel < channels_alloc &&
-	 channels[channel].type != SSH_CHANNEL_FREE);
+         channels[channel].type != SSH_CHANNEL_FREE);
   close(channels[channel].sock);
   buffer_free(&channels[channel].input);
   buffer_free(&channels[channel].output);
@@ -527,22 +538,22 @@ void channel_check_termination(Channel *ch)
     {
 #ifdef SUPPORT_OLD_CHANNELS
       if ((emulation_information & EMULATE_OLD_CHANNEL_CODE)
-	  && !(ch->status_flags & STATUS_KLUDGE_A))
-	{
-	  ch->status_flags &= ~(STATUS_CLOSE_RECEIVED | STATUS_EOF_RECEIVED);
-	  debug("Discarding termination of channel %d.", ch->local_id);
-	  return;
-	}
+          && !(ch->status_flags & STATUS_KLUDGE_A))
+        {
+          ch->status_flags &= ~(STATUS_CLOSE_RECEIVED | STATUS_EOF_RECEIVED);
+          debug("Discarding termination of channel %d.", ch->local_id);
+          return;
+        }
 #endif
       debug("Channel %d terminates.", ch->local_id);
 #ifdef SUPPORT_OLD_CHANNELS
       if (emulation_information & EMULATE_OLD_CHANNEL_CODE)
-	if (ch->status_flags & STATUS_KLUDGE_B)
-	  {
-	    packet_start(SSH_MSG_CHANNEL_CLOSE_CONFIRMATION);
-	    packet_put_int(ch->remote_id);
-	    packet_send();
-	  }
+        if (ch->status_flags & STATUS_KLUDGE_B)
+          {
+            packet_start(SSH_MSG_CHANNEL_CLOSE_CONFIRMATION);
+            packet_put_int(ch->remote_id);
+            packet_send();
+          }
 #endif
       channel_free(ch->local_id);
     }
@@ -567,7 +578,7 @@ void channel_send_ieof(Channel *ch)
 
 #ifdef SUPPORT_OLD_CHANNELS
       if (emulation_information & EMULATE_OLD_CHANNEL_CODE)
-	ch->status_flags |= STATUS_CLOSE_SENT;
+        ch->status_flags |= STATUS_CLOSE_SENT;
 #endif
 
       channel_check_termination(ch);
@@ -610,14 +621,14 @@ void channel_close_input(Channel *ch)
       ch->status_flags |= STATUS_INPUT_SOCKET_CLOSED;
       shutdown(ch->sock, 0);
       if (ch->type != SSH_CHANNEL_OPEN)
-	{
-	  channel_send_ieof(ch);
-	}
+        {
+          channel_send_ieof(ch);
+        }
 #ifdef SUPPORT_OLD_CHANNELS
       if (emulation_information & EMULATE_OLD_CHANNEL_CODE)
-	{
-	  channel_close_output(ch);
-	}
+        {
+          channel_close_output(ch);
+        }
 #endif
     }
 }
@@ -634,16 +645,16 @@ void channel_close_output(Channel *ch)
       ch->status_flags |= STATUS_OUTPUT_SOCKET_CLOSED;
       shutdown(ch->sock, 1);
       if (buffer_len(&ch->output))
-	buffer_consume(&ch->output, buffer_len(&ch->output));
+        buffer_consume(&ch->output, buffer_len(&ch->output));
 #ifdef SUPPORT_OLD_CHANNELS
       if (emulation_information & EMULATE_OLD_CHANNEL_CODE)
-	{
-	  debug("This is emulation.");
-	  channel_close_input(ch);
-	}
+        {
+          debug("This is emulation.");
+          channel_close_input(ch);
+        }
       else
 #endif
-	channel_send_oclosed(ch);      
+        channel_send_oclosed(ch);      
     }
 }
 
@@ -720,7 +731,7 @@ void channel_emulated_close(int set_a)
   if (channel < 0 || channel >= channels_alloc ||
       channels[channel].type == SSH_CHANNEL_FREE)
     packet_disconnect("Received emulated_close for nonexistent channel %d.",
-		      channel);
+                      channel);
 
   if (set_a)
     channels[channel].status_flags |= STATUS_KLUDGE_A;
@@ -747,147 +758,147 @@ void channel_prepare_select(fd_set *readset, fd_set *writeset)
       ch = &channels[i];
     redo:
       switch (ch->type)
-	{
-	case SSH_CHANNEL_X11_LISTENER:
-	case SSH_CHANNEL_PORT_LISTENER:
-	case SSH_CHANNEL_AUTH_LISTENER:
-	  FD_SET(ch->sock, readset);
-	  break;
-	  
-	case SSH_CHANNEL_OPEN:
+        {
+        case SSH_CHANNEL_X11_LISTENER:
+        case SSH_CHANNEL_PORT_LISTENER:
+        case SSH_CHANNEL_AUTH_LISTENER:
+          FD_SET(ch->sock, readset);
+          break;
+          
+        case SSH_CHANNEL_OPEN:
 
-	  if ((buffer_len(&ch->input) < packet_max_size() / 2)
-	      && (!(ch->status_flags & STATUS_INPUT_SOCKET_CLOSED)))
-	    FD_SET(ch->sock, readset);
+          if ((buffer_len(&ch->input) < packet_max_size() / 2)
+              && (!(ch->status_flags & STATUS_INPUT_SOCKET_CLOSED)))
+            FD_SET(ch->sock, readset);
 
           if (!(ch->status_flags & STATUS_OUTPUT_SOCKET_CLOSED))
             {
               if (buffer_len(&ch->output) > 0)
-		{
-		  FD_SET(ch->sock, writeset);
-		}
-	      else
-		{
-		  if (ch->status_flags & STATUS_EOF_RECEIVED)
-		    {
-		      channel_close_output(ch);
-		    }
-		}
+                {
+                  FD_SET(ch->sock, writeset);
+                }
+              else
+                {
+                  if (ch->status_flags & STATUS_EOF_RECEIVED)
+                    {
+                      channel_close_output(ch);
+                    }
+                }
             }
 
-	  break;
-	  
-	case SSH_CHANNEL_X11_OPEN:
-	  /* This is a special state for X11 authentication spoofing.  An
-	     opened X11 connection (when authentication spoofing is being
-	     done) remains in this state until the first packet has been
-	     completely read.  The authentication data in that packet is
-	     then substituted by the real data if it matches the fake data,
-	     and the channel is put into normal mode. */
+          break;
+          
+        case SSH_CHANNEL_X11_OPEN:
+          /* This is a special state for X11 authentication spoofing.  An
+             opened X11 connection (when authentication spoofing is being
+             done) remains in this state until the first packet has been
+             completely read.  The authentication data in that packet is
+             then substituted by the real data if it matches the fake data,
+             and the channel is put into normal mode. */
 
-	  /* Check if the fixed size part of the packet is in buffer. */
-	  if (buffer_len(&ch->output) < 12)
-	    break;
+          /* Check if the fixed size part of the packet is in buffer. */
+          if (buffer_len(&ch->output) < 12)
+            break;
 
-	  /* Parse the lengths of variable-length fields. */
-	  ucp = (unsigned char *)buffer_ptr(&ch->output);
-	  if (ucp[0] == 0x42)
-	    { /* Byte order MSB first. */
-	      proto_len = 256 * ucp[6] + ucp[7];
-	      data_len = 256 * ucp[8] + ucp[9];
-	    }
-	  else
-	    if (ucp[0] == 0x6c)
-	      { /* Byte order LSB first. */
-		proto_len = ucp[6] + 256 * ucp[7];
-		data_len = ucp[8] + 256 * ucp[9];
-	      }
-	    else
-	      {
-		debug("Initial X11 packet contains bad byte order byte: 0x%x",
-		      ucp[0]);
-		ch->type = SSH_CHANNEL_OPEN;
-		goto reject;
-	      }
+          /* Parse the lengths of variable-length fields. */
+          ucp = (unsigned char *)buffer_ptr(&ch->output);
+          if (ucp[0] == 0x42)
+            { /* Byte order MSB first. */
+              proto_len = 256 * ucp[6] + ucp[7];
+              data_len = 256 * ucp[8] + ucp[9];
+            }
+          else
+            if (ucp[0] == 0x6c)
+              { /* Byte order LSB first. */
+                proto_len = ucp[6] + 256 * ucp[7];
+                data_len = ucp[8] + 256 * ucp[9];
+              }
+            else
+              {
+                debug("Initial X11 packet contains bad byte order byte: 0x%x",
+                      ucp[0]);
+                ch->type = SSH_CHANNEL_OPEN;
+                goto reject;
+              }
 
-	  /* Check if the whole packet is in buffer. */
-	  if (buffer_len(&ch->output) <
-	      12 + ((proto_len + 3) & ~3) + ((data_len + 3) & ~3))
-	    break;
-	  
-	  /* Check if authentication protocol matches. */
-	  if (proto_len != strlen(x11_saved_proto) || 
-	      memcmp(ucp + 12, x11_saved_proto, proto_len) != 0)
-	    {
-	      if (proto_len > 100)
-		proto_len = 100; /* Limit length of output. */
-	      debug("X11 connection uses different authentication protocol: '%.100s' vs. '%.*s'.",
-		    x11_saved_proto,
-		    proto_len, (const char *)(ucp + 12));
-	      ch->type = SSH_CHANNEL_OPEN;
-	      goto reject;
-	    }
+          /* Check if the whole packet is in buffer. */
+          if (buffer_len(&ch->output) <
+              12 + ((proto_len + 3) & ~3) + ((data_len + 3) & ~3))
+            break;
+          
+          /* Check if authentication protocol matches. */
+          if (proto_len != strlen(x11_saved_proto) || 
+              memcmp(ucp + 12, x11_saved_proto, proto_len) != 0)
+            {
+              if (proto_len > 100)
+                proto_len = 100; /* Limit length of output. */
+              debug("X11 connection uses different authentication protocol: '%.100s' vs. '%.*s'.",
+                    x11_saved_proto,
+                    proto_len, (const char *)(ucp + 12));
+              ch->type = SSH_CHANNEL_OPEN;
+              goto reject;
+            }
 
-	  /* Check if authentication data matches our fake data. */
-	  if (data_len != x11_fake_data_len ||
-	      memcmp(ucp + 12 + ((proto_len + 3) & ~3),
-		     x11_fake_data, x11_fake_data_len) != 0)
-	    {
-	      debug("X11 auth data does not match fake data.");
-	      ch->type = SSH_CHANNEL_OPEN;
-	      goto reject;
-	    }
+          /* Check if authentication data matches our fake data. */
+          if (data_len != x11_fake_data_len ||
+              memcmp(ucp + 12 + ((proto_len + 3) & ~3),
+                     x11_fake_data, x11_fake_data_len) != 0)
+            {
+              debug("X11 auth data does not match fake data.");
+              ch->type = SSH_CHANNEL_OPEN;
+              goto reject;
+            }
 
-	  /* Received authentication protocol and data match our fake data.
-	     Substitute the fake data with real data. */
-	  assert(x11_fake_data_len == x11_saved_data_len);
-	  memcpy(ucp + 12 + ((proto_len + 3) & ~3),
-		 x11_saved_data, x11_saved_data_len);
+          /* Received authentication protocol and data match our fake data.
+             Substitute the fake data with real data. */
+          assert(x11_fake_data_len == x11_saved_data_len);
+          memcpy(ucp + 12 + ((proto_len + 3) & ~3),
+                 x11_saved_data, x11_saved_data_len);
 
-	  /* Start normal processing for the channel. */
-	  ch->type = SSH_CHANNEL_OPEN;
-	  goto redo;
-	  
-	reject:
-	  /* We have received an X11 connection that has bad authentication
-	     information. */
-	  {
-	    time_t t;
-	    char buffer[255], *p;
+          /* Start normal processing for the channel. */
+          ch->type = SSH_CHANNEL_OPEN;
+          goto redo;
+          
+        reject:
+          /* We have received an X11 connection that has bad authentication
+             information. */
+          {
+            time_t t;
+            char buffer[255], *p;
 
-	    t = time(NULL);
-	    strncpy(buffer, ctime(&t), sizeof(buffer));
-	    buffer[sizeof(buffer) - 1] = '\0';
+            t = time(NULL);
+            strncpy(buffer, ctime(&t), sizeof(buffer));
+            buffer[sizeof(buffer) - 1] = '\0';
 
-	    p = strchr(buffer, '\n');
-	    if (p)
-	      *p = '\0';
-	    p = strchr(buffer, '\r');
-	    if (p)
-	      *p = '\0';
-	    
-	    log_msg("X11 connection rejected because of wrong authentication at %s.\r\na",
-		    buffer);
-	    if (ch->remote_name)
-	      log_msg("Rejected connection at %s: %.200s\r\n", buffer,
-		      ch->remote_name);
-	  }
-	  buffer_clear(&ch->input);
-	  buffer_clear(&ch->output);
-	  channel_close_input(ch);
-	  channel_close_output(ch);
-	  /* Output closed has been sent in close_output except if
-	     we're emulating the old code, but then we wouldn't send
-	     it anyway. */
-	  /* We will then wait until both closing packets have come,
-	     then the channel gets destroyed - and the socket
-	     closed. */
-	  break;
-	  
-	case SSH_CHANNEL_FREE:
-	default:
-	  continue;
-	}
+            p = strchr(buffer, '\n');
+            if (p)
+              *p = '\0';
+            p = strchr(buffer, '\r');
+            if (p)
+              *p = '\0';
+            
+            log_msg("X11 connection rejected because of wrong authentication at %.100s.\r\na",
+                    buffer);
+            if (ch->remote_name)
+              log_msg("Rejected connection at %.100s: %.200s\r\n", buffer,
+                      ch->remote_name);
+          }
+          buffer_clear(&ch->input);
+          buffer_clear(&ch->output);
+          channel_close_input(ch);
+          channel_close_output(ch);
+          /* Output closed has been sent in close_output except if
+             we're emulating the old code, but then we wouldn't send
+             it anyway. */
+          /* We will then wait until both closing packets have come,
+             then the channel gets destroyed - and the socket
+             closed. */
+          break;
+          
+        case SSH_CHANNEL_FREE:
+        default:
+          continue;
+        }
     }
 }
 
@@ -906,187 +917,191 @@ void channel_after_select(fd_set *readset, fd_set *writeset)
     {
       ch = &channels[i];
       switch (ch->type)
-	{
-	case SSH_CHANNEL_X11_LISTENER:
-	  /* This is our fake X11 server socket. */
-	  if (FD_ISSET(ch->sock, readset))
-	    {
-	      debug("X11 connection requested.");
-	      addrlen = sizeof(addr);
-	      newsock = accept(ch->sock, &addr, &addrlen);
-	      if (newsock < 0)
-		{
-		  error("accept: %.100s", strerror(errno));
-		  break;
-		}
-	      remote_hostname = get_remote_hostname(newsock);
-	      sprintf(buf, "X11 connection from %.200s port %d",
-		      remote_hostname, get_peer_port(newsock));
-	      xfree(remote_hostname);
+        {
+        case SSH_CHANNEL_X11_LISTENER:
+          /* This is our fake X11 server socket. */
+          if (FD_ISSET(ch->sock, readset))
+            {
+              debug("X11 connection requested.");
+              addrlen = sizeof(addr);
+              newsock = accept(ch->sock, &addr, &addrlen);
+              if (newsock < 0)
+                {
+                  error("accept: %.100s", strerror(errno));
+                  break;
+                }
+              remote_hostname = get_remote_hostname(newsock);
+              snprintf(buf, sizeof(buf), "X11 connection from %.200s port %d",
+                      remote_hostname, get_peer_port(newsock));
+              xfree(remote_hostname);
 #ifdef LIBWRAP
-	      {
-		struct request_info req;
-		struct servent *serv;
-		
-		/* fill req struct with port name and fd number */
-		request_init(&req, RQ_DAEMON, "sshdfwd-X11",
-			     RQ_FILE, newsock, NULL);
-		fromhost(&req);
-		if (!hosts_access(&req))
-		  {
-		    packet_send_debug("Fwd X11 connection from %.500s refused by tcp_wrappers.", eval_client(&req));
-		    error("Fwd X11 connection from %.500s refused by tcp_wrappers.",
-			  eval_client(&req));
-		    shutdown(newsock, 2);
-		    close(newsock);
-		    break;
-		  }
-		log_msg("fwd X11 connect from %.500s", eval_client(&req));
-	      }
+              {
+                struct request_info req;
+                struct servent *serv;
+                
+                /* fill req struct with port name and fd number */
+                request_init(&req, RQ_DAEMON, "sshdfwd-X11",
+                             RQ_FILE, newsock, NULL);
+                fromhost(&req);
+                if (!hosts_access(&req))
+                  {
+                    packet_send_debug("Fwd X11 connection from %.500s refused by tcp_wrappers.", eval_client(&req));
+                    error("Fwd X11 connection from %.500s refused by tcp_wrappers.",
+                          eval_client(&req));
+                    shutdown(newsock, 2);
+                    close(newsock);
+                    break;
+                  }
+                log_msg("fwd X11 connect from %.500s", eval_client(&req));
+              }
 #endif /* LIBWRAP */
-	      newch = channel_allocate(SSH_CHANNEL_OPENING, newsock, 
-				       xstrdup(buf));
-	      channels[newch].is_x_connection = 1;
-	      packet_start(SSH_SMSG_X11_OPEN);
-	      packet_put_int(newch);
-	      if (have_hostname_in_open)
-		packet_put_string(buf, strlen(buf));
-	      packet_send();
-	    }
-	  break;
-	  
-	case SSH_CHANNEL_PORT_LISTENER:
-	  /* This socket is listening for connections to a forwarded TCP/IP
-	     port. */
-	  if (FD_ISSET(ch->sock, readset))
-	    {
-	      debug("Connection to port %d forwarding to %.100s:%d requested.",
-		    ch->listening_port, ch->path, ch->host_port);
-	      addrlen = sizeof(addr);
-	      newsock = accept(ch->sock, &addr, &addrlen);
-	      if (newsock < 0)
-		{
-		  error("accept: %.100s", strerror(errno));
-		  break;
-		}
-	      remote_hostname = get_remote_hostname(newsock);
-	      sprintf(buf, "port %d, connection from %.200s port %d",
-		      ch->listening_port, remote_hostname,
-		      get_peer_port(newsock));
-	      xfree(remote_hostname);
+              newch = channel_allocate(SSH_CHANNEL_OPENING, newsock, 
+                                       xstrdup(buf));
+              channels[newch].is_x_connection = 1;
+              packet_start(SSH_SMSG_X11_OPEN);
+              packet_put_int(newch);
+              if (have_hostname_in_open)
+                packet_put_string(buf, strlen(buf));
+              packet_send();
+            }
+          break;
+          
+        case SSH_CHANNEL_PORT_LISTENER:
+          /* This socket is listening for connections to a forwarded TCP/IP
+             port. */
+          if (FD_ISSET(ch->sock, readset))
+            {
+              debug("Connection to port %d forwarding to %.100s:%d requested.",
+                    ch->listening_port, ch->path, ch->host_port);
+              addrlen = sizeof(addr);
+              newsock = accept(ch->sock, &addr, &addrlen);
+              if (newsock < 0)
+                {
+                  error("accept: %.100s", strerror(errno));
+                  break;
+                }
+              remote_hostname = get_remote_hostname(newsock);
+              snprintf(buf, sizeof(buf),
+                       "port %d, connection from %.200s port %d",
+                       ch->listening_port, remote_hostname,
+                       get_peer_port(newsock));
+              xfree(remote_hostname);
 #ifdef LIBWRAP
-	      {
-		struct request_info req;
-		struct servent *serv;
-		char fwdportname[32];
-		
-		/* try to find port's name in /etc/services */
-		serv = getservbyport(htons(ch->listening_port), "tcp");
-		if (serv == NULL)
-		  {
-		    /* not found (or faulty getservbyport) -
-		       use the number as a name */
-		    sprintf(fwdportname,"sshdfwd-%d", ch->listening_port);
-		  }
-		else
-		  {
-		    sprintf(fwdportname, "sshdfwd-%.20s", serv->s_name);
-		  }
-		/* fill req struct with port name and fd number */
-		request_init(&req, RQ_DAEMON, fwdportname,
-			     RQ_FILE, newsock, NULL);
-		fromhost(&req);
-		if (!hosts_access(&req))
-		  {
-		    packet_send_debug("Fwd connection from %.500s to local port %s refused by tcp_wrappers.",
-				      eval_client(&req), fwdportname);
-		    error("Fwd connection from %.500s to local port %s refused by tcp_wrappers.",
-			  eval_client(&req), fwdportname);
-		    shutdown(newsock, 2);
-		    close(newsock);
-		    break;
-		  }
-		log_msg("fwd connect from %.500s to local port %s",
-		    eval_client(&req), fwdportname);
-	      }
+              {
+                struct request_info req;
+                struct servent *serv;
+                char fwdportname[32];
+                
+                /* try to find port's name in /etc/services */
+                serv = getservbyport(htons(ch->listening_port), "tcp");
+                if (serv == NULL)
+                  {
+                    /* not found (or faulty getservbyport) -
+                       use the number as a name */
+                    snprintf(fwdportname, sizeof(fwdportname),
+                             "sshdfwd-%d", ch->listening_port);
+                  }
+                else
+                  {
+                    snprintf(fwdportname, sizeof(fwdportname),
+                             "sshdfwd-%.20s", serv->s_name);
+                  }
+                /* fill req struct with port name and fd number */
+                request_init(&req, RQ_DAEMON, fwdportname,
+                             RQ_FILE, newsock, NULL);
+                fromhost(&req);
+                if (!hosts_access(&req))
+                  {
+                    packet_send_debug("Fwd connection from %.500s to local port %.100s refused by tcp_wrappers.",
+                                      eval_client(&req), fwdportname);
+                    error("Fwd connection from %.500s to local port %.100s refused by tcp_wrappers.",
+                          eval_client(&req), fwdportname);
+                    shutdown(newsock, 2);
+                    close(newsock);
+                    break;
+                  }
+                log_msg("fwd connect from %.500s to local port %.100s",
+                    eval_client(&req), fwdportname);
+              }
 #endif /* LIBWRAP */
-	      newch = channel_allocate(SSH_CHANNEL_OPENING, newsock, 
-				       xstrdup(buf));
-	      packet_start(SSH_MSG_PORT_OPEN);
-	      packet_put_int(newch);
-	      packet_put_string(ch->path, strlen(ch->path));
-	      packet_put_int(ch->host_port);
-	      if (have_hostname_in_open)
-		packet_put_string(buf, strlen(buf));
-	      packet_send();
-	    }
-	  break;
+              newch = channel_allocate(SSH_CHANNEL_OPENING, newsock, 
+                                       xstrdup(buf));
+              packet_start(SSH_MSG_PORT_OPEN);
+              packet_put_int(newch);
+              packet_put_string(ch->path, strlen(ch->path));
+              packet_put_int(ch->host_port);
+              if (have_hostname_in_open)
+                packet_put_string(buf, strlen(buf));
+              packet_send();
+            }
+          break;
 
-	case SSH_CHANNEL_AUTH_LISTENER:
-	  /* This socket is listening for connections to a forwarded agent
-	     port. */
-	  if (FD_ISSET(ch->sock, readset))
-	    {
-	      debug("Connection to agent proxy requested from unix domain socket.");
-	      addrlen = sizeof(addr);
-	      newsock = accept(ch->sock, &addr, &addrlen);
-	      if (newsock < 0)
-		{
-		  error("accept: %.100s", strerror(errno));
-		  break;
-		}
-	      sprintf(buf, "Forwarded agent connection");
-	      newch = channel_allocate(SSH_CHANNEL_OPENING, newsock, 
-				       xstrdup(buf));
-	      packet_start(SSH_SMSG_AGENT_OPEN);
-	      packet_put_int(newch);
-	      packet_send();
-	    }
-	  break;
+        case SSH_CHANNEL_AUTH_LISTENER:
+          /* This socket is listening for connections to a forwarded agent
+             port. */
+          if (FD_ISSET(ch->sock, readset))
+            {
+              debug("Connection to agent proxy requested from unix domain socket.");
+              addrlen = sizeof(addr);
+              newsock = accept(ch->sock, &addr, &addrlen);
+              if (newsock < 0)
+                {
+                  error("accept: %.100s", strerror(errno));
+                  break;
+                }
+              snprintf(buf, sizeof(buf),
+                       "Forwarded agent connection");
+              newch = channel_allocate(SSH_CHANNEL_OPENING, newsock, 
+                                       xstrdup(buf));
+              packet_start(SSH_SMSG_AGENT_OPEN);
+              packet_put_int(newch);
+              packet_send();
+            }
+          break;
 
-	case SSH_CHANNEL_OPEN:
-	  /* This is an open two-way communication channel.  It is not of
-	     interest to us at this point what kind of data is being
-	     transmitted. */
-	  /* Read available incoming data and append it to buffer. */
-	  if (FD_ISSET(ch->sock, readset))
-	    {
-	      len = sizeof(buf);
-	      if (len > packet_max_size() / 4)
-		len = packet_max_size() / 4;
-	      len = read(ch->sock, buf, len);
-	      if (len < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
-		goto no_rdata;
-	      if (len <= 0)
-		{
-		  channel_close_input(ch);
-		  break;
-		}
-	      buffer_append(&ch->input, buf, len);
-	    }
-	no_rdata:
-	  /* Send buffered output data to the socket. */
-	  if (FD_ISSET(ch->sock, writeset) &&
-	      (temp = buffer_len(&ch->output)) > 0)
-	    {
-	      len = write(ch->sock, buffer_ptr(&ch->output), temp);
-	      if (len < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
-		goto no_wdata;
-	      if (len <= 0)
-		{
-		  channel_close_output(ch);
-		  break;
-		}
-	      buffer_consume(&ch->output, len);
-	    }
-	no_wdata:
-	  break;
+        case SSH_CHANNEL_OPEN:
+          /* This is an open two-way communication channel.  It is not of
+             interest to us at this point what kind of data is being
+             transmitted. */
+          /* Read available incoming data and append it to buffer. */
+          if (FD_ISSET(ch->sock, readset))
+            {
+              len = sizeof(buf);
+              if (len > packet_max_size() / 4)
+                len = packet_max_size() / 4;
+              len = read(ch->sock, buf, len);
+              if (len < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
+                goto no_rdata;
+              if (len <= 0)
+                {
+                  channel_close_input(ch);
+                  break;
+                }
+              buffer_append(&ch->input, buf, len);
+            }
+        no_rdata:
+          /* Send buffered output data to the socket. */
+          if (FD_ISSET(ch->sock, writeset) &&
+              (temp = buffer_len(&ch->output)) > 0)
+            {
+              len = write(ch->sock, buffer_ptr(&ch->output), temp);
+              if (len < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
+                goto no_wdata;
+              if (len <= 0)
+                {
+                  channel_close_output(ch);
+                  break;
+                }
+              buffer_consume(&ch->output, len);
+            }
+        no_wdata:
+          break;
 
-	case SSH_CHANNEL_X11_OPEN:
-	case SSH_CHANNEL_FREE:
-	default:
-	  continue;
-	}
+        case SSH_CHANNEL_X11_OPEN:
+        case SSH_CHANNEL_FREE:
+        default:
+          continue;
+        }
     }
 }
 
@@ -1100,51 +1115,51 @@ void channel_output_poll(void)
   for (i = 0; i < channels_alloc; i++)
     {
       /* If we have very much data going to the output socket, don't send more
-	 now. */
+         now. */
       if (!packet_not_very_much_data_to_write())
-	break; /* Don't send any more data now. */
+        break; /* Don't send any more data now. */
 
       ch = &channels[i];
       /* We are only interested in channels that can have buffered incoming
-	 data. */
+         data. */
       if (ch->type != SSH_CHANNEL_OPEN)
-	continue;
+        continue;
 
       /* Get the amount of buffered data for this channel. */
       len = buffer_len(&ch->input);
       if (len > 0)
-	{
-	  /* Send some data for the other side over the secure connection. */
-	  if (packet_is_interactive())
-	    {
-	      if (len > 512)
-		len = 512;
-	    }
-	  else
-	    {
-	      if (len > 8192)
-		len = 8192;  /* Keep the packets at reasonable size. */
-	      if (len > packet_max_size() / 2)
-		len = packet_max_size() / 2;
-	    }
-	  packet_start(SSH_MSG_CHANNEL_DATA);
-	  packet_put_int(ch->remote_id);
-	  packet_put_string(buffer_ptr(&ch->input), len);
-	  packet_send();
-	  buffer_consume(&ch->input, len);
-	}
+        {
+          /* Send some data for the other side over the secure connection. */
+          if (packet_is_interactive())
+            {
+              if (len > 512)
+                len = 512;
+            }
+          else
+            {
+              if (len > 8192)
+                len = 8192;  /* Keep the packets at reasonable size. */
+              if (len > packet_max_size() / 2)
+                len = packet_max_size() / 2;
+            }
+          packet_start(SSH_MSG_CHANNEL_DATA);
+          packet_put_int(ch->remote_id);
+          packet_put_string(buffer_ptr(&ch->input), len);
+          packet_send();
+          buffer_consume(&ch->input, len);
+        }
       /* check if we should send epsilon out */
       else
-	{
-	  /* input buffer is empty, input socket closed,
-	     input eof not sent, send it now */
-	  if ((ch->status_flags & (STATUS_INPUT_SOCKET_CLOSED |
-				   STATUS_EOF_SENT)) ==
-	      STATUS_INPUT_SOCKET_CLOSED)
-	    {
-	      channel_send_ieof(ch);
-	    }
-	}
+        {
+          /* input buffer is empty, input socket closed,
+             input eof not sent, send it now */
+          if ((ch->status_flags & (STATUS_INPUT_SOCKET_CLOSED |
+                                   STATUS_EOF_SENT)) ==
+              STATUS_INPUT_SOCKET_CLOSED)
+            {
+              channel_send_ieof(ch);
+            }
+        }
     }
 }
 
@@ -1176,7 +1191,7 @@ void channel_input_data(void)
   
   if (channels[channel].status_flags & STATUS_EOF_RECEIVED)
     packet_disconnect("Other party sent data after eof for channel %d.",
-		      channel);
+                      channel);
   
   if (!(channels[channel].status_flags & STATUS_OUTPUT_SOCKET_CLOSED)) {
     data = packet_get_string(&data_len);
@@ -1200,22 +1215,22 @@ int channel_not_very_much_buffered_data(void)
     {
       ch = &channels[i];
       switch (channels[i].type)
-	{
-	case SSH_CHANNEL_X11_LISTENER:
-	case SSH_CHANNEL_PORT_LISTENER:
-	case SSH_CHANNEL_AUTH_LISTENER:
-	  continue;
-	case SSH_CHANNEL_OPEN:
-	  if (buffer_len(&ch->input) > 32000)
-	    return 0;
-	  if (buffer_len(&ch->output) > 32000)
-	    return 0;
-	  continue;
-	case SSH_CHANNEL_X11_OPEN:
-	case SSH_CHANNEL_FREE:
-	default:
-	  continue;
-	}
+        {
+        case SSH_CHANNEL_X11_LISTENER:
+        case SSH_CHANNEL_PORT_LISTENER:
+        case SSH_CHANNEL_AUTH_LISTENER:
+          continue;
+        case SSH_CHANNEL_OPEN:
+          if (buffer_len(&ch->input) > 32000)
+            return 0;
+          if (buffer_len(&ch->output) > 32000)
+            return 0;
+          continue;
+        case SSH_CHANNEL_X11_OPEN:
+        case SSH_CHANNEL_FREE:
+        default:
+          continue;
+        }
     }
 #endif /* 0 */
   return 1;
@@ -1250,7 +1265,7 @@ void channel_input_open_confirmation(void)
   if (channel < 0 || channel >= channels_alloc ||
       channels[channel].type != SSH_CHANNEL_OPENING)
     packet_disconnect("Received open confirmation for non-opening channel %d.",
-		      channel);
+                      channel);
   
   /* Get remote side's id for this channel. */
   remote_channel = packet_get_int();
@@ -1272,7 +1287,7 @@ void channel_input_open_failure(void)
   if (channel < 0 || channel >= channels_alloc ||
       channels[channel].type != SSH_CHANNEL_OPENING)
     packet_disconnect("Received open failure for non-opening channel %d.",
-		      channel);
+                      channel);
   
   /* Free the channel.  This will also close the socket. */
   channel_free(channel);
@@ -1287,18 +1302,18 @@ void channel_stop_listening(void)
   for (i = 0; i < channels_alloc; i++)
     {
       switch (channels[i].type)
-	{
-	case SSH_CHANNEL_AUTH_LISTENER:
-	  auth_delete_socket(NULL);
-	  break;
-	case SSH_CHANNEL_PORT_LISTENER:
-	case SSH_CHANNEL_X11_LISTENER:
-	  close(channels[i].sock);
-	  channel_free(i);
-	  break;
-	default:
-	  break;
-	}
+        {
+        case SSH_CHANNEL_AUTH_LISTENER:
+          auth_delete_socket(NULL);
+          break;
+        case SSH_CHANNEL_PORT_LISTENER:
+        case SSH_CHANNEL_X11_LISTENER:
+          close(channels[i].sock);
+          channel_free(i);
+          break;
+        default:
+          break;
+        }
     }
 }
 
@@ -1311,7 +1326,7 @@ void channel_close_all(void)
   for (i = 0; i < channels_alloc; i++)
     {
       if (channels[i].type != SSH_CHANNEL_FREE)
-	close(channels[i].sock);
+        close(channels[i].sock);
     }
 }
 
@@ -1334,14 +1349,14 @@ int channel_still_open(void)
       case SSH_CHANNEL_X11_LISTENER:
       case SSH_CHANNEL_PORT_LISTENER:
       case SSH_CHANNEL_AUTH_LISTENER:
-	continue;
+        continue;
       case SSH_CHANNEL_OPENING:
       case SSH_CHANNEL_OPEN:
       case SSH_CHANNEL_X11_OPEN:
-	return 1;
+        return 1;
       default:
-	fatal("channel_still_open: bad channel type %d", channels[i].type);
-	/*NOTREACHED*/
+        fatal("channel_still_open: bad channel type %d", channels[i].type);
+        /*NOTREACHED*/
       }
   return 0;
 }
@@ -1357,7 +1372,7 @@ char *channel_open_message(void)
   char buf[512], *cp;
 
   buffer_init(&buffer);
-  sprintf(buf, "The following connections are open:\r\n");
+  snprintf(buf, sizeof(buf), "The following connections are open:\r\n");
   buffer_append(&buffer, buf, strlen(buf));
   for (i = 0; i < channels_alloc; i++)
     switch (channels[i].type)
@@ -1366,16 +1381,16 @@ char *channel_open_message(void)
       case SSH_CHANNEL_X11_LISTENER:
       case SSH_CHANNEL_PORT_LISTENER:
       case SSH_CHANNEL_AUTH_LISTENER:
-	continue;
+        continue;
       case SSH_CHANNEL_OPENING:
       case SSH_CHANNEL_OPEN:
       case SSH_CHANNEL_X11_OPEN:
-	sprintf(buf, "  %.300s\r\n", channels[i].remote_name);
-	buffer_append(&buffer, buf, strlen(buf));
-	continue;
+        snprintf(buf, sizeof(buf), "  %.300s\r\n", channels[i].remote_name);
+        buffer_append(&buffer, buf, strlen(buf));
+        continue;
       default:
-	fatal("channel_still_open: bad channel type %d", channels[i].type);
-	/*NOTREACHED*/
+        fatal("channel_still_open: bad channel type %d", channels[i].type);
+        /*NOTREACHED*/
       }
   buffer_append(&buffer, "\0", 1);
   cp = xstrdup(buffer_ptr(&buffer));
@@ -1387,7 +1402,7 @@ char *channel_open_message(void)
    channel to host:port from remote side. */
 
 void channel_request_local_forwarding(int port, const char *host,
-				      int host_port, int gatewayports)
+                                      int host_port, int gatewayports)
 {
   int ch, sock;
   struct sockaddr_in sin;
@@ -1426,10 +1441,10 @@ void channel_request_local_forwarding(int port, const char *host,
   /* Start listening for connections on the socket. */
   if (listen(sock, 5) < 0)
     packet_disconnect("listen: %.100s", strerror(errno));
-	    
+            
   /* Allocate a channel number for the socket. */
   ch = channel_allocate(SSH_CHANNEL_PORT_LISTENER, sock,
-			xstrdup("port listener"));
+                        xstrdup("port listener"));
   strcpy(channels[ch].path, host); /* note: host name stored here */
   channels[ch].host_port = host_port; /* port on host to connect to */
   channels[ch].listening_port = port; /* port being listened */
@@ -1439,7 +1454,7 @@ void channel_request_local_forwarding(int port, const char *host,
    the secure channel to host:port from local side. */
 
 void channel_request_remote_forwarding(int port, const char *host,
-				       int remote_port)
+                                       int remote_port)
 {
   int type;
   
@@ -1457,12 +1472,12 @@ void channel_request_remote_forwarding(int port, const char *host,
   if (type == SSH_SMSG_FAILURE)
     {
       debug("Remote end denied port forwarding to %d:%.50s:%d",
-	    port, host, remote_port);
+            port, host, remote_port);
       return;
     }
   if (type != SSH_SMSG_SUCCESS)
     packet_disconnect("Protocol error: expected packet type %d, got %d",
-		      SSH_SMSG_SUCCESS, type);
+                      SSH_SMSG_SUCCESS, type);
   
   /* Record locally that connection to this host/port is permitted. */
   if (num_permitted_opens >= SSH_MAX_FORWARDS_PER_DIRECTION)
@@ -1567,13 +1582,13 @@ void channel_input_port_forward_request(int is_root)
 
   if (strlen(hostname) > 255)
     packet_disconnect("Requested forwarding hostname too long: %.200s.",
-		      hostname);
+                      hostname);
   
   /* Check that an unprivileged user is not trying to forward a privileged
      port. */
   if ((port < 1024 || port > 65535) && !is_root)
     packet_disconnect("Requested forwarding of port %d but user is not root.",
-		      port);
+                      port);
 
 #ifdef F_SECURE_COMMERCIAL
 
@@ -1633,7 +1648,7 @@ void channel_input_port_open(void)
 
   if (strlen(host) > 255)
     packet_disconnect("Requested forwarding hostname too long: %.200s.",
-		      host);
+                      host);
   
   /* Get port to connect to. */
   host_port = packet_get_int();
@@ -1649,18 +1664,18 @@ void channel_input_port_open(void)
     {
       /* Go trough all permitted ports. */
       for (i = 0; i < num_permitted_opens; i++)
-	if (permitted_opens[i].port == host_port &&
-	    strcmp(permitted_opens[i].host, host) == 0)
-	  break;
+        if (permitted_opens[i].port == host_port &&
+            strcmp(permitted_opens[i].host, host) == 0)
+          break;
 
       /* Check if we found the requested port among those permitted. */
       if (i >= num_permitted_opens)
-	{
-	  /* The port is not permitted. */
-	  log_msg("Received request to connect to %.100s:%d, but the request was denied.",
-	      host, host_port);
-	  goto fail;
-	}
+        {
+          /* The port is not permitted. */
+          log_msg("Received request to connect to %.100s:%d, but the request was denied.",
+              host, host_port);
+          goto fail;
+        }
     }
   
   memset(&sin, 0, sizeof(sin));
@@ -1679,18 +1694,18 @@ void channel_input_port_open(void)
       /* Look up the host address from the name servers. */
       hp = gethostbyname(host);
       if (!hp)
-	{
-	  error("%.100s: unknown host.", host);
-	  goto fail;
-	}
+        {
+          error("%.100s: unknown host.", host);
+          goto fail;
+        }
       if (!hp->h_addr_list[0])
-	{
-	  error("%.100s: host has no IP address.", host);
-	  goto fail;
-	}
+        {
+          error("%.100s: host has no IP address.", host);
+          goto fail;
+        }
       sin.sin_family = hp->h_addrtype;
       memcpy(&sin.sin_addr, hp->h_addr_list[0], 
-	     sizeof(sin.sin_addr));
+             sizeof(sin.sin_addr));
     }
   sin.sin_port = htons(host_port);
   
@@ -1741,7 +1756,7 @@ void channel_input_port_open(void)
   if (connect(sock, (struct sockaddr *)&sin, sizeof(sin)) < 0)
     {
       error("connect %.100s:%d: %.100s", host, host_port,
-	    strerror(errno));
+            strerror(errno));
       close(sock);
       goto fail;
     }
@@ -1809,10 +1824,10 @@ char *x11_create_display_inet(int screen_number)
       
       sock = socket(AF_INET, SOCK_STREAM, 0);
       if (sock < 0)
-	{
-	  error("socket: %.100s", strerror(errno));
-	  return NULL;
-	}
+        {
+          error("socket: %.100s", strerror(errno));
+          return NULL;
+        }
 
 #if defined(O_NONBLOCK) && !defined(O_NONBLOCK_BROKEN)
       (void)fcntl(sock, F_SETFL, O_NONBLOCK);
@@ -1821,12 +1836,12 @@ char *x11_create_display_inet(int screen_number)
 #endif /* O_NONBLOCK && !O_NONBLOCK_BROKEN */
       
       if (bind(sock, (struct sockaddr *)&sin, sizeof(sin)) < 0)
-	{
-	  debug("bind port %d: %.100s", port, strerror(errno));
-	  shutdown(sock, 2);
-	  close(sock);
-	  continue;
-	}
+        {
+          debug("bind port %d: %.100s", port, strerror(errno));
+          shutdown(sock, 2);
+          close(sock);
+          continue;
+        }
       break;
     }
   if (display_number >= MAX_DISPLAYS)
@@ -1858,32 +1873,35 @@ char *x11_create_display_inet(int screen_number)
     hp = gethostbyname(hostname);
     if (hp == NULL || !hp->h_addr_list[0])
       {
-	error("Could not get server IP address for %.200s.", hostname);
-	packet_send_debug("Could not get server IP address for %.200s.", 
-			  hostname);
-	shutdown(sock, 2);
-	close(sock);
-	return NULL;
+        error("Could not get server IP address for %.200s.", hostname);
+        packet_send_debug("Could not get server IP address for %.200s.", 
+                          hostname);
+        shutdown(sock, 2);
+        close(sock);
+        return NULL;
       }
     memcpy(&addr, hp->h_addr_list[0], sizeof(addr));
-    sprintf(buf, "%.100s:%d.%d", inet_ntoa(addr), display_number, 
-	    screen_number);
+    snprintf(buf, sizeof(buf),
+             "%.100s:%d.%d", inet_ntoa(addr), display_number, 
+             screen_number);
   }
 #else /* NONSTANDARD_IP_ADDRESS_X11_KLUDGE */
 #ifdef HAVE_GETHOSTNAME
   if (gethostname(hostname, sizeof(hostname)) < 0)
     fatal("gethostname: %.100s", strerror(errno));
-  sprintf(buf, "%.400s:%d.%d", hostname, display_number, screen_number);
+  snprintf(buf, sizeof(buf),
+           "%.400s:%d.%d", hostname, display_number, screen_number);
 #else /* HAVE_GETHOSTNAME */
   if (uname(&uts) < 0)
-    fatal("uname: %s", strerror(errno));
-  sprintf(buf, "%.400s:%d.%d", uts.nodename, display_number, screen_number);
+    fatal("uname: %.100s", strerror(errno));
+  snprintf(buf, sizeof(buf),
+           "%.400s:%d.%d", uts.nodename, display_number, screen_number);
 #endif /* HAVE_GETHOSTNAME */
 #endif /* NONSTANDARD_IP_ADDRESS_X11_KLUDGE */
-	    
+            
   /* Allocate a channel for the socket. */
   (void)channel_allocate(SSH_CHANNEL_X11_LISTENER, sock,
-			 xstrdup("X11 inet listener"));
+                         xstrdup("X11 inet listener"));
 
   /* Return a suitable value for the DISPLAY environment variable. */
   return xstrdup(buf);
@@ -1939,80 +1957,83 @@ void x11_input_open(void)
     {
       /* Connect to the unix domain socket. */
       if (sscanf(strrchr(display, ':') + 1, "%d", &display_number) != 1)
-	{
-	  error("Could not parse display number from DISPLAY: %.100s",
-		display);
-	  goto fail;
-	}
+        {
+          error("Could not parse display number from DISPLAY: %.100s",
+                display);
+          goto fail;
+        }
       /* Create a socket. */
       sock = socket(AF_UNIX, SOCK_STREAM, 0);
       if (sock < 0)
-	{
-	  error("socket: %.100s", strerror(errno));
-	  goto fail;
-	}
+        {
+          error("socket: %.100s", strerror(errno));
+          goto fail;
+        }
       /* Connect it to the display socket. */
       ssun.sun_family = AF_UNIX;
 #ifdef HPSUX_NONSTANDARD_X11_KLUDGE
       {
-	/* HPSUX release 10.X uses /var/spool/sockets/X11/0 for the
-	   unix-domain sockets, while earlier releases stores the
-	   socket in /usr/spool/sockets/X11/0 with soft-link from
-	   /tmp/.X11-unix/`uname -n`0 */
+        /* HPSUX release 10.X uses /var/spool/sockets/X11/0 for the
+           unix-domain sockets, while earlier releases stores the
+           socket in /usr/spool/sockets/X11/0 with soft-link from
+           /tmp/.X11-unix/`uname -n`0 */
 
-	struct stat st;
+        struct stat st;
 
-	if (stat("/var/spool/sockets/X11", &st) == 0)
-	  {
-	    sprintf(ssun.sun_path, "%s/%d",
-		    "/var/spool/sockets/X11", display_number);
-	  }
-	else
-	  {
-	    if (stat("/usr/spool/sockets/X11", &st) == 0)
-	      {
-		sprintf(ssun.sun_path, "%s/%d",
-			"/usr/spool/sockets/X11", display_number);
-	      }
-	    else
-	      {
-		struct utsname utsbuf;
-		/* HPSUX stores unix-domain sockets in
-		   /tmp/.X11-unix/`hostname`0 
-		   instead of the normal /tmp/.X11-unix/X0. */
-		if (uname(&utsbuf) < 0)
-		  fatal("uname: %.100s", strerror(errno));
-		sprintf(ssun.sun_path, "%.20s/%.64s%d",
-			X11_DIR, utsbuf.nodename, display_number);
-	      }
-	  }
+        if (stat("/var/spool/sockets/X11", &st) == 0)
+          {
+            snprintf(ssun.sun_path, sizeof(ssun.sun_path), "%.100s/%d",
+                    "/var/spool/sockets/X11", display_number);
+          }
+        else
+          {
+            if (stat("/usr/spool/sockets/X11", &st) == 0)
+              {
+                snprintf(ssun.sun_path, sizeof(ssun.sun_path), "%.100s/%d",
+                        "/usr/spool/sockets/X11", display_number);
+              }
+            else
+              {
+                struct utsname utsbuf;
+                /* HPSUX stores unix-domain sockets in
+                   /tmp/.X11-unix/`hostname`0 
+                   instead of the normal /tmp/.X11-unix/X0. */
+                if (uname(&utsbuf) < 0)
+                  fatal("uname: %.100s", strerror(errno));
+                snprintf(ssun.sun_path, sizeof(ssun.sun_path), "%.20s/%.64s%d",
+                         X11_DIR, utsbuf.nodename, display_number);
+              }
+          }
       }
 #else /* HPSUX_NONSTANDARD_X11_KLUDGE */
       {
-	struct stat st;
+        struct stat st;
 
-	if (stat("/var/X", &st) == 0)
-	  {
-	    sprintf(ssun.sun_path, "%.80s/X%d", "/var/X/.X11-unix",
-		    display_number);
-	  }
-	else if (stat(X11_DIR, &st) == 0)
-	  {
-	    sprintf(ssun.sun_path, "%.80s/X%d", X11_DIR, display_number);
-	  }
-	else
-	  {
-	    sprintf(ssun.sun_path, "%.80s/X%d", "/tmp/.X11-unix",
-		    display_number);
-	  }
+        if (stat("/var/X", &st) == 0)
+          {
+            snprintf(ssun.sun_path, sizeof(ssun.sun_path),
+                     "%.80s/X%d", "/var/X/.X11-unix",
+                     display_number);
+          }
+        else if (stat(X11_DIR, &st) == 0)
+          {
+            snprintf(ssun.sun_path, sizeof(ssun.sun_path),
+                     "%.80s/X%d", X11_DIR, display_number);
+          }
+        else
+          {
+            snprintf(ssun.sun_path, sizeof(ssun.sun_path),
+                     "%.80s/X%d", "/tmp/.X11-unix",
+                     display_number);
+          }
       }
 #endif /* HPSUX_NONSTANDARD_X11_KLUDGE */
       if (connect(sock, (struct sockaddr *)&ssun, AF_UNIX_SIZE(ssun)) < 0)
-	{
-	  error("connect %.100s: %.100s", ssun.sun_path, strerror(errno));
-	  close(sock);
-	  goto fail;
-	}
+        {
+          error("connect %.100s: %.100s", ssun.sun_path, strerror(errno));
+          close(sock);
+          goto fail;
+        }
 
       /* OK, we now have a connection to the display. */
       goto success;
@@ -2033,7 +2054,7 @@ void x11_input_open(void)
   if (sscanf(cp + 1, "%d", &display_number) != 1)
     {
        error("Could not parse display number from DISPLAY: %.100s",
-	     display);
+             display);
       goto fail;
     }
   
@@ -2055,18 +2076,18 @@ void x11_input_open(void)
       /* Look up the host address from the name servers. */
       hp = gethostbyname(buf);
       if (!hp)
-	{
-	  error("%.100s: unknown host.", buf);
-	  goto fail;
-	}
+        {
+          error("%.100s: unknown host.", buf);
+          goto fail;
+        }
       if (!hp->h_addr_list[0])
-	{
-	  error("%.100s: host has no IP address.", buf);
-	  goto fail;
-	}
+        {
+          error("%.100s: host has no IP address.", buf);
+          goto fail;
+        }
       sin.sin_family = hp->h_addrtype;
       memcpy(&sin.sin_addr, hp->h_addr_list[0], 
-	     sizeof(sin.sin_addr));
+             sizeof(sin.sin_addr));
     }
   /* Set port number. */
   sin.sin_port = htons(6000 + display_number);
@@ -2082,7 +2103,7 @@ void x11_input_open(void)
   if (connect(sock, (struct sockaddr *)&sin, sizeof(sin)) < 0)
     {
       error("connect %.100s:%d: %.100s", buf, 6000 + display_number, 
-	    strerror(errno));
+            strerror(errno));
       close(sock);
       goto fail;
     }
@@ -2126,7 +2147,7 @@ void x11_input_open(void)
    data, and enables authentication spoofing. */
 
 void x11_request_forwarding_with_spoofing(RandomState *state,
-					  const char *proto, const char *data)
+                                          const char *proto, const char *data)
 {
   unsigned int data_len = (unsigned int)strlen(data) / 2;
   unsigned int i, value;
@@ -2154,7 +2175,7 @@ void x11_request_forwarding_with_spoofing(RandomState *state,
   for (i = 0; i < data_len; i++)
     {
       if (sscanf(data + 2 * i, "%2x", &value) != 1)
-	fatal("x11_request_forwarding: bad authentication data: %.100s", data);
+        fatal("x11_request_forwarding: bad authentication data: %.100s", data);
       x11_saved_data[i] = value;
       x11_fake_data[i] = random_get_byte(state);
     }
@@ -2164,7 +2185,7 @@ void x11_request_forwarding_with_spoofing(RandomState *state,
   /* Convert the fake data into hex. */
   new_data = xmalloc(2 * data_len + 1);
   for (i = 0; i < data_len; i++)
-    sprintf(new_data + 2 * i, "%02x", (unsigned char)x11_fake_data[i]);
+    snprintf(new_data + 2 * i, 3, "%02x", (unsigned char)x11_fake_data[i]);
 
   /* Send the request packet. */
   packet_start(SSH_CMSG_X11_REQUEST_FORWARDING);
@@ -2248,18 +2269,21 @@ int auth_input_request_forwarding(struct passwd *pw)
   /* Allocate a buffer for the socket name, and format the name.
      And directory name. */
   channel_forwarded_auth_socket_name = xmalloc(strlen(SSH_AGENT_SOCKET_DIR) +
-					       strlen(SSH_AGENT_SOCKET) +
-					       strlen(pw->pw_name) + 10);
+                                               strlen(SSH_AGENT_SOCKET) +
+                                               strlen(pw->pw_name) + 10);
   channel_forwarded_auth_socket_dir_name =
     xmalloc(strlen(SSH_AGENT_SOCKET_DIR) +
-	    strlen(pw->pw_name) + 10);
+            strlen(pw->pw_name) + 10);
 
-  sprintf(channel_forwarded_auth_socket_dir_name, 
-	  SSH_AGENT_SOCKET_DIR, pw->pw_name);
+  snprintf(channel_forwarded_auth_socket_dir_name,
+           strlen(SSH_AGENT_SOCKET_DIR) + strlen(pw->pw_name) + 10,
+           SSH_AGENT_SOCKET_DIR, pw->pw_name);
   /* Use the plain socket name for now, change to absolute
      path later */
-  sprintf(channel_forwarded_auth_socket_name,
-	  SSH_AGENT_SOCKET, (int)getpid());
+  snprintf(channel_forwarded_auth_socket_name,
+           strlen(SSH_AGENT_SOCKET_DIR) + strlen(SSH_AGENT_SOCKET) + 
+           strlen(pw->pw_name) + 10,
+           SSH_AGENT_SOCKET, (int)getpid());
   
   /* Register the cleanup function before making the directory */
   fatal_add_cleanup(&auth_delete_socket, NULL);
@@ -2269,7 +2293,7 @@ int auth_input_request_forwarding(struct passwd *pw)
   if (last_dir == NULL || last_dir == channel_forwarded_auth_socket_dir_name)
     {
       packet_send_debug("* Remote error: Invalid SSH_AGENT_SOCKET_DIR \'%.100s\', it should contain at least one /.",
-	    channel_forwarded_auth_socket_dir_name);
+            channel_forwarded_auth_socket_dir_name);
       packet_send_debug("* Remote error: Authentication fowarding disabled.");
       return 0;
     }
@@ -2278,8 +2302,8 @@ int auth_input_request_forwarding(struct passwd *pw)
   if (ret < 0)
     {
       packet_send_debug("* Remote error: Agent parent directory \'%.100s\' stat failed: %.100s",
-	    channel_forwarded_auth_socket_dir_name, 
-	    strerror(errno));
+            channel_forwarded_auth_socket_dir_name, 
+            strerror(errno));
       packet_send_debug("* Remote error: Authentication fowarding disabled.");
       return 0;
     }
@@ -2297,40 +2321,40 @@ int auth_input_request_forwarding(struct passwd *pw)
   if (ret < 0 && errno != ENOENT)
     {
       packet_send_debug("* Remote error: stat of agent directory \'%.100s\' failed: %.100s",
-	    channel_forwarded_auth_socket_dir_name,
-	    strerror(errno));
+            channel_forwarded_auth_socket_dir_name,
+            strerror(errno));
       packet_send_debug("* Remote error: Authentication fowarding disabled.");
       return 0;
     }
   if (ret < 0 && errno == ENOENT)
     {
       if (mkdir(channel_forwarded_auth_socket_dir_name, S_IRWXU) == 0)
-	{
-	  directory_created = 1;
-	  ret = lstat(channel_forwarded_auth_socket_dir_name, &st);
-	}
+        {
+          directory_created = 1;
+          ret = lstat(channel_forwarded_auth_socket_dir_name, &st);
+        }
       else
-	{
-	  packet_send_debug("* Remote error: Agent directory \'%.100s\' mkdir failed: %.100s",
-		channel_forwarded_auth_socket_dir_name,
-		strerror(errno));
-	  packet_send_debug("* Remote error: Authentication fowarding disabled.");
-	  return 0;
-	}
+        {
+          packet_send_debug("* Remote error: Agent directory \'%.100s\' mkdir failed: %.100s",
+                channel_forwarded_auth_socket_dir_name,
+                strerror(errno));
+          packet_send_debug("* Remote error: Authentication fowarding disabled.");
+          return 0;
+        }
     }
   else
     {
       /* Simple owner & mode check. If directory has just been created,
-	 don't care about the owner yet. */
+         don't care about the owner yet. */
       if ((st.st_uid != pw->pw_uid) || (st.st_mode & 077) != 0)
-	{
-	  packet_send_debug("* Remote error: Agent socket creation:"
-		"Bad modes/owner for directory \'%s\' (modes are %o, should be 040700)",
-		channel_forwarded_auth_socket_dir_name,
-		st.st_mode);
-	  packet_send_debug("* Remote error: Authentication fowarding disabled.");
-	  return 0;
-	}
+        {
+          packet_send_debug("* Remote error: Agent socket creation:"
+                "Bad modes/owner for directory \'%.100s\' (modes are %o, should be 040700)",
+                channel_forwarded_auth_socket_dir_name,
+                st.st_mode);
+          packet_send_debug("* Remote error: Authentication fowarding disabled.");
+          return 0;
+        }
     }
   chdir(channel_forwarded_auth_socket_dir_name);
   
@@ -2338,7 +2362,7 @@ int auth_input_request_forwarding(struct passwd *pw)
   if (stat(".", &st2) != 0)
     {
       packet_send_debug("* Remote error: stat \'.\' failed after chdir to \'%.100s\': %.100s",
-	    channel_forwarded_auth_socket_dir_name, strerror(errno));
+            channel_forwarded_auth_socket_dir_name, strerror(errno));
       packet_send_debug("* Remote error: Authentication fowarding disabled.");
       return 0;
     }
@@ -2353,14 +2377,14 @@ int auth_input_request_forwarding(struct passwd *pw)
   if (stat("..", &st) != 0)
     {
       packet_send_debug("* Remote error: Agent socket directory stat \'..\' failed: %.100s",
-	    strerror(errno));
+            strerror(errno));
       packet_send_debug("* Remote error: Authentication fowarding disabled.");
       return 0;
     }
   if ((st.st_mode & 01000) == 0)
     {
-      packet_send_debug("* Remote error: Agent socket creation: Directory \'%s/..\' is not sticky, mode is %o, should be 041777",
-	    channel_forwarded_auth_socket_dir_name, st.st_mode);
+      packet_send_debug("* Remote error: Agent socket creation: Directory \'%.100s/..\' is not sticky, mode is %o, should be 041777",
+            channel_forwarded_auth_socket_dir_name, st.st_mode);
       packet_send_debug("* Remote error: Authentication forwarding disabled.");
       return 0;
     }
@@ -2380,7 +2404,7 @@ int auth_input_request_forwarding(struct passwd *pw)
   memset(&sunaddr, 0, AF_UNIX_SIZE(sunaddr));
   sunaddr.sun_family = AF_UNIX;
   strncpy(sunaddr.sun_path, channel_forwarded_auth_socket_name, 
-	  sizeof(sunaddr.sun_path));
+          sizeof(sunaddr.sun_path));
   
   /* Use umask to get desired permissions, chmod is too dangerous
      NOTE: If your system doesn't handle umask correctly when
@@ -2396,20 +2420,22 @@ int auth_input_request_forwarding(struct passwd *pw)
   if (directory_created)
     if (chown(".", pw->pw_uid, pw->pw_gid) < 0)
       packet_disconnect("Agent socket directory chown failed: %.100s",
-			strerror(errno));
+                        strerror(errno));
 
   /* Start listening on the socket. */
   if (listen(sock, 5) < 0)
     packet_disconnect("Agent socket listen failed: %.100s", strerror(errno));
 
   /* Change the relative socket name to absolute */
-  sprintf(channel_forwarded_auth_socket_name, 
-	  SSH_AGENT_SOCKET_DIR"/"SSH_AGENT_SOCKET,
-	  pw->pw_name, (int)getpid());
+  snprintf(channel_forwarded_auth_socket_name, 
+           strlen(SSH_AGENT_SOCKET_DIR) + strlen(SSH_AGENT_SOCKET) + 
+           strlen(pw->pw_name) + 10,
+           SSH_AGENT_SOCKET_DIR"/"SSH_AGENT_SOCKET,
+           pw->pw_name, (int)getpid());
     
   /* Allocate a channel for the authentication agent socket. */
   newch = channel_allocate(SSH_CHANNEL_AUTH_LISTENER, sock,
-			   xstrdup("auth socket"));
+                           xstrdup("auth socket"));
   strcpy(channels[newch].path, channel_forwarded_auth_socket_name);
   return 1;
 }

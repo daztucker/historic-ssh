@@ -15,8 +15,17 @@ login (authentication) dialog.
 */
 
 /*
- * $Id: sshconnect.c,v 1.24 1998/01/02 06:23:28 kivinen Exp $
+ * $Id: sshconnect.c,v 1.26 1998/04/30 01:56:01 kivinen Exp $
  * $Log: sshconnect.c,v $
+ * Revision 1.26  1998/04/30 01:56:01  kivinen
+ * 	Added PasswordPromptLogin and PasswordPromptHost option code.
+ * 	Added check that proxy command isn't empty.
+ *
+ * Revision 1.25  1998/03/27 17:04:04  kivinen
+ * 	Changed socks support to support socks.h. Added
+ * 	ENABLE_TCP_NODELAY support. Fixed kerberos initialization code
+ * 	so ssh will check the error codes of initialization function.
+ *
  * Revision 1.24  1998/01/02 06:23:28  kivinen
  * 	Changed "foo's password" prompt to "foo@bar's password".
  *
@@ -330,7 +339,7 @@ int ssh_create_socket(uid_t original_real_uid, int privileged)
 	  sin.sin_port = htons(p);
 
 	  /* Try to bind the socket to the privileged port. */
-#ifdef SOCKS
+#if defined(SOCKS) && !defined(HAVE_SOCKS_H)
 	  if (Rbind(sock, (struct sockaddr *)&sin, sizeof(sin)) >= 0)
 	    break; /* Success. */
 #else /* SOCKS */
@@ -396,7 +405,7 @@ int ssh_connect(const char *host, int port, int connection_attempts,
     host = "127.0.0.1";
   
   /* If a proxy command is given, connect using it. */
-  if (proxy_command != NULL)
+  if (proxy_command != NULL && *proxy_command)
     return ssh_proxy_connect(host, port, original_real_uid, proxy_command,
 			     random_state);
 
@@ -433,7 +442,7 @@ int ssh_connect(const char *host, int port, int connection_attempts,
 				   !anonymous && geteuid() == UID_ROOT);
       
 	  /* Connect to the host. */
-#ifdef SOCKS
+#if defined(SOCKS) && !defined(HAVE_SOCKS_H)
 	  if (Rconnect(sock, (struct sockaddr *)&hostaddr, sizeof(hostaddr))
 #else /* SOCKS */
 	  if (connect(sock, (struct sockaddr *)&hostaddr, sizeof(hostaddr))
@@ -457,7 +466,7 @@ int ssh_connect(const char *host, int port, int connection_attempts,
 	    {
 	      struct hostent *hp_static;
 
-#ifdef SOCKS5
+#if defined(SOCKS5) && !defined(HAVE_SOCKS_H)
 	      hp_static = Rgethostbyname(host);
 #else
 	      hp_static = gethostbyname(host);
@@ -504,7 +513,7 @@ int ssh_connect(const char *host, int port, int connection_attempts,
 				       !anonymous && geteuid() == UID_ROOT);
 
 	      /* Connect to the host. */
-#ifdef SOCKS
+#if defined(SOCKS) && !defined(HAVE_SOCKS_H)
 	      if (Rconnect(sock, (struct sockaddr *)&hostaddr, 
 			   sizeof(hostaddr)) >= 0)
 #else /* SOCKS */
@@ -548,7 +557,7 @@ int ssh_connect(const char *host, int port, int connection_attempts,
   /* Set socket options.  We would like the socket to disappear as soon as
      it has been closed for whatever reason. */
   /* setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (void *)&on, sizeof(on)); */
-#ifdef TCP_NODELAY
+#if defined(TCP_NODELAY) && defined(ENABLE_TCP_NODELAY)
   setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (void *)&on, sizeof(on));
 #endif /* TCP_NODELAY */
 #ifdef SO_LINGER
@@ -921,7 +930,8 @@ int try_kerberos_authentication()
   remotehost = (char *) get_canonical_hostname();
   if (!ssh_context)
     {
-      krb5_init_context(&ssh_context);
+      if ((r = krb5_init_context(&ssh_context)))
+	fatal("Kerberos V5: %s while initializing krb5.", error_message(r));
       krb5_init_ets(ssh_context);
     }
   
@@ -1076,7 +1086,8 @@ int send_kerberos_tgt()
   
   if (!ssh_context)
     {
-      krb5_init_context(&ssh_context);
+      if ((r = krb5_init_context(&ssh_context)))
+	fatal("Kerberos V5: %s while initializing krb5.", error_message(r));
       krb5_init_ets(ssh_context);
     }
   if (!auth_context)
@@ -1564,7 +1575,9 @@ void ssh_login(RandomState *state, int host_key_valid,
 #ifdef KRB5
   if (!ssh_context)
     {
-      krb5_init_context(&ssh_context);
+      if ((problem = krb5_init_context(&ssh_context)))
+	fatal("Kerberos V5: %s while initializing krb5.",
+	      error_message(problem));
       krb5_init_ets(ssh_context);
     }
   if ((supported_authentications & (1 << SSH_AUTH_KERBEROS)) &&
@@ -1735,11 +1748,20 @@ void ssh_login(RandomState *state, int host_key_valid,
   if ((supported_authentications & (1 << SSH_AUTH_PASSWORD)) &&
       options->password_authentication && !options->batch_mode)
     {
-      char prompt[50];
+      char prompt[80];
       debug("Doing password authentication.");
       if (options->cipher == SSH_CIPHER_NONE)
 	log_msg("WARNING: Encryption is disabled! Password will be transmitted in clear text.");
-      sprintf(prompt, "%.30s@%.30s's password: ", server_user, host);
+      if (options->password_prompt_login && options->password_prompt_host)
+	sprintf(prompt, "%.30s@%.30s's password: ", server_user, host);
+      else if (!options->password_prompt_login &&
+	       !options->password_prompt_host)
+	sprintf(prompt, "Password: ");
+      else if (options->password_prompt_login)
+	sprintf(prompt, "%.30s's password: ", server_user);
+      else
+	sprintf(prompt, "%.30s password: ", host);
+      
       for(i = 0; i < options->number_of_password_prompts; i++)
 	{
 	  password = read_passphrase(pw->pw_uid, prompt, 0);

@@ -14,8 +14,20 @@ Functions for connecting the local authentication agent.
 */
 
 /*
- * $Id: authfd.c,v 1.6 1996/10/03 18:46:13 ylo Exp $
+ * $Id: authfd.c,v 1.10 1996/10/29 22:34:52 kivinen Exp $
  * $Log: authfd.c,v $
+ * Revision 1.10  1996/10/29 22:34:52  kivinen
+ * 	log -> log_msg. Removed userfile.h.
+ *
+ * Revision 1.9  1996/10/24 14:05:44  ttsalo
+ *       Cleaning up old fd-auth trash
+ *
+ * Revision 1.8  1996/10/21 16:15:40  ttsalo
+ *       Fixed auth socket name handling
+ *
+ * Revision 1.7  1996/10/20 16:26:17  ttsalo
+ * 	Modified the routines to use agent socket directly
+ *
  * Revision 1.6  1996/10/03 18:46:13  ylo
  * 	Fixed a bug that caused "Received signal 14" errors.
  *
@@ -67,49 +79,82 @@ Functions for connecting the local authentication agent.
 #include "bufaux.h"
 #include "xmalloc.h"
 #include "getput.h"
-#include "userfile.h"
 
-/* Returns a UserFile structure for handling the authentication fd,
-   or NULL if there is none.
-   Socket is opened with user privileges to prevent anyone from using
-   root privileges to contact other users' agents. */
+/* Returns the authentication fd, or -1 if there is none.
+   Socket directory privileges are checked to prevent anyone
+   from connecting to other users' sockets with suid root ssh. */
 
-UserFile ssh_get_authentication_fd()
+int ssh_get_authentication_fd()
 {
-  const char *authfd, *authsocket;
-  int sock;
+  char *authsocket, *authsocketdir;
+  int sock, namelen;
   struct sockaddr_un sunaddr;
+  struct stat st;
+  struct passwd *pw;
   
-  /* Get the file descriptor number from environment. */
-  authfd = getenv(SSH_AUTHFD_ENV_NAME);
+  authsocketdir = getenv(SSH_AUTHSOCKET_ENV_NAME);
+  if (!authsocketdir)
+    return -1;
+  else
+    authsocketdir = xstrdup(authsocketdir);
 
-  /* If we got a value, encapsulate it in struct UserFile. */
-  if (authfd)
-    return userfile_encapsulate_fd(atoi(authfd));
+  /* Point to the end of the name */
+  authsocket = authsocketdir + strlen(authsocketdir);
 
-  authsocket = getenv(SSH_AUTHSOCKET_ENV_NAME);
-  if (!authsocket)
-    return NULL;
+  /* Cut the authsocketdir and make authsocket point to
+     the bare socket name */
+  while (authsocket != authsocketdir && *authsocket != '/')
+    authsocket--;
 
-  return userfile_local_socket_connect(getuid(), authsocket);
-}
+  *authsocket = '\0';
+  authsocket++;
 
-/* Closes the agent socket if it should be closed (depends on how it was
-   obtained).  The argument must have been returned by 
-   ssh_get_authentication_fd(). */
+  pw = getpwuid(original_real_uid);
+  
+  /* Change to the socket directory so it's privileges can be
+     reliably checked */
+  chdir(authsocketdir);
 
-void ssh_close_authentication_socket(UserFile authfd)
-{
-  if (getenv(SSH_AUTHSOCKET_ENV_NAME))
-    userfile_close(authfd);
-}
+  if (stat(".", &st) == -1)
+    {
+      perror("stat:");
+      return -1;
+    }
 
-/* Dummy alarm used to prevent waiting for connection from the
-   authentication agent indefinitely. */
+  if (st.st_uid != pw->pw_uid)
+    {
+      error("Invalid owner of authentication socket directory %s\n",
+	    authsocketdir);
+      return -1;
+    }
 
-static RETSIGTYPE dummy_alarm_handler(int sig)
-{
-  /* Do nothing; a cought signal will just cause accept to return. */
+  if ((st.st_mode & 077) != 0)
+    {
+      error("Invalid modes for authentication socket directory %s\n",
+	    authsocketdir);
+      return -1;
+    }
+
+  sunaddr.sun_family = AF_UNIX;
+  strncpy(sunaddr.sun_path, authsocket, sizeof(sunaddr.sun_path));
+
+  xfree(authsocketdir);
+  
+  sock = socket(AF_UNIX, SOCK_STREAM, 0);
+  if (sock < 0)
+    return -1;
+
+  if (connect(sock, (struct sockaddr *)&sunaddr,
+	      AF_UNIX_SIZE(sunaddr)) < 0)
+    {
+      close(sock);
+      return -1;
+    }
+  else
+    {
+      fcntl(sock, F_SETFL, 0);  /* Set the socket to blocking mode */
+      return sock;
+    }
 }
 
 /* Opens a socket to the authentication server.  Returns the number of
@@ -117,112 +162,17 @@ static RETSIGTYPE dummy_alarm_handler(int sig)
 
 int ssh_get_authentication_connection_fd()
 {
-  UserFile authfd;
-  int listen_sock, sock, port, addrlen;
-  int ret;
-  long duration, old_timeout;
-  time_t old_time;
-  RETSIGTYPE (*old_handler)();
-  struct sockaddr_in sin;
-  char msg[3];
+  int authfd;
 
-  /* Get the the socket number from the environment.  This is the socket
-     used to obtain the real authentication socket. */
+  /* Get the the socket number from the environment. */
   authfd = ssh_get_authentication_fd();
-  if (authfd == NULL)
-    {
-      debug("Couldn't connect to agent's socket.");
-      return -1;
-    }
-  
-  /* Create a local socket for listening. */
-  listen_sock = socket(AF_INET, SOCK_STREAM, 0);
-  if (listen_sock == -1)
-    {
-      ssh_close_authentication_socket(authfd);
-      debug("Couldn't create a socket.");
-      return -1;
-    }
 
-  /* Bind the socket to random unprivileged port. */
-  memset(&sin, 0, sizeof(sin));
-  sin.sin_family = AF_INET;
-  do
-    {
-      port = 32768 + (rand() % 30000);
-      sin.sin_port = htons(port);
-    }
-  while ((ret = bind(listen_sock, (struct sockaddr *)&sin, sizeof(sin))) < 0 &&
-	 errno == EADDRINUSE);
-
-  if (ret < 0)
-    {
-      error("bind: %.100s", strerror(errno));
-      close(listen_sock);
-      ssh_close_authentication_socket(authfd);
-      debug("Couldn't bind the socket");
-      return -1;
-    }
-    
-  /* Start listening for connections on the socket. */
-  if (listen(listen_sock, 1) < 0)
-    {
-      error("listen: %.100s", strerror(errno));
-      close(listen_sock);
-      ssh_close_authentication_socket(authfd);
-      debug("Couldn't listen on socket");
-      return -1;
-    }
-
-  /* Send a message to the authentication fd requesting the agent or its
-     local representative to connect to the given socket.  Note that
-     we use send() to get the packet sent atomically (there can be several
-     clients trying to use the same authentication fd simultaneously). */
-  msg[0] = (char)SSH_AUTHFD_CONNECT;
-  PUT_16BIT(msg + 1, port);
-  if (userfile_send(authfd, msg, 3, 0) < 0)
-    {
-      shutdown(listen_sock, 2);
-      close(listen_sock);
-      ssh_close_authentication_socket(authfd);
-      debug("Couldn't send opening message to agent");
-      return -1;
-    }
-
-  /* Setup a timeout so we won't wait for the connection indefinitely. */
-  old_time = time(NULL);
-  old_handler = signal(SIGALRM, dummy_alarm_handler);
-  old_timeout = alarm(120) ;
-  
-  /* Wait for the connection from the agent or its representative. */
-  addrlen = sizeof(sin);
-  sock = accept(listen_sock, (struct sockaddr *)&sin, &addrlen);
-
-  if (sock >= 0)
+  if (authfd >= 0)
     debug("Connection to authentication agent opened.");
   else
     debug("No agent.");
   
-  /* Remove the alarm (restore its old values). */
-  alarm(0);
-  signal(SIGALRM, old_handler);
-  if (old_timeout != 0)
-    {
-      duration = time(NULL) - old_time;
-      if (old_timeout <= duration)
-	old_timeout = 1;
-      else
-	old_timeout -= duration;
-    }
-  alarm(old_timeout);
-  
-  /* Close the socket we used for listening.  It is no longer needed.
-     (The authentication fd and the new connection still remain open.) */
-  shutdown(listen_sock, 2);
-  close(listen_sock);
-  ssh_close_authentication_socket(authfd);
-
-  return sock;
+  return authfd;
 }  
 
 /* Opens and connects a private socket for communication with the
@@ -231,7 +181,8 @@ int ssh_get_authentication_connection_fd()
    Returns NULL if an error occurred and the connection could not be
    opened. */
 
-AuthenticationConnection *ssh_get_authentication_connection()
+AuthenticationConnection *
+ssh_get_authentication_connection()
 {
   AuthenticationConnection *auth;
   int sock;
@@ -449,7 +400,7 @@ int ssh_decrypt_challenge(AuthenticationConnection *auth,
   /* Check for agent failure message. */
   if (buf[0] == SSH_AGENT_FAILURE)
     {
-      log("Agent admitted failure to authenticate using the key.");
+      log_msg("Agent admitted failure to authenticate using the key.");
       goto error_cleanup;
     }
       

@@ -2,10 +2,11 @@
 
 hostfile.c
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Thu Jun 29 07:10:56 1995 ylo
 
@@ -14,12 +15,15 @@ Functions for manipulating the known hosts files.
 */
 
 /*
- * $Id: hostfile.c,v 1.4 1999/02/21 19:52:20 ylo Exp $
+ * $Id: hostfile.c,v 1.5 1999/11/17 17:04:45 tri Exp $
  * $Log: hostfile.c,v $
+ * Revision 1.5  1999/11/17 17:04:45  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.4  1999/02/21 19:52:20  ylo
- * 	Intermediate commit of ssh1.2.27 stuff.
- * 	Main change is sprintf -> snprintf; however, there are also
- * 	many other changes.
+ *      Intermediate commit of ssh1.2.27 stuff.
+ *      Main change is sprintf -> snprintf; however, there are also
+ *      many other changes.
  *
  * Revision 1.3  1998/07/08 00:43:25  kivinen
  *      Added ip number to mach_hostname. Changed it to use match_host

@@ -11,8 +11,12 @@ and ssh has the necessary privileges.)
 */
 
 /*
- * $Id: scp.c,v 1.6 1995/08/18 22:55:53 ylo Exp $
+ * $Id: scp.c,v 1.7 1995/09/13 12:00:30 ylo Exp $
  * $Log: scp.c,v $
+ * Revision 1.7  1995/09/13  12:00:30  ylo
+ * 	Don't use -l unless user name is explicitly given (so that
+ * 	User works in .ssh/config).
+ *
  * Revision 1.6  1995/08/18  22:55:53  ylo
  * 	Added utimbuf kludges for NextStep.
  * 	Added "-P port" option.
@@ -62,7 +66,7 @@ and ssh has the necessary privileges.)
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$Id: scp.c,v 1.6 1995/08/18 22:55:53 ylo Exp $
+ *	$Id: scp.c,v 1.7 1995/09/13 12:00:30 ylo Exp $
  */
 
 #ifndef lint
@@ -168,8 +172,11 @@ int do_cmd(char *host, char *remuser, char *cmd, int *fdin, int *fdout)
 	  args[i++] = "-p";
 	  args[i++] = port;
 	}
-      args[i++] = "-l";
-      args[i++] = remuser;
+      if (remuser != NULL)
+	{
+	  args[i++] = "-l";
+	  args[i++] = remuser;
+	}
       args[i++] = host;
       args[i++] = cmd;
       args[i++] = NULL;
@@ -389,8 +396,7 @@ toremote(targ, argc, argv)
 			        bp = xmalloc(len);
 				(void)sprintf(bp, "%s -t %s", cmd, targ);
 				host = thost;
-				if (do_cmd(host, 
-					   tuser ? tuser : pwd->pw_name, 
+				if (do_cmd(host,  tuser,
 					   bp, &remin, &remout) < 0)
 				  exit(1);
 				if (response() < 0)
@@ -430,7 +436,7 @@ tolocal(argc, argv)
 			src = ".";
 		if ((host = strchr(argv[i], '@')) == NULL) {
 			host = argv[i];
-			suser = pwd->pw_name;
+			suser = NULL;
 		} else {
 			*host++ = 0;
 			suser = argv[i];
@@ -946,7 +952,7 @@ run_err(const char *fmt, ...)
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$Id: scp.c,v 1.6 1995/08/18 22:55:53 ylo Exp $
+ *	$Id: scp.c,v 1.7 1995/09/13 12:00:30 ylo Exp $
  */
 
 char *

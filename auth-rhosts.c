@@ -16,9 +16,12 @@ the login based on rhosts authentication.  This file also processes
 */
 
 /*
- * $Id: auth-rhosts.c,v 1.8 1998/04/30 03:58:38 kivinen Exp $
+ * $Id: auth-rhosts.c,v 1.9 1998/05/23 20:20:04 kivinen Exp $
  * $Log: auth-rhosts.c,v $
- * Revision 1.8  1998/04/30 03:58:38  kivinen
+ * Revision 1.9  1998/05/23  20:20:04  kivinen
+ * 	Added num_deny_shosts/num_allow_shosts option support.
+ *
+ * Revision 1.8  1998/04/30  03:58:38  kivinen
  * 	Fixed typo.
  *
  * Revision 1.7  1998/04/30 01:50:40  kivinen
@@ -88,6 +91,9 @@ the login based on rhosts authentication.  This file also processes
 #include "ssh.h"
 #include "xmalloc.h"
 #include "userfile.h"
+#include "servconf.h"
+
+extern ServerOptions options;
 
 /* Returns true if the strings are equal, ignoring case (a-z only). */
 
@@ -247,6 +253,31 @@ int check_rhosts_file(uid_t uid, const char *filename, const char *hostname,
 	continue; /* Different username. */
 
 #endif /* HAVE_INNETGR */
+      
+      /* Check whether this host is permitted to be in .[rs]hosts. */
+      {
+	int perm_denied = 0;
+	int i;
+	if (options.num_deny_shosts > 0)
+	  {
+	    for (i = 0; i < options.num_deny_shosts; i++)
+	      if (match_pattern(host, options.deny_shosts[i]))
+		perm_denied = 1;
+	  }
+	if ((!perm_denied) && options.num_allow_shosts > 0)
+	  {
+	    for (i = 0; i < options.num_allow_shosts; i++)
+	      if (match_pattern(host, options.allow_shosts[i]))
+		break;
+	    if (i >= options.num_allow_shosts)
+	      perm_denied = 1;
+	  }
+	if (perm_denied)
+	  {
+	    log_msg("Use of %s denied for %s", filename, host);
+	    continue;
+	  }
+      }
 
       /* Found the user and host. */
       userfile_close(uf);

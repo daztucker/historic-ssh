@@ -14,8 +14,12 @@ Cryptographically strong random number generation.
 */
 
 /*
- * $Id: randoms.c,v 1.3 1995/08/29 22:22:50 ylo Exp $
+ * $Id: randoms.c,v 1.4 1995/09/13 11:59:07 ylo Exp $
  * $Log: randoms.c,v $
+ * Revision 1.4  1995/09/13  11:59:07  ylo
+ * 	Large modifications to make this work on machines without 32
+ * 	bit integer type (Cray).
+ *
  * Revision 1.3  1995/08/29  22:22:50  ylo
  * 	Removed extra '&'.
  *
@@ -28,6 +32,7 @@ Cryptographically strong random number generation.
 
 #include "includes.h"
 #include "randoms.h"
+#include "getput.h"
 
 #ifdef HAVE_GETRUSAGE
 #include <sys/resource.h>
@@ -55,6 +60,8 @@ void random_initialize(RandomState *state, const char *filename)
   state->add_position = 0;
   state->next_available_byte = sizeof(state->stir_key);
 
+  /* This isn't strictly necessary, but will keep programs like 3rd degree or
+     purify silent. */
   memset(state, 0, sizeof(state));
   
   /* Get noise from the file. */
@@ -75,15 +82,14 @@ void random_initialize(RandomState *state, const char *filename)
       random_save(state, filename);
     }
 
-  /* Get noise from the address on stack and argument addresses. */
-  state->state[0] ^= (unsigned long)state;
-  state->state[1] ^= (unsigned long)buf;
-  state->state[2] ^= (unsigned long)filename;
-  state->state[3] ^= f;
-  random_add_noise(state, filename, strlen(filename));
-
   /* Get easily available noise from the environment. */
   random_acquire_light_environmental_noise(state);
+}
+
+void random_xor_noise(RandomState *state, unsigned int i, word32 value)
+{
+  value ^= GET_32BIT(state->state + 4 * i);
+  PUT_32BIT(state->state + 4 * i, value);
 }
 
 /* Acquires as much environmental noise as it can.  This is probably quite
@@ -126,28 +132,27 @@ void random_acquire_environmental_noise(RandomState *state)
 
 void random_acquire_light_environmental_noise(RandomState *state)
 {
-  state->state[((unsigned long)state >> 3) % 
-	       (sizeof(state->state)/sizeof(state->state[0]))] += time(NULL);
+  random_xor_noise(state, state->state[0] % (RANDOM_STATE_BYTES / 4),
+		   (word32)time(NULL));
 
 #ifdef HAVE_GETTIMEOFDAY
   {
     struct timeval tv;
-    struct timezone tz;
-    gettimeofday(&tv, &tz);
-    state->state[0] ^= tv.tv_sec;
-    state->state[1] ^= tv.tv_usec;
-    state->state[2] ^= tz.tz_minuteswest ^ (tz.tz_dsttime << 16);
+    gettimeofday(&tv, NULL);
+    random_xor_noise(state, 0, (word32)tv.tv_usec);
+    random_xor_noise(state, 1, (word32)tv.tv_sec);
 #ifdef HAVE_CLOCK
-    state->state[3] ^= clock();
+    random_xor_noise(state, 3, (word32)clock());
 #endif /* HAVE_CLOCK */
-  }
+ }
 #endif /* HAVE_GETTIMEOFDAY */
 #ifdef HAVE_TIMES
   {
     struct tms tm;
-    state->state[2] ^= times(&tm);
-    state->state[4] ^= tm.tms_utime ^ (tm.tms_stime << 8) ^ 
-      (tm.tms_cutime << 16) ^ (tm.tms_cstime << 24);
+    random_xor_noise(state, 2, (word32)times(&tm));
+    random_xor_noise(state, 4, (word32)(tm.tms_utime ^ (tm.tms_stime << 8) ^ 
+					(tm.tms_cutime << 16) ^ 
+					(tm.tms_cstime << 24)));
   }
 #endif /* HAVE_TIMES */
 #ifdef HAVE_GETRUSAGE
@@ -155,31 +160,35 @@ void random_acquire_light_environmental_noise(RandomState *state)
     struct rusage ru, cru;
     getrusage(RUSAGE_SELF, &ru);
     getrusage(RUSAGE_CHILDREN, &cru);
-    state->state[0] ^= ru.ru_utime.tv_usec + cru.ru_utime.tv_usec;
-    state->state[2] ^= ru.ru_stime.tv_usec + cru.ru_stime.tv_usec;
-    state->state[5] ^= ru.ru_maxrss + cru.ru_maxrss;
-    state->state[6] ^= ru.ru_ixrss + cru.ru_ixrss;
-    state->state[7] ^= ru.ru_idrss + cru.ru_idrss;
-    state->state[8] ^= ru.ru_minflt + cru.ru_minflt;
-    state->state[9] ^= ru.ru_majflt + cru.ru_majflt;
-    state->state[10] ^= ru.ru_nswap + cru.ru_nswap;
-    state->state[11] ^= ru.ru_inblock + cru.ru_inblock;
-    state->state[12] ^= ru.ru_oublock + cru.ru_oublock;
-    state->state[13] ^= (ru.ru_msgsnd ^ ru.ru_msgrcv ^ ru.ru_nsignals) +
-      (cru.ru_msgsnd ^ cru.ru_msgrcv ^ cru.ru_nsignals);
-    state->state[14] ^= ru.ru_nvcsw + cru.ru_nvcsw;
-    state->state[15] ^= ru.ru_nivcsw + cru.ru_nivcsw;
+    random_xor_noise(state, 0, (word32)(ru.ru_utime.tv_usec + 
+					cru.ru_utime.tv_usec));
+    random_xor_noise(state, 2, (word32)(ru.ru_stime.tv_usec + 
+					cru.ru_stime.tv_usec));
+    random_xor_noise(state, 5, (word32)(ru.ru_maxrss + cru.ru_maxrss));
+    random_xor_noise(state, 6, (word32)(ru.ru_ixrss + cru.ru_ixrss));
+    random_xor_noise(state, 7, (word32)(ru.ru_idrss + cru.ru_idrss));
+    random_xor_noise(state, 8, (word32)(ru.ru_minflt + cru.ru_minflt));
+    random_xor_noise(state, 9, (word32)(ru.ru_majflt + cru.ru_majflt));
+    random_xor_noise(state, 10, (word32)(ru.ru_nswap + cru.ru_nswap));
+    random_xor_noise(state, 11, (word32)(ru.ru_inblock + cru.ru_inblock));
+    random_xor_noise(state, 12, (word32)(ru.ru_oublock + cru.ru_oublock));
+    random_xor_noise(state, 13, (word32)((ru.ru_msgsnd ^ ru.ru_msgrcv ^ 
+					  ru.ru_nsignals) +
+					 (cru.ru_msgsnd ^ cru.ru_msgrcv ^ 
+					  cru.ru_nsignals)));
+    random_xor_noise(state, 14, (word32)(ru.ru_nvcsw + cru.ru_nvcsw));
+    random_xor_noise(state, 15, (word32)(ru.ru_nivcsw + cru.ru_nivcsw));
   }
 #endif /* HAVE_GETRUSAGE */
-  state->state[11] += getpid();
-  state->state[12] += getppid();
-  state->state[10] += getuid();
-  state->state[10] += (getgid() << 16);
+  random_xor_noise(state, 11, (word32)getpid());
+  random_xor_noise(state, 12, (word32)getppid());
+  random_xor_noise(state, 10, (word32)getuid());
+  random_xor_noise(state, 10, (word32)(getgid() << 16));
 #ifdef _POSIX_CHILD_MAX
-  state->state[13] ^= _POSIX_CHILD_MAX << 16;
+  random_xor_noise(state, 13, (word32)(_POSIX_CHILD_MAX << 16));
 #endif /* _POSIX_CHILD_MAX */
 #ifdef CLK_TCK
-  state->state[14] ^= CLK_TCK << 16;
+  random_xor_noise(state, 14, (word32)(CLK_TCK << 16));
 #endif /* CLK_TCK */
 
   random_stir(state);
@@ -209,7 +218,6 @@ void random_add_noise(RandomState *state, const void *buf, unsigned int bytes)
 {
   unsigned int pos = state->add_position;
   const char *input = buf;
-  char *s = (char *)&state->state[0];
   while (bytes > 0)
     {
       if (pos >= RANDOM_STATE_BYTES)
@@ -217,7 +225,7 @@ void random_add_noise(RandomState *state, const void *buf, unsigned int bytes)
 	  pos = 0;
 	  random_stir(state);
 	}
-      s[pos] ^= *input;
+      state->state[pos] ^= *input;
       input++;
       bytes--;
       pos++;
@@ -237,29 +245,40 @@ void random_stir(RandomState *state)
   unsigned int i;
 
   /* Start IV from last block of random pool. */
-  memcpy(iv, &state->state[RANDOM_STATE_WORDS - 4], sizeof(iv));
+  iv[0] = GET_32BIT(state->state);
+  iv[1] = GET_32BIT(state->state + 4);
+  iv[2] = GET_32BIT(state->state + 8);
+  iv[3] = GET_32BIT(state->state + 12);
 
   /* First CFB pass. */
-  for (i = 0; i < RANDOM_STATE_WORDS; i += 4)
+  for (i = 0; i < RANDOM_STATE_BYTES; i += 16)
     {
       MD5Transform(iv, state->stir_key);
-      iv[0] = state->state[i] ^= iv[0];
-      iv[1] = state->state[i + 1] ^= iv[1];
-      iv[2] = state->state[i + 2] ^= iv[2];
-      iv[3] = state->state[i + 3] ^= iv[3];
+      iv[0] ^= GET_32BIT(state->state + i);
+      PUT_32BIT(state->state + i, iv[0]);
+      iv[1] ^= GET_32BIT(state->state + i + 4);
+      PUT_32BIT(state->state + i + 4, iv[1]);
+      iv[2] ^= GET_32BIT(state->state + i + 8);
+      PUT_32BIT(state->state + i + 8, iv[2]);
+      iv[3] ^= GET_32BIT(state->state + i + 12);
+      PUT_32BIT(state->state + i + 12, iv[3]);
     }
 
   /* Get new key. */
   memcpy(state->stir_key, state->state, sizeof(state->stir_key));
 
   /* Second CFB pass. */
-  for (i = 0; i < RANDOM_STATE_WORDS; i += 4)
+  for (i = 0; i < RANDOM_STATE_BYTES; i += 16)
     {
       MD5Transform(iv, state->stir_key);
-      iv[0] = state->state[i] ^= iv[0];
-      iv[1] = state->state[i + 1] ^= iv[1];
-      iv[2] = state->state[i + 2] ^= iv[2];
-      iv[3] = state->state[i + 3] ^= iv[3];
+      iv[0] ^= GET_32BIT(state->state + i);
+      PUT_32BIT(state->state + i, iv[0]);
+      iv[1] ^= GET_32BIT(state->state + i + 4);
+      PUT_32BIT(state->state + i + 4, iv[1]);
+      iv[2] ^= GET_32BIT(state->state + i + 8);
+      PUT_32BIT(state->state + i + 8, iv[2]);
+      iv[3] ^= GET_32BIT(state->state + i + 12);
+      PUT_32BIT(state->state + i + 12, iv[3]);
     }
   
   memset(iv, 0, sizeof(iv));
@@ -283,7 +302,7 @@ unsigned int random_get_byte(RandomState *state)
       random_acquire_light_environmental_noise(state);
     }
   assert(state->next_available_byte < RANDOM_STATE_BYTES);
-  return ((unsigned char *)state->state)[state->next_available_byte++];
+  return state->state[state->next_available_byte++];
 }
 
 /* Saves random data in a disk file.  This is used to create a file that

@@ -11,8 +11,26 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 /*
  * $Log: config.h.in,v $
- * Revision 1.12  1996/10/19 02:06:23  ylo
- * 	New defines for ip headers.
+ * Revision 1.17  1997/03/27 03:09:45  kivinen
+ * *** empty log message ***
+ *
+ * Revision 1.11  1997/03/19 22:26:50  kivinen
+ * 	Removed WITH_3DES, as it is mandatory.
+ *
+ * Revision 1.10  1997/03/19 22:16:31  kivinen
+ * 	Added WITH_{IDEA,DES,3DES,TSS,ARCFOUR,BLOWFISH,NONE}.
+ * 	Added HAVE_LIBWRAP.
+ * 	Added HAVE_TIS.
+ *
+ * Revision 1.9  1997/03/19 15:56:59  kivinen
+ * 	Added SECURE_RPC, SECURE_NFS and NIS_PLUS support from Andy
+ * 	Polyakov <appro@fy.chalmers.se>.
+ *
+ * Revision 1.8  1996/11/26 18:08:39  ttsalo
+ *     Added group-writeability option
+ *
+ * Revision 1.7  1996/11/24 08:17:24  kivinen
+ * 	Added SSH{,D}_NO_{PORT,X11}_FORWARDING.
  *
  * Revision 1.6  1996/09/28 17:43:53  ttsalo
  * 	Socks5-defines corrected
@@ -133,82 +151,8 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
    byte first (like Motorola and SPARC, unlike Intel and VAX).  */
 #undef WORDS_BIGENDIAN
 
-/*
- * $Log: config.h.in,v $
- * Revision 1.12  1996/10/19 02:06:23  ylo
- * 	New defines for ip headers.
- *
- * Revision 1.6  1996/09/28 17:43:53  ttsalo
- * 	Socks5-defines corrected
- *
- * Revision 1.5  1996/09/05 19:07:41  ttsalo
- * 	Added checking of setpgid()
- *
- * Revision 1.4  1996/07/12 07:34:14  ttsalo
- * 	Added defines SCO5, HAVE_GETPSEUDOTTY, HAVE_DEV_PTYP10
- *
- * Revision 1.3  1996/04/26 00:37:21  ylo
- * 	Added HPSUX7_KLUDGES.
- * 	Removed SOCKS defines for socket functions.
- *
- * Revision 1.2  1996/02/18 21:54:02  ylo
- * 	Added HAVE_ULTRIX_SHADOW_PASSWORDS.
- *
- * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
- * 	Imported ssh-1.2.13.
- *
- * Revision 1.16  1995/10/02  01:18:13  ylo
- * 	Added NEED_SYS_SYSLOG_H (Ultrix).
- * 	Added HAVE_SCO_ETC_SHADOW and SCO.
- *
- * Revision 1.15  1995/09/27  02:47:19  ylo
- * 	Added SOCKS stuff.
- *
- * Revision 1.14  1995/09/27  02:09:52  ylo
- * 	Added ETCDIR.
- * 	Added SPEED_T_IN_STDTYPES_H.
- *
- * Revision 1.13  1995/09/21  17:06:23  ylo
- * 	Added USE_STRLEN_FOR_AF_UNIX.
- * 	Added USE_PIPES.
- *
- * Revision 1.12  1995/09/13  12:05:51  ylo
- * 	Removed HPSUX_BROKEN_PTYS.
- *
- * Revision 1.11  1995/09/11  17:34:54  ylo
- * 	Added LIBWRAP.
- *
- * Revision 1.10  1995/09/10  22:44:21  ylo
- * 	Added HAVE_OSF1_C2_SECURITY.
- *
- * Revision 1.9  1995/09/09  21:26:37  ylo
- * /m/shadows/u2/users/ylo/ssh/README
- *
- * Revision 1.8  1995/09/06  15:57:37  ylo
- * 	Added BROKEN_INET_ADDR
- *
- * Revision 1.7  1995/08/29  22:17:54  ylo
- * 	Removed AGENT_USES_SOCKET
- * 	Added HPSUX_BROKEN_PTYS
- *
- * Revision 1.6  1995/08/21  23:20:17  ylo
- * 	Removed NO_RHOSTS_AUTHENTICATION.
- * 	Fixed a typo.
- *
- * Revision 1.5  1995/08/18  23:42:14  ylo
- * 	Added HAVE_SECURID.
- *
- * Revision 1.4  1995/08/18  22:41:46  ylo
- * 	Added O_NONBLOCK_BROKEN, WITHOUT_IDEA, crypt, __FreeBSD__, TTY_GROUP.
- *
- * Revision 1.3  1995/07/27  00:36:32  ylo
- * 	Added SSH_UTMP, SSH_WTMP, SSH_LASTLOG, DEFAUL_PATH.
- *
- * Revision 1.2  1995/07/13  01:08:48  ylo
- * 	Added cvs log.
- *
- * $Endlog$
- */
+/* Define if the X Window System is missing or not being used.  */
+#undef X_DISPLAY_MISSING
 
 /* Define this to the canonical name of your host type (e.g., 
    "sparc-sun-sunos4.0.3"). */
@@ -300,15 +244,17 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
    This is the case on some Ultrix versions. */
 #undef NEED_SYS_SYSLOG_H
 
-/* Define this to leave out IDEA encryption. */
-#undef WITHOUT_IDEA
+/* Define this to leave out that cipher. */
+#undef WITH_IDEA
+#undef WITH_DES
+#undef WITH_TSS
+#undef WITH_ARCFOUR
+#undef WITH_BLOWFISH
+#undef WITH_NONE
 
 /* Define this to include libwrap (tcp_wrappers) support. */
 #undef LIBWRAP
-
-/* This is defined to pw_encrypt on Linux when using John Faugh's shadow 
-   password implementation. */
-#undef crypt
+#undef HAVE_LIBWRAP
 
 /* This is defined on 386BSD to preted we are on FreeBSD. */
 #undef __FreeBSD__
@@ -319,6 +265,9 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define this if you want to support Security Dynammics SecurID
    cards. */
 #undef HAVE_SECURID
+
+/* Define this if you want to support TIS Authentication scheme. */
+#undef HAVE_TIS
 
 /* Define this if you are using HPSUX.  HPUX uses non-standard shared
    memory communication for X, which seems to be enabled by the display name
@@ -369,6 +318,27 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define this for HP-UX 10.x shadow passwords */
 #undef HAVE_HPUX_TCB_AUTH
 
+/* Support for Secure RPC */
+#undef SECURE_RPC
+
+/* Support for Secure NFS */
+#undef SECURE_NFS
+
+/* Support for NIS+ */
+#undef NIS_PLUS
+
+/* Define this to disable all port forwardings in server (except X11) */
+#undef SSHD_NO_PORT_FORWARDING
+
+/* Define this to disable all port forwardings in client (except X11) */
+#undef SSH_NO_PORT_FORWARDING
+
+/* Define this to disable X11 forwarding in server */
+#undef SSHD_NO_X11_FORWARDING
+
+/* Define this to disable X11 forwarding in client */
+#undef SSH_NO_X11_FORWARDING
+
 /* The code in sshconnect.c is written for SOCKS4. If SOCKS5 should be used
    these needs redefining */
 #undef Rconnect
@@ -393,6 +363,22 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 #undef Rfclose
 #undef Rgethostbyname
 
+/* Set this to allow group writeability of $HOME, .ssh and authorized_keys */
+#undef ALLOW_GROUP_WRITEABILITY
+
+/* Define if you want the login patches. */
+#undef USELOGIN
+#undef PATH_LOGIN
+
+/* Define this if your gettimeofday doesn't have TZ parameter */
+#undef HAVE_NO_TZ_IN_GETTIMEOFDAY
+
+/* Define this if you want to compile in Kerberos support. */
+#undef KERBEROS
+
+/* Define this if you want to pass the Kerberos TGT. */
+#undef KERBEROS_TGT_PASSING
+
 /* The number of bytes in a int.  */
 #undef SIZEOF_INT
 
@@ -407,6 +393,12 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 /* Define if you have the clock function.  */
 #undef HAVE_CLOCK
+
+/* Define if you have the crypt function.  */
+#undef HAVE_CRYPT
+
+/* Define if you have the daemon function.  */
+#undef HAVE_DAEMON
 
 /* Define if you have the fchmod function.  */
 #undef HAVE_FCHMOD
@@ -438,8 +430,20 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define if you have the memcpy function.  */
 #undef HAVE_MEMCPY
 
+/* Define if you have the memmove function.  */
+#undef HAVE_MEMMOVE
+
 /* Define if you have the openpty function.  */
 #undef HAVE_OPENPTY
+
+/* Define if you have the putenv function.  */
+#undef HAVE_PUTENV
+
+/* Define if you have the random function.  */
+#undef HAVE_RANDOM
+
+/* Define if you have the remove function.  */
+#undef HAVE_REMOVE
 
 /* Define if you have the revoke function.  */
 #undef HAVE_REVOKE
@@ -459,8 +463,14 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define if you have the setsid function.  */
 #undef HAVE_SETSID
 
+/* Define if you have the socketpair function.  */
+#undef HAVE_SOCKETPAIR
+
 /* Define if you have the strchr function.  */
 #undef HAVE_STRCHR
+
+/* Define if you have the strerror function.  */
+#undef HAVE_STRERROR
 
 /* Define if you have the times function.  */
 #undef HAVE_TIMES
@@ -549,6 +559,9 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define if you have the auth library (-lauth).  */
 #undef HAVE_LIBAUTH
 
+/* Define if you have the bsd library (-lbsd).  */
+#undef HAVE_LIBBSD
+
 /* Define if you have the crypt library (-lcrypt).  */
 #undef HAVE_LIBCRYPT
 
@@ -564,8 +577,14 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define if you have the s library (-ls).  */
 #undef HAVE_LIBS
 
+/* Define if you have the sec library (-lsec).  */
+#undef HAVE_LIBSEC
+
 /* Define if you have the security library (-lsecurity).  */
 #undef HAVE_LIBSECURITY
+
+/* Define if you have the seq library (-lseq).  */
+#undef HAVE_LIBSEQ
 
 /* Define if you have the shadow library (-lshadow).  */
 #undef HAVE_LIBSHADOW

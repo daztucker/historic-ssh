@@ -16,8 +16,11 @@ of X11, TCP/IP, and authentication connections.
 */
 
 /*
- * $Id: ssh.c,v 1.25 1997/08/09 21:17:47 ylo Exp $
+ * $Id: ssh.c,v 1.26 1998/01/02 06:22:47 kivinen Exp $
  * $Log: ssh.c,v $
+ * Revision 1.26  1998/01/02 06:22:47  kivinen
+ * 	Added xauthlocation option support.
+ *
  * Revision 1.25  1997/08/09 21:17:47  ylo
  * 	Fixed out-of-date comment about being back to user's
  * 	permissions.
@@ -901,7 +904,7 @@ int main(int ac, char **av)
 #ifdef XAUTH_PATH
       /* Try to get Xauthority information for the display. */
       sprintf(line, "%.100s list %.200s 2>/dev/null", 
-	      XAUTH_PATH, getenv("DISPLAY"));
+	      options.xauth_path, getenv("DISPLAY"));
       /* Note that we are already running on the user's uid. */
       uf = userfile_popen(original_real_uid, line, "r");
       if (uf && userfile_gets(line, sizeof(line), uf) && 

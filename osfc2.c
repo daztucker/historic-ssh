@@ -15,8 +15,11 @@ within ssh. See the file COPYING for full licensing informations.
 */
 
 /*
- * $Id: osfc2.c,v 1.3 1995/09/10 23:27:28 ylo Exp $
+ * $Id: osfc2.c,v 1.1.1.1 1996/02/18 21:38:11 ylo Exp $
  * $Log: osfc2.c,v $
+ * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.3  1995/09/10  23:27:28  ylo
  * 	Eliminated duplicate #includes.
  *

@@ -1,6 +1,6 @@
 /*
 
-DES implementation; 1995 Tatu Ylonen <ylo@cs.hut.fi>
+DES implementation; 1995 Tatu Ylonen <ylo@ssh.fi>
 
 This implementation is derived from libdes-3.06, which is copyright
 (c) 1993 Eric Young, and distributed under the GNU GPL or the ARTISTIC licence
@@ -14,13 +14,16 @@ information.
 */
 
 /*
- * $Id: des.h,v 1.1.1.1 1996/02/18 21:38:11 ylo Exp $
+ * $Id: des.h,v 1.2 1999/11/17 17:04:43 tri Exp $
  * $Log: des.h,v $
+ * Revision 1.2  1999/11/17 17:04:43  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
- * 	Imported ssh-1.2.13.
+ *      Imported ssh-1.2.13.
  *
  * Revision 1.2  1995/07/13  01:22:57  ylo
- * 	Added cvs log.
+ *      Added cvs log.
  *
  * $Endlog$
  */
@@ -41,33 +44,33 @@ void des_set_key(unsigned char *key, DESContext *ks);
    Performs encryption if encrypt is non-zero, and decryption if it is zero.
    The key context must have been initialized previously with des_set_key. */
 void des_encrypt(word32 l, word32 r, word32 *output, DESContext *ks,
-		 int encrypt);
+                 int encrypt);
 
 /* Encrypts len bytes from src to dest in CBC modes.  Len must be a multiple
    of 8.  iv will be modified at end to a value suitable for continuing
    encryption. */
 void des_cbc_encrypt(DESContext *ks, unsigned char *iv, unsigned char *dest,
-		     const unsigned char *src, unsigned int len);
+                     const unsigned char *src, unsigned int len);
 
 /* Decrypts len bytes from src to dest in CBC modes.  Len must be a multiple
    of 8.  iv will be modified at end to a value suitable for continuing
    decryption. */
 void des_cbc_decrypt(DESContext *ks, unsigned char *iv, unsigned char *dest,
-		     const unsigned char *src, unsigned int len);
+                     const unsigned char *src, unsigned int len);
 
 /* Encrypts in CBC mode using triple-DES. */
 void des_3cbc_encrypt(DESContext *ks1, unsigned char *iv1, 
-		      DESContext *ks2, unsigned char *iv2,
-		      DESContext *ks3, unsigned char *iv3,
-		      unsigned char *dest, const unsigned char *src,
-		      unsigned int len);
+                      DESContext *ks2, unsigned char *iv2,
+                      DESContext *ks3, unsigned char *iv3,
+                      unsigned char *dest, const unsigned char *src,
+                      unsigned int len);
 
 /* Decrypts in CBC mode using triple-DES. */
 void des_3cbc_decrypt(DESContext *ks1, unsigned char *iv1,
-		      DESContext *ks2, unsigned char *iv2,
-		      DESContext *ks3, unsigned char *iv3,
-		      unsigned char *dest, const unsigned char *src,
-		      unsigned int len);
+                      DESContext *ks2, unsigned char *iv2,
+                      DESContext *ks3, unsigned char *iv3,
+                      unsigned char *dest, const unsigned char *src,
+                      unsigned int len);
 
 #endif /* DES_H */
 

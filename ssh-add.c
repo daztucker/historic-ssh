@@ -14,8 +14,14 @@ Adds an identity to the authentication server, or removes an identity.
 */
 
 /*
- * $Id: ssh-add.c,v 1.3 1995/08/29 22:24:21 ylo Exp $
+ * $Id: ssh-add.c,v 1.4 1995/10/02 01:27:34 ylo Exp $
  * $Log: ssh-add.c,v $
+ * Revision 1.4  1995/10/02  01:27:34  ylo
+ * 	Loop asking for a proper passphrase until the user aborts or
+ * 	gives an empty passphrase.  (This avoids problems of
+ * 	accidentally typing the wrong passphrase without noticing it
+ * 	when using ssh-add from .Xsession.real.)
+ *
  * Revision 1.3  1995/08/29  22:24:21  ylo
  * 	Added delete_all.
  *
@@ -93,6 +99,7 @@ void add_file(const char *filename)
   RSAPublicKey public_key;
   AuthenticationConnection *ac;
   char *saved_comment, *comment, *pass;
+  int first;
   
   if (!load_public_key(filename, &public_key, &saved_comment))
     {
@@ -102,10 +109,10 @@ void add_file(const char *filename)
   rsa_clear_public_key(&public_key);
   
   pass = xstrdup("");
+  first = 1;
   while (!load_private_key(filename, pass, &key, &comment))
     {
       char buf[1024];
-      char *pass;
       FILE *f;
       
       /* Free the old passphrase. */
@@ -115,7 +122,9 @@ void add_file(const char *filename)
       /* Ask for a passphrase. */
       if (getenv("DISPLAY") && !isatty(fileno(stdin)))
 	{
-	  sprintf(buf, "ssh-askpass 'Enter passphrase for %.100s'", comment);
+	  sprintf(buf, "ssh-askpass '%sEnter passphrase for %.100s'", 
+		  first ? "" : "You entered wrong passphrase.  ", 
+		  saved_comment);
 	  f = popen(buf, "r");
 	  if (!fgets(buf, sizeof(buf), f))
 	    {
@@ -130,20 +139,22 @@ void add_file(const char *filename)
 	}
       else
 	{
-	  printf("Need passphrase for %s (%s).\n", filename, saved_comment);
+	  if (first)
+	    printf("Need passphrase for %s (%s).\n", filename, saved_comment);
+	  else
+	    printf("Bad passphrase.\n");
 	  pass = read_passphrase("Enter passphrase: ", 1);
+	  if (strcmp(pass, "") == 0)
+	    {
+	      xfree(saved_comment);
+	      xfree(pass);
+	      return;
+	    }
 	}
-	  
-      if (!load_private_key(filename, pass, &key, &comment))
-	{
-	  memset(pass, 0, strlen(pass));
-	  fprintf(stderr, 
-		  "Bad passphrase, file not readable, or invalid keyfile.\n");
-	  xfree(saved_comment);
-	  exit(1);
-	}
-      memset(pass, 0, strlen(pass));
+      first = 0;
     }
+  memset(pass, 0, strlen(pass));
+  xfree(pass);
 
   xfree(saved_comment);
 

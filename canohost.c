@@ -14,8 +14,11 @@ Functions for returning the canonical host name of the remote site.
 */
 
 /*
- * $Id: canohost.c,v 1.5 1995/09/21 17:08:24 ylo Exp $
+ * $Id: canohost.c,v 1.1.1.1 1996/02/18 21:38:12 ylo Exp $
  * $Log: canohost.c,v $
+ * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.5  1995/09/21  17:08:24  ylo
  * 	Added get_remote_port.
  *

@@ -8,9 +8,18 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Fri Jul  7 02:14:16 1995 ylo
-Last modified: Fri Jul  7 03:58:36 1995 ylo
 
 */
+
+/*
+ * $Id: rfc-pg.c,v 1.2 1995/07/13 01:31:15 ylo Exp $
+ * $Log: rfc-pg.c,v $
+ * Revision 1.2  1995/07/13  01:31:15  ylo
+ * 	Removed "Last modified" header.
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
 
 #include <stdio.h>
 

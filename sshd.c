@@ -18,8 +18,52 @@ agent connections.
 */
 
 /*
- * $Id: sshd.c,v 1.9 1996/06/05 17:57:34 ylo Exp $
+ * $Id: sshd.c,v 1.20 1996/09/27 17:19:16 ylo Exp $
  * $Log: sshd.c,v $
+ * Revision 1.20  1996/09/27 17:19:16  ylo
+ * 	Merged ultrix patches from Corey Satten.
+ *
+ * Revision 1.19  1996/09/22 22:38:49  ylo
+ * 	Added endgrent() before closing all file descriptors.
+ *
+ * Revision 1.18  1996/09/08 17:40:31  ttsalo
+ * 	BSD4.4Lite's _PATH_DEFPATH is checked when defining DEFAULT_PATH.
+ * 	(Patch from Andrey A. Chernov <ache@lsd.relcom.eu.net>)
+ *
+ * Revision 1.17  1996/08/29 14:51:23  ttsalo
+ * 	Agent-socket directory handling implemented
+ *
+ * Revision 1.16  1996/08/22 22:16:24  ylo
+ * 	Log remote commands executed by root, and log the fact that a
+ * 	remote command was executed by an ordinary user, but not the
+ * 	actual command (for privacy reasons).
+ *
+ * Revision 1.15  1996/08/16 02:47:18  ylo
+ * 	Log root logins at LOG_NOTICE.
+ *
+ * Revision 1.14  1996/08/13 09:04:23  ttsalo
+ * 	Home directory, .ssh and .ssh/authorized_keys are now
+ * 	checked for wrong owner and group & world writeability.
+ *
+ * Revision 1.13  1996/08/13 00:23:31  ylo
+ * 	When doing X11 forwarding, check the existence of xauth and
+ * 	deny forwarding if it doesn't exist.  This makes copying
+ * 	binaries compiled on one system to other systems easier.
+ *
+ * 	Run /etc/sshrc with /bin/sh instead of the user's shell.
+ *
+ * Revision 1.12  1996/07/29 04:58:54  ylo
+ * 	Add xauth data also for `hostname`/unix:$display as some X
+ * 	servers actually seem to use this version.  (Kludge to work
+ * 	around X11 bug.)
+ *
+ * Revision 1.11  1996/07/15 23:21:55  ylo
+ * 	Don't allow more than five password authentication attempts,
+ * 	and log attempts after the first one.
+ *
+ * Revision 1.10  1996/07/12 07:28:02  ttsalo
+ * 	Small ultrix patch
+ *
  * Revision 1.9  1996/06/05 17:57:34  ylo
  * 	If /etc/nologin exists, print that fact in plain text before
  * 	printing the actual contents.  I am getting too many
@@ -248,7 +292,11 @@ extern char *setlimits();
 #ifdef _PATH_USERPATH
 #define DEFAULT_PATH		_PATH_USERPATH
 #else
+#ifdef _PATH_DEFPATH
+#define	DEFAULT_PATH		_PATH_DEFPATH
+#else
 #define DEFAULT_PATH	"/bin:/usr/bin:/usr/ucb:/usr/bin/X11:/usr/local/bin"
+#endif
 #endif
 #endif /* DEFAULT_PATH */
 
@@ -594,8 +642,12 @@ int main(int ac, char **av)
 	}
 #endif /* TIOCNOTTY */
 #ifdef HAVE_SETSID
+#ifdef ultrix
+      setpgrp(0, 0);
+#else /* ultrix */
       if (setsid() < 0)
 	error("setsid: %.100s", strerror(errno));
+#endif
 #endif /* HAVE_SETSID */
     }
 
@@ -968,6 +1020,9 @@ int main(int ac, char **av)
      came from a privileged port. */
   do_connection(get_remote_port() < 1024);
 
+  /* Try to remove authentication socket and directory */
+  auth_delete_socket(NULL);
+  
   /* The connection has been terminated. */
   log("Closing connection to %.100s", get_remote_ipaddr());
   packet_close();
@@ -1247,6 +1302,7 @@ void do_authentication(char *user, int privileged_port)
   char *client_user;
   unsigned int client_host_key_bits;
   MP_INT client_host_key_e, client_host_key_n;
+  int password_attempts = 0;
 			 
   /* Verify that the user is a valid user.  We disallow usernames starting
      with any characters that are commonly used to start NIS entries. */
@@ -1423,7 +1479,8 @@ void do_authentication(char *user, int privileged_port)
 	    MP_INT n;
 	    mpz_init(&n);
 	    packet_get_mp_int(&n);
-	    if (auth_rsa(pw, &n, &sensitive_data.random_state))
+	    if (auth_rsa(pw, &n, &sensitive_data.random_state,
+			 options.strict_modes))
 	      { 
 		/* Successful authentication. */
 		mpz_clear(&n);
@@ -1449,6 +1506,22 @@ void do_authentication(char *user, int privileged_port)
 	     over the encrypted channel so it is not visible to an outside
 	     observer. */
 	  password = packet_get_string(NULL);
+
+	  if (password_attempts >= 5)
+	    { /* Too many password authentication attempts. */
+	      packet_disconnect("Too many password authentication attempts from %.100s for user %.100s.",
+				get_canonical_hostname(), user);
+	      /*NOTREACHED*/
+	    }
+	  
+	  /* Count password authentication attempts, and log if appropriate. */
+	  if (password_attempts > 0)
+	    {
+	      /* Log failures if attempted more than once. */
+	      debug("Password authentication failed for user %.100s from %.100s.",
+		    user, get_canonical_hostname());
+	    }
+	  password_attempts++;
 
 	  /* Try authentication with the password. */
 	  if (auth_password(user, password))
@@ -1490,15 +1563,21 @@ void do_authentication(char *user, int privileged_port)
 	packet_disconnect("ROOT LOGIN REFUSED FROM %.200s", 
 			  get_canonical_hostname());
     }
-  else if (pw->pw_uid == 0 && options.permit_root_login == 0)
-    {
-      if (forced_command)
-	log("Root login accepted for forced command.", forced_command);
-      else
-	packet_disconnect("ROOT LOGIN REFUSED FROM %.200s", 
-			  get_canonical_hostname());
-    }
+  else
+    if (pw->pw_uid == 0 && options.permit_root_login == 0)
+      {
+	if (forced_command)
+	  log("Root login accepted for forced command.", forced_command);
+	else
+	  packet_disconnect("ROOT LOGIN REFUSED FROM %.200s", 
+			    get_canonical_hostname());
+      }
 
+  /* Log root logins with severity NOTICE. */
+  if (pw->pw_uid == 0)
+    log_severity(SYSLOG_SEVERITY_NOTICE, "ROOT LOGIN as '%.100s' from %.100s",
+		 pw->pw_name, get_canonical_hostname());
+  
   /* The user has been authenticated and accepted. */
   packet_start(SSH_SMSG_SUCCESS);
   packet_send();
@@ -1525,6 +1604,7 @@ void do_authenticated(struct passwd *pw)
   struct group *grp;
   gid_t tty_gid;
   mode_t tty_mode;
+  struct stat st;
   
   /* Cancel the alarm we set to limit the time taken for authentication. */
   alarm(0);
@@ -1648,6 +1728,16 @@ void do_authenticated(struct passwd *pw)
 	  debug("Received request for X11 forwarding with auth spoofing.");
 	  if (display)
 	    packet_disconnect("Protocol error: X11 display already set.");
+
+	  /* Check whether we have xauth installed on this machine (in case
+	     the binary was moved from elsewhere). */
+	  if (stat(XAUTH_PATH, &st) < 0)
+	    {
+	      packet_send_debug("Remote host has no X11 installed.");
+	      goto fail;
+	    }
+
+	  /* Process the request. */
 	  proto = packet_get_string(NULL);
 	  data = packet_get_string(NULL);
 	  if (packet_get_protocol_flags() & SSH_PROTOFLAG_SCREEN_NUMBER)
@@ -1766,7 +1856,7 @@ void do_exec_no_pty(const char *command, struct passwd *pw,
 		    const char *auth_data)
 {  
   int pid;
-
+  
 #ifdef USE_PIPES
   int pin[2], pout[2], perr[2];
   /* Allocate pipes for communicating with the program. */
@@ -1793,8 +1883,12 @@ void do_exec_no_pty(const char *command, struct passwd *pw,
 	       options.quiet_mode, options.log_facility);
 
 #ifdef HAVE_SETSID
+#ifdef ultrix
+      setpgrp(0, 0);
+#else /* ultrix */
       if (setsid() < 0)
 	error("setsid: %.100s", strerror(errno));
+#endif
 #endif /* HAVE_SETSID */
 
 #ifdef USE_PIPES
@@ -1921,8 +2015,12 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
 	       options.log_facility);
 
 #ifdef HAVE_SETSID
+#ifdef ultrix
+      setpgrp(0, 0);
+#else /* ultrix */
       if (setsid() < 0)
 	error("setsid: %.100s", strerror(errno));
+#endif
 #endif /* HAVE_SETSID */
 
       /* Close the master side of the pseudo tty. */
@@ -2011,6 +2109,10 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
   /* Parent.  Close the slave side of the pseudo tty. */
   close(ttyfd);
   
+#ifdef ultrix		/* corey */
+  setpgrp(0,0);		/* disconnect from child's process group */
+#endif /* ultrix */
+
   /* Create another descriptor of the pty master side for use as the standard
      input.  We could use the original descriptor, but this simplifies code
      in server_loop.  The descriptor is bidirectional. */
@@ -2249,7 +2351,7 @@ void do_child(const char *command, struct passwd *pw, const char *term,
   char *user_shell;
   char *remote_ip;
   int remote_port;
-
+  
   /* Check /etc/nologin. */
   f = fopen("/etc/nologin", "r");
   if (f)
@@ -2264,6 +2366,18 @@ void do_child(const char *command, struct passwd *pw, const char *term,
 	exit(254);
     }
 
+  if (command != NULL)
+    {
+      /* If executing a command as root, log the whole command.  For normal
+	 users, don't log the command, because logging it would be a
+	 violation of the user's privacy (and even potentially illegal with
+	 respect to privacy/data protection laws in some countries). */
+      if (pw->pw_uid == 0)
+	log("executing remote command as root: %.200s", command);
+      else
+	log("executing remote command as user %.200s", pw->pw_name);
+    }
+  
 #ifdef HAVE_SETLOGIN
   /* Set login name in the kernel.  Warning: setsid() must be called before
      this. */
@@ -2327,6 +2441,7 @@ void do_child(const char *command, struct passwd *pw, const char *term,
      hanging around in clients.  Note that we want to do this after
      initgroups, because at least on Solaris 2.3 it leaves file descriptors
      open. */
+  endgrent();
   for (i = 3; i < 64; i++)
     {
       if (i == auth_get_fd())
@@ -2513,7 +2628,7 @@ void do_child(const char *command, struct passwd *pw, const char *term,
   else
     if (stat(SSH_SYSTEM_RC, &st) >= 0)
       {
-	sprintf(buf, "%.100s %.100s", shell, SSH_SYSTEM_RC);
+	sprintf(buf, "%.100s %.100s", "/bin/sh", SSH_SYSTEM_RC);
 
 	if (debug_flag)
 	  fprintf(stderr, "Running %s\n", buf);
@@ -2544,6 +2659,10 @@ void do_child(const char *command, struct passwd *pw, const char *term,
 	    if (f)
 	      {
 		fprintf(f, "add %s %s %s\n", display, auth_proto, auth_data);
+		cp = strchr(display, ':');
+		if (cp)
+		  fprintf(f, "add %.*s/unix%s %s %s\n",
+			  cp - display, display, cp, auth_proto, auth_data);
 		pclose(f);
 	      }
 	    else

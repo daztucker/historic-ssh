@@ -14,8 +14,29 @@ Server main loop for handling the interactive session.
 */
 
 /*
- * $Id: serverloop.c,v 1.5 1996/09/29 13:42:55 ylo Exp $
+ * $Id: serverloop.c,v 1.11 1997/03/26 07:16:11 kivinen Exp $
  * $Log: serverloop.c,v $
+ * Revision 1.11  1997/03/26 07:16:11  kivinen
+ * 	Fixed idle_time code.
+ *
+ * Revision 1.10  1997/03/26 05:28:18  kivinen
+ * 	Added idle timeout support.
+ *
+ * Revision 1.9  1997/03/25 05:48:49  kivinen
+ * 	Moved closing of sockets/pipes out from server_loop.
+ *
+ * Revision 1.8  1997/03/19 19:25:17  kivinen
+ * 	Added input buffer clearing for error conditions, so packet.c
+ * 	can check that buffer must be empty before new packet is read
+ * 	in.
+ *
+ * Revision 1.7  1997/03/19 17:56:31  kivinen
+ * 	Fixed sigchld race condition.
+ *
+ * Revision 1.6  1996/11/24 08:25:14  kivinen
+ * 	Added SSHD_NO_PORT_FORWARDING support.
+ * 	Changed all code that checked EAGAIN to check EWOULDBLOCK too.
+ *
  * Revision 1.5  1996/09/29 13:42:55  ylo
  * 	Increased the time to wait for more data from 10 ms to 17 ms
  * 	and bytes to 512 (I'm worried it might not always be
@@ -35,6 +56,9 @@ Server main loop for handling the interactive session.
 #include "buffer.h"
 #include "servconf.h"
 #include "pty.h"
+
+extern time_t idle_timeout;
+static time_t idle_time_last = 0;
 
 static Buffer stdin_buffer;	/* Buffer for stdin data. */
 static Buffer stdout_buffer;	/* Buffer for stdout data. */
@@ -100,7 +124,10 @@ void process_buffered_input_packets()
 	case SSH_CMSG_STDIN_DATA:
 	  /* Stdin data from the client.  Append it to the buffer. */
 	  if (fdin == -1)
-	    break; /* Ignore any data if the client has closed stdin. */
+	    {
+	      packet_get_all();
+	      break; /* Ignore any data if the client has closed stdin. */
+	    }
 	  data = packet_get_string(&data_len);
 	  buffer_append(&stdin_buffer, data, data_len);
 	  memset(data, 0, data_len);
@@ -125,8 +152,23 @@ void process_buffered_input_packets()
 	  break;
 	  
 	case SSH_MSG_PORT_OPEN:
+#ifdef SSHD_NO_PORT_FORWARDING
+	  {
+	    int remote_channel;
+	    
+	    packet_get_all();
+	    /* Get remote channel number. */
+	    remote_channel = packet_get_int();
+	    
+	    debug("Denied port open request.");
+	    packet_start(SSH_MSG_CHANNEL_OPEN_FAILURE);
+	    packet_put_int(remote_channel);
+	    packet_send();
+	  }
+#else
 	  debug("Received port open request.");
 	  channel_input_port_open();
+#endif
 	  break;
 	  
 	case SSH_MSG_CHANNEL_OPEN_CONFIRMATION:
@@ -299,14 +341,32 @@ void wait_until_can_do_something(fd_set *readset, fd_set *writeset,
   if (child_terminated)
     if (max_time_milliseconds == 0)
       max_time_milliseconds = 100;
-  
-  if (max_time_milliseconds == 0)
-    tvp = NULL;
+
+  if (idle_timeout != 0 &&
+      (max_time_milliseconds == 0 ||
+       max_time_milliseconds / 1000 > idle_timeout))
+    {
+      time_t diff;
+
+      diff = time(NULL) - idle_time_last;
+      
+      if (idle_timeout < diff)
+	tv.tv_sec = idle_timeout - diff;
+      else
+	tv.tv_sec = 1;
+      tv.tv_usec = 0;
+      tvp = &tv;
+    }
   else
     {
-      tv.tv_sec = max_time_milliseconds / 1000;
-      tv.tv_usec = 1000 * (max_time_milliseconds % 1000);
-      tvp = &tv;
+      if (max_time_milliseconds == 0)
+	tvp = NULL;
+      else
+	{
+	  tv.tv_sec = max_time_milliseconds / 1000;
+	  tv.tv_usec = 1000 * (max_time_milliseconds % 1000);
+	  tvp = &tv;
+	}
     }
 
   /* Wait for something to happen, or the timeout to expire. */
@@ -337,6 +397,27 @@ void wait_until_can_do_something(fd_set *readset, fd_set *writeset,
       fderr_eof = 1;
       fdin = -1;
     }
+  else
+    {
+      if (ret == 0)		/* Nothing read, timeout expired */
+	{
+	  /* Check if idle_timeout expired ? */
+	  if (idle_timeout != 0 && !child_terminated &&
+	      time(NULL) - idle_time_last > idle_timeout)
+	    {
+	      /* Yes, kill the child */
+	      kill(child_pid, SIGHUP);
+	      sleep(5);
+	      if (!child_terminated) /* Not exited, be rude */
+		kill(child_pid, SIGKILL);
+	    }
+	}
+      else
+	{
+	  /* Got something, reset idle timer */
+	  idle_time_last = time(NULL);
+	}
+    }
 }
 
 /* Processes input from the client and the program.  Input data is stored
@@ -357,7 +438,7 @@ void process_input(fd_set *readset)
 
       /* There is a kernel bug on Solaris that causes select to sometimes
 	 wake up even though there is no data available. */
-      if (len < 0 && errno == EAGAIN)
+      if (len < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
 	len = 0;
 
       if (len < 0)
@@ -405,8 +486,10 @@ void process_output(fd_set *writeset)
 		  buffer_len(&stdin_buffer));
       if (len <= 0)
 	{
-	  if (errno != EWOULDBLOCK)
+	  if (errno != EWOULDBLOCK && errno != EAGAIN)
 	    {
+	      debug("Process_output: write to fdin failed, len = %d : %.50s",
+		    len, strerror(errno));
 	      if (fdin == fdout)
 		shutdown(fdin, 1); /* We will no longer send. */
 	      else
@@ -620,38 +703,29 @@ void server_loop(int pid, int fdin_arg, int fdout_arg, int fderr_arg)
   buffer_free(&stdout_buffer);
   buffer_free(&stderr_buffer);
 
-  /* Close the file descriptors. */
-  if (fdout != -1)
-    close(fdout);
-  if (fdin != -1 && fdin != fdout)
-    close(fdin);
-  if (fderr != -1)
-    close(fderr);
-
   /* Stop listening for channels; this removes unix domain sockets. */
   channel_stop_listening();
   
-  /* Wait for the child to exit.  Get its exit status. */
-  wait_pid = wait(&wait_status);
-  if (wait_pid < 0)
-    {
-      /* It is possible that the wait was handled by SIGCHLD handler.  This
-	 may result in either: this call returning with EINTR, or: this
-	 call returning ECHILD. */
-      if (child_terminated)
-	wait_status = child_wait_status;
-      else
-	packet_disconnect("wait: %.100s", strerror(errno));
-    }
-  else
-    {
-      /* Check if it matches the process we forked. */
-      if (wait_pid != pid)
-	error("Strange, wait returned pid %d, expected %d", wait_pid, pid);
-    }
-
   /* We no longer want our SIGCHLD handler to be called. */
   signal(SIGCHLD, SIG_DFL);
+
+  if (child_terminated)
+    wait_status = child_wait_status;
+  else
+    {
+      /* Wait for the child to exit.  Get its exit status. */
+      wait_pid = wait(&wait_status);
+      if (wait_pid < 0)
+	{
+	  packet_disconnect("wait: %.100s", strerror(errno));
+	}
+      else
+	{
+	  /* Check if it matches the process we forked. */
+	  if (wait_pid != pid)
+	    error("Strange, wait returned pid %d, expected %d", wait_pid, pid);
+	}
+    }
 
   /* Check if it exited normally. */
   if (WIFEXITED(wait_status))
@@ -671,7 +745,10 @@ void server_loop(int pid, int fdin_arg, int fdout_arg, int fderr_arg)
 	{
 	  type = packet_read();
 	  if (type != SSH_CMSG_EXIT_CONFIRMATION)
-	    debug("Received packet of type %d after exit.\n", type);
+	    {
+	      packet_get_all();
+	      debug("Received packet of type %d after exit.\n", type);
+	    }
 	}
       while (type != SSH_CMSG_EXIT_CONFIRMATION);
 

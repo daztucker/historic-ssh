@@ -15,8 +15,19 @@ the password is valid for the user.
 */
 
 /*
- * $Id: auth-passwd.c,v 1.12 1998/01/02 06:14:31 kivinen Exp $
+ * $Id: auth-passwd.c,v 1.15 1998/05/11 21:27:47 kivinen Exp $
  * $Log: auth-passwd.c,v $
+ * Revision 1.15  1998/05/11 21:27:47  kivinen
+ * 	Set correct_passwd to contain 255...255 so even if some
+ * 	function doesn't set it, it cannot contain empty password.
+ *
+ * Revision 1.14  1998/04/30 01:50:20  kivinen
+ * 	Added code that will force /bin/passwd command if password is
+ * 	expired.
+ *
+ * Revision 1.13  1998/03/27 16:53:09  kivinen
+ * 	Added aix authenticate function support.
+ *
  * Revision 1.12  1998/01/02 06:14:31  kivinen
  * 	Fixed kerberos ticket name handling. Added OSF C2 account
  * 	locking and expiration support.
@@ -447,6 +458,21 @@ int auth_password(const char *server_user, const char *password,
 int auth_password(const char *server_user, const char *password)
 #endif /* KERBEROS */
 {
+#if defined(_AIX) && defined(HAVE_AUTHENTICATE)
+  char *message;
+  int reenter;
+
+  reenter = 1;
+  if (authenticate(server_user, password, &reenter, &message) == 0)
+    {
+      return 1;
+    }
+  else
+    {
+      return 0;
+    }
+#else /* _AIX41 && HAVE_AUTHENTICATE */
+
 #ifdef KERBEROS
   krb5_error_code problem;
   int krb5_options = KDC_OPT_RENEWABLE | KDC_OPT_FORWARDABLE;
@@ -465,6 +491,7 @@ int auth_password(const char *server_user, const char *password)
   char correct_passwd[200];
   char *saved_pw_name, *saved_pw_passwd;
 
+  memset(correct_passwd, 255, sizeof(correct_passwd));
   if (*password == '\0' && options.permit_empty_passwd == 0)
   {
       packet_send_debug("Server does not permit empty password login.");
@@ -682,9 +709,12 @@ int auth_password(const char *server_user, const char *password)
       return 0;
       break;
     case 2:
-      packet_disconnect("\n\tYour password expired ...\n");
-      return 0;
-      break;
+      {
+	extern char *forced_command;
+	forced_command = "/bin/passwd";
+	packet_send_debug("Password expired, forcing it to be changed.");
+	break;
+      }
     }
 #else /* HAVE_OSF1_C2_SECURITY */
   /* If we have shadow passwords, lookup the real encrypted password from
@@ -820,4 +850,5 @@ int auth_password(const char *server_user, const char *password)
 
   /* Authentication is accepted if the encrypted passwords are identical. */
   return strcmp(encrypted_password, correct_passwd) == 0;
+#endif /* _AIX && HAVE_AUTHENTICATE */
 }

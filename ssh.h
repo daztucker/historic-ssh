@@ -2,10 +2,11 @@
 
 ssh.h
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Fri Mar 17 17:09:37 1995 ylo
 
@@ -14,10 +15,13 @@ Generic header file for ssh.
 */
 
 /*
- * $Id: ssh.h,v 1.27 1999/04/29 07:52:25 tri Exp $
+ * $Id: ssh.h,v 1.28 1999/11/17 17:04:58 tri Exp $
  * $Log: ssh.h,v $
+ * Revision 1.28  1999/11/17 17:04:58  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.27  1999/04/29 07:52:25  tri
- * 	Replaced OSF1/C2 security support with more complete SIA
+ *      Replaced OSF1/C2 security support with more complete SIA
  *         (Security Integration Architecture) support by Tom Woodburn.
  *
  * Revision 1.26  1998/08/07 12:29:36  tri

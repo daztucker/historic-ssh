@@ -8,7 +8,6 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Sat Mar 18 16:36:11 1995 ylo
-Last modified: Wed Jul 12 01:29:21 1995 ylo
 
 Ssh client program.  This program can be used to log into a remote machine.
 The software supports strong authentication, encryption, and forwarding
@@ -16,13 +15,32 @@ of X11, TCP/IP, and authentication connections.
 
 */
 
+/*
+ * $Id: ssh.c,v 1.5 1995/07/27 00:40:34 ylo Exp $
+ * $Log: ssh.c,v $
+ * Revision 1.5  1995/07/27  00:40:34  ylo
+ * 	Added GlobalKnownHostsFile and UserKnownHostsFile.
+ *
+ * Revision 1.4  1995/07/26  23:15:25  ylo
+ * 	Removed include version.h.
+ *
+ * Revision 1.3  1995/07/15  13:27:56  ylo
+ * 	Fixed a typo in usage().
+ * 	Moved -l in running rsh after the host.
+ *
+ * Revision 1.2  1995/07/13  01:40:03  ylo
+ * 	Removed "Last modified" header.
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
+
 #include "includes.h"
 #include "xmalloc.h"
 #include "randoms.h"
 #include "ssh.h"
 #include "packet.h"
 #include "buffer.h"
-#include "version.h"
 #include "authfd.h"
 #include "readconf.h"
 
@@ -218,7 +236,7 @@ void usage()
   fprintf(stderr, "  -n          Redirect input from /dev/null.\n");
   fprintf(stderr, "  -a          Disable authentication agent forwarding.\n");
   fprintf(stderr, "  -x          Disable X11 connection forwarding.\n");
-  fprintf(stderr, "  -i file     Identity for RSA authentication (default: ~/.ssh_identity).\n");
+  fprintf(stderr, "  -i file     Identity for RSA authentication (default: ~/.ssh/identity).\n");
   fprintf(stderr, "  -t          Tty; allocate a tty even if command is given.\n");
   fprintf(stderr, "  -v          Verbose; display verbose debugging messages.\n");
   fprintf(stderr, "  -f          Fork into background after authentication.\n");
@@ -248,12 +266,12 @@ void rsh_connect(char *host, char *user, Buffer *command)
   /* Build argument list for rsh. */
   i = 0;
   args[i++] = RSH_PATH;
+  args[i++] = host;    /* may have to come after user on some systems */
   if (user)
     {
       args[i++] = "-l";
       args[i++] = user;
     }
-  args[i++] = host;
   if (buffer_len(command) > 0)
     {
       buffer_append(command, "\0", 1);
@@ -587,6 +605,12 @@ int main(int ac, char **av)
     options.identity_files[i] = 
       tilde_expand_filename(options.identity_files[i], getuid());
 
+  /* Expand ~ in known host file names. */
+  options.system_hostfile = tilde_expand_filename(options.system_hostfile,
+						  getuid());
+  options.user_hostfile = tilde_expand_filename(options.user_hostfile,
+						getuid());
+
   /* Log into the remote system.  This never returns if the login fails. 
      Note: this initializes the random state, and leaves it initialized. */
   ssh_login(&random_state, host_private_key_loaded, &host_private_key, 
@@ -594,7 +618,8 @@ int main(int ac, char **av)
 	    options.identity_files,
 	    options.rhosts_authentication, options.rhosts_rsa_authentication,
 	    options.rsa_authentication,
-	    options.password_authentication, options.cipher);
+	    options.password_authentication, options.cipher,
+	    options.system_hostfile, options.user_hostfile);
 
   /* We no longer need the host private key.  Clear it now. */
   if (host_private_key_loaded)

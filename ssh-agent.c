@@ -14,8 +14,13 @@ The authentication agent program.
 */
 
 /*
- * $Id: ssh-agent.c,v 1.17 1997/04/05 21:58:15 kivinen Exp $
+ * $Id: ssh-agent.c,v 1.18 1997/04/17 04:15:11 kivinen Exp $
  * $Log: ssh-agent.c,v $
+ * Revision 1.18  1997/04/17 04:15:11  kivinen
+ * 	Removed some extra variables. Removed some warnings.
+ * 	Added check to socket closing that it is really opened.
+ * 	Added xstrdups to putenv calls.
+ *
  * Revision 1.17  1997/04/05 21:58:15  kivinen
  * 	Fixed agent option parsing. Added -- option support, patch from
  * 	Charles M. Hannum <mycroft@gnu.ai.mit.edu>.
@@ -476,8 +481,8 @@ void prepare_select(fd_set *readset, fd_set *writeset)
 void after_select(fd_set *readset, fd_set *writeset)
 {
   unsigned int i;
-  int len, sock, port;
-  char buf[1024], *p;
+  int len, sock;
+  char buf[1024];
   struct sockaddr_un sunaddr;
 
   for (i = 0; i < sockets_alloc; i++)
@@ -565,15 +570,15 @@ int main(int ac, char **av)
 {
   fd_set readset, writeset;
   char buf[1024];
-  int sock, creation_failed = 1, pid;
+  int sock = -1, creation_failed = 1, pid;
   struct sockaddr_un sunaddr;
   struct passwd *pw;
   struct stat st;
   int binsh = 1, erflg = 0;
   char *sh;
   
-  int sockets[2], i;
-  int *dups, ret;
+  int i;
+  int ret;
 
   sh = getenv("SHELL");
   if (sh != NULL && strlen(sh) > 3 &&
@@ -619,7 +624,7 @@ int main(int ac, char **av)
   pw = getpwuid(getuid());
   if (pw == NULL)
     {
-      fprintf(stderr, "Unknown user uid = %d\n", getuid());
+      fprintf(stderr, "Unknown user uid = %d\n", (int) getuid());
       exit(1);
     }
   
@@ -711,7 +716,8 @@ fail_socket_setup:
       /* Parent - execute the given command, if given command. */
 
       /* Close the agent socket */
-      close(sock);
+      if (sock != -1)
+	close(sock);
       
       if (ac == 1)
 	{			/* No command given print socket name */
@@ -740,9 +746,9 @@ fail_socket_setup:
       if (!creation_failed)
 	{
 	  sprintf(buf, "SSH_AUTHENTICATION_SOCKET=%s", socket_name);
-	  putenv(buf);
+	  putenv(xstrdup(buf));
 	  sprintf(buf, "SSH_AGENT_PID=%d", pid);
-	  putenv(buf);
+	  putenv(xstrdup(buf));
 	}
       execvp(av[1], av + 1);
       perror(av[1]);

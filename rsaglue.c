@@ -18,8 +18,14 @@ using the --with-rsaref configure option.
 */
 
 /*
- * $Id: rsaglue.c,v 1.3 1996/07/31 07:02:32 huima Exp $
+ * $Id: rsaglue.c,v 1.5 1997/03/19 21:29:59 kivinen Exp $
  * $Log: rsaglue.c,v $
+ * Revision 1.5  1997/03/19 21:29:59  kivinen
+ * 	Added missing &.
+ *
+ * Revision 1.4  1997/03/19 21:14:08  kivinen
+ * 	Added checks that public key exponent cannot be less than 3.
+ *
  * Revision 1.3  1996/07/31 07:02:32  huima
  * *** empty log message ***
  *
@@ -187,6 +193,8 @@ void rsa_public_encrypt(MP_INT *output, MP_INT *input, RSAPublicKey *key,
   MP_INT aux;
   unsigned int i, input_bits, input_len, len;
 
+  if (mpz_cmp_ui(&(key->e), 3) < 0)
+    fatal("Bad public key, POTENTIAL BREAK-IN ATTEMPT!");
   input_bits = mpz_sizeinbase(input, 2);
   input_len = (input_bits + 7) / 8;
   len = (key->bits + 7) / 8;

@@ -14,8 +14,18 @@ Identity and host key generation and maintenance.
 */
 
 /*
- * $Id: ssh-keygen.c,v 1.5 1996/10/03 16:59:41 ttsalo Exp $
+ * $Id: ssh-keygen.c,v 1.8 1997/03/25 05:46:26 kivinen Exp $
  * $Log: ssh-keygen.c,v $
+ * Revision 1.8  1997/03/25 05:46:26  kivinen
+ * 	Fixed bug in SECURE_RPC code.
+ *
+ * Revision 1.7  1997/03/19 17:42:58  kivinen
+ * 	Added SECURE_RPC, SECURE_NFS and NIS_PLUS support from Andy
+ * 	Polyakov <appro@fy.chalmers.se>.
+ *
+ * Revision 1.6  1996/11/09 17:29:22  ttsalo
+ *       Modified ssh-keygen to tell pw->pw_dir instead of '/u/ttsalo'
+ *
  * Revision 1.5  1996/10/03 16:59:41  ttsalo
  * 	Small fix in option-parsing
  *
@@ -55,6 +65,7 @@ Identity and host key generation and maintenance.
 #include "rsa.h"
 #include "ssh.h"
 #include "xmalloc.h"
+#include "userfile.h"
 
 /* Generated private key. */
 RSAPrivateKey private_key;
@@ -101,6 +112,7 @@ void do_change_passphrase(struct passwd *pw)
   RSAPrivateKey private_key;
   char *old_passphrase, *passphrase1, *passphrase2;
   struct stat st;
+  int done;
 
   /* Read key file name. */
   if (identity_file != NULL)
@@ -110,8 +122,8 @@ void do_change_passphrase(struct passwd *pw)
     }
   else
     {
-      printf("Enter file in which the key is ($HOME/%s): ", 
-	     SSH_CLIENT_IDENTITY);
+      printf("Enter file key is in (%s/%s): ",
+	     pw->pw_dir, SSH_CLIENT_IDENTITY);
       fflush(stdout);
       if (fgets(buf, sizeof(buf), stdin) == NULL)
 	exit(1);
@@ -139,7 +151,25 @@ void do_change_passphrase(struct passwd *pw)
   rsa_clear_public_key(&public_key);
 
   /* Try to load the file with empty passphrase. */
-  if (!load_private_key(geteuid(), buf, "", &private_key, &comment))
+  done = load_private_key(geteuid(), buf, "", &private_key, &comment);
+  
+#ifdef SECURE_RPC
+  if (!done)
+    {
+      old_passphrase = userfile_get_des_1_magic_phrase(geteuid());
+      if (old_passphrase != NULL)
+	{
+	  done = load_private_key(geteuid(), buf, old_passphrase,
+				  &private_key, &comment);
+	  if (done)
+	    printf ("Using SUN-DES-1 magic phrase to decrypt the private key.\n");
+	  memset(old_passphrase, 0, strlen(old_passphrase));
+	  xfree(old_passphrase);
+	  old_passphrase = NULL;
+	}
+    }
+#endif
+  if (!done)
     {
       /* Read passphrase from the user. */
       if (identity_passphrase)
@@ -191,6 +221,20 @@ void do_change_passphrase(struct passwd *pw)
       xfree(passphrase2);
     }
 
+#ifdef SECURE_RPC
+  if (!strcmp (passphrase1,"SUN-DES-1"))
+    {
+      memset(passphrase1, 0, strlen(passphrase1));
+      xfree(passphrase1);
+      passphrase1 = userfile_get_des_1_magic_phrase(geteuid());
+      if (passphrase1 == NULL)
+	{
+	  printf ("Failed to get SUN-DES-1 magic phrase. Run keylogin.\n");
+	  exit (1);
+	}
+      printf ("Using SUN-DES-1 magic phrase to encrypt the private key.\n");
+    }
+#endif
   /* Save the file using the new passphrase. */
   if (!save_private_key(geteuid(), buf, passphrase1, &private_key, comment, 
 			&state))
@@ -219,7 +263,7 @@ void do_change_comment(struct passwd *pw)
 {
   char buf[1024], new_comment[1024], *comment;
   RSAPrivateKey private_key;
-  char *passphrase;
+  char *passphrase = NULL;
   struct stat st;
   FILE *f;
 
@@ -231,8 +275,8 @@ void do_change_comment(struct passwd *pw)
     }
   else
     {
-      printf("Enter file in which the key is ($HOME/%s): ", 
-	     SSH_CLIENT_IDENTITY);
+      printf("Enter file key is in (%s/%s): ",
+	     pw->pw_dir, SSH_CLIENT_IDENTITY);
       fflush(stdout);
       if (fgets(buf, sizeof(buf), stdin) == NULL)
 	exit(1);
@@ -260,7 +304,22 @@ void do_change_comment(struct passwd *pw)
   /* Try to load the file with empty passphrase. */
   if (load_private_key(geteuid(), buf, "", &private_key, &comment))
     passphrase = xstrdup("");
-  else
+#ifdef SECURE_RPC
+  if (passphrase == NULL)
+    {
+      passphrase = userfile_get_des_1_magic_phrase(geteuid());
+      if (load_private_key(geteuid(), buf, passphrase,
+			   &private_key, &comment))
+	printf ("Using SUN-DES-1 magic phrase to decrypt the private key.\n");
+      else
+	{
+	  memset(passphrase, 0, strlen(passphrase));
+	  xfree(passphrase);
+	  passphrase = NULL;
+	}
+    }
+#endif
+  if (passphrase == NULL)
     {
       /* Read passphrase from the user. */
       if (identity_passphrase)
@@ -347,7 +406,7 @@ int do_update_cipher(struct passwd *pw)
 {
   char buf[1024], *comment;
   RSAPrivateKey private_key;
-  char *passphrase;
+  char *passphrase = NULL;
   struct stat st;
   FILE *f;
 
@@ -359,8 +418,8 @@ int do_update_cipher(struct passwd *pw)
     }
   else
     {
-      printf("Enter file in which the key is ($HOME/%s): ", 
-	     SSH_CLIENT_IDENTITY);
+      printf("Enter file key is in (%s/%s): ",
+	     pw->pw_dir, SSH_CLIENT_IDENTITY);
       fflush(stdout);
       if (fgets(buf, sizeof(buf), stdin) == NULL)
 	exit(1);
@@ -380,7 +439,22 @@ int do_update_cipher(struct passwd *pw)
   /* Try to load the file with empty passphrase. */
   if (load_private_key(geteuid(), buf, "", &private_key, &comment))
     passphrase = xstrdup("");
-  else
+#ifdef SECURE_RPC
+  if (passphrase == NULL)
+    {
+      passphrase = userfile_get_des_1_magic_phrase(geteuid());
+      if (load_private_key(geteuid(), buf, passphrase,
+			   &private_key, &comment))
+	printf ("Using SUN-DES-1 magic phrase to decrypt the private key.\n");
+      else
+	{
+	  memset(passphrase, 0, strlen(passphrase));
+	  xfree(passphrase);
+	  passphrase = NULL;
+	}
+    }
+#endif 
+  if (passphrase == NULL)
     {
       /* Read passphrase from the user. */
       if (identity_passphrase)
@@ -560,8 +634,8 @@ int main(int ac, char **av)
     }
   else
     {
-      printf("Enter file in which to save the key ($HOME/%s): ", 
-	     SSH_CLIENT_IDENTITY);
+      printf("Enter file in which to save the key (%s/%s): ",
+	     pw->pw_dir, SSH_CLIENT_IDENTITY);
       fflush(stdout);
       if (fgets(buf, sizeof(buf), stdin) == NULL)
 	exit(1);
@@ -611,6 +685,21 @@ int main(int ac, char **av)
 	memset(passphrase2, 0, strlen(passphrase2));
 	xfree(passphrase2);
       }
+  
+#ifdef SECURE_RPC
+  if (!strcmp (passphrase1,"SUN-DES-1"))
+    {
+      memset(passphrase1, 0, strlen(passphrase1));
+      xfree(passphrase1);
+      passphrase1 = userfile_get_des_1_magic_phrase(geteuid());
+      if (passphrase1 == NULL)
+	{
+	  printf ("Failed to get SUN-DES-1 magic phrase. Run keylogin.\n");
+	  exit (1);
+	}
+      printf ("Using SUN-DES-1 magic phrase to encrypt the private key.\n");
+    }
+#endif
 
   /* Create default commend field for the passphrase.  The user can later
      edit this field. */

@@ -14,8 +14,17 @@ Functions for reading the configuration files.
 */
 
 /*
- * $Id: readconf.c,v 1.7 1997/04/23 00:01:18 kivinen Exp $
+ * $Id: readconf.c,v 1.10 1997/08/21 22:16:45 ylo Exp $
  * $Log: readconf.c,v $
+ * Revision 1.10  1997/08/21 22:16:45  ylo
+ * 	Fixed security bug with port number > 65535 in local forwarding.
+ *
+ * Revision 1.9  1997/08/09 20:22:44  ylo
+ * 	Removed extra newline from fatal message.
+ *
+ * Revision 1.8  1997/08/07 16:23:55  kivinen
+ * 	Moved privileged port check to add_local_forward function.
+ *
  * Revision 1.7  1997/04/23 00:01:18  kivinen
  * 	Added ClearAllForwardins and NumberOfPasswordPrompts options.
  *
@@ -202,6 +211,8 @@ void add_local_forward(Options *options, int port, const char *host,
 		       int host_port)
 {
   Forward *fwd;
+  if ((port < 1024 || port > 65535) && original_real_uid != UID_ROOT)
+    fatal("Privileged ports can only be forwarded by root.");
   if (options->num_local_forwards >= SSH_MAX_FORWARDS_PER_DIRECTION)
     fatal("Too many local forwards (max %d).", SSH_MAX_FORWARDS_PER_DIRECTION);
   fwd = &options->local_forwards[options->num_local_forwards++];

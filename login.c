@@ -20,7 +20,7 @@ on a tty.
 /*
  * $Id: login.c,v 1.9 1998/04/30 01:52:43 kivinen Exp $
  * $Log: login.c,v $
- * Revision 1.9  1998/04/30 01:52:43  kivinen
+ * Revision 1.9  1998/04/30  01:52:43  kivinen
  * 	Moved copying of user name to utmp structure to be done only
  * 	in login.
  *

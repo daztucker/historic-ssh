@@ -9,9 +9,12 @@
 .\"
 .\" Created: Sat Apr 22 21:55:14 1995 ylo
 .\"
-.\" $Id: ssh.1.in,v 1.16 1998/04/30 01:56:20 kivinen Exp $
+.\" $Id: ssh.1.in,v 1.17 1998/06/11 00:10:36 kivinen Exp $
 .\" $Log: ssh.1.in,v $
-.\" Revision 1.16  1998/04/30 01:56:20  kivinen
+.\" Revision 1.17  1998/06/11 00:10:36  kivinen
+.\" 	Fixed comment characters.
+.\"
+.\" Revision 1.16  1998/04/30  01:56:20  kivinen
 .\" 	Added PasswordPromptLogin and PasswordPromptHost option
 .\" 	documentation.
 .\"
@@ -92,7 +95,7 @@
 .\" 
 .\" $Endlog$
 .\"
-.nr CO 0
+.nr CO 1
 .ie \n(CO .TH SSH 1 "November 8, 1995" "F-SECURE SSH" "F-SECURE SSH"
 .el .TH SSH 1 "November 8, 1995" "SSH" "SSH"
 

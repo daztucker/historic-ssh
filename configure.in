@@ -8,9 +8,19 @@
 #
 # Created: Wed Mar 22 18:02:48 1995 ylo
 #
-# $Id: configure.in,v 1.56 1998/04/30 02:34:08 kivinen Exp $
+# $Id: configure.in,v 1.58 1998/06/11 00:04:47 kivinen Exp $
 # $Log: configure.in,v $
-# Revision 1.56  1998/04/30 02:34:08  kivinen
+# Revision 1.58  1998/06/11 00:04:47  kivinen
+# 	Added --enable-so-linger option. Changed --enable-tcp-nodalay
+# 	to --disable-tcp-nodelay. Added --disable-scp-stats.
+#
+# Revision 1.57  1998/05/23  20:30:06  kivinen
+# 	Added osf1 c2 libraries check and locked_out_es and time_lock
+# 	functions check. Include osfc2.o only to sshd. Fixed X11_DIR
+# 	setting. Fixed socks.h header check. Added SSHCONFOBJS and
+# 	SSHDCONFOBJS.
+#
+# Revision 1.56  1998/04/30  02:34:08  kivinen
 # 	Added CRAY T3E.
 #
 # Revision 1.55  1998/04/17 00:37:37  kivinen
@@ -507,15 +517,20 @@ case "$host" in
     ;;
   alpha-dec-osf*)
     AC_DEFINE(TTY_GROUP, "terminal")
+    # The man page says that we need -lsecurity -ldb -laud -lm to quickstart
+    # programs using enchanced security. 
     AC_CHECK_LIB(security, set_auth_parameters)
-    AC_CHECK_FUNCS(setluid getespwnam)
+    AC_CHECK_LIB(aud, audgen)
+    AC_CHECK_LIB(db, dbopen)
+    AC_CHECK_LIB(m, sin)
+    AC_CHECK_FUNCS(setluid getespwnam locked_out_es time_lock)
     no_utmpx=yes
     AC_MSG_CHECKING(for OSF/1 C2 security package)
     osfc2sec=`/usr/sbin/setld -i | grep '^OSFC2SEC' | grep 'installed'`
     if test -n "$osfc2sec"; then
       AC_MSG_RESULT(yes)
       AC_DEFINE(HAVE_OSF1_C2_SECURITY)
-      CONFOBJS="$CONFOBJS osfc2.o"
+      SSHDCONFOBJS="$SSHDCONFOBJS osfc2.o"
       OLD_CFLAGS="$CFLAGS"
       CFLAGS="$CFLAGS -I."
       AC_TRY_COMPILE([#include <sys/types.h>
@@ -805,17 +820,22 @@ else
   fi
   X_PROGRAMS="ssh-askpass"
 fi
+AC_MSG_CHECKING(for X11 unix domain socket directory)
 AC_SUBST(X_PROGRAMS)
 if test '!' -d /tmp/.X11-unix; then
   if test -d /var/X/.X11-unix; then
-    X11_DIR="/var/X/.X11-unix"
-    AC_SUBST(X11_DIR)
+    AC_DEFINE(X11_DIR, "/var/X/.X11-unix")
+    AC_MSG_RESULT(/var/X/.X11-unix)
   else
     if test -d /tmp/.X11-pipe; then
-      X11_DIR="/tmp/.X11-pipe"
-      AC_SUBST(X11_DIR)
+      AC_DEFINE(X11_DIR, "/tmp/.X11-pipe")
+      AC_MSG_RESULT(/tmp/.X11-pipe)
+    else
+      AC_MSG_RESULT(/tmp/.X11-unix)
     fi
   fi
+else
+  AC_MSG_RESULT(/tmp/.X11-unix)
 fi
 
 AC_PATH_PROGS(PERL, perl5 perl, not found)
@@ -1434,7 +1454,7 @@ fi
 if test "x$socks" = "x5"; then
     AC_DEFINE(SOCKS)
     AC_DEFINE(SOCKS5)
-    AC_CHECK_HEADER(socks.h)
+    AC_CHECK_HEADERS(socks.h)
     if test "x$ac_cv_header_socks_h" != "xyes"; then
       AC_DEFINE(Rconnect,SOCKSconnect)
       AC_DEFINE(Rgetsockname,SOCKSgetsockname)
@@ -1574,17 +1594,46 @@ AC_ARG_ENABLE(suid-ssh,
 
 AC_MSG_CHECKING(whether to enable TCP_NODELAY)
 AC_ARG_ENABLE(tcp-nodelay,
-[  --enable-tcp-nodelay    Enable TCP_NODELAY socket option],
+[  --disable-tcp-nodelay   Disable TCP_NODELAY socket option],
+[ case "$enableval" in
+  no)
+       AC_MSG_RESULT(no)
+       ;;
+  *)
+       AC_DEFINE(ENABLE_TCP_NODELAY)
+       AC_MSG_RESULT(yes)
+  esac ],
+  AC_MSG_RESULT(yes)
+  AC_DEFINE(ENABLE_TCP_NODELAY)
+)
+
+AC_MSG_CHECKING(whether to enable SO_LINGER)
+AC_ARG_ENABLE(so-linger,
+[  --enable-so-linger      Enable setting SO_LINGER socket option],
 [ case "$enableval" in
   yes)
        AC_MSG_RESULT(yes)
-       AC_DEFINE(ENABLE_TCP_NODELAY)
+       AC_DEFINE(ENABLE_SO_LINGER)
        ;;
   *)
        AC_MSG_RESULT(no)
   esac ],
+  AC_MSG_RESULT(no)
+)
+
+AC_MSG_CHECKING(whether to enable scp statistics)
+AC_ARG_ENABLE(scp-stats,
+[  --disable-scp-stats     Disable scp statistics display],
+[ case "$enableval" in
+  no)
+       AC_MSG_RESULT(no)
+       ;;
+  *)
+       AC_DEFINE(ENABLE_SCP_STATS)
+       AC_MSG_RESULT(yes)
+  esac ],
   AC_MSG_RESULT(yes)
-  AC_DEFINE(ENABLE_TCP_NODELAY)
+  AC_DEFINE(ENABLE_SCP_STATS)
 )
 
 # We include this here only to make it visible in --help; this is only used
@@ -1608,6 +1657,8 @@ AC_SUBST(ETCDIR)
 AC_SUBST(PIDDIR)
 AC_SUBST(RSAREFDEP)
 AC_SUBST(CONFOBJS)
+AC_SUBST(SSHCONFOBJS)
+AC_SUBST(SSHDCONFOBJS)
 AC_SUBST(SSHINSTALLMODE)
 
 AC_OUTPUT(Makefile sshd.8 ssh.1 make-ssh-known-hosts.1 zlib-1.0.4/Makefile)

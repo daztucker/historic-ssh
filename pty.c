@@ -16,7 +16,7 @@ Allocating a pseudo-terminal, and making it the controlling tty.
 /*
  * $Id: pty.c,v 1.11 1997/03/26 07:09:31 kivinen Exp $
  * $Log: pty.c,v $
- * Revision 1.11  1997/03/26 07:09:31  kivinen
+ * Revision 1.11  1997/03/26  07:09:31  kivinen
  * 	Changed uid 0 to UID_ROOT.
  *
  * Revision 1.10  1997/03/25 05:39:57  kivinen

@@ -9,9 +9,17 @@
 .\"
 .\" Created: Sat Apr 22 21:55:14 1995 ylo
 .\"
-.\" $Id: sshd.8.in,v 1.18 1998/05/04 13:37:32 kivinen Exp $
+.\" $Id: sshd.8.in,v 1.20 1998/06/11 00:11:47 kivinen Exp $
 .\" $Log: sshd.8.in,v $
-.\" Revision 1.18  1998/05/04 13:37:32  kivinen
+.\" Revision 1.20  1998/06/11 00:11:47  kivinen
+.\" 	Documented Allow/DenyUsers user@host format.
+.\"
+.\" Revision 1.19  1998/05/23  20:38:47  kivinen
+.\" 	Documented AccountExpireWarningDays, AllowSHosts, DenySHosts,
+.\" 	ForcedEmptyPasswdChange, ForcedPasswdChange, and
+.\" 	PasswordExpireWarningDays options.
+.\"
+.\" Revision 1.18  1998/05/04  13:37:32  kivinen
 .\" 	Fixed layout of authorized key options.
 .\"
 .\" Revision 1.17  1998/04/30 03:58:29  kivinen
@@ -105,7 +113,7 @@
 .\"
 .\" $Endlog$
 .\"
-.nr CO 0
+.nr CO 1
 .ie \n(CO .TH SSHD 8 "November 8, 1995" "F-SECURE SSH" "F-SECURE SSH"
 .el  .TH SSHD 8 "November 8, 1995" "SSH" "SSH"
 
@@ -355,6 +363,24 @@ can also be configured to use tcp_wrappers using the --with-libwrap
 compile-time configuration option.
 
 .TP
+.B AccountExpireWarningDays
+Specifies when to start print warning messages that the account is
+going to expire. The value is number of days before the account
+expiration. The default value is 14 days, and if set to 0 the warning
+messages are disabled. 
+
+.TP
+.B AllowSHosts
+This keyword can be followed by any number of host name patterns,
+separated by spaces. If specified, .shosts (and .rhosts and
+/etc/hosts.equiv) entries are only honoured for hosts whose name
+matches one of the patterns.
+'*' and '?' can be used as wildcards in the patterns.  Normal name
+servers are used to map the client's host into a canonical host name.
+If the name cannot be mapped, its IP-address is used as the host name.
+By default all hosts are allowed to connect.
+
+.TP
 .B AllowTcpForwarding
 Specifies whether tcp forwarding is permitted.  The default is "yes".
 Note that disabling tcp forwarding does not improve security in any
@@ -362,10 +388,12 @@ way, as users can always install their own forwarders.
 
 .TP
 .B AllowUsers
-This keyword can be followed by any number of user name patterns,
-separated by spaces.  If specified, login is allowed only as users whose
-name matches one of the patterns.  \'*\' and \'?\' can be used as wildcards
-in the patterns.  By default, logins as all users are allowed.  
+This keyword can be followed by any number of user name patterns or
+user@host patterns, separated by spaces. Host name may be either the
+dns name or the ip address. If specified, login is allowed only as
+users whose name matches one of the patterns. \'*\' and \'?\' can be
+used as wildcards in the patterns. By default, logins as all users are
+allowed.
 
 Note that the all other login authentication steps must still be
 sucessfully completed.  AllowUsers and DenyUsers are additional
@@ -417,9 +445,17 @@ separated by spaces.  If specified, login is disallowed from the hosts
 whose name matches any of the patterns.
 
 .TP
+.B DenySHosts
+This keyword can be followed by any number of host name patterns,
+separated by spaces. If specified, .shosts (and .rhosts and
+/etc/hosts.equiv) entries whose name matches any of the patterns are
+ignored.
+
+.TP
 .B DenyUsers
-This keyword can be followed by any number of user name patterns,
-separated by spaces.  If specified, login is disallowed as users
+This keyword can be followed by any number of user name patterns or
+user@host patterns, separated by spaces. Host name may be either the
+dns name or the ip address. If specified, login is disallowed as users
 whose name matches any of the patterns.
 
 .TP
@@ -427,6 +463,18 @@ whose name matches any of the patterns.
 Specifies whether to use verbose logging.  Verbose logging violates
 the privacy of users and is not recommended.  The argument must be
 "yes" or "no" (without the quotes).  The default is "no".
+
+.TP
+.B ForcedEmptyPasswdChange
+Specifies whether to force password change if the password is empty
+(first login). . The argument must be "yes" or "no" (without the
+quotes). The default is "no".
+
+.TP
+.B ForcedPasswdChange
+Specifies whether to force password change if the password is expired.
+The argument must be
+"yes" or "no" (without the quotes).  The default is "yes".
 
 .TP
 .B HostKey
@@ -514,6 +562,13 @@ The default is 600 (seconds).
 .B PasswordAuthentication
 Specifies whether password authentication is allowed.
 The default is "yes".
+
+.TP
+.B PasswordExpireWarningDays
+Specifies when to start print warning messages that the password is
+going to expire. The value is number of days before the password
+expiration. The default value is 14 days, and if set to 0 the warning
+messages are disabled. 
 
 .TP
 .B PermitEmptyPasswords

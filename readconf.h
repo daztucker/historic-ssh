@@ -16,7 +16,7 @@ Functions for reading the configuration file.
 /*
  * $Id: readconf.h,v 1.9 1998/04/30 01:55:19 kivinen Exp $
  * $Log: readconf.h,v $
- * Revision 1.9  1998/04/30 01:55:19  kivinen
+ * Revision 1.9  1998/04/30  01:55:19  kivinen
  * 	Added PasswordPromptLogin and PasswordPromptHost options, so
  * 	now the password prompt is configurable.
  *

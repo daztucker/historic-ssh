@@ -19,7 +19,7 @@ suitable code.
 /*
  * $Id: ttymodes.c,v 1.4 1998/04/17 00:42:50 kivinen Exp $
  * $Log: ttymodes.c,v $
- * Revision 1.4  1998/04/17 00:42:50  kivinen
+ * Revision 1.4  1998/04/17  00:42:50  kivinen
  * 	Fixed previous fix.
  *
  * Revision 1.3  1998/03/27 17:05:47  kivinen

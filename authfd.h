@@ -16,7 +16,7 @@ Functions to interface with the SSH_AUTHENTICATION_FD socket.
 /*
  * $Id: authfd.h,v 1.5 1997/03/26 07:01:19 kivinen Exp $
  * $Log: authfd.h,v $
- * Revision 1.5  1997/03/26 07:01:19  kivinen
+ * Revision 1.5  1997/03/26  07:01:19  kivinen
  * 	Removed ssh_close_authentication function.
  * 	Fixed prototypes.
  *

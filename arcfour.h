@@ -10,7 +10,7 @@ of RSA Data Security)
 /*
  * $Id: arcfour.h,v 1.1.1.1 1996/02/18 21:38:11 ylo Exp $
  * $Log: arcfour.h,v $
- * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
+ * Revision 1.1.1.1  1996/02/18  21:38:11  ylo
  * 	Imported ssh-1.2.13.
  *
  * Revision 1.2  1995/07/13  01:30:25  ylo

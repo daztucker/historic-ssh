@@ -16,7 +16,7 @@ Functions for manipulating the known hosts files.
 /*
  * $Id: hostfile.c,v 1.2 1997/03/19 21:13:51 kivinen Exp $
  * $Log: hostfile.c,v $
- * Revision 1.2  1997/03/19 21:13:51  kivinen
+ * Revision 1.2  1997/03/19  21:13:51  kivinen
  * 	Enlarged line buffer in check_host_in_hostfile to 16384.
  *
  * Revision 1.1.1.1  1996/02/18 21:38:12  ylo

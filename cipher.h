@@ -14,7 +14,7 @@ Created: Wed Apr 19 16:50:42 1995 ylo
 /*
  * $Id: cipher.h,v 1.9 1998/04/30 01:51:26 kivinen Exp $
  * $Log: cipher.h,v $
- * Revision 1.9  1998/04/30 01:51:26  kivinen
+ * Revision 1.9  1998/04/30  01:51:26  kivinen
  * 	Reserved cipher number 7 to Bernard Perrot
  * 	<perrot@lal.in2p3.fr> for some weak 40 bit encryption method.
  *

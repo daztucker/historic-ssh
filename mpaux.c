@@ -17,7 +17,7 @@ precision integers.
 /*
  * $Id: mpaux.c,v 1.2 1996/04/26 00:26:48 ylo Exp $
  * $Log: mpaux.c,v $
- * Revision 1.2  1996/04/26 00:26:48  ylo
+ * Revision 1.2  1996/04/26  00:26:48  ylo
  * 	Fixed problems with 16-bit Windows.
  *
  * Revision 1.1.1.1  1996/02/18 21:38:11  ylo

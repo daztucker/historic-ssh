@@ -16,7 +16,7 @@ RSA key generation, encryption and decryption.
 /*
  * $Id: rsa.h,v 1.3 1997/03/26 07:11:51 kivinen Exp $
  * $Log: rsa.h,v $
- * Revision 1.3  1997/03/26 07:11:51  kivinen
+ * Revision 1.3  1997/03/26  07:11:51  kivinen
  * 	Fixed prototypes.
  *
  * Revision 1.2  1996/02/19 16:09:38  huima

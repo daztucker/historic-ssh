@@ -17,7 +17,7 @@ tty.
 /*
  * $Id: pty.h,v 1.2 1997/04/21 01:03:30 kivinen Exp $
  * $Log: pty.h,v $
- * Revision 1.2  1997/04/21 01:03:30  kivinen
+ * Revision 1.2  1997/04/21  01:03:30  kivinen
  * 	Added pty_cleanup_proc prototype.
  *
  * Revision 1.1.1.1  1996/02/18 21:38:10  ylo

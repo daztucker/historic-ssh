@@ -17,7 +17,7 @@ failure (they call fatal if they encounter an error).
 /*
  * $Id: xmalloc.c,v 1.1.1.1 1996/02/18 21:38:11 ylo Exp $
  * $Log: xmalloc.c,v $
- * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
+ * Revision 1.1.1.1  1996/02/18  21:38:11  ylo
  * 	Imported ssh-1.2.13.
  *
  * Revision 1.3  1995/08/29  22:36:39  ylo

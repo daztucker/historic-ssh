@@ -16,7 +16,7 @@ Functions for reading passphrases and passwords.
 /*
  * $Id: readpass.c,v 1.6 1997/05/13 22:30:18 kivinen Exp $
  * $Log: readpass.c,v $
- * Revision 1.6  1997/05/13 22:30:18  kivinen
+ * Revision 1.6  1997/05/13  22:30:18  kivinen
  * 	Added some casts.
  *
  * Revision 1.5  1997/04/17 04:01:52  kivinen

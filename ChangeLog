@@ -1,3 +1,63 @@
+Thu Jun 11 01:05:28 1998  Tero Kivinen  <kivinen@ssh.fi>
+
+	* Added time and date in the X11 connection rejected message
+	requested by Jarkko Hietaniemi <jhi@iki.fi>.
+
+	* Added username to passwd command when forcing password change.
+
+	* Added crc-fix detection code from CORE SDI S.A., Buenos Aires,
+	Argentina. See their security announcement for more information. 
+	
+	* Disabled SO_LINGER by default. Added --enable-so-linger
+	configure option that turns it on again.
+	
+	* Added scp statistics print from Craig Yap <craig@cse.fau.edu>.
+	Added --disable-scp-stats to turn it off, and -q option to scp. 
+	
+	* Added user@host pattern matching in Allow/DenyUsers. Patch from
+	Andrew Tridgell <tridge@samba.anu.edu.au>.
+	
+	* Added run time check for /var/X directory. Patch from Charles
+	Karney <karney@pppl.gov>.
+
+Thu May 21 21:31:44 1998  Tero Kivinen  <kivinen@ssh.fi>
+
+	* Added warning about expiring passwords. Also added warning
+	message when the account is going to expire. Idea from Harry
+	Shamansky <shamansky@adinc.com>. Added PasswordExpireWarningDays
+	and AccountExpireWarningDays server configuration variables. 
+	
+	* Fixed login_getclass code for BSDI 2.1 (199510). Patch from
+	Kazunori ANDO <ando@iij-mc.co.jp>.
+	
+	* Fixed defining X11_DIR in the configure.in. Patch from Bradford
+	W. Johnson <bradford@math.umn.edu>.
+	
+	* Fixed -g option case clause (missing break). Patch from Kevin
+	Steves <stevesk@sweden.hp.com>.
+	
+	* Added check for program name to contain ssh1, ssh1.old, ssh.old,
+ 	slogin1, slogin.old, slogin1.old. Bug report from Richard Kaszeta
+ 	<kaszeta@me.umn.edu>.
+	
+	* Fixed AC_CHECK_HEADER(socks.h) in the configure.in. Patch from
+	Andrew Raphael <raphael@research.canon.com.au>.
+	
+	* Fixed TIS authentication to understand chalnecho response. Patch
+	from Mark Horn <mhorn@funb.com>.
+	
+	* Fixed typo in the ForcedPasswordChange configuration variable.
+	Patch from Rick Troxel <rick@helix.nih.gov>.
+
+	* Documented ForcedPasswordChange, and changed its default value
+	to yes. Added osf c2 code to use that option too. 
+	
+	* Added SSH_BINDIR adding to PATH found from /etc/default/login
+	etc. Patch from Georg-W. Koltermann <gwk@cray.com>.
+	
+	* AllowSHosts, DenySHosts patches from Piete Brooks
+	<pb@cl.cam.ac.uk>. 
+
 Mon May  4 16:37:41 1998  Tero Kivinen  <kivinen@ssh.fi>
 
 	* Fixed layout of the authorized_keys options in the sshd man
@@ -147,7 +207,8 @@ Fri Mar 27 15:17:04 1998  Tero Kivinen  <kivinen@ssh.fi>
 	many people). 
 	
 	* Added check that .rhosts/.shosts file cannot have any other
-	control characters except whitespaces. 
+	control characters except whitespaces. Problem described by Theo
+	de Raadt <deraadt@cvs.openbsd.org>. 
 	
 	* Disabled TCP_NODELAY and added --enable-tcp-nodelay configure
 	option to enable it again (Sean Doran <smb@ebone.net>).

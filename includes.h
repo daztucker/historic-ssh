@@ -16,7 +16,7 @@ This file includes most of the needed system headers.
 /*
  * $Id: includes.h,v 1.12 1998/04/30 01:51:53 kivinen Exp $
  * $Log: includes.h,v $
- * Revision 1.12  1998/04/30 01:51:53  kivinen
+ * Revision 1.12  1998/04/30  01:51:53  kivinen
  * 	Added linux sparc fix.
  *
  * Revision 1.11  1998/01/21 14:01:11  kivinen

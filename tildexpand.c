@@ -14,7 +14,7 @@ Created: Wed Jul 12 01:07:36 1995 ylo
 /*
  * $Id: tildexpand.c,v 1.1.1.1 1996/02/18 21:38:12 ylo Exp $
  * $Log: tildexpand.c,v $
- * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
+ * Revision 1.1.1.1  1996/02/18  21:38:12  ylo
  * 	Imported ssh-1.2.13.
  *
  * Revision 1.2  1995/07/13  01:41:03  ylo

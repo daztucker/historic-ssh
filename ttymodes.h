@@ -15,7 +15,7 @@ Created: Tue Mar 21 15:42:09 1995 ylo
 /*
  * $Id: ttymodes.h,v 1.2 1996/11/03 15:57:14 ttsalo Exp $
  * $Log: ttymodes.h,v $
- * Revision 1.2  1996/11/03 15:57:14  ttsalo
+ * Revision 1.2  1996/11/03  15:57:14  ttsalo
  *       tc_statusc -> ts_statusc (line 86)
  *
  * Revision 1.1.1.1  1996/02/18 21:38:10  ylo

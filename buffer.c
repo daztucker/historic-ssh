@@ -16,7 +16,7 @@ Functions for manipulating fifo buffers (that can grow if needed).
 /*
  * $Id: buffer.c,v 1.1.1.1 1996/02/18 21:38:11 ylo Exp $
  * $Log: buffer.c,v $
- * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
+ * Revision 1.1.1.1  1996/02/18  21:38:11  ylo
  * 	Imported ssh-1.2.13.
  *
  * Revision 1.2  1995/07/13  01:18:46  ylo

@@ -37,9 +37,9 @@
 #	  Description       : Make ssh-known-host file from dns data.
 #
 #	  $Log: make-ssh-known-hosts.pl,v $
-#	  Revision 1.5  1998/04/30 01:53:33  kivinen
-#	  	Moved kill before close and added sending SIGINT first and
-#	  	then 1 second sleep before sending SIGKILL.
+# Revision 1.5  1998/04/30  01:53:33  kivinen
+# 	Moved kill before close and added sending SIGINT first and
+# 	then 1 second sleep before sending SIGKILL.
 #
 #	  Revision 1.4  1998/04/17 00:39:19  kivinen
 #	  	Changed to close ssh program filedescriptor before killing it.

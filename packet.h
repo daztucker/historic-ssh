@@ -16,7 +16,7 @@ Interface for the packet protocol functions.
 /*
  * $Id: packet.h,v 1.6 1998/03/27 16:59:16 kivinen Exp $
  * $Log: packet.h,v $
- * Revision 1.6  1998/03/27 16:59:16  kivinen
+ * Revision 1.6  1998/03/27  16:59:16  kivinen
  * 	Added socks.h include.
  *
  * Revision 1.5  1997/04/05 17:29:14  ylo

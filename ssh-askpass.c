@@ -77,7 +77,7 @@ void fatal(char *fmt, ...)
 
 /* Open connection to the X display. */
 
-void open_display()
+void open_display(void)
 {
   char *display_name;
 
@@ -93,7 +93,7 @@ void open_display()
 
 /* Close the display after freeing data structures. */
 
-void close_display()
+void close_display(void)
 {
   XFreeModifiermap(modifiers);
   XUnloadFont(display, font);
@@ -103,7 +103,7 @@ void close_display()
 
 /* Create the graphics contexts. Color version. */
 
-void create_GCs()
+void create_GCs(void)
 {
   int i;
   XGCValues values;
@@ -122,7 +122,7 @@ void create_GCs()
 
 /* Create the graphics contexts. B/W version. */
 
-void create_GCs_bw()
+void create_GCs_bw(void)
 {
   int i;
   XGCValues values;
@@ -144,7 +144,7 @@ void create_GCs_bw()
 /* Try to allocate the colors we would like to use.
    If any of the allocations fails, revert to black'n'white mode. */
 
-void allocate_colors()
+void allocate_colors(void)
 {
   XColor xcolor, exact_color;
   int red, green, blue;
@@ -236,7 +236,7 @@ void button_dimensions(char *string, int *width, int *height)
 
 /* Open windows (the dialog box and the cancel button). */
 
-void open_windows()
+void open_windows(void)
 {
   int i; int scrap;
   XSetWindowAttributes attributes;
@@ -292,7 +292,7 @@ void open_windows()
 
 /* Map the windows. */
 
-void map_windows()
+void map_windows(void)
 {
   XMapRaised(display, main_window);
   XMapWindow(display, cancel_button);
@@ -300,7 +300,7 @@ void map_windows()
 
 /* Load the font wanted. */
 
-void get_font()
+void get_font(void)
 {
   font_struct = XLoadQueryFont(display, font_spec);
   if (!font_struct)
@@ -314,7 +314,7 @@ void get_font()
 
 /* Calculate correct geometry for the main window. */
 
-void compute_dimensions()
+void compute_dimensions(void)
 {
   Status status;
   Window root;
@@ -354,7 +354,7 @@ void get_resource(char *name, char *class, char **where)
 
 /* Read and get some resources. */
 
-void read_resources()
+void read_resources(void)
 {
   Status err;
   unsigned char *prop_return;
@@ -382,7 +382,7 @@ void read_resources()
     {
       if (prop_return != NULL)
 	{
-	  database = XrmGetStringDatabase(prop_return);
+	  database = XrmGetStringDatabase((char *) prop_return);
 	  XFree(prop_return);
 	}
     }
@@ -474,7 +474,7 @@ void draw_button(char *string, Window window, int width, int height,
 
 /* Draw the dialog box and the cancel button. */
 
-void draw_it()
+void draw_it(void)
 {
   int y; int i;
   relief_box(0, 0, w_width - 1, w_height - 1, hilight, shadow, relief,
@@ -517,14 +517,14 @@ void button_release(XButtonEvent *event)
     }
 }
 
-void advance_leds()
+void advance_leds(void)
 {
   led_state[next_led] ^= 1;
   draw_led(next_led, led_state[next_led]);
   next_led = (next_led + 1) % leds;
 }
 
-void backward_leds()
+void backward_leds(void)
 {
   next_led--; if (next_led == -1) next_led += leds;
   led_state[next_led] ^= 1;
@@ -582,13 +582,13 @@ void key_press(XKeyEvent *event)
 }
 
 /* Read the modifiers mapping. */
-void check_keyboard()
+void check_keyboard(void)
 {
   modifiers = XGetModifierMapping(display);
 }
 
 /* Event loop. */
-void event_loop()
+void event_loop(void)
 {
   int focused = 0;
   XEvent event;

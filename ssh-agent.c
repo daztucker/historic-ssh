@@ -16,7 +16,7 @@ The authentication agent program.
 /*
  * $Id: ssh-agent.c,v 1.19 1998/01/02 06:21:42 kivinen Exp $
  * $Log: ssh-agent.c,v $
- * Revision 1.19  1998/01/02 06:21:42  kivinen
+ * Revision 1.19  1998/01/02  06:21:42  kivinen
  * 	Added -k option. Renamed SSH_AUTHENCATION_SOCKET to
  * 	SSH_AUTH_SOCK.
  *

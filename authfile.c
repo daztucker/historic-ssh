@@ -17,7 +17,7 @@ for reading the passphrase from the user.
 /*
  * $Id: authfile.c,v 1.2 1997/03/19 22:18:27 kivinen Exp $
  * $Log: authfile.c,v $
- * Revision 1.2  1997/03/19 22:18:27  kivinen
+ * Revision 1.2  1997/03/19  22:18:27  kivinen
  * 	Removed check that SSH_CIPHER_NONE is in cipher_mask because
  * 	it is always internally supported, even if not in cipher_mask.
  *

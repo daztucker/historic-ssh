@@ -18,7 +18,7 @@ validity of the host key.
 /*
  * $Id: auth-rsa.c,v 1.10 1998/01/15 13:08:30 kivinen Exp $
  * $Log: auth-rsa.c,v $
- * Revision 1.10  1998/01/15 13:08:30  kivinen
+ * Revision 1.10  1998/01/15  13:08:30  kivinen
  * 	Fixed no-X11-forwarding to no-x11-forwarding.
  *
  * Revision 1.9  1998/01/03 06:39:47  kivinen

@@ -14,8 +14,12 @@ Interface for the packet protocol functions.
 */
 
 /*
- * $Id: packet.h,v 1.4 1997/03/26 07:11:41 kivinen Exp $
+ * $Id: packet.h,v 1.5 1997/04/05 17:29:14 ylo Exp $
  * $Log: packet.h,v $
+ * Revision 1.5  1997/04/05 17:29:14  ylo
+ * 	Added packet_get_len (returns the remaining length of incoming
+ * 	packet).
+ *
  * Revision 1.4  1997/03/26 07:11:41  kivinen
  * 	Fixed prototypes.
  *
@@ -129,6 +133,9 @@ int packet_read_poll(void);
 /* Buffers the given amount of input characters.  This is intended to be
    used together with packet_read_poll. */
 void packet_process_incoming(const char *buf, unsigned int len);
+
+/* Returns the remaining number of bytes in the incoming packet. */
+unsigned int packet_get_len(void);
 
 /* Returns a character (0-255) from the packet data. */
 unsigned int packet_get_char(void);

@@ -19,10 +19,13 @@ agent connections.
 */
 
 /*
- * $Id: sshd.c,v 1.69 2001/01/17 14:40:04 tri Exp $
+ * $Id: sshd.c,v 1.70 2001/02/03 10:03:57 ylo Exp $
  * $Log: sshd.c,v $
+ * Revision 1.70  2001/02/03 10:03:57  ylo
+ * 	Added logging for failed authentication attempts.
+ *
  * Revision 1.69  2001/01/17 14:40:04  tri
- * 	No debug packets from server if debug is not on or quiet is on.
+ *      No debug packets from server if debug is not on or quiet is on.
  *
  * Revision 1.68  2000/11/24 13:07:29  sjl
  *      chflags() omission.
@@ -2382,8 +2385,8 @@ void do_authentication(char *user, int privileged_port, int cipher_type)
               free(tkt_user);
             }
 #endif /* KRB5 */
-          debug("Kerberos authentication failed for %.100s from %.200s",
-                user, get_canonical_hostname());
+          log_msg("Kerberos authentication failed for %.100s from %.200s",
+                  user, get_canonical_hostname());
           break;
 #endif /* KERBEROS */
           
@@ -2421,8 +2424,8 @@ void do_authentication(char *user, int privileged_port, int cipher_type)
               remote_user_name = client_user;
               break;
             }
-          debug("Rhosts authentication failed for '%.100s', remote '%.100s', host '%.200s'.",
-                user, client_user, get_canonical_hostname());
+          log_msg("Rhosts authentication failed for '%.100s', remote '%.100s', host '%.200s'.",
+                  user, client_user, get_canonical_hostname());
           xfree(client_user);
           break;
 
@@ -2482,8 +2485,8 @@ void do_authentication(char *user, int privileged_port, int cipher_type)
               mpz_clear(&client_host_key_n);
               break;
             }
-          debug("RhostsRSA authentication failed for '%.100s', remote '%.100s', host '%.200s'.",
-                user, client_user, get_canonical_hostname());
+          log_msg("RhostsRSA authentication failed for '%.100s', remote '%.100s', host '%.200s'.",
+                  user, client_user, get_canonical_hostname());
           xfree(client_user);
           mpz_clear(&client_host_key_e);
           mpz_clear(&client_host_key_n);
@@ -2646,7 +2649,7 @@ void do_authentication(char *user, int privileged_port, int cipher_type)
               authenticated = 1;
               break;
             } else {
-              debug("TIS authentication for %.100s failed",user);
+              log_msg("TIS authentication for %.100s failed",user);
               memset(password, 0, strlen(password));
               xfree(password);
               break;
@@ -2685,8 +2688,8 @@ void do_authentication(char *user, int privileged_port, int cipher_type)
           if (password_attempts > 0)
             {
               /* Log failures if attempted more than once. */
-              debug("Password authentication failed for user %.100s from %.100s.",
-                    user, get_canonical_hostname());
+              log_msg("Password authentication failed for user %.100s from %.100s.",
+                      user, get_canonical_hostname());
             }
           password_attempts++;
 
@@ -2706,7 +2709,7 @@ void do_authentication(char *user, int privileged_port, int cipher_type)
               authenticated = 1;
               break;
             }
-          debug("Password authentication for %.100s failed.", user);
+          log_msg("Password authentication for %.100s failed.", user);
           memset(password, 0, strlen(password));
           xfree(password);
           break;

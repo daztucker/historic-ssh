@@ -14,32 +14,40 @@ Functions for connecting the local authentication agent.
 */
 
 /*
- * $Id: authfd.c,v 1.16 1998/05/23 20:20:49 kivinen Exp $
+ * $Id: authfd.c,v 1.18 1999/02/22 08:13:58 tri Exp $
  * $Log: authfd.c,v $
- * Revision 1.16  1998/05/23  20:20:49  kivinen
- * 	Changed () -> (void).
+ * Revision 1.18  1999/02/22 08:13:58  tri
+ * 	Final fixes for 1.2.27.
+ *
+ * Revision 1.17  1999/02/21 19:51:57  ylo
+ *      Intermediate commit of ssh1.2.27 stuff.
+ *      Main change is sprintf -> snprintf; however, there are also
+ *      many other changes.
+ *
+ * Revision 1.16  1998/05/23 20:20:49  kivinen
+ *      Changed () -> (void).
  *
  * Revision 1.15  1998/03/27  16:56:30  kivinen
- * 	Allow authentication socket to be symlink, if not suid. Fixed
- * 	authsocketdir freeing.
+ *      Allow authentication socket to be symlink, if not suid. Fixed
+ *      authsocketdir freeing.
  *
  * Revision 1.14  1998/01/02 06:15:49  kivinen
- * 	Fixed agent socket opening routine.
+ *      Fixed agent socket opening routine.
  *
  * Revision 1.13  1997/04/17 04:00:46  kivinen
- * 	Removed extra namelen variable.
+ *      Removed extra namelen variable.
  *
  * Revision 1.12  1997/03/26 07:00:57  kivinen
- * 	Changed uid 0 to UID_ROOT.
- * 	Fixed memory leak.
- * 	Removed ssh_close_authentication function.
+ *      Changed uid 0 to UID_ROOT.
+ *      Fixed memory leak.
+ *      Removed ssh_close_authentication function.
  *
  * Revision 1.11  1996/11/19 22:44:03  kivinen
- * 	Changed socket directory checks so that if the
- * 	original_real_uid is root do not check the file owner.
+ *      Changed socket directory checks so that if the
+ *      original_real_uid is root do not check the file owner.
  *
  * Revision 1.10  1996/10/29 22:34:52  kivinen
- * 	log -> log_msg. Removed userfile.h.
+ *      log -> log_msg. Removed userfile.h.
  *
  * Revision 1.9  1996/10/24 14:05:44  ttsalo
  *       Cleaning up old fd-auth trash
@@ -48,47 +56,47 @@ Functions for connecting the local authentication agent.
  *       Fixed auth socket name handling
  *
  * Revision 1.7  1996/10/20 16:26:17  ttsalo
- * 	Modified the routines to use agent socket directly
+ *      Modified the routines to use agent socket directly
  *
  * Revision 1.6  1996/10/03 18:46:13  ylo
- * 	Fixed a bug that caused "Received signal 14" errors.
+ *      Fixed a bug that caused "Received signal 14" errors.
  *
  * Revision 1.5  1996/09/27 13:56:35  ttsalo
- * 	Fixed a memory deallocation bug
+ *      Fixed a memory deallocation bug
  *
  * Revision 1.4  1996/09/11 17:54:22  kivinen
- * 	Added check for bind errors in
- * 	ssh_get_authentication_connection_fd.
- * 	Fixed bug in old alarm / timeout restoration.
- * 	Changed limit of messages from 256 kB to 30 kB.
+ *      Added check for bind errors in
+ *      ssh_get_authentication_connection_fd.
+ *      Fixed bug in old alarm / timeout restoration.
+ *      Changed limit of messages from 256 kB to 30 kB.
  *
  * Revision 1.3  1996/09/08 17:21:04  ttsalo
- * 	A lot of changes in agent-socket handling
+ *      A lot of changes in agent-socket handling
  *
  * Revision 1.2  1996/09/04 12:41:50  ttsalo
- * 	Minor fixes
+ *      Minor fixes
  *
  * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
- * 	Imported ssh-1.2.13.
+ *      Imported ssh-1.2.13.
  *
  * Revision 1.7  1995/09/21  17:08:11  ylo
- * 	Support AF_UNIX_SIZE.
+ *      Support AF_UNIX_SIZE.
  *
  * Revision 1.6  1995/09/09  21:26:38  ylo
  * /m/shadows/u2/users/ylo/ssh/README
  *
  * Revision 1.5  1995/08/29  22:18:58  ylo
- * 	Added remove_all_identities.
+ *      Added remove_all_identities.
  *
  * Revision 1.4  1995/08/21  23:21:04  ylo
- * 	Deleted ssh_authenticate().
- * 	Pass session key and response_type in agent request.
+ *      Deleted ssh_authenticate().
+ *      Pass session key and response_type in agent request.
  *
  * Revision 1.3  1995/07/13  01:14:40  ylo
- * 	Removed the "Last modified" header.
+ *      Removed the "Last modified" header.
  *
  * Revision 1.2  1995/07/13  01:11:31  ylo
- * 	Added cvs log.
+ *      Added cvs log.
  *
  * $Endlog$
  */
@@ -139,8 +147,8 @@ int ssh_get_authentication_fd(void)
   last_dir = strrchr(authsocketdir, '/');
   if (last_dir == NULL || last_dir == authsocketdir)
     {
-      error("Invalid %s `%.100s', it should contain at least one /.",
-	    SSH_AUTHSOCKET_ENV_NAME, authsocketdir);
+      error("Invalid %.200s `%.100s', it should contain at least one /.",
+            SSH_AUTHSOCKET_ENV_NAME, authsocketdir);
       xfree(authsocketdir);
       return -1;
     }
@@ -164,7 +172,7 @@ int ssh_get_authentication_fd(void)
   if (lstat(authsocketdir, &dir_st) != 0)
     {
       error("Cannot stat authentication socket directory %.100s",
-	    authsocketdir);
+            authsocketdir);
       xfree(authsocketdir);
       return -1;
     }
@@ -188,7 +196,7 @@ int ssh_get_authentication_fd(void)
   if (original_real_uid != UID_ROOT && dot_st.st_uid != pw->pw_uid)
     {
       error("Invalid owner of authentication socket directory %.100s",
-	    authsocketdir);
+            authsocketdir);
       xfree(authsocketdir);
       return -1;
     }
@@ -196,7 +204,7 @@ int ssh_get_authentication_fd(void)
   if ((dot_st.st_mode & 077) != 0)
     {
       error("Invalid modes for authentication socket directory %.100s",
-	    authsocketdir);
+            authsocketdir);
       xfree(authsocketdir);
       return -1;
     }
@@ -204,142 +212,143 @@ int ssh_get_authentication_fd(void)
   if (lstat(authsocket, &socket_st) != 0)
     {
       error("Cannot find authentication socket %.100s/%.100s",
-	    authsocketdir, authsocket);
+            authsocketdir, authsocket);
       xfree(authsocketdir);
       return -1;
     }
   if (S_ISLNK(socket_st.st_mode))
     {
       if (original_real_uid != geteuid())
-	{
-	  error("Authentication socket `%.100s' is symlink", origauthsocket);
-	  xfree(authsocketdir);
-	  return -1;
-	}
+        {
+          error("Authentication socket `%.100s' is symlink", origauthsocket);
+          xfree(authsocketdir);
+          return -1;
+        }
     }
 
   /* Check if we are suid process */
   if (original_real_uid != geteuid())
     {
       /* Something wierd code here again. We need to make sure the socket is
-	 not symlink to somebody elses socket. We cannot use stat/lstat because
-	 user might change the inode after we have stat/lstat'ed it. We cannot
-	 use fstat, because it doesn't work for sockets, so we need some magic
-	 spell here.
+         not symlink to somebody elses socket. We cannot use stat/lstat because
+         user might change the inode after we have stat/lstat'ed it. We cannot
+         use fstat, because it doesn't work for sockets, so we need some magic
+         spell here.
 
-	 Create temporary directory at same position where the real agent
-	 directory is, allow only owner to modify it (==root). Change current
-	 working directory to there and make sure we ended where we wanted
-	 (stat "." and real path and check that they match, and check that
-	 parent is what it is supposed to be (stat of .. and real parent
-	 matches)). Then check that the parent directory ("..") is sticky so
-	 nobody can mess with this directory. Now we are at safe place where
-	 nobody else have any permissions. Now make hard link from the real
-	 authentication socket to this directory. Hard link to symlink will
-	 point to destination of that symlink, so if the agent socket was
-	 symlink to somebody elses socket then the stat of our hardlink and
-	 agent socket given by user differs and we give an error. Otherwise we
-	 know that the hard link points to real socket that (at least used to
-	 be) at the directory that was owned by user, so we can safely open the
-	 hardlink socket (not the original it might be changed after we have
-	 checked the permissions). */
+         Create temporary directory at same position where the real agent
+         directory is, allow only owner to modify it (==root). Change current
+         working directory to there and make sure we ended where we wanted
+         (stat "." and real path and check that they match, and check that
+         parent is what it is supposed to be (stat of .. and real parent
+         matches)). Then check that the parent directory ("..") is sticky so
+         nobody can mess with this directory. Now we are at safe place where
+         nobody else have any permissions. Now make hard link from the real
+         authentication socket to this directory. Hard link to symlink will
+         point to destination of that symlink, so if the agent socket was
+         symlink to somebody elses socket then the stat of our hardlink and
+         agent socket given by user differs and we give an error. Otherwise we
+         know that the hard link points to real socket that (at least used to
+         be) at the directory that was owned by user, so we can safely open the
+         hardlink socket (not the original it might be changed after we have
+         checked the permissions). */
 
       newauthsockdir = xmalloc(strlen(authsocketdir) + 20);
-      sprintf(newauthsockdir, "%s-%d", authsocketdir, getpid());
+      snprintf(newauthsockdir, strlen(authsocketdir) + 20,
+               "%s-%d", authsocketdir, getpid());
 
       /* Create directory */
       if (mkdir(newauthsockdir, S_IRWXU) != 0)
-	{
-	  error("Cannot make temporary authentication socket directory %.100s",
-		newauthsockdir);
-	  xfree(authsocketdir);
-	  xfree(newauthsockdir);
-	  return -1;
-	}
+        {
+          error("Cannot make temporary authentication socket directory %.100s",
+                newauthsockdir);
+          xfree(authsocketdir);
+          xfree(newauthsockdir);
+          return -1;
+        }
 
       /* Stat it */
       if (lstat(newauthsockdir, &dir_st) != 0)
-	{
-	  error("Cannot stat newly created temporary authentication socket directory %.100s",
-		newauthsockdir);
-	  xfree(authsocketdir);
-	  xfree(newauthsockdir);
-	  return -1;
-	}
+        {
+          error("Cannot stat newly created temporary authentication socket directory %.100s",
+                newauthsockdir);
+          xfree(authsocketdir);
+          xfree(newauthsockdir);
+          return -1;
+        }
 
       /* Move to there */
       chdir(newauthsockdir);
 
       /* Stat . */
       if (stat(".", &dot_st) != 0)
-	{
-	  error("Cannot stat . in newly created temporary authentication socket directory %.100s",
-		newauthsockdir);
-	  xfree(authsocketdir);
-	  xfree(newauthsockdir);
-	  return -1;
-	}
+        {
+          error("Cannot stat . in newly created temporary authentication socket directory %.100s",
+                newauthsockdir);
+          xfree(authsocketdir);
+          xfree(newauthsockdir);
+          return -1;
+        }
 
       /* Check that stat of real directory name and . matches. */
       if (dot_st.st_dev != dir_st.st_dev || dot_st.st_ino != dir_st.st_ino)
-	{
-	  error("Wrong directory after chdir");
-	  return -1;
-	}
+        {
+          error("Wrong directory after chdir");
+          return -1;
+        }
 
       /* Stat .. (it should match the parent directory and it must be sticky)*/
       if (stat("..", &dotdot_st) != 0)
-	{
-	  error("Cannot stat .. in newly created temporary authentication socket directory %.100s",
-		newauthsockdir);
-	  xfree(authsocketdir);
-	  xfree(newauthsockdir);
-	  return -1;
-	}
+        {
+          error("Cannot stat .. in newly created temporary authentication socket directory %.100s",
+                newauthsockdir);
+          xfree(authsocketdir);
+          xfree(newauthsockdir);
+          return -1;
+        }
       if ((dotdot_st.st_mode & 01000) == 0)
-	{
-	  error("Agent parent directory is not sticky, mode is %o it should be 041777",
-		dotdot_st.st_mode);
-	  xfree(authsocketdir);
-	  xfree(newauthsockdir);
-	  return -1;  
-	}
+        {
+          error("Agent parent directory is not sticky, mode is %o it should be 041777",
+                dotdot_st.st_mode);
+          xfree(authsocketdir);
+          xfree(newauthsockdir);
+          return -1;  
+        }
       if (dotdot_st.st_dev != parent_st.st_dev ||
-	  dotdot_st.st_ino != parent_st.st_ino)
-	{
-	  error("Wrong parent directory after chdir to temp directory");
-	  xfree(authsocketdir);
-	  xfree(newauthsockdir);
-	  return -1;  
-	}
+          dotdot_st.st_ino != parent_st.st_ino)
+        {
+          error("Wrong parent directory after chdir to temp directory");
+          xfree(authsocketdir);
+          xfree(newauthsockdir);
+          return -1;  
+        }
 
       /* Now we are at safe place, make hardlink to agent socket */
       if (link(origauthsocket, authsocket) != 0)
-	{
-	  error("Hard link to auth socket failed");
-	  xfree(authsocketdir);
-	  xfree(newauthsockdir);
-	  return -1;
-	}
+        {
+          error("Hard link to auth socket failed");
+          xfree(authsocketdir);
+          xfree(newauthsockdir);
+          return -1;
+        }
       
       /* Check that it match the original socket */
       if (stat(authsocket, &link_st) != 0)
-	{
-	  error("Stat to hard link of authentication socket failed");
-	  xfree(authsocketdir);
-	  xfree(newauthsockdir);
-	  return -1;
-	}
+        {
+          error("Stat to hard link of authentication socket failed");
+          xfree(authsocketdir);
+          xfree(newauthsockdir);
+          return -1;
+        }
       if (link_st.st_dev != socket_st.st_dev ||
-	  link_st.st_ino != socket_st.st_ino)
-	{
-	  error("Hard link and orignal socket are not same");
-	  xfree(authsocketdir);
-	  xfree(newauthsockdir);
-	  return -1;
-	}
+          link_st.st_ino != socket_st.st_ino)
+        {
+          error("Hard link and orignal socket are not same");
+          xfree(authsocketdir);
+          xfree(newauthsockdir);
+          return -1;
+        }
       /* Note! here we are still at the newly created directory, so the connect
-	 will use the hard link of socket instead of real socket */
+         will use the hard link of socket instead of real socket */
     }
 
   sunaddr.sun_family = AF_UNIX;
@@ -350,27 +359,27 @@ int ssh_get_authentication_fd(void)
     {
       error("Socket failed");
       if (newauthsockdir != NULL)
-	{
-	  unlink(authsocket);
-	  chdir("/");
-	  rmdir(newauthsockdir);
-	  xfree(newauthsockdir);
-	}
+        {
+          unlink(authsocket);
+          chdir("/");
+          rmdir(newauthsockdir);
+          xfree(newauthsockdir);
+        }
       xfree(authsocketdir);
       return -1;
     }
 
   if (connect(sock, (struct sockaddr *)&sunaddr,
-	      AF_UNIX_SIZE(sunaddr)) < 0)
+              AF_UNIX_SIZE(sunaddr)) < 0)
     {
       close(sock);
       if (newauthsockdir != NULL)
-	{
-	  unlink(authsocket);
-	  chdir("/");
-	  rmdir(newauthsockdir);
-	  xfree(newauthsockdir);
-	}
+        {
+          unlink(authsocket);
+          chdir("/");
+          rmdir(newauthsockdir);
+          xfree(newauthsockdir);
+        }
       xfree(authsocketdir);
       return -1;
     }
@@ -457,7 +466,7 @@ void ssh_close_authentication_connection(AuthenticationConnection *ac)
    comment after a successful call (before calling ssh_get_next_identity). */
 
 int ssh_get_first_identity(AuthenticationConnection *auth,
-			   int *bitsp, MP_INT *e, MP_INT *n, char **comment)
+                           int *bitsp, MP_INT *e, MP_INT *n, char **comment)
 {
   unsigned char msg[8192];
   int len, l;
@@ -481,10 +490,10 @@ int ssh_get_first_identity(AuthenticationConnection *auth,
     {
       l = read(auth->fd, msg + 4 - len, len);
       if (l <= 0)
-	{
-	  error("read auth->fd: %.100s", strerror(errno));
-	  return 0;
-	}
+        {
+          error("read auth->fd: %.100s", strerror(errno));
+          return 0;
+        }
       len -= l;
     }
 
@@ -500,10 +509,10 @@ int ssh_get_first_identity(AuthenticationConnection *auth,
     {
       l = len;
       if (l > sizeof(msg))
-	l = sizeof(msg);
+        l = sizeof(msg);
       l = read(auth->fd, msg, l);
       if (l <= 0)
-	fatal("Incomplete authentication reply.");
+        fatal("Incomplete authentication reply.");
       buffer_append(&auth->identities, (char *)msg, l);
       len -= l;
     }
@@ -517,7 +526,7 @@ int ssh_get_first_identity(AuthenticationConnection *auth,
   auth->num_identities = buffer_get_int(&auth->identities);
   if (auth->num_identities > 1024)
     fatal("Too many identities in authentication reply: %d\n", 
-	  auth->num_identities);
+          auth->num_identities);
 
   /* Return the first entry (if any). */
   return ssh_get_next_identity(auth, bitsp, e, n, comment);
@@ -529,7 +538,7 @@ int ssh_get_first_identity(AuthenticationConnection *auth,
    must free comment after a successful return. */
 
 int ssh_get_next_identity(AuthenticationConnection *auth,
-			  int *bitsp, MP_INT *e, MP_INT *n, char **comment)
+                          int *bitsp, MP_INT *e, MP_INT *n, char **comment)
 {
   /* Return failure if no more entries. */
   if (auth->num_identities <= 0)
@@ -555,10 +564,10 @@ int ssh_get_next_identity(AuthenticationConnection *auth,
    and 1 corresponding to protocol version 1.1. */
 
 int ssh_decrypt_challenge(AuthenticationConnection *auth,
-			  int bits, MP_INT *e, MP_INT *n, MP_INT *challenge,
-			  unsigned char session_id[16],
-			  unsigned int response_type,
-			  unsigned char response[16])
+                          int bits, MP_INT *e, MP_INT *n, MP_INT *challenge,
+                          unsigned char session_id[16],
+                          unsigned int response_type,
+                          unsigned char response[16])
 {
   Buffer buffer;
   unsigned char buf[8192];
@@ -601,10 +610,10 @@ int ssh_decrypt_challenge(AuthenticationConnection *auth,
     {
       l = read(auth->fd, buf + 4 - len, len);
       if (l <= 0)
-	{
-	  error("Error reading response length from authentication socket.");
-	  goto error_cleanup;
-	}
+        {
+          error("Error reading response length from authentication socket.");
+          goto error_cleanup;
+        }
       len -= l;
     }
 
@@ -619,13 +628,13 @@ int ssh_decrypt_challenge(AuthenticationConnection *auth,
     {
       l = len;
       if (l > sizeof(buf))
-	l = sizeof(buf);
+        l = sizeof(buf);
       l = read(auth->fd, buf, l);
       if (l <= 0)
-	{
-	  error("Error reading response from authentication socket.");
-	  goto error_cleanup;
-	}
+        {
+          error("Error reading response from authentication socket.");
+          goto error_cleanup;
+        }
       buffer_append(&buffer, (char *)buf, l);
       len -= l;
     }
@@ -660,7 +669,7 @@ int ssh_decrypt_challenge(AuthenticationConnection *auth,
    be used by normal applications. */
 
 int ssh_add_identity(AuthenticationConnection *auth,
-		     RSAPrivateKey *key, const char *comment)
+                     RSAPrivateKey *key, const char *comment)
 {
   Buffer buffer;
   unsigned char buf[8192];
@@ -700,10 +709,10 @@ int ssh_add_identity(AuthenticationConnection *auth,
     {
       l = read(auth->fd, buf + 4 - len, len);
       if (l <= 0)
-	{
-	  error("Error reading response length from authentication socket.");
-	  goto error_cleanup;
-	}
+        {
+          error("Error reading response length from authentication socket.");
+          goto error_cleanup;
+        }
       len -= l;
     }
 
@@ -718,13 +727,13 @@ int ssh_add_identity(AuthenticationConnection *auth,
     {
       l = len;
       if (l > sizeof(buf))
-	l = sizeof(buf);
+        l = sizeof(buf);
       l = read(auth->fd, buf, l);
       if (l <= 0)
-	{
-	  error("Error reading response from authentication socket.");
-	  goto error_cleanup;
-	}
+        {
+          error("Error reading response from authentication socket.");
+          goto error_cleanup;
+        }
       buffer_append(&buffer, (char *)buf, l);
       len -= l;
     }
@@ -741,7 +750,7 @@ int ssh_add_identity(AuthenticationConnection *auth,
       return 1;
     default:
       fatal("Bad response to add identity from authentication agent: %d", 
-	    type);
+            type);
     }
   /*NOTREACHED*/
   return 0;
@@ -785,10 +794,10 @@ int ssh_remove_identity(AuthenticationConnection *auth, RSAPublicKey *key)
     {
       l = read(auth->fd, buf + 4 - len, len);
       if (l <= 0)
-	{
-	  error("Error reading response length from authentication socket.");
-	  goto error_cleanup;
-	}
+        {
+          error("Error reading response length from authentication socket.");
+          goto error_cleanup;
+        }
       len -= l;
     }
 
@@ -803,13 +812,13 @@ int ssh_remove_identity(AuthenticationConnection *auth, RSAPublicKey *key)
     {
       l = len;
       if (l > sizeof(buf))
-	l = sizeof(buf);
+        l = sizeof(buf);
       l = read(auth->fd, buf, l);
       if (l <= 0)
-	{
-	  error("Error reading response from authentication socket.");
-	  goto error_cleanup;
-	}
+        {
+          error("Error reading response from authentication socket.");
+          goto error_cleanup;
+        }
       buffer_append(&buffer, (char *)buf, l);
       len -= l;
     }
@@ -826,7 +835,7 @@ int ssh_remove_identity(AuthenticationConnection *auth, RSAPublicKey *key)
       return 1;
     default:
       fatal("Bad response to remove identity from authentication agent: %d", 
-	    type);
+            type);
     }
   /*NOTREACHED*/
   return 0;
@@ -859,10 +868,10 @@ int ssh_remove_all_identities(AuthenticationConnection *auth)
     {
       l = read(auth->fd, buf + 4 - len, len);
       if (l <= 0)
-	{
-	  error("Error reading response length from authentication socket.");
-	  return 0;
-	}
+        {
+          error("Error reading response length from authentication socket.");
+          return 0;
+        }
       len -= l;
     }
 
@@ -877,14 +886,14 @@ int ssh_remove_all_identities(AuthenticationConnection *auth)
     {
       l = len;
       if (l > sizeof(buf))
-	l = sizeof(buf);
+        l = sizeof(buf);
       l = read(auth->fd, buf, l);
       if (l <= 0)
-	{
-	  error("Error reading response from authentication socket.");
-	  buffer_free(&buffer);
-	  return 0;
-	}
+        {
+          error("Error reading response from authentication socket.");
+          buffer_free(&buffer);
+          return 0;
+        }
       buffer_append(&buffer, (char *)buf, l);
       len -= l;
     }
@@ -901,7 +910,7 @@ int ssh_remove_all_identities(AuthenticationConnection *auth)
       return 1;
     default:
       fatal("Bad response to remove identity from authentication agent: %d", 
-	    type);
+            type);
     }
   /*NOTREACHED*/
   return 0;

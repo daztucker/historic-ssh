@@ -13,6 +13,13 @@ Created: Wed Jan 24 20:19:53 1996 ylo
 
 /*
  * $Log: userfile.c,v $
+ * Revision 1.11  1996/10/29 22:48:23  kivinen
+ * 	Removed USERFILE_LOCAL_SOCK and USERFILE_SEND.
+ *
+ * Revision 1.10  1996/10/07 11:40:20  ttsalo
+ * 	Configuring for hurd and a small fix to do_popen()
+ * 	from "Charles M. Hannum" <mycroft@gnu.ai.mit.edu> added.
+ *
  * Revision 1.9  1996/10/04 01:01:49  kivinen
  * 	Added printing of path to fatal calls in userfile_open and and
  * 	userfile_local_socket_connect. Fixed userfile_open to
@@ -125,20 +132,6 @@ Created: Wed Jan 24 20:19:53 1996 ylo
        20 USERFILE_PCLOSE_REPLY
 	  int32		return value
 
-       21 USERFILE_LOCAL_SOCK
-          string        path
-
-       22 USERFILE_LOCAL_SOCK_REPLY
-          int32         handle (-1 if error)
-	  
-       23 USERFILE_SEND
-	  int32		handle
-	  int32         flags
-	  string	data
-
-       24 USERFILE_SEND_REPLY
-	  int32		bytes_written  ;; != length of data means error
-	
 	  */
 
 #include "includes.h"
@@ -171,10 +164,6 @@ Created: Wed Jan 24 20:19:53 1996 ylo
 #define USERFILE_POPEN_REPLY   18
 #define USERFILE_PCLOSE	       19
 #define USERFILE_PCLOSE_REPLY  20
-#define USERFILE_LOCAL_SOCK    21 
-#define USERFILE_LOCAL_SOCK_REPLY 22
-#define USERFILE_SEND          23
-#define USERFILE_SEND_REPLY    24
 
 
 /* Flag indicating whether we have forked. */
@@ -326,11 +315,15 @@ int do_popen(const char *command, const char *type)
 
       /* Set up file descriptors. */
       if (type[0] == 'r')
-	if (dup2(fds[1], 1) < 0)
-	  perror("dup2 1");
+	{
+	  if (dup2(fds[1], 1) < 0)
+	    perror("dup2 1");
+	}
       else
-	if (dup2(fds[0], 0) < 0)
-	  perror("dup2 0");
+	{
+	  if (dup2(fds[0], 0) < 0)
+	    perror("dup2 0");
+	}
       close(fds[0]);
       close(fds[1]);
 
@@ -388,7 +381,6 @@ static void userfile_child_server()
   char *path, *cp, *command;
   char buf[8192];
   struct stat st;
-  struct sockaddr_un sunaddr;
 
   for (;;)
     {
@@ -432,20 +424,6 @@ static void userfile_child_server()
 	  ret = write(handle, cp, len);
 
 	  userfile_packet_start(USERFILE_WRITE_REPLY);
-	  buffer_put_int(&packet, ret);
-	  userfile_packet_send();
-
-	  xfree(cp);
-	  break;
-
-	case USERFILE_SEND:
-	  handle = buffer_get_int(&packet);
-	  flags = buffer_get_int(&packet);
-	  cp = buffer_get_string(&packet, &len);
-
-	  ret = send(handle, cp, len, flags);
-
-	  userfile_packet_start(USERFILE_SEND_REPLY);
 	  buffer_put_int(&packet, ret);
 	  userfile_packet_send();
 
@@ -540,30 +518,6 @@ static void userfile_child_server()
 	  buffer_put_int(&packet, ret);
 	  userfile_packet_send();
 
-	  break;
-
-	case USERFILE_LOCAL_SOCK:
-	  path = buffer_get_string(&packet, NULL);
-
-	  sunaddr.sun_family = AF_UNIX;
-	  strncpy(sunaddr.sun_path, path, sizeof(sunaddr.sun_path));
-
-	  ret = socket(AF_UNIX, SOCK_STREAM, 0);
-	  if (ret >= 0)
-	    {
-	      if (connect(ret, (struct sockaddr *)&sunaddr,
-			  AF_UNIX_SIZE(sunaddr)) < 0)
-		{
-		  close(ret);
-		  ret = -1;
-		}
-	    }
-
-	  userfile_packet_start(USERFILE_LOCAL_SOCK_REPLY);
-	  buffer_put_int(&packet, ret);
-	  userfile_packet_send();
-
-	  xfree(path);
 	  break;
 
 	default:
@@ -743,50 +697,6 @@ UserFile userfile_open(uid_t uid, const char *path, int flags, mode_t mode)
   return userfile_make_handle(USERFILE_REMOTE, handle);
 }
 
-UserFile userfile_local_socket_connect(uid_t uid, const char *path)
-{
-  int handle;
-  struct sockaddr_un sunaddr;
-  
-  if (uid == geteuid())
-    {
-      sunaddr.sun_family = AF_UNIX;
-      strncpy(sunaddr.sun_path, path, sizeof(sunaddr.sun_path));
-
-      handle = socket(AF_UNIX, SOCK_STREAM, 0);
-      if (handle < 0)
-	return NULL;
-
-      if (connect(handle, (struct sockaddr *)&sunaddr,
-		  AF_UNIX_SIZE(sunaddr)) < 0)
-	{
-	  close(handle);
-	  return NULL;
-	}
-            
-      return userfile_make_handle(USERFILE_LOCAL, handle);
-    }
-
-  if (!userfile_initialized)
-    fatal("userfile_local_socket_connect: using non-current uid but not initialized (uid=%d, path=%.50s)",
-	  (int)uid, path);
-  
-  if (uid != userfile_uid)
-    fatal("userfile_local_socket_connect: uid not current and not that of child: uid=%d, path=%.50s",
-	  (int)uid, path);
-
-  userfile_packet_start(USERFILE_LOCAL_SOCK);
-  buffer_put_string(&packet, path, strlen(path));
-  userfile_packet_send();
-
-  userfile_packet_read(USERFILE_LOCAL_SOCK_REPLY);
-  handle = buffer_get_int(&packet);
-  if (handle < 0)
-    return NULL;
-
-  return userfile_make_handle(USERFILE_REMOTE, handle);
-}
-
 /* Closes the userfile handle.  Returns >= 0 on success, and < 0 on error. */
 
 int userfile_close(UserFile uf)
@@ -943,52 +853,6 @@ int userfile_write(UserFile uf, const void *buf, unsigned int len)
 
     default:
       fatal("userfile_write: type %d", uf->type);
-      /*NOTREACHED*/
-      return 0;
-    }
-}
-
-/* Writes data to the file.  Writes all data, unless an error is encountered.
-   Returns the number of bytes actually written; -1 indicates error. */
-
-int userfile_send(UserFile uf, const void *buf, unsigned int len,
-		  unsigned int flags)
-{
-  unsigned int chunk_len, offset;
-  int ret;
-  const unsigned char *ucp;
-
-  switch (uf->type)
-    {
-    case USERFILE_LOCAL:
-      return send(uf->handle, buf, len, flags);
-      
-    case USERFILE_REMOTE:
-      ucp = buf;
-      for (offset = 0; offset < len; )
-	{
-	  chunk_len = len - offset;
-	  if (chunk_len > 16000)
-	    chunk_len = 16000;
-	  
-	  userfile_packet_start(USERFILE_SEND);
-	  buffer_put_int(&packet, uf->handle);
-	  buffer_put_int(&packet, flags);
-	  buffer_put_string(&packet, ucp + offset, chunk_len);
-	  userfile_packet_send();
-	  
-	  userfile_packet_read(USERFILE_SEND_REPLY);
-	  ret = buffer_get_int(&packet);
-	  if (ret < 0)
-	    return -1;
-	  offset += ret;
-	  if (ret != chunk_len)
-	    break;
-	}
-      return offset;
-
-    default:
-      fatal("userfile_send: type %d", uf->type);
       /*NOTREACHED*/
       return 0;
     }

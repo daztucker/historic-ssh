@@ -2,10 +2,11 @@
 
 authfd.c
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Wed Mar 29 01:30:28 1995 ylo
 
@@ -14,10 +15,13 @@ Functions for connecting the local authentication agent.
 */
 
 /*
- * $Id: authfd.c,v 1.18 1999/02/22 08:13:58 tri Exp $
+ * $Id: authfd.c,v 1.19 1999/11/17 17:04:39 tri Exp $
  * $Log: authfd.c,v $
+ * Revision 1.19  1999/11/17 17:04:39  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.18  1999/02/22 08:13:58  tri
- * 	Final fixes for 1.2.27.
+ *      Final fixes for 1.2.27.
  *
  * Revision 1.17  1999/02/21 19:51:57  ylo
  *      Intermediate commit of ssh1.2.27 stuff.

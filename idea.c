@@ -20,8 +20,11 @@ following patents: PCT/CH91/00117, EP 0 482 154 B1, US Pat. 5,214,703.
 */
 
 /*
- * $Id: idea.c,v 1.3 1995/09/13 11:55:48 ylo Exp $
+ * $Id: idea.c,v 1.1.1.1 1996/02/18 21:38:11 ylo Exp $
  * $Log: idea.c,v $
+ * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.3  1995/09/13  11:55:48  ylo
  * 	Minor changes to make it work on Cray.
  *

@@ -14,9 +14,15 @@ Definitions for server configuration data and for the functions reading it.
 */
 
 /*
- * $Id: servconf.h,v 1.10 1998/03/27 17:00:09 kivinen Exp $
+ * $Id: servconf.h,v 1.11 1998/05/23 20:37:02 kivinen Exp $
  * $Log: servconf.h,v $
- * Revision 1.10  1998/03/27 17:00:09  kivinen
+ * Revision 1.11  1998/05/23  20:37:02  kivinen
+ * 	Added forced_empty_passwd_change, num_deny_shosts,
+ * 	num_allow_shosts, password_expire_warning_days,
+ * 	account_expire_warning_days. Fixed typo in
+ * 	forcedpasswordchange.
+ *
+ * Revision 1.10  1998/03/27  17:00:09  kivinen
  * 	Added IgnoreRootRhosts option.
  *
  * Revision 1.9  1998/01/03 06:42:11  kivinen
@@ -58,6 +64,8 @@ Definitions for server configuration data and for the functions reading it.
 #ifndef SERVCONF_H
 #define SERVCONF_H
 
+#define MAX_ALLOW_SHOSTS	256 /* Max # hosts on allow shosts list. */
+#define MAX_DENY_SHOSTS		256 /* Max # hosts on deny shosts list. */
 #define MAX_ALLOW_HOSTS		256 /* Max # hosts on allow list. */
 #define MAX_DENY_HOSTS		256 /* Max # hosts on deny list. */
 #define MAX_ALLOW_USERS		256 /* Max # users on allow list. */
@@ -109,11 +117,16 @@ typedef struct
   int permit_empty_passwd;      /* If false, do not permit empty passwords. */
   int use_login;		/* Use /bin/login if possible */
   int silent_deny;		/* 1 = deny by closing sockets. */
-  int forced_passwd_change;     /* If true, force password change if empty
-				   password (first login), or password
+  int forced_empty_passwd_change; /* If true, force password change if empty
+				   password (first login). */
+  int forced_passwd_change;     /* If true, force password change if password
 				   too old. */
   int umask;			/* Umask */
   int check_mail;		/* If true, check mail spool at login */
+  unsigned int num_allow_shosts;
+  char *allow_shosts[MAX_ALLOW_SHOSTS];
+  unsigned int num_deny_shosts;
+  char *deny_shosts[MAX_DENY_SHOSTS];
   unsigned int num_allow_hosts;
   char *allow_hosts[MAX_ALLOW_HOSTS];
   unsigned int num_deny_hosts;
@@ -139,6 +152,8 @@ typedef struct
 
 
 #endif /* F_SECURE_COMMERCIAL */
+  int password_expire_warning_days;
+  int account_expire_warning_days;
 } ServerOptions;
 
 /* Initializes the server options to special values that indicate that they

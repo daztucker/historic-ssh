@@ -19,10 +19,14 @@ agent connections.
 */
 
 /*
- * $Id: sshd.c,v 1.65 2000/06/30 07:49:52 sjl Exp $
+ * $Id: sshd.c,v 1.66 2000/07/05 13:43:58 sjl Exp $
  * $Log: sshd.c,v $
+ * Revision 1.66  2000/07/05 13:43:58  sjl
+ * 	Applied patch for disallowing access via unsupported ciphers
+ * 	by Markus Friedl.
+ *
  * Revision 1.65  2000/06/30 07:49:52  sjl
- * 	Applied the patch for BSD tty chown() bug.
+ *      Applied the patch for BSD tty chown() bug.
  *
  * Revision 1.64  2000/06/28 17:17:56  sjl
  *      Fixed a kerberos security bug (depended on the value of
@@ -1510,9 +1514,12 @@ void do_connection(int privileged_port)
   /* Read clients reply (cipher type and session key). */
   packet_read_expect(SSH_CMSG_SESSION_KEY);
 
-  /* Get cipher type. */
+  /* Get cipher type and check whether we accept this. */
   cipher_type = packet_get_char();
 
+  if (!(cipher_mask() & (1 << cipher_type)))
+    packet_disconnect("Warning: client selects unsupported cipher.");
+ 
   /* Get check bytes from the packet.  These must match those we sent earlier
      with the public key packet. */
   for (i = 0; i < 8; i++)

@@ -16,8 +16,16 @@ validity of the host key.
 */
 
 /*
- * $Id: auth-rsa.c,v 1.1.1.1 1996/02/18 21:38:12 ylo Exp $
+ * $Id: auth-rsa.c,v 1.3 1996/10/04 00:51:36 ylo Exp $
  * $Log: auth-rsa.c,v $
+ * Revision 1.3  1996/10/04 00:51:36  ylo
+ * 	Check existence of authorized_keys BEFORE checking its
+ * 	permissions to avoid bogus warnings.
+ *
+ * Revision 1.2  1996/08/13 09:04:25  ttsalo
+ * 	Home directory, .ssh and .ssh/authorized_keys are now
+ * 	checked for wrong owner and group & world writeability.
+ *
  * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
  * 	Imported ssh-1.2.13.
  *
@@ -143,7 +151,8 @@ int auth_rsa_challenge_dialog(RandomState *state, unsigned int bits,
    0 if the client could not be authenticated, and 1 if authentication was
    successful.  This may exit if there is a serious protocol violation. */
 
-int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state)
+int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state,
+	     int strict_modes)
 {
   char line[8192];
   int authenticated;
@@ -154,10 +163,39 @@ int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state)
   struct stat st;
 
   /* Open the file containing the authorized keys. */
-  sprintf(line, "%.500s/%.100s", pw->pw_dir, SSH_USER_PERMITTED_KEYS);
-  
   if (userfile_stat(pw->pw_uid, line, &st) < 0)
     return 0;
+
+  /* Check permissions & owner of user's home directory */
+  if (strict_modes && !userfile_check_owner_permissions(pw, pw->pw_dir))
+    {
+      log("Rsa authentication refused for %.100s: bad modes for %.200s",
+	  pw->pw_name, pw->pw_dir);
+      packet_send_debug("Bad file modes for %.200s", pw->pw_dir);
+      return 0;
+    }
+
+  /* Check permissions & owner of user's .ssh directory */
+  sprintf(line, "%.500s/%.100s", pw->pw_dir, SSH_USER_DIR);
+
+  if (strict_modes && !userfile_check_owner_permissions(pw, line))
+    {
+      log("Rsa authentication refused for %.100s: bad modes for %.200s",
+	  pw->pw_name, line);
+      packet_send_debug("Bad file modes for %.200s", line);
+      return 0;
+    }
+  
+  /* Check permissions & owner of user's authorized keys file */
+  sprintf(line, "%.500s/%.100s", pw->pw_dir, SSH_USER_PERMITTED_KEYS);
+
+  if (strict_modes && !userfile_check_owner_permissions(pw, line))
+    {
+      log("Rsa authentication refused for %.100s: bad modes for %.200s",
+	  pw->pw_name, line);
+      packet_send_debug("Bad file modes for %.200s", line);
+      return 0;
+    }
 
   uf = userfile_open(pw->pw_uid, line, O_RDONLY, 0);
   if (uf == NULL)

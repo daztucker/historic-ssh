@@ -14,8 +14,11 @@ Functions for reading passphrases and passwords.
 */
 
 /*
- * $Id: readpass.c,v 1.4 1997/04/05 21:49:28 kivinen Exp $
+ * $Id: readpass.c,v 1.5 1997/04/17 04:01:52 kivinen Exp $
  * $Log: readpass.c,v $
+ * Revision 1.5  1997/04/17 04:01:52  kivinen
+ * 	Added read_confirmation function.
+ *
  * Revision 1.4  1997/04/05 21:49:28  kivinen
  * 	Fixed the '-quoting from \' to '\''.
  *
@@ -246,4 +249,64 @@ char *read_passphrase(uid_t uid, const char *prompt, int from_stdin)
   if (f != stdin)
     fclose(f);
   return cp;
+}
+
+/* Reads a yes/no confirmation from /dev/tty.  Exits if EOF or "no" is
+   encountered. */
+
+void read_confirmation(const char *prompt)
+{
+  char buf[1024], *p;
+  FILE *f;
+  
+  if (isatty(fileno(stdin)))
+    f = stdin;
+  else
+    {
+      /* Read the passphrase from /dev/tty to make it possible to ask it even 
+	 when stdin has been redirected. */
+      f = fopen("/dev/tty", "r");
+      if (!f)
+	{
+	  fprintf(stderr, "You have no controlling tty.  Cannot read confirmation.\n");
+	  exit(1);
+	}
+    }
+
+  /* Read the passphrase from the terminal. */
+  do
+    {
+      /* Display the prompt (on stderr because stdout might be redirected). */
+      fflush(stdout);
+      fprintf(stderr, "%s", prompt);
+      fflush(stderr);
+      /* Read line */
+      if (fgets(buf, sizeof(buf), f) == NULL)
+	{
+	  /* Got EOF.  Just exit. */
+	  /* Print a newline (the prompt probably didn\'t have one). */
+	  fprintf(stderr, "\n");
+	  fprintf(stderr, "Aborted by user");
+	  /* Close the file. */
+	  if (f != stdin)
+	    fclose(f);
+	  exit(1);
+	}
+      p = buf + strlen(buf) - 1;
+      while (p > buf && isspace(*p))
+	*p-- = '\0';
+      p = buf;
+      while (*p && isspace(*p))
+	p++;
+      if (strcmp(p, "no") == 0)
+	{
+	  /* Close the file. */
+	  if (f != stdin)
+	    fclose(f);
+	  exit(1);
+	}
+    } while (strcmp(p, "yes") != 0);
+  /* Close the file. */
+  if (f != stdin)
+    fclose(f);
 }

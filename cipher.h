@@ -12,8 +12,14 @@ Created: Wed Apr 19 16:50:42 1995 ylo
 */
 
 /*
- * $Id: cipher.h,v 1.3 1995/08/18 22:48:27 ylo Exp $
+ * $Id: cipher.h,v 1.2 1996/02/18 21:52:35 ylo Exp $
  * $Log: cipher.h,v $
+ * Revision 1.2  1996/02/18 21:52:35  ylo
+ * 	Added comments that len must be multiple of 8.
+ *
+ * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.3  1995/08/18  22:48:27  ylo
  * 	Made IDEA optional.
  *
@@ -92,11 +98,13 @@ void cipher_set_key(CipherContext *context, int cipher,
 void cipher_set_key_string(CipherContext *context, int cipher,
 			   const char *passphrase, int for_encryption);
 
-/* Encrypts data using the cipher. */
+/* Encrypts data using the cipher.  For most ciphers, len should be a
+   multiple of 8. */
 void cipher_encrypt(CipherContext *context, unsigned char *dest,
 		    const unsigned char *src, unsigned int len);
 
-/* Decrypts data using the cipher. */
+/* Decrypts data using the cipher.  For most ciphers, len should be a
+   multiple of 8. */
 void cipher_decrypt(CipherContext *context, unsigned char *dest,
 		    const unsigned char *src, unsigned int len);
 

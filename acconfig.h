@@ -10,6 +10,18 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 /*
  * $Log: acconfig.h,v $
+ * Revision 1.12  1995/09/13  12:05:51  ylo
+ * 	Removed HPSUX_BROKEN_PTYS.
+ *
+ * Revision 1.11  1995/09/11  17:34:54  ylo
+ * 	Added LIBWRAP.
+ *
+ * Revision 1.10  1995/09/10  22:44:21  ylo
+ * 	Added HAVE_OSF1_C2_SECURITY.
+ *
+ * Revision 1.9  1995/09/09  21:26:37  ylo
+ * /m/shadows/u2/users/ylo/ssh/README
+ *
  * Revision 1.8  1995/09/06  15:57:37  ylo
  * 	Added BROKEN_INET_ADDR
  *
@@ -53,12 +65,18 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define if you have shadow passwords in /etc/security/passwd.adjunct
    (SunOS style). */
 #undef HAVE_ETC_SECURITY_PASSWD_ADJUNCT
+  
+/* Define if you have OSF1 C2 security installed on the system */
+#undef HAVE_OSF1_C2_SECURITY
 
 /* Define if you have shadow passwords in /etc/shadow (Solaris style). */
 #undef HAVE_ETC_SHADOW
 
 /* Define if utmp structure has host field. */
 #undef HAVE_HOST_IN_UTMP
+
+/* Define if utmp structure has addr field. */
+#undef HAVE_ADDR_IN_UTMP
 
 /* Define if utmp structure has id field. */
 #undef HAVE_ID_IN_UTMP
@@ -101,6 +119,9 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define this to leave out IDEA encryption. */
 #undef WITHOUT_IDEA
 
+/* Define this to include libwrap (tcp_wrappers) support. */
+#undef LIBWRAP
+
 /* This is defined to pw_encrypt on Linux when using John Faugh's shadow 
    password implementation. */
 #undef crypt
@@ -115,10 +136,20 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
    cards. */
 #undef HAVE_SECURID
 
-/* Define this if you have HPUX.  HPSUX has broken ptys (EOF is not passed
-   from the slave side to the master side). */
-#undef HPSUX_BROKEN_PTYS
+/* Define this if you are using HPSUX.  HPUX uses non-standard shared
+   memory communication for X, which seems to be enabled by the display name
+   matching that of the local host.  This circumvents it by using the IP
+   address instead of the host name in DISPLAY. */
+#undef HPSUX_NONSTANDARD_X11_KLUDGE
 
 /* Define this if inet_network should be used instead of inet_addr.  This is
    the case on DGUX 5.4. */
 #undef BROKEN_INET_ADDR
+
+/* Define this if your system does not like sizeof(struct sockaddr_un) as the
+   size argument in bind and connect calls for unix domain sockets. */
+#undef USE_STRLEN_FOR_AF_UNIX
+
+/* Define this to use pipes instead of socketpairs for communicating with the
+   client program.  Socketpairs do not seem to work on all systems. */
+#undef USE_PIPES

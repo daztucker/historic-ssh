@@ -14,8 +14,15 @@ Functions for connecting the local authentication agent.
 */
 
 /*
- * $Id: authfd.c,v 1.3 1995/07/13 01:14:40 ylo Exp $
+ * $Id: authfd.c,v 1.5 1995/08/29 22:18:58 ylo Exp $
  * $Log: authfd.c,v $
+ * Revision 1.5  1995/08/29  22:18:58  ylo
+ * 	Added remove_all_identities.
+ *
+ * Revision 1.4  1995/08/21  23:21:04  ylo
+ * 	Deleted ssh_authenticate().
+ * 	Pass session key and response_type in agent request.
+ *
  * Revision 1.3  1995/07/13  01:14:40  ylo
  * 	Removed the "Last modified" header.
  *
@@ -305,10 +312,14 @@ int ssh_get_next_identity(AuthenticationConnection *auth,
 
 /* Generates a random challenge, sends it to the agent, and waits for response
    from the agent.  Returns true (non-zero) if the agent gave the correct
-   answer, zero otherwise. */
+   answer, zero otherwise.  Response type selects the style of response
+   desired, with 0 corresponding to protocol version 1.0 and 1 corresponding
+   to protocol version 1.1. */
 
 int ssh_decrypt_challenge(AuthenticationConnection *auth,
 			  int bits, MP_INT *e, MP_INT *n, MP_INT *challenge,
+			  unsigned char session_id[16],
+			  unsigned int response_type,
 			  unsigned char response[16])
 {
   Buffer buffer;
@@ -323,6 +334,8 @@ int ssh_decrypt_challenge(AuthenticationConnection *auth,
   buffer_put_mp_int(&buffer, e);
   buffer_put_mp_int(&buffer, n);
   buffer_put_mp_int(&buffer, challenge);
+  buffer_append(&buffer, (char *)session_id, 16);
+  buffer_put_int(&buffer, response_type);
 
   /* Get the length of the message, and format it in the buffer. */
   len = buffer_len(&buffer);
@@ -400,76 +413,6 @@ int ssh_decrypt_challenge(AuthenticationConnection *auth,
   /* Correct answer. */
   return 1;
 }  
-
-/* Authenticates that the authentication agent really has the private
-   key corresponding to <e,n>.  Returns true if the agent has successfully
-   demonstrated its authority, zero otherwise. */
-
-int ssh_authenticate(AuthenticationConnection *auth,
-		     int bits, MP_INT *e, MP_INT *n, RandomState *state)
-{
-  MP_INT challenge, encrypted_challenge, aux;
-  unsigned char chbuf[32], mdbuf[16], response[16];
-  struct MD5Context md;
-  RSAPublicKey pk;
-  unsigned int i;
-
-  mpz_init(&challenge);
-  mpz_init(&encrypted_challenge);
-  mpz_init(&aux);
-
-  /* Generate a random integer to be used as the challenge. */
-  rsa_random_integer(&challenge, state, bits);
-  mpz_mod(&challenge, &challenge, n);
-
-  /* Encrypt it using the public key. */
-  pk.bits = bits;
-  mpz_init_set(&pk.e, e);
-  mpz_init_set(&pk.n, n);
-  rsa_public_encrypt(&encrypted_challenge, &challenge, &pk, state);
-  rsa_clear_public_key(&pk);
-
-  /* Ask the authentication agent to decrypt the challenge. */
-  if (!ssh_decrypt_challenge(auth, bits, e, n, &encrypted_challenge, response))
-    {
-      /* Agent failed to decrypt it. */
-      mpz_clear(&challenge);
-      mpz_clear(&encrypted_challenge);
-      mpz_clear(&aux);
-      return 0;
-    }
-
-  /* The agent is supposed to respond with a 16-byte MD5 checksum of
-     the decrypted challenge converted to a 32 byte buffer by using
-     the least significant 8 bits for the first byte, etc.  We now compute
-     the correct response. */
-  for (i = 0; i < 32; i++)
-    {
-      mpz_mod_2exp(&aux, &challenge, 8);
-      chbuf[i] = mpz_get_ui(&aux);
-      mpz_div_2exp(&challenge, &challenge, 8);
-    }
-
-  MD5Init(&md);
-  MD5Update(&md, chbuf, 32);
-  MD5Final(mdbuf, &md);
-
-  /* We no longer need these. */
-  mpz_clear(&challenge);
-  mpz_clear(&encrypted_challenge);
-  mpz_clear(&aux);
-
-  /* Check if we got the correct response. */
-  if (memcmp(response, mdbuf, 16) != 0)
-    {
-      /* Wrong answer. */
-      log("Authentication agent returned wrong response to challenge.");
-      return 0;
-    }
-
-  /* The correct response was returned.  Accept authentication. */
-  return 1;
-}
 
 /* Adds an identity to the authentication server.  This call is not meant to
    be used by normal applications. */
@@ -624,6 +567,81 @@ int ssh_remove_identity(AuthenticationConnection *auth, RSAPublicKey *key)
 	{
 	  error("Error reading response from authentication socket.");
 	  goto error_cleanup;
+	}
+      buffer_append(&buffer, (char *)buf, l);
+      len -= l;
+    }
+
+  /* Get the type of the packet. */
+  type = buffer_get_char(&buffer);
+  switch (type)
+    {
+    case SSH_AGENT_FAILURE:
+      buffer_free(&buffer);
+      return 0;
+    case SSH_AGENT_SUCCESS:
+      buffer_free(&buffer);
+      return 1;
+    default:
+      fatal("Bad response to remove identity from authentication agent: %d", 
+	    type);
+    }
+  /*NOTREACHED*/
+  return 0;
+}  
+
+/* Removes all identities from the agent.  This call is not meant 
+   to be used by normal applications. */
+
+int ssh_remove_all_identities(AuthenticationConnection *auth)
+{
+  Buffer buffer;
+  unsigned char buf[8192];
+  int len, l, type;
+
+  /* Get the length of the message, and format it in the buffer. */
+  PUT_32BIT(buf, 1);
+  buf[4] = SSH_AGENTC_REMOVE_ALL_RSA_IDENTITIES;
+
+  /* Send the length and then the packet to the agent. */
+  if (write(auth->fd, buf, 5) != 5)
+    {
+      error("Error writing to authentication socket.");
+      return 0;
+    }
+
+  /* Wait for response from the agent.  First read the length of the
+     response packet. */
+  len = 4;
+  while (len > 0)
+    {
+      l = read(auth->fd, buf + 4 - len, len);
+      if (l <= 0)
+	{
+	  error("Error reading response length from authentication socket.");
+	  return 0;
+	}
+      len -= l;
+    }
+
+  /* Extract the length, and check it for sanity. */
+  len = GET_32BIT(buf);
+  if (len > 256*1024)
+    fatal("Remove identity response too long: %d", len);
+
+  /* Read the rest of the response into the buffer. */
+  buffer_init(&buffer);
+  while (len > 0)
+    {
+      l = len;
+      if (l > sizeof(buf))
+	l = sizeof(buf);
+      l = read(auth->fd, buf, l);
+      if (l <= 0)
+	{
+	  error("Error reading response from authentication socket.");
+	  buffer_free(&buffer);
+	  return 0;
 	}
       buffer_append(&buffer, (char *)buf, l);
       len -= l;

@@ -16,8 +16,14 @@ validity of the host key.
 */
 
 /*
- * $Id: auth-rsa.c,v 1.4 1996/10/04 12:51:26 ylo Exp $
+ * $Id: auth-rsa.c,v 1.6 1996/10/29 22:34:38 kivinen Exp $
  * $Log: auth-rsa.c,v $
+ * Revision 1.6  1996/10/29 22:34:38  kivinen
+ * 	log -> log_msg.
+ *
+ * Revision 1.5  1996/10/11 13:01:56  ttsalo
+ * 	Fixed the checking of existence of authorized_keys.
+ *
  * Revision 1.4  1996/10/04 12:51:26  ylo
  * 	Fixed a bug in the last fix in RSA authentication.
  *
@@ -168,14 +174,10 @@ int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state,
   /* Check permissions & owner of user's .ssh directory */
   sprintf(line, "%.500s/%.100s", pw->pw_dir, SSH_USER_DIR);
 
-  /* Open the file containing the authorized keys. */
-  if (userfile_stat(pw->pw_uid, line, &st) < 0)
-    return 0;
-
   /* Check permissions & owner of user's home directory */
   if (strict_modes && !userfile_check_owner_permissions(pw, pw->pw_dir))
     {
-      log("Rsa authentication refused for %.100s: bad modes for %.200s",
+      log_msg("Rsa authentication refused for %.100s: bad modes for %.200s",
 	  pw->pw_name, pw->pw_dir);
       packet_send_debug("Bad file modes for %.200s", pw->pw_dir);
       return 0;
@@ -183,7 +185,7 @@ int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state,
 
   if (strict_modes && !userfile_check_owner_permissions(pw, line))
     {
-      log("Rsa authentication refused for %.100s: bad modes for %.200s",
+      log_msg("Rsa authentication refused for %.100s: bad modes for %.200s",
 	  pw->pw_name, line);
       packet_send_debug("Bad file modes for %.200s", line);
       return 0;
@@ -192,9 +194,13 @@ int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state,
   /* Check permissions & owner of user's authorized keys file */
   sprintf(line, "%.500s/%.100s", pw->pw_dir, SSH_USER_PERMITTED_KEYS);
 
+  /* Open the file containing the authorized keys. */
+  if (userfile_stat(pw->pw_uid, line, &st) < 0)
+    return 0;
+
   if (strict_modes && !userfile_check_owner_permissions(pw, line))
     {
-      log("Rsa authentication refused for %.100s: bad modes for %.200s",
+      log_msg("Rsa authentication refused for %.100s: bad modes for %.200s",
 	  pw->pw_name, line);
       packet_send_debug("Bad file modes for %.200s", line);
       return 0;
@@ -274,7 +280,7 @@ int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state,
       if (!auth_rsa_challenge_dialog(state, bits, &e, &n))
 	{
 	  /* Wrong response. */
-	  log("Wrong response to RSA authentication challenge.");
+	  log_msg("Wrong response to RSA authentication challenge.");
 	  packet_send_debug("Wrong response to RSA authentication challenge.");
 	  continue;
 	}
@@ -426,7 +432,7 @@ int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state,
 		      !match_hostname(get_remote_ipaddr(), patterns,
 				      strlen(patterns)))
 		    {
-		      log("RSA authentication tried for %.100s with correct key but not from a permitted host (host=%.200s, ip=%.200s).",
+		      log_msg("RSA authentication tried for %.100s with correct key but not from a permitted host (host=%.200s, ip=%.200s).",
 			  pw->pw_name, get_canonical_hostname(),
 			  get_remote_ipaddr());
 		      packet_send_debug("Your host '%.200s' is not permitted to use this key for login.",
@@ -441,7 +447,7 @@ int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state,
 		}
 	    bad_option:
 	      /* Unknown option. */
-	      log("Bad options in %.100s file, line %lu: %.50s",
+	      log_msg("Bad options in %.100s file, line %lu: %.50s",
 		  SSH_USER_PERMITTED_KEYS, linenum, options);
 	      packet_send_debug("Bad options in %.100s file, line %lu: %.50s",
 				SSH_USER_PERMITTED_KEYS, linenum, options);

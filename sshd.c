@@ -8,7 +8,6 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Fri Mar 17 17:09:28 1995 ylo
-Last modified: Tue Jul 11 00:59:13 1995 ylo
 
 This program is the ssh daemon.  It listens for connections from clients, and
 performs authentication, executes use commands or shell, and forwards
@@ -18,16 +17,67 @@ agent connections.
 
 */
 
+/*
+ * $Id: sshd.c,v 1.10 1995/07/27 02:19:09 ylo Exp $
+ * $Log: sshd.c,v $
+ * Revision 1.10  1995/07/27  02:19:09  ylo
+ * 	Tell packet_set_encryption_key that we are the server.
+ *
+ * 	Temporary kludge to make TCP/IP port forwarding work
+ * 	properly.  This kludge will increase idle CPU usage because
+ * 	sshd wakes up every 300ms.
+ *
+ * Revision 1.9  1995/07/27  00:41:34  ylo
+ * 	If DEFAULT_PATH defined by configure, use that value.
+ *
+ * Revision 1.8  1995/07/26  23:21:06  ylo
+ * 	Removed include version.h.  Added include mpaux.h.
+ *
+ * 	Print software version with -d.
+ *
+ * 	Added support for protocol version 1.1.  Fixes minor security
+ * 	problems, and updates the protocol to match the draft RFC.
+ * 	Compatibility code makes it possible to use old clients with
+ * 	this server.
+ *
+ * Revision 1.7  1995/07/16  01:01:41  ylo
+ * 	Removed hostname argument from record_logout.
+ * 	Added call to pty_release.
+ * 	Set tty mode depending on whether we have tty group.
+ *
+ * Revision 1.6  1995/07/15  22:27:04  ylo
+ * 	Added printing of /etc/motd.
+ *
+ * Revision 1.5  1995/07/15  21:41:04  ylo
+ * 	Changed the HPSUX kludge (child_has_terminated).  It caused
+ * 	sshd to busy-loop if the program exited but there were open
+ * 	connections.
+ *
+ * Revision 1.4  1995/07/14  23:37:43  ylo
+ * 	Limit outgoing packet size to 512 bytes for interactive
+ * 	connections.
+ *
+ * Revision 1.3  1995/07/13  17:33:17  ylo
+ * 	Only record the pid in /etc/sshd_pid if running without the
+ * 	debugging flag.
+ *
+ * Revision 1.2  1995/07/13  01:40:47  ylo
+ * 	Removed "Last modified" header.
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
+
 #include "includes.h"
 #include <gmp.h>
 #include "xmalloc.h"
 #include "rsa.h"
 #include "ssh.h"
-#include "version.h"
 #include "pty.h"
 #include "packet.h"
 #include "buffer.h"
 #include "cipher.h"
+#include "mpaux.h"
 #ifdef HAVE_USERSEC_H
 #include <usersec.h>
 #endif /* HAVE_USERSEC_H */
@@ -38,11 +88,13 @@ agent connections.
 #define DEFAULT_SHELL		"/bin/sh"
 #endif
 
+#ifndef DEFAULT_PATH
 #ifdef _PATH_USERPATH
 #define DEFAULT_PATH		_PATH_USERPATH
 #else
 #define DEFAULT_PATH		"/bin:/usr/bin:/usr/ucb"
 #endif
+#endif /* DEFAULT_PATH */
 
 #ifndef O_NOCTTY
 #define O_NOCTTY	0
@@ -60,6 +112,9 @@ int quiet_flag = 0;
 
 /* Flag indicating that the daemon is being started from inetd. */
 int inetd_flag = 0;
+
+/* This flag is set to true if the remote protocol version is 1.1 or higher. */
+int remote_protocol_1_1 = 0;
 
 /* Number of bits in the server key.  This value can be set on the command
    line. */
@@ -91,6 +146,9 @@ int no_agent_forwarding_flag = 0;
 int no_x11_forwarding_flag = 0;
 int no_pty_flag = 0;
 char *forced_command = NULL;
+
+/* Session id for the current session. */
+unsigned char session_id[16];
 
 /* Any really sensitive data in the application is contained in this structure.
    The idea is that this structure could be locked into memory so that the
@@ -246,6 +304,7 @@ int main(int ac, char **av)
 	  break;
 	case '?':
 	default:
+	  fprintf(stderr, "sshd version %s\n", SSH_VERSION);
 	  fprintf(stderr, "Usage: %s [options]\n", av0);
 	  fprintf(stderr, "Options:\n");
 	  fprintf(stderr, "  -d         Debugging mode\n");
@@ -269,6 +328,8 @@ int main(int ac, char **av)
 
   /* Initialize the log (it is reinitialized below in case we forked). */
   log_init(av0, debug_flag, debug_flag, quiet_flag);
+
+  debug("sshd version %s", SSH_VERSION);
 
   /* Load the host key.  It must have empty passphrase. */
   if (!load_private_key(host_key_file, "", &sensitive_data.host_key, &comment))
@@ -381,15 +442,18 @@ int main(int ac, char **av)
       if (bind(sock, (struct sockaddr *)&sin, sizeof(sin)) < 0)
 	fatal("bind: %s", strerror(errno));
 
-      /* Record our pid in /etc/sshd_pid to make it easier to kill the
-	 correct sshd.  We don\'t want to do this before the bind above
-	 because the bind will fail if there already is a daemon, and this
-	 will overwrite any old pid in the file. */
-      f = fopen(SSH_DAEMON_PID_FILE, "w");
-      if (f)
+      if (!debug_flag)
 	{
-	  fprintf(f, "%u\n", (unsigned int)getpid());
-	  fclose(f);
+	  /* Record our pid in /etc/sshd_pid to make it easier to kill the
+	     correct sshd.  We don\'t want to do this before the bind above
+	     because the bind will fail if there already is a daemon, and this
+	     will overwrite any old pid in the file. */
+	  f = fopen(SSH_DAEMON_PID_FILE, "w");
+	  if (f)
+	    {
+	      fprintf(f, "%u\n", (unsigned int)getpid());
+	      fclose(f);
+	    }
 	}
 
       /* Start listening on the port. */
@@ -566,8 +630,14 @@ int main(int ac, char **av)
       fatal("Protocol major versions differ: %d vs. %d", 
 	    PROTOCOL_MAJOR, remote_major);
     }
-  /* Minor version is not currently used for anything but could be
-     used to enable certain features in future. */
+  /* Detect whether we are at least protocol version 1.1. */
+  remote_protocol_1_1 = (remote_major >= 1 && remote_minor >= 1);
+  if (!remote_protocol_1_1)
+    {
+      packet_send_debug("Warning: You are using an old version of the client.");
+      packet_send_debug("The old version is vulnerable to certain attacks (such as playback).");
+      packet_send_debug("Upgrading to the latest version is recommended.");
+    }
 
   /* Set the socket into non-blocking mode. */
 #ifdef O_NONBLOCK
@@ -595,7 +665,7 @@ int main(int ac, char **av)
 void do_connection(int sock, int privileged_port)
 {
   int i;
-  MP_INT session_key_int, aux;
+  MP_INT session_key_int;
   unsigned char session_key[SSH_SESSION_KEY_LENGTH];
   unsigned char check_bytes[8];
   char *user;
@@ -692,24 +762,49 @@ void do_connection(int sock, int privileged_port)
       rsa_private_decrypt(&session_key_int, &session_key_int,
 			  &sensitive_data.private_key);
     }
-  
-  /* Extract session key from the decrypted integer.  We take the 256
-     least significant bits of the integer, lsb first. */
-  mpz_init(&aux);
-  for (i = 0; i < sizeof(session_key); i++)
+
+  /* Compute session id for this session. */
+  compute_session_id(session_id, check_bytes, sensitive_data.host_key.bits,
+		     &sensitive_data.host_key.n, 
+		     sensitive_data.private_key.bits,
+		     &sensitive_data.private_key.n);
+
+  if (remote_protocol_1_1)
     {
-      mpz_mod_2exp(&aux, &session_key_int, 8);
-      mpz_div_2exp(&session_key_int, &session_key_int, 8);
-      session_key[i] = mpz_get_ui(&aux);
+      /* Extract session key from the decrypted integer.  The key is in the 
+	 least significant 256 bits of the integer; the first byte of the 
+	 key is in the highest bits. */
+      mp_linearize_msb_first(session_key, sizeof(session_key), 
+			     &session_key_int);
+
+      /* Xor the first 16 bytes of the session key with the session id. */
+      for (i = 0; i < 16; i++)
+	session_key[i] ^= session_id[i];
     }
-  mpz_clear(&aux);
+  else
+    { /* XXX remove this compatibility code later. */
+      /* In the old version, the key was taken lsb first, and there was no
+	 xor. */
+      MP_INT aux;
+      /* Extract session key from the decrypted integer.  We take the 256
+	 least significant bits of the integer, lsb first. */
+      mpz_init(&aux);
+      for (i = 0; i < sizeof(session_key); i++)
+	{
+	  mpz_mod_2exp(&aux, &session_key_int, 8);
+	  mpz_div_2exp(&session_key_int, &session_key_int, 8);
+	  session_key[i] = mpz_get_ui(&aux);
+	}
+      mpz_clear(&aux);
+    }
 
   /* Destroy the decrypted integer.  It is no longer needed. */
   mpz_clear(&session_key_int);
   
   /* Set the session key.  From this on all communications will be
      encrypted. */
-  packet_set_encryption_key(session_key, SSH_SESSION_KEY_LENGTH, cipher_type);
+  packet_set_encryption_key(session_key, SSH_SESSION_KEY_LENGTH, 
+			    cipher_type, 0);
   
   /* Destroy our copy of the session key.  It is no longer needed. */
   memset(session_key, 0, sizeof(session_key));
@@ -963,6 +1058,7 @@ void do_authenticated(struct passwd *pw)
   char *command, *term = NULL, *display = NULL, *proto = NULL, *data = NULL;
   struct group *grp;
   gid_t tty_gid;
+  mode_t tty_mode;
   
   /* Cancel the alarm we set to limit the time taken for authentication. */
   alarm(0);
@@ -1005,13 +1101,19 @@ void do_authenticated(struct passwd *pw)
 	  /* Determine the group to make the owner of the tty. */
 	  grp = getgrnam("tty");
 	  if (grp)
-	    tty_gid = grp->gr_gid;
+	    {
+	      tty_gid = grp->gr_gid;
+	      tty_mode = S_IRUSR|S_IWUSR|S_IWGRP;
+	    }
 	  else
-	    tty_gid = pw->pw_gid;
+	    {
+	      tty_gid = pw->pw_gid;
+	      tty_mode = S_IRUSR|S_IWUSR|S_IWGRP|S_IWOTH;
+	    }
 
 	  /* Change ownership of the tty. */
-	  (void)chmod(ttyname, S_IRUSR|S_IWUSR|S_IWGRP|S_IWOTH);
 	  (void)chown(ttyname, pw->pw_uid, tty_gid);
+	  (void)chmod(ttyname, tty_mode);
 
 	  /* Get TERM from the packet.  Note that the value may be of arbitrary
 	     length. */
@@ -1219,6 +1321,8 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
   int fromlen;
   time_t last_login_time;
   char buf[100], *time_string;
+  FILE *f;
+  char line[256];
 
   /* Get IP address of client.  This is needed because we want to record where
      the user logged in from. */
@@ -1283,6 +1387,15 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
 	    printf("Last login: %s from %s\r\n", time_string, buf);
 	}
 
+      /* Print /etc/motd if it exists. */
+      f = fopen("/etc/motd", "r");
+      if (f)
+	{
+	  while (fgets(line, sizeof(line), f))
+	    fputs(line, stdout);
+	  fclose(f);
+	}
+
       /* Do common processing for the child, such as execing the command. */
       do_child(command, pw, term, display, auth_proto, auth_data);
       /*NOTREACHED*/
@@ -1307,7 +1420,10 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
   /* do_session has closed ptyfd and fdout. */
 
   /* Record that the user has logged out. */
-  record_logout(pid, ttyname, hostname);
+  record_logout(pid, ttyname);
+
+  /* Release the pseudo-tty. */
+  pty_release(ttyname);
 }
 
 /* Performs common processing for the child, such as setting up the environment,
@@ -1738,8 +1854,16 @@ void do_session(int pid, int fdin, int fdout, int fderr)
 	     packet_not_very_much_data_to_write())
 	{
 	  len = buffer_len(&stderr_buffer);
-	  if (len > 32768)
-	    len = 32768;  /* Keep the packets at reasonable size. */
+	  if (packet_is_interactive())
+	    {
+	      if (len > 512)
+		len = 512;
+	    }
+	  else
+	    {
+	      if (len > 32768)
+		len = 32768;  /* Keep the packets at reasonable size. */
+	    }
 	  packet_start(SSH_SMSG_STDERR_DATA);
 	  packet_put_string(buffer_ptr(&stderr_buffer), len);
 	  packet_send();
@@ -1752,8 +1876,16 @@ void do_session(int pid, int fdin, int fdout, int fderr)
 	     packet_not_very_much_data_to_write())
 	{
 	  len = buffer_len(&stdout_buffer);
-	  if (len > 32768)
-	    len = 32768;  /* Keep the packets at reasonable size. */
+	  if (packet_is_interactive())
+	    {
+	      if (len > 512)
+		len = 512;
+	    }
+	  else
+	    {
+	      if (len > 32768)
+		len = 32768;  /* Keep the packets at reasonable size. */
+	    }
 	  packet_start(SSH_SMSG_STDOUT_DATA);
 	  packet_put_string(buffer_ptr(&stdout_buffer), len);
 	  packet_send();
@@ -1822,8 +1954,13 @@ void do_session(int pid, int fdin, int fdout, int fderr)
 
       /* Kludge for HPSUX: if the child has terminated, read as much
          is available, and then terminate. */
-      tv.tv_sec = do_session_child_terminated ? 0 : 1000000;
-      tv.tv_usec = 0;
+      /* tv.tv_sec = do_session_child_terminated ? 0 : 1000000; */
+      /* XXX this should really wait longer.  However, I am having problems
+	 with TCP/IP forwarding (input drain does not get properly processed).
+	 This fixes that problem; since I want to get a release out now I\'ll
+	 use this kludge temporarily. */
+      tv.tv_sec = 0;
+      tv.tv_usec = 300000;
 
       /* Wait for something to happen.  If you want to implement support
          for SSH_MSG_IGNORE messages being automatically sent, this is

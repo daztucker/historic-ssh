@@ -8,13 +8,26 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Fri Mar 24 16:35:24 1995 ylo
-Last modified: Thu Jul  6 01:40:26 1995 ylo
 
 This file contains functions for generic socket connection forwarding.
 There is also code for initiating connection forwarding for X11 connections,
 arbitrary tcp/ip connections, and the authentication agent connection.
 
 */
+
+/*
+ * $Id: channels.c,v 1.3 1995/07/27 02:16:43 ylo Exp $
+ * $Log: channels.c,v $
+ * Revision 1.3  1995/07/27  02:16:43  ylo
+ * 	Fixed output draining on forwarded TCP/IP connections.
+ * 	Use smaller packets for interactive sessions.
+ *
+ * Revision 1.2  1995/07/13  01:19:29  ylo
+ * 	Removed "Last modified" header.
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
 
 #include "includes.h"
 #ifndef HAVE_GETHOSTNAME
@@ -39,12 +52,13 @@ arbitrary tcp/ip connections, and the authentication agent connection.
 #define SSH_CHANNEL_PORT_LISTENER	3 /* Listening on a port. */
 #define SSH_CHANNEL_OPENING		4 /* waiting for confirmation */
 #define SSH_CHANNEL_OPEN		5 /* normal open two-way channel */
-#define SSH_CHANNEL_DRAINING		6 /* sending data before close */
-#define SSH_CHANNEL_CLOSED		7 /* waiting for close confirmation */
-#define SSH_CHANNEL_AUTH_FD		8 /* authentication fd */
-#define SSH_CHANNEL_AUTH_SOCKET		9 /* authentication socket */
-#define SSH_CHANNEL_AUTH_SOCKET_FD	10 /* connection to auth socket */
-#define SSH_CHANNEL_X11_OPEN		11 /* reading first X11 packet */
+#define SSH_CHANNEL_CLOSED		6 /* waiting for close confirmation */
+#define SSH_CHANNEL_AUTH_FD		7 /* authentication fd */
+#define SSH_CHANNEL_AUTH_SOCKET		8 /* authentication socket */
+#define SSH_CHANNEL_AUTH_SOCKET_FD	9 /* connection to auth socket */
+#define SSH_CHANNEL_X11_OPEN		10 /* reading first X11 packet */
+#define SSH_CHANNEL_INPUT_DRAINING	11 /* sending remaining data to conn */
+#define SSH_CHANNEL_OUTPUT_DRAINING	12 /* sending remaining data to app */
 
 /* Data structure for channel data.  This is iniailized in channel_allocate
    and cleared in channel_free. */
@@ -173,6 +187,7 @@ void channel_free(int channel)
 {
   assert(channel >= 0 && channel < channels_alloc &&
 	 channels[channel].type != SSH_CHANNEL_FREE);
+  shutdown(channels[channel].sock, 2);
   close(channels[channel].sock);
   buffer_free(&channels[channel].input);
   buffer_free(&channels[channel].output);
@@ -209,6 +224,28 @@ void channel_prepare_select(fd_set *readset, fd_set *writeset)
 	    FD_SET(ch->sock, readset);
 	  if (buffer_len(&ch->output) > 0)
 	    FD_SET(ch->sock, writeset);
+	  break;
+
+	case SSH_CHANNEL_INPUT_DRAINING:
+	  if (buffer_len(&ch->input) == 0)
+	    {
+	      packet_start(SSH_MSG_CHANNEL_CLOSE);
+	      packet_put_int(ch->remote_id);
+	      packet_send();
+	      ch->type = SSH_CHANNEL_CLOSED;
+	      debug("Closing channel %d after input drain.", i);
+	      break;
+	    }
+	  break;
+
+	case SSH_CHANNEL_OUTPUT_DRAINING:
+	  if (buffer_len(&ch->output) == 0)
+	    {
+	      debug("Freeing channel %d after output drain.", i);
+	      channel_free(i);
+	      break;
+	    }
+	  FD_SET(ch->sock, writeset);
 	  break;
 
 	case SSH_CHANNEL_X11_OPEN:
@@ -390,7 +427,9 @@ void channel_after_select(fd_set *readset, fd_set *writeset)
 	      len = read(ch->sock, buf, sizeof(buf));
 	      if (len <= 0)
 		{
-		  ch->type = SSH_CHANNEL_DRAINING;
+		  buffer_consume(&ch->output, buffer_len(&ch->output));
+		  ch->type = SSH_CHANNEL_INPUT_DRAINING;
+		  debug("Channel %d status set to input draining.", i);
 		  break;
 		}
 	      buffer_append(&ch->input, buf, len);
@@ -402,10 +441,25 @@ void channel_after_select(fd_set *readset, fd_set *writeset)
 			  buffer_len(&ch->output));
 	      if (len <= 0)
 		{
-		  ch->type = SSH_CHANNEL_DRAINING;
+		  buffer_consume(&ch->output, buffer_len(&ch->output));
+		  debug("Channel %d status set to input draining.", i);
+		  ch->type = SSH_CHANNEL_INPUT_DRAINING;
 		  break;
 		}
 	      buffer_consume(&ch->output, len);
+	    }
+	  break;
+
+	case SSH_CHANNEL_OUTPUT_DRAINING:
+	  /* Send buffered output data to the socket. */
+	  if (FD_ISSET(ch->sock, writeset) && buffer_len(&ch->output) > 0)
+	    {
+	      len = write(ch->sock, buffer_ptr(&ch->output),
+			  buffer_len(&ch->output));
+	      if (len <= 0)
+		buffer_consume(&ch->output, buffer_len(&ch->output));
+	      else
+		buffer_consume(&ch->output, len);
 	    }
 	  break;
 
@@ -429,32 +483,31 @@ void channel_output_poll()
       ch = &channels[i];
       /* We are only interested in channels that can have buffered incoming
 	 data. */
-      if (ch->type != SSH_CHANNEL_OPEN && ch->type != SSH_CHANNEL_DRAINING)
+      if (ch->type != SSH_CHANNEL_OPEN && 
+	  ch->type != SSH_CHANNEL_INPUT_DRAINING)
 	continue;
 
       /* Get the amount of buffered data for this channel. */
       len = buffer_len(&ch->input);
-      if (len == 0)
+      if (len > 0)
 	{
-	  /* If we were waiting for the channel to drain, close it now. */
-	  if (ch->type == SSH_CHANNEL_DRAINING)
+	  /* Send some data for the other side over the secure connection. */
+	  if (packet_is_interactive)
 	    {
-	      packet_start(SSH_MSG_CHANNEL_CLOSE);
-	      packet_put_int(ch->remote_id);
-	      packet_send();
-	      ch->type = SSH_CHANNEL_CLOSED;
+	      if (len > 1024)
+		len = 1024;
 	    }
-	  continue;
+	  else
+	    {
+	      if (len > 16384)
+		len = 16384;  /* Keep the packets at reasonable size. */
+	    }
+	  packet_start(SSH_MSG_CHANNEL_DATA);
+	  packet_put_int(ch->remote_id);
+	  packet_put_string(buffer_ptr(&ch->input), len);
+	  packet_send();
+	  buffer_consume(&ch->input, len);
 	}
-	      
-      /* Send some data for the other side over the secure connection. */
-      if (len > 16384)
-	len = 16384;  /* Keep the packets at reasonable size. */
-      packet_start(SSH_MSG_CHANNEL_DATA);
-      packet_put_int(ch->remote_id);
-      packet_put_string(buffer_ptr(&ch->input), len);
-      packet_send();
-      buffer_consume(&ch->input, len);
     }
 }
 
@@ -511,6 +564,8 @@ int channel_not_very_much_buffered_data()
 	  if (buffer_len(&ch->output) > 32768)
 	    return 0;
 	  continue;
+	case SSH_CHANNEL_INPUT_DRAINING:
+	case SSH_CHANNEL_OUTPUT_DRAINING:
 	case SSH_CHANNEL_X11_OPEN:
 	case SSH_CHANNEL_FREE:
 	default:
@@ -545,8 +600,13 @@ void channel_input_close()
      arrives. */
   if (channels[channel].type != SSH_CHANNEL_CLOSED)
     {
-      /* Not a closed channel - free it. */
-      channel_free(channel);
+      /* Not a closed channel - mark it as draining, which will cause it to
+	 be freed later. */
+      buffer_consume(&channels[channel].input, 
+		     buffer_len(&channels[channel].input));
+      channels[channel].type = SSH_CHANNEL_OUTPUT_DRAINING;
+      debug("Setting status to output draining; output len = %d",
+	    buffer_len(&channels[channel].output));
     }
 }
 
@@ -643,7 +703,10 @@ void channel_close_all()
   for (i = 0; i < channels_alloc; i++)
     {
       if (channels[i].type != SSH_CHANNEL_FREE)
-	close(channels[i].sock);
+	{
+	  shutdown(channels[i].sock, 2);
+	  close(channels[i].sock);
+	}
     }
 }
 
@@ -674,7 +737,8 @@ int channel_still_open()
       case SSH_CHANNEL_OPENING:
       case SSH_CHANNEL_OPEN:
       case SSH_CHANNEL_X11_OPEN:
-      case SSH_CHANNEL_DRAINING:
+      case SSH_CHANNEL_INPUT_DRAINING:
+      case SSH_CHANNEL_OUTPUT_DRAINING:
 	return 1;
       default:
 	fatal("channel_still_open: bad channel type %d", channels[i].type);

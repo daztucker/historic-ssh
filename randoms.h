@@ -14,8 +14,11 @@ Cryptographically strong random number generator.
 */
 
 /*
- * $Id: randoms.h,v 1.3 1995/09/13 12:00:02 ylo Exp $
+ * $Id: randoms.h,v 1.1.1.1 1996/02/18 21:38:10 ylo Exp $
  * $Log: randoms.h,v $
+ * Revision 1.1.1.1  1996/02/18 21:38:10  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.3  1995/09/13  12:00:02  ylo
  * 	Changes to make this work on Cray.
  *

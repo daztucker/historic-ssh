@@ -14,8 +14,11 @@ Interface to packet compression for ssh.
 */
 
 /*
- * $Id: compress.c,v 1.1.1.1 1996/02/18 21:38:12 ylo Exp $
+ * $Id: compress.c,v 1.2 1996/10/13 14:32:45 ttsalo Exp $
  * $Log: compress.c,v $
+ * Revision 1.2  1996/10/13 14:32:45  ttsalo
+ *         Some casts from char to unsigned char
+ *
  * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
  * 	Imported ssh-1.2.13.
  *
@@ -76,14 +79,14 @@ void buffer_compress(Buffer *input_buffer, Buffer *output_buffer)
     return;
 
   /* Input is the contents of the input buffer. */
-  outgoing_stream.next_in = buffer_ptr(input_buffer);
+  outgoing_stream.next_in = (unsigned char *)buffer_ptr(input_buffer);
   outgoing_stream.avail_in = buffer_len(input_buffer);
 
   /* Loop compressing until deflate() returns with avail_out != 0. */
   do
     {
       /* Set up fixed-size output buffer. */
-      outgoing_stream.next_out = buf;
+      outgoing_stream.next_out = (unsigned char *)buf;
       outgoing_stream.avail_out = sizeof(buf);
 
       /* Compress as much data into the buffer as possible. */
@@ -125,10 +128,10 @@ void buffer_uncompress(Buffer *input_buffer, Buffer *output_buffer)
   char buf[4096];
   int status;
 
-  incoming_stream.next_in = buffer_ptr(input_buffer);
+  incoming_stream.next_in = (unsigned char *)buffer_ptr(input_buffer);
   incoming_stream.avail_in = buffer_len(input_buffer);
 
-  incoming_stream.next_out = buf;
+  incoming_stream.next_out = (unsigned char *)buf;
   incoming_stream.avail_out = sizeof(buf);
 
   for (;;)
@@ -139,7 +142,7 @@ void buffer_uncompress(Buffer *input_buffer, Buffer *output_buffer)
 	case Z_OK:
 	  buffer_append(output_buffer, buf,
 			sizeof(buf) - incoming_stream.avail_out);
-	  incoming_stream.next_out = buf;
+	  incoming_stream.next_out = (unsigned char *)buf;
 	  incoming_stream.avail_out = sizeof(buf);
 	  break;
 	case Z_STREAM_END:

@@ -16,8 +16,11 @@ validity of the host key.
 */
 
 /*
- * $Id: auth-rsa.c,v 1.10 1998/01/15 13:08:30 kivinen Exp $
+ * $Id: auth-rsa.c,v 1.11 1998/07/08 00:38:52 kivinen Exp $
  * $Log: auth-rsa.c,v $
+ * Revision 1.11  1998/07/08 00:38:52  kivinen
+ * 	Added ip address to match_hostname function.
+ *
  * Revision 1.10  1998/01/15  13:08:30  kivinen
  * 	Fixed no-X11-forwarding to no-x11-forwarding.
  *
@@ -655,9 +658,8 @@ int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state,
 		    }
 		  patterns[i] = 0;
 		  opts++;
-		  if (!match_hostname(get_canonical_hostname(), patterns,
-				     strlen(patterns)) &&
-		      !match_hostname(get_remote_ipaddr(), patterns,
+		  if (!match_hostname(get_canonical_hostname(),
+				      get_remote_ipaddr(), patterns,
 				      strlen(patterns)))
 		    {
 		      log_msg("RSA authentication tried for %.100s with correct key but not from a permitted host (host=%.200s, ip=%.200s).",

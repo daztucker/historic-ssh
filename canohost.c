@@ -8,9 +8,20 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Sun Jul  2 17:52:22 1995 ylo
-Last modified: Wed Jul  5 23:54:42 1995 ylo
+
+Functions for returning the canonical host name of the remote site.
 
 */
+
+/*
+ * $Id: canohost.c,v 1.2 1995/07/13 01:19:18 ylo Exp $
+ * $Log: canohost.c,v $
+ * Revision 1.2  1995/07/13  01:19:18  ylo
+ * 	Removed "Last modified" header.
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
 
 #include "includes.h"
 #include "packet.h"

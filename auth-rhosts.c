@@ -16,8 +16,24 @@ the login based on rhosts authentication.  This file also processes
 */
 
 /*
- * $Id: auth-rhosts.c,v 1.7 1995/09/09 21:26:37 ylo Exp $
+ * $Id: auth-rhosts.c,v 1.10 1995/09/27 02:11:07 ylo Exp $
  * $Log: auth-rhosts.c,v $
+ * Revision 1.10  1995/09/27  02:11:07  ylo
+ * 	Ignore "NO_PLUS".
+ * 	Fixed comment processing.
+ *
+ * Revision 1.9  1995/09/22  22:24:51  ylo
+ * 	Removed some debugging calls that revealed too much
+ * 	information.
+ * 	Support negative entries and netgroups in /etc/hosts.equiv and
+ * 	rhosts/shosts.
+ *
+ * Revision 1.8  1995/09/21  17:07:42  ylo
+ * 	Added uidswap.h.
+ * 	Restructured rhosts authentication code.  hosts.equiv now uses
+ * 	the same code to process the file; user names are now
+ * 	permitted in hosts.equiv.
+ *
  * Revision 1.7  1995/09/09  21:26:37  ylo
  * /m/shadows/u2/users/ylo/ssh/README
  *
@@ -40,6 +56,7 @@ the login based on rhosts authentication.  This file also processes
 #include "packet.h"
 #include "ssh.h"
 #include "xmalloc.h"
+#include "uidswap.h"
 
 /* Returns true if the strings are equal, ignoring case (a-z only). */
 
@@ -53,13 +70,153 @@ static int casefold_equal(const char *a, const char *b)
       if (!chb)
 	return 0;
       if (cha >= 'a' && cha <= 'z')
-	cha -= 64;
+	cha -= 32;
       if (chb >= 'a' && chb <= 'z')
-	chb -= 64;
+	chb -= 32;
       if (cha != chb)
 	return 0;
     }
   return !*b;
+}
+
+/* This function processes an rhosts-style file (.rhosts, .shosts, or
+   /etc/hosts.equiv).  This returns true if authentication can be granted
+   based on the file, and returns zero otherwise. */
+
+int check_rhosts_file(const char *filename, const char *hostname,
+		      const char *ipaddr, const char *client_user,
+		      const char *server_user)
+{
+  FILE *f;
+  char buf[1024]; /* Must not be larger than host, user, dummy below. */
+  
+  /* Open the .rhosts file. */
+  f = fopen(filename, "r");
+  if (!f)
+    return 0; /* Cannot read the .rhosts - deny access. */
+
+  /* Go through the file, checking every entry. */
+  while (fgets(buf, sizeof(buf), f))
+    {
+      /* All three must be at least as big as buf to avoid overflows. */
+      char hostbuf[1024], userbuf[1024], dummy[1024], *host, *user, *cp;
+      int negated;
+      
+      for (cp = buf; *cp == ' ' || *cp == '\t'; cp++)
+	;
+      if (*cp == '#' || *cp == '\n' || !*cp)
+	continue;
+
+      /* NO_PLUS is supported at least on OSF/1.  We skip it (we don't ever
+	 support the plus syntax). */
+      if (strncmp(cp, "NO_PLUS", 7) == 0)
+	continue;
+
+      /* This should be safe because each buffer is as big as the whole
+	 string, and thus cannot be overwritten. */
+      switch (sscanf(buf, "%s %s %s", hostbuf, userbuf, dummy))
+	{
+	case 0:
+	  packet_send_debug("Found empty line in %.100s.", filename);
+	  continue; /* Empty line? */
+	case 1:
+	  /* Host name only. */
+	  strncpy(userbuf, server_user, sizeof(userbuf));
+	  userbuf[sizeof(userbuf) - 1] = 0;
+	  break;
+	case 2:
+	  /* Got both host and user name. */
+	  break;
+	case 3:
+	  packet_send_debug("Found garbage in %.100s.", filename);
+	  continue; /* Extra garbage */
+	default:
+	  continue; /* Weird... */
+	}
+
+      host = hostbuf;
+      user = userbuf;
+      negated = 0;
+
+      /* Process negated host names, or positive netgroups. */
+      if (host[0] == '-')
+	{
+	  negated = 1;
+	  host++;
+	}
+      else
+	if (host[0] == '+')
+	  host++;
+
+      if (user[0] == '-')
+	{
+	  negated = 1;
+	  user++;
+	}
+      else
+	if (user[0] == '+')
+	  user++;
+
+      /* Check for empty host/user names (particularly '+'). */
+      if (!host[0] || !user[0])
+	{ 
+	  /* We come here if either was '+' or '-'. */
+	  packet_send_debug("Ignoring wild host/user names in %.100s.",
+			    filename);
+	  continue;
+	}
+	  
+#ifdef HAVE_INNETGR
+
+      /* Verify that host name matches. */
+      if (host[0] == '@')
+	{
+	  if (!innetgr(host + 1, hostname, NULL, NULL) &&
+	      !innetgr(host + 1, ipaddr, NULL, NULL))
+	    continue;
+	}
+      else
+	if (!casefold_equal(host, hostname) && strcmp(host, ipaddr) != 0)
+	  continue; /* Different hostname. */
+
+      /* Verify that user name matches. */
+      if (user[0] == '@')
+	{
+	  if (!innetgr(user + 1, NULL, client_user, NULL))
+	    continue;
+	}
+      else
+	if (strcmp(user, client_user) != 0)
+	  continue; /* Different username. */
+
+#else /* HAVE_INNETGR */
+
+      if (!casefold_equal(host, hostname) && strcmp(host, ipaddr) != 0)
+	continue; /* Different hostname. */
+
+      if (strcmp(user, client_user) != 0)
+	continue; /* Different username. */
+
+#endif /* HAVE_INNETGR */
+
+      /* Found the user and host. */
+      fclose(f);
+
+      /* If the entry was negated, deny access. */
+      if (negated)
+	{
+	  packet_send_debug("Matched negative entry in %.100s.",
+			    filename);
+	  return 0;
+	}
+
+      /* Accept authentication. */
+      return 1;
+    }
+     
+  /* Authentication using this file denied. */
+  fclose(f);
+  return 0;
 }
 
 /* Tries to authenticate the user using the .shosts or .rhosts file.  
@@ -70,11 +227,9 @@ static int casefold_equal(const char *a, const char *b)
 int auth_rhosts(struct passwd *pw, const char *client_user,
 		int ignore_rhosts)
 {
-  struct sockaddr_in from;
-  char buf[1024]; /* Note: must not be larger than host, user, dummy below. */
-  const char *name, *ipaddr;
-  int port, fromlen, socket;
-  FILE *f;
+  char buf[1024];
+  const char *hostname, *ipaddr;
+  int port;
   struct stat st;
   static const char *rhosts_files[] = { ".shosts", ".rhosts", NULL };
   unsigned int rhosts_file_index;
@@ -95,70 +250,46 @@ int auth_rhosts(struct passwd *pw, const char *client_user,
   /* Switch back to privileged uid. */
   restore_uid();
 
-  if (!rhosts_files[rhosts_file_index] && stat("/etc/hosts.equiv", &st) < 0)
-    return 0; /* The user has no .shosts or .rhosts file. */
+  if (!rhosts_files[rhosts_file_index] && stat("/etc/hosts.equiv", &st) < 0 &&
+      stat(SSH_HOSTS_EQUIV, &st) < 0)
+    return 0; /* The user has no .shosts or .rhosts file and there are no
+		 system-wide files. */
 
-  /* Check that the connection comes from a privileged port. */
+  /* Get the name, address, and port of the remote host.  */
+  hostname = get_canonical_hostname();
+  ipaddr = get_remote_ipaddr();
+  port = get_remote_port();
 
-  /* Get the client socket. */
-  socket = packet_get_connection();
-
-  /* Get IP address of client. */
-  fromlen = sizeof(from);
-  if (getpeername(socket, (struct sockaddr *)&from, &fromlen) < 0)
-    {
-      error("getpeername failed");
-      return 0;
-    }
-  
-  /* Get the port number. */
-  port = ntohs((u_short)from.sin_port);
-  
-  /* Check that it is a priviledged port.  rhosts authentication only makes
-     sense for priviledged programs.  Of course, if the intruder has root
-     access on his local machine, he can connect from any port.  So do not
-     use .rhosts authentication from machines that you do not trust. */
-  if (from.sin_family != AF_INET ||
-      port >= IPPORT_RESERVED ||
-      port < IPPORT_RESERVED/2)
+  /* Check that the connection comes from a privileged port.
+     Rhosts authentication only makes sense for priviledged programs.
+     Of course, if the intruder has root access on his local machine,
+     he can connect from any port.  So do not use .rhosts
+     authentication from machines that you do not trust. */
+  if (port >= IPPORT_RESERVED ||
+      port < IPPORT_RESERVED / 2)
     {
       log("Connection from %.100s from nonpriviledged port %d",
-	  inet_ntoa(from.sin_addr), port);
+	  hostname, port);
       packet_send_debug("Your ssh client is not running as root.");
       return 0;
     }
 
-  /* Ok, the connection is from a privileged port.  Get the name of the
-     remote host. */
-  name = get_canonical_hostname();
-  ipaddr = get_remote_ipaddr();
-
-  /* If not superuser, local and remote users are the same, 
-     try /etc/hosts.equiv. */
-  if (pw->pw_uid != 0 && strcmp(pw->pw_name, client_user) == 0)
-    { 
-      /* Check /etc/hosts.equiv. */
-      f = fopen("/etc/hosts.equiv", "r");
-      if (f)
+  /* If not logging in as superuser, try /etc/hosts.equiv and shosts.equiv. */
+  if (pw->pw_uid != 0)
+    {
+      if (check_rhosts_file("/etc/hosts.equiv", hostname, ipaddr, client_user,
+			    pw->pw_name))
 	{
-	  while (fgets(buf, sizeof(buf), f))
-	    {
-	      if (strrchr(buf, '\n'))
-		*strrchr(buf, '\n') = 0;
-	      if (!buf[0] || buf[0] == ' ' || buf[0] == '\t')
-		continue; /* Empty line or something strange. */
-	      if (buf[0] == '#')
-		continue; /* Some systems have comments in /etc/hosts.equiv. */
-	      if (buf[0] == '+' || buf[0] == '-')
-		continue; /* Eliminate the common Sun bug.  We do not support
-			     NIS hosts.equiv or netgroups anyway. */
-	      if (casefold_equal(buf, name))
-		{
-		  packet_send_debug("Authentication granted by /etc/hosts.equiv.");
-		  return 1; /* Accepted by hosts.equiv. */
-		}
-	    }
-	  fclose(f);
+	  packet_send_debug("Accepted for %.100s [%.100s] by /etc/hosts.equiv.",
+			    hostname, ipaddr);
+	  return 1;
+	}
+      if (check_rhosts_file(SSH_HOSTS_EQUIV, hostname, ipaddr, client_user,
+			    pw->pw_name))
+	{
+	  packet_send_debug("Accepted for %.100s [%.100s] by %.100s.", 
+			    hostname, ipaddr, SSH_HOSTS_EQUIV);
+	  return 1;
 	}
     }
 
@@ -203,11 +334,8 @@ int auth_rhosts(struct passwd *pw, const char *client_user,
 	{
 	  log("Rhosts authentication refused for %.100s: bad modes for %.200s",
 	      pw->pw_name, buf);
-	  packet_send_debug("Rhosts authentication refused for %.100s: bad modes for %.200s",
-			    pw->pw_name, buf);
-	  /* Restore the privileged uid. */
-	  restore_uid();
-	  return 0;
+	  packet_send_debug("Bad file modes for %.200s", buf);
+	  continue;
 	}
 
       /* Check if we have been configured to ignore .rhosts and .shosts 
@@ -218,69 +346,16 @@ int auth_rhosts(struct passwd *pw, const char *client_user,
 			    rhosts_files[rhosts_file_index]);
 	  continue;
 	}
-  
-      /* Open the .rhosts file. */
-      f = fopen(buf, "r");
-      if (!f)
+
+      /* Check if authentication is permitted by the file. */
+      if (check_rhosts_file(buf, hostname, ipaddr, client_user, pw->pw_name))
 	{
-	  packet_send_debug("Could not open %.900s for reading.", buf);
-	  packet_send_debug("If your home is on an NFS volume, it may need to be world-readable.");
-	  continue; /* Cannot read the .rhosts - deny access. */
-	}
-
-      /* Go through the .rhosts file, checking every entry. */
-      while (fgets(buf, sizeof(buf), f))
-	{
-	  /* All three must be at least as big as buf to avoid overflows. */
-	  char host[1024], user[1024], dummy[1024];
-
-	  /* This should be safe because each buffer is as big as the whole
-	     string, and thus cannot be overwritten. */
-	  switch (sscanf(buf, "%s %s %s", host, user, dummy))
-	    {
-	    case 0:
-	      packet_send_debug("Found empty line in %.100s",
-				rhosts_files[rhosts_file_index]);
-	      continue; /* Empty line? */
-	    case 1:
-	      /* Host name only. */
-	      strncpy(user, pw->pw_name, sizeof(user));
-	      user[sizeof(user) - 1] = 0;
-	      break;
-	    case 2:
-	      /* Got both host and user name. */
-	      break;
-	    case 3:
-	      packet_send_debug("Found garbage in %.100s",
-				rhosts_files[rhosts_file_index]);
-	      continue; /* Extra garbage */
-	    default:
-	      continue; /* Weird... */
-	    }
-
-	  if (host[0] == '+' || host[0] == '#')
-	    {
-	      packet_send_debug("Ignoring '+' or '#' lines in %.100s",
-				rhosts_files[rhosts_file_index]);
-	      continue; /* Ignore some potentially occurring wrong hostnames.*/
-	    }
-      
-	  if (!casefold_equal(host, name) && strcmp(host, ipaddr) != 0)
-	    continue; /* Different hostname. */
-
-	  if (strcmp(user, client_user) != 0)
-	    continue; /* Different username. */
-	  
-	  /* Authentication accepted by .rhosts. */
-	  fclose(f);
-	  packet_send_debug("Authentication accepted by %.100s",
+	  packet_send_debug("Accepted by %.100s.",
 			    rhosts_files[rhosts_file_index]);
 	  /* Restore the privileged uid. */
 	  restore_uid();
 	  return 1;
 	}
-      /* Authentication using this file denied. */
-      fclose(f);
     }
 
   /* Rhosts authentication denied. */

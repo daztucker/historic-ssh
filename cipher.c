@@ -12,8 +12,14 @@ Created: Wed Apr 19 17:41:39 1995 ylo
 */
 
 /*
- * $Id: cipher.c,v 1.1.1.1 1996/02/18 21:38:11 ylo Exp $
+ * $Id: cipher.c,v 1.3 1996/09/28 12:01:04 ylo Exp $
  * $Log: cipher.c,v $
+ * Revision 1.3  1996/09/28 12:01:04  ylo
+ * 	Removed TSS (put inside #ifdef WITH_TSS).
+ *
+ * Revision 1.2  1996/09/27 13:55:02  ttsalo
+ * 	Added blowfish
+ *
  * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
  * 	Imported ssh-1.2.13.
  *
@@ -37,7 +43,7 @@ Created: Wed Apr 19 17:41:39 1995 ylo
 /* Names of all encryption algorithms.  These must match the numbers defined
    int cipher.h. */
 static char *cipher_names[] =
-{ "none", "idea", "des", "3des", "tss", "arcfour" };
+{ "none", "idea", "des", "3des", "tss", "arcfour", "blowfish" };
 
 /* Returns a bit mask indicating which ciphers are supported by this
    implementation.  The bit mask has the corresponding bit set of each
@@ -52,8 +58,11 @@ unsigned int cipher_mask()
 #endif /* WITHOUT_IDEA */
   mask |= 1 << SSH_CIPHER_DES;
   mask |= 1 << SSH_CIPHER_3DES;
+#ifdef WITH_TSS
   mask |= 1 << SSH_CIPHER_TSS;
+#endif /* WITH_TSS */
   mask |= 1 << SSH_CIPHER_ARCFOUR;
+  mask |= 1 << SSH_CIPHER_BLOWFISH;
   return mask;
 }
 
@@ -162,16 +171,24 @@ void cipher_set_key(CipherContext *context, int cipher,
       memset(context->u.des3.iv3, 0, sizeof(context->u.des3.iv3));
       break;
 
+#ifdef WITH_TSS
     case SSH_CIPHER_TSS:
       if (keylen < 8)
 	error("Key length %d is insufficient for TSS.", keylen);
       TSS_Init(&context->u.tss, key, keylen);
       break;
+#endif /* WITH_TSS */
 
     case SSH_CIPHER_ARCFOUR:
       arcfour_init(&context->u.arcfour, key, keylen);
       break;
 
+    case SSH_CIPHER_BLOWFISH:
+      if (keylen < 8)
+	error("Key length %d is insufficient for Blowfish", keylen);
+      blowfish_set_key(&context->u.blowfish, key, keylen, for_encryption);
+      break;
+      
     default:
       fatal("cipher_set_key: unknown cipher: %d", cipher);
     }
@@ -207,15 +224,21 @@ void cipher_encrypt(CipherContext *context, unsigned char *dest,
 		       dest, src, len);
       break;
 
+#ifdef WITH_TSS
     case SSH_CIPHER_TSS:
       memcpy(dest, src, len);
       TSS_Encrypt(&context->u.tss, dest, len);
       break;
+#endif /* WITH_TSS */
 
     case SSH_CIPHER_ARCFOUR:
       arcfour_encrypt(&context->u.arcfour, dest, src, len);
       break;
 
+    case SSH_CIPHER_BLOWFISH:
+      blowfish_cbc_encrypt(&context->u.blowfish, dest, src, len);
+      break;
+      
     default:
       fatal("cipher_encrypt: unknown cipher: %d", context->type);
     }
@@ -250,15 +273,21 @@ void cipher_decrypt(CipherContext *context, unsigned char *dest,
 		       dest, src, len);
       break;
 
+#ifdef WITH_TSS
     case SSH_CIPHER_TSS:
       memcpy(dest, src, len);
       TSS_Decrypt(&context->u.tss, dest, len);
       break;
+#endif /* WITH_TSS */
 
     case SSH_CIPHER_ARCFOUR:
       arcfour_decrypt(&context->u.arcfour, dest, src, len);
       break;
 
+    case SSH_CIPHER_BLOWFISH:
+      blowfish_cbc_decrypt(&context->u.blowfish, dest, src, len);
+      break;
+      
     default:
       fatal("cipher_decrypt: unknown cipher: %d", context->type);
     }

@@ -18,8 +18,18 @@ on a tty.
 */
 
 /*
- * $Id: login.c,v 1.1.1.1 1996/02/18 21:38:12 ylo Exp $
+ * $Id: login.c,v 1.4 1996/07/12 07:20:49 ttsalo Exp $
  * $Log: login.c,v $
+ * Revision 1.4  1996/07/12 07:20:49  ttsalo
+ * 	utmp fix for cray (handled like sgi)
+ *
+ * Revision 1.3  1996/06/27 12:44:08  ttsalo
+ *         FreeBSD with long hostnames in utmp fixed (again).
+ *
+ * Revision 1.2  1996/06/27 12:30:32  ttsalo
+ * 	FreeBSD with long hostnames in utmp fixed.
+ * 	Also small changes for SCO.
+ *
  * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
  * 	Imported ssh-1.2.13.
  *
@@ -56,7 +66,9 @@ on a tty.
 #endif /* HAVE_UTMP_H */
 #ifdef HAVE_UTMPX_H
 #include <utmpx.h>
+#ifndef SCO
 #include <sys/mkdev.h>	/* for minor() */
+#endif
 #endif /* HAVE_UTMPX_H */
 #ifdef HAVE_USERSEC_H
 #include <usersec.h>
@@ -219,7 +231,7 @@ void record_login(int pid, const char *ttyname, const char *user, uid_t uid,
   u.ut_pid = pid;
 #endif /* PID_IN_UTMP */
 #ifdef HAVE_ID_IN_UTMP
-#ifdef __sgi
+#if defined(__sgi) || defined(CRAY)
     strncpy(u.ut_id, ttyname + 8, sizeof(u.ut_id)); /* /dev/ttyq99 -> q99 */
 #else /* __sgi */
     if (sizeof(u.ut_id) > 4)
@@ -237,6 +249,11 @@ void record_login(int pid, const char *ttyname, const char *user, uid_t uid,
 #endif /* HAVE_NAME_IN_UTMP */
 #ifdef HAVE_HOST_IN_UTMP
   strncpy(u.ut_host, host, sizeof(u.ut_host));
+#ifdef __FreeBSD__
+  if (strlen(host) > sizeof(u.ut_host)) {
+    strncpy(u.ut_host, get_remote_ipaddr(), sizeof(u.ut_host));
+  }
+#endif /* __FreeBSD__ */
 #endif /* HAVE_HOST_IN_UTMP */
 #ifdef HAVE_ADDR_IN_UTMP
   if (addr)
@@ -324,7 +341,7 @@ void record_login(int pid, const char *ttyname, const char *user, uid_t uid,
 	  ux = *uxp;
     }
     strncpy(ux.ut_user, user, sizeof(ux.ut_user));
-#ifdef __sgi
+#if defined(__sgi) || defined(SCO)
     strncpy(ux.ut_id, ttyname + 8, sizeof(ux.ut_id)); /* /dev/ttyq99 -> q99 */
 #else /* __sgi */
     if (sizeof(ux.ut_id) > 4)

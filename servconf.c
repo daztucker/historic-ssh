@@ -12,9 +12,15 @@ Created: Mon Aug 21 15:48:58 1995 ylo
 */
 
 /*
- * $Id: servconf.c,v 1.13 1998/03/27 16:59:58 kivinen Exp $
+ * $Id: servconf.c,v 1.14 1998/05/23 20:34:11 kivinen Exp $
  * $Log: servconf.c,v $
- * Revision 1.13  1998/03/27 16:59:58  kivinen
+ * Revision 1.14  1998/05/23  20:34:11  kivinen
+ * 	Added forced_empty_passwd_change, num_deny_shosts,
+ * 	num_allow_shosts, password_expire_warning_days,
+ * 	account_expire_warning_days. Fixed typo in
+ * 	forcedpasswordchange.
+ *
+ * Revision 1.13  1998/03/27  16:59:58  kivinen
  * 	Added IgnoreRootRhosts option.
  *
  * Revision 1.12  1998/01/03 06:41:55  kivinen
@@ -107,6 +113,9 @@ void initialize_server_options(ServerOptions *options)
   options->use_login = -1;
   options->silent_deny = -1;
   options->forced_passwd_change = -1;
+  options->forced_empty_passwd_change = -1;
+  options->num_allow_shosts = 0;
+  options->num_deny_shosts = 0;
   options->num_allow_hosts = 0;
   options->num_deny_hosts = 0;
   options->num_allow_users = 0;
@@ -123,6 +132,8 @@ void initialize_server_options(ServerOptions *options)
   options->idle_timeout = -1;
   options->xauth_path = NULL;
   options->check_mail = -1;
+  options->password_expire_warning_days = -1;
+  options->account_expire_warning_days = -1;
 }
 
 void fill_default_server_options(ServerOptions *options)
@@ -205,7 +216,9 @@ void fill_default_server_options(ServerOptions *options)
   if (options->silent_deny == -1)
     options->silent_deny = 0;
   if (options->forced_passwd_change == -1)
-    options->forced_passwd_change = 0;
+    options->forced_passwd_change = 1;
+  if (options->forced_empty_passwd_change == -1)
+    options->forced_empty_passwd_change = 0;
   if (options->idle_timeout == -1)
     options->idle_timeout = 0;
   if (options->check_mail == -1)
@@ -217,6 +230,10 @@ void fill_default_server_options(ServerOptions *options)
   if (options->xauth_path == NULL)
     options->xauth_path = "xauth";
 #endif  /* !XAUTH_PATH */
+  if (options->password_expire_warning_days == -1)
+    options->password_expire_warning_days = 14;
+  if (options->account_expire_warning_days == -1)
+    options->account_expire_warning_days = 14;
 }
 
 #define WHITESPACE " \t\r\n="
@@ -230,10 +247,12 @@ typedef enum
   sTISAuthentication, sPasswordAuthentication, sAllowHosts, sDenyHosts,
   sListenAddress, sPrintMotd, sIgnoreRhosts, sX11Forwarding, sX11DisplayOffset,
   sStrictModes, sEmptyPasswd, sRandomSeedFile, sKeepAlives, sPidFile,
-  sForcedPasswd, sUmask, sSilentDeny, sIdleTimeout, sUseLogin,
-  sKerberosAuthentication, sKerberosOrLocalPasswd, sKerberosTgtPassing,
-  sAllowTcpForwarding, sAllowUsers, sDenyUsers, sXauthPath, sCheckMail,
-  sDenyGroups, sAllowGroups, sIgnoreRootRhosts
+  sForcedPasswd, sForcedEmptyPasswd, sUmask, sSilentDeny, sIdleTimeout,
+  sUseLogin, sKerberosAuthentication, sKerberosOrLocalPasswd,
+  sKerberosTgtPassing, sAllowTcpForwarding, sAllowUsers, sDenyUsers,
+  sXauthPath, sCheckMail, sDenyGroups, sAllowGroups, sIgnoreRootRhosts,
+  sAllowSHosts, sDenySHosts, sPasswordExpireWarningDays,
+  sAccountExpireWarningDays
 #ifdef F_SECURE_COMMERCIAL
 
 
@@ -262,6 +281,8 @@ static struct
   { "tisauthentication", sTISAuthentication },
   { "passwordauthentication", sPasswordAuthentication },
   { "uselogin", sUseLogin },
+  { "allowshosts", sAllowSHosts },
+  { "denyshosts", sDenySHosts },
   { "allowhosts", sAllowHosts },
   { "denyhosts", sDenyHosts },
   { "allowusers", sAllowUsers },
@@ -282,7 +303,7 @@ static struct
   { "x11displayoffset", sX11DisplayOffset },
   { "strictmodes", sStrictModes },
   { "permitemptypasswords", sEmptyPasswd },
-  { "forcepasswdchange", sForcedPasswd },
+  { "forcedpasswdchange", sForcedPasswd },
   { "randomseed", sRandomSeedFile },
   { "keepalive", sKeepAlives },
   { "pidfile", sPidFile },
@@ -295,6 +316,8 @@ static struct
   { "allowtcpforwarding", sAllowTcpForwarding },
   { "xauthlocation", sXauthPath },
   { "checkmail", sCheckMail },
+  { "passwordexpirewarningdays", sPasswordExpireWarningDays },
+  { "accountexpirewarningdays", sAccountExpireWarningDays },
   { NULL, 0 }
 };
 
@@ -597,6 +620,10 @@ void read_server_config(ServerOptions *options, const char *filename)
 	  intptr = &options->forced_passwd_change;
 	  goto parse_flag;
 
+	case sForcedEmptyPasswd:
+	  intptr = &options->forced_empty_passwd_change;
+	  goto parse_flag;
+
 	case sUmask:
 	  intptr = &options->umask;
 	  goto parse_int;
@@ -667,6 +694,32 @@ void read_server_config(ServerOptions *options, const char *filename)
 	    options->log_facility = log_facilities[i].facility;
 	  break;
 	  
+	case sAllowSHosts:
+	  while ((cp = strtok(NULL, WHITESPACE)))
+	    {
+	      if (options->num_allow_shosts >= MAX_ALLOW_SHOSTS)
+		{
+		  fprintf(stderr, "%s line %d: too many allow shosts.\n",
+			  filename, linenum);
+		  exit(1);
+		}
+	      options->allow_shosts[options->num_allow_shosts++] = xstrdup(cp);
+	    }
+	  break;
+
+	case sDenySHosts:
+	  while ((cp = strtok(NULL, WHITESPACE)))
+	    {
+	      if (options->num_deny_shosts >= MAX_DENY_SHOSTS)
+		{
+		  fprintf(stderr, "%s line %d: too many deny shosts.\n",
+			  filename, linenum);
+		  exit(1);
+		}
+	      options->deny_shosts[options->num_deny_shosts++] = xstrdup(cp);
+	    }
+	  break;
+
 	case sAllowHosts:
 	  while ((cp = strtok(NULL, WHITESPACE)))
 	    {
@@ -752,6 +805,14 @@ void read_server_config(ServerOptions *options, const char *filename)
 	case sCheckMail:
 	  intptr = &options->check_mail;
 	  goto parse_flag;
+	  
+	case sPasswordExpireWarningDays:
+	  intptr = &options->password_expire_warning_days;
+	  goto parse_int;
+
+	case sAccountExpireWarningDays:
+	  intptr = &options->account_expire_warning_days;
+	  goto parse_int;
 
 #ifdef F_SECURE_COMMERCIAL
 

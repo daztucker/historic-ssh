@@ -2,10 +2,11 @@
 
 clientloop.c
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 
 Created: Sat Sep 23 12:23:57 1995 ylo
@@ -15,12 +16,15 @@ The main loop for the interactive session (client side).
 */
 
 /*
- * $Id: clientloop.c,v 1.6 1999/02/21 19:51:59 ylo Exp $
+ * $Id: clientloop.c,v 1.7 1999/11/17 17:04:42 tri Exp $
  * $Log: clientloop.c,v $
+ * Revision 1.7  1999/11/17 17:04:42  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.6  1999/02/21 19:51:59  ylo
- * 	Intermediate commit of ssh1.2.27 stuff.
- * 	Main change is sprintf -> snprintf; however, there are also
- * 	many other changes.
+ *      Intermediate commit of ssh1.2.27 stuff.
+ *      Main change is sprintf -> snprintf; however, there are also
+ *      many other changes.
  *
  * Revision 1.5  1998/05/23 20:21:22  kivinen
  *      Changed () -> (void).

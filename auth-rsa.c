@@ -2,10 +2,11 @@
 
 auth-rsa.c
 
-Author: Tatu Ylonen <ylo@cs.hut.fi>
+Author: Tatu Ylonen <ylo@ssh.fi>
 
-Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
-                   All rights reserved
+Copyright (c) 1995 Tatu Ylonen <ylo@ssh.fi>, Espoo, Finland
+Copyright (c) 1995-1999 SSH Communications Security Oy, Espoo, Finland
+                        All rights reserved
 
 Created: Mon Mar 27 01:46:52 1995 ylo
 
@@ -16,12 +17,15 @@ validity of the host key.
 */
 
 /*
- * $Id: auth-rsa.c,v 1.12 1999/02/21 19:51:55 ylo Exp $
+ * $Id: auth-rsa.c,v 1.13 1999/11/17 17:04:39 tri Exp $
  * $Log: auth-rsa.c,v $
+ * Revision 1.13  1999/11/17 17:04:39  tri
+ * 	Fixed copyright notices.
+ *
  * Revision 1.12  1999/02/21 19:51:55  ylo
- * 	Intermediate commit of ssh1.2.27 stuff.
- * 	Main change is sprintf -> snprintf; however, there are also
- * 	many other changes.
+ *      Intermediate commit of ssh1.2.27 stuff.
+ *      Main change is sprintf -> snprintf; however, there are also
+ *      many other changes.
  *
  * Revision 1.11  1998/07/08 00:38:52  kivinen
  *      Added ip address to match_hostname function.

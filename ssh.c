@@ -16,8 +16,17 @@ of X11, TCP/IP, and authentication connections.
 */
 
 /*
- * $Id: ssh.c,v 1.17 1995/09/27 02:48:53 ylo Exp $
+ * $Id: ssh.c,v 1.3 1996/05/29 07:41:34 ylo Exp $
  * $Log: ssh.c,v $
+ * Revision 1.3  1996/05/29 07:41:34  ylo
+ * 	Added arguments to userfile_init.
+ *
+ * Revision 1.2  1996/02/25 13:53:24  ylo
+ * 	Fixed a bug that caused falling back to rsh to hang.
+ *
+ * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.17  1995/09/27  02:48:53  ylo
  * 	Added SOCKS support.
  *
@@ -265,7 +274,15 @@ int main(int ac, char **av)
      suid root, all access can be done locally, and there is no need to
      initialize explicitly. */
   if (original_real_uid != original_effective_uid)
-    userfile_init(original_real_uid, NULL, NULL);
+    {
+      pw = getpwuid(original_real_uid);
+      if (!pw)
+	{
+	  fprintf(stderr, "You don't exist, go away!\n");
+	  exit(1);
+	}
+      userfile_init(pw->pw_name, pw->pw_uid, pw->pw_gid, NULL, NULL);
+    }
 
 #ifdef HAVE_UMASK
   /* Set our umask to something reasonable, as some files are created with 
@@ -559,6 +576,7 @@ int main(int ac, char **av)
   if (options.use_rsh)
     {
       /* Execute rsh. */
+      userfile_uninit();
       rsh_connect(host, options.user, &command);
       fatal("rsh_connect returned");
     }
@@ -575,6 +593,7 @@ int main(int ac, char **av)
   /* Check if the connection failed, and try "rsh" if appropriate. */
   if (!ok)
     {
+      userfile_uninit();
       if (options.port != 0)
 	log("Secure connection to %.100s on port %d refused%s.", 
 	    host, options.port,

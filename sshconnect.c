@@ -8,12 +8,41 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Sat Mar 18 22:15:47 1995 ylo
-Last modified: Wed Jul 12 01:31:50 1995 ylo
 
 Code to connect to a remote host, and to perform the client side of the
 login (authentication) dialog.
 
 */
+
+/*
+ * $Id: sshconnect.c,v 1.5 1995/07/27 02:18:13 ylo Exp $
+ * $Log: sshconnect.c,v $
+ * Revision 1.5  1995/07/27  02:18:13  ylo
+ * 	Tell packet_set_encryption_key that we are the client.
+ *
+ * Revision 1.4  1995/07/27  00:40:56  ylo
+ * 	Added GlobalKnownHostsFile and UserKnownHostsFile.
+ *
+ * Revision 1.3  1995/07/26  23:19:20  ylo
+ * 	Removed include version.h.
+ *
+ * 	Added code for protocol version 1.1.  This involves changes in
+ * 	the session key exchange code and RSA responses to make
+ * 	replay impossible and to bind RSA responses to a particular
+ * 	session so that a corrupt server cannot pass them on to
+ * 	another connection.  Moved rsa response code to a separate function.
+ *
+ * 	Fixed session key exchange to match the RFC draft.
+ *
+ * 	Prints a warning if server uses older protocol version (but
+ * 	compatibility code still supports the older version).
+ *
+ * Revision 1.2  1995/07/13  01:40:32  ylo
+ * 	Removed "Last modified" header.
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
 
 #include "includes.h"
 #include <gmp.h>
@@ -21,15 +50,22 @@ login (authentication) dialog.
 #include "randoms.h"
 #include "rsa.h"
 #include "ssh.h"
-#include "version.h"
 #include "packet.h"
 #include "authfd.h"
 #include "cipher.h"
 #include "md5.h"
+#include "mpaux.h"
 
 /* Maximum number of times to try connecting if the host returns
    ECONNREFUSED. */
 #define MAX_CONNECTION_ATTEMPTS		4
+
+/* This variable is set to true if remote protocol version is 1.1 or higher. 
+   XXX remove this variable later. */
+int remote_protocol_1_1 = 0;
+
+/* Session id for the current session. */
+unsigned char session_id[16];
 
 /* Opens a TCP/IP connection to the remote server on the given host.  If
    port is 0, the default port will be used.  If anonymous is zero,
@@ -277,16 +313,72 @@ int try_agent_authentication()
   return 0;
 }
 
+/* Computes the proper response to a RSA challenge, and sends the response to
+   the server. */
+
+void respond_to_rsa_challenge(MP_INT *challenge, RSAPrivateKey *prv)
+{
+  unsigned char buf[32], response[16];
+  struct MD5Context md;
+  int i;
+
+  /* Decrypt the challenge using the private key. */
+  rsa_private_decrypt(challenge, challenge, prv);
+
+  /* Compute the response. */
+  if (remote_protocol_1_1)
+    {
+      /* The response is MD5 of decrypted challenge plus session id. */
+      mp_linearize_msb_first(buf, 32, challenge);
+      MD5Init(&md);
+      MD5Update(&md, buf, 32);
+      MD5Update(&md, session_id, 16);
+      MD5Final(response, &md);
+    }
+  else
+    { /* XXX remove this compatibility code later */
+      /* The challenge used to be interpreted with the first byte in lsb
+	 (againt the spec). */
+      /* Convert the decrypted data into a 32 byte buffer. */
+      MP_INT aux;
+      mpz_init(&aux);
+      for (i = 0; i < 32; i++)
+	{
+	  mpz_mod_2exp(&aux, challenge, 8);
+	  buf[i] = mpz_get_ui(&aux);
+	  mpz_div_2exp(challenge, challenge, 8);
+	}
+      mpz_clear(&aux);
+  
+      /* Compute the MD5 of the resulting buffer.  The purpose of computing 
+	 MD5 is to prevent chosen plaintext attack. */
+      MD5Init(&md);
+      MD5Update(&md, buf, 32);
+      MD5Final(response, &md);
+    }
+  
+  debug("Sending response to host key RSA challenge.");
+
+  /* Send the response back to the server. */
+  packet_start(SSH_CMSG_AUTH_RSA_RESPONSE);
+  for (i = 0; i < 16; i++)
+    packet_put_char(response[i]);
+  packet_send();
+  packet_write_wait();
+  
+  memset(buf, 0, sizeof(buf));
+  memset(response, 0, sizeof(response));
+  memset(&md, 0, sizeof(md));
+}
+
 /* Checks if the user has authentication file, and if so, tries to authenticate
    the user using it. */
 
 int try_rsa_authentication(struct passwd *pw, const char *authfile)
 {
-  MP_INT challenge, aux;
+  MP_INT challenge;
   RSAPrivateKey private_key;
   RSAPublicKey public_key;
-  unsigned char buf[32], mdbuf[16];
-  struct MD5Context md;
   char *passphrase, *comment;
   int type, i;
 
@@ -346,7 +438,8 @@ int try_rsa_authentication(struct passwd *pw, const char *authfile)
 
 	  /* Send a dummy response packet to avoid protocol error. */
 	  packet_start(SSH_CMSG_AUTH_RSA_RESPONSE);
-	  packet_put_mp_int(&challenge);
+	  for (i = 0; i < 16; i++)
+	    packet_put_char(0);
 	  packet_send();
 	  packet_write_wait();
 
@@ -364,37 +457,14 @@ int try_rsa_authentication(struct passwd *pw, const char *authfile)
   /* We no longer need the comment. */
   xfree(comment);
 
-  /* Decrypt the challenge using the private key. */
-  rsa_private_decrypt(&challenge, &challenge, &private_key);
+  /* Compute and send a response to the challenge. */
+  respond_to_rsa_challenge(&challenge, &private_key);
   
   /* Destroy the private key. */
   rsa_clear_private_key(&private_key);
 
-  /* Convert the decrypted data into a 32 byte buffer. */
-  mpz_init(&aux);
-  for (i = 0; i < 32; i++)
-    {
-      mpz_mod_2exp(&aux, &challenge, 8);
-      buf[i] = mpz_get_ui(&aux);
-      mpz_div_2exp(&challenge, &challenge, 8);
-    }
-  mpz_clear(&aux);
+  /* We no longer need the challenge. */
   mpz_clear(&challenge);
-  
-  /* Compute the MD5 of the resulting buffer.  The purpose of computing MD5 is
-     to prevent chosen plaintext attack. */
-  MD5Init(&md);
-  MD5Update(&md, buf, 32);
-  MD5Final(mdbuf, &md);
-  
-  debug("Sending response to RSA challenge.");
-
-  /* Send the response back to the server. */
-  packet_start(SSH_CMSG_AUTH_RSA_RESPONSE);
-  for (i = 0; i < 16; i++)
-    packet_put_char(mdbuf[i]);
-  packet_send();
-  packet_write_wait();
   
   /* Wait for response from the server. */
   type = packet_read();
@@ -415,10 +485,8 @@ int try_rsa_authentication(struct passwd *pw, const char *authfile)
 int try_rhosts_rsa_authentication(const char *local_user, 
 				  RSAPrivateKey *host_key)
 {
-  MP_INT challenge, aux;
-  unsigned char buf[32], mdbuf[16];
-  struct MD5Context md;
-  int type, i;
+  int type;
+  MP_INT challenge;
 
   debug("Trying rhosts or /etc/hosts.equiv with RSA host authentication.");
 
@@ -452,34 +520,11 @@ int try_rhosts_rsa_authentication(const char *local_user,
 
   debug("Received RSA challenge for host key from server.");
 
-  /* Decrypt the challenge using the private key. */
-  rsa_private_decrypt(&challenge, &challenge, host_key);
+  /* Compute a response to the challenge. */
+  respond_to_rsa_challenge(&challenge, host_key);
 
-  /* Convert the decrypted data into a 32 byte buffer. */
-  mpz_init(&aux);
-  for (i = 0; i < 32; i++)
-    {
-      mpz_mod_2exp(&aux, &challenge, 8);
-      buf[i] = mpz_get_ui(&aux);
-      mpz_div_2exp(&challenge, &challenge, 8);
-    }
-  mpz_clear(&aux);
+  /* We no longer need the challenge. */
   mpz_clear(&challenge);
-  
-  /* Compute the MD5 of the resulting buffer.  The purpose of computing MD5 is
-     to prevent chosen plaintext attack. */
-  MD5Init(&md);
-  MD5Update(&md, buf, 32);
-  MD5Final(mdbuf, &md);
-  
-  debug("Sending response to host key RSA challenge.");
-
-  /* Send the response back to the server. */
-  packet_start(SSH_CMSG_AUTH_RSA_RESPONSE);
-  for (i = 0; i < 16; i++)
-    packet_put_char(mdbuf[i]);
-  packet_send();
-  packet_write_wait();
   
   /* Wait for response from the server. */
   type = packet_read();
@@ -508,14 +553,15 @@ void ssh_login(RandomState *state, int host_key_valid,
 	       unsigned int num_identity_files, char **identity_files, 
 	       int rhosts_authentication, int rhosts_rsa_authentication,
 	       int rsa_authentication,
-	       int password_authentication, int cipher_type)
+	       int password_authentication, int cipher_type,
+	       const char *system_hostfile, const char *user_hostfile)
 {
   int i, type, remote_major, remote_minor;
   char buf[1024]; /* Must not be larger than remove_version. */
   char remote_version[1024]; /* Must be at least as big as buf. */
   char *password;
   struct passwd *pw;
-  MP_INT key, session_key_int, aux;
+  MP_INT key;
   RSAPublicKey host_key;
   RSAPublicKey public_key;
   unsigned char session_key[SSH_SESSION_KEY_LENGTH];
@@ -558,9 +604,21 @@ void ssh_login(RandomState *state, int host_key_valid,
     fatal("Bad remote protocol version identification: '%.100s'", buf);
   debug("Remote protocol version %d.%d, remote software version %.100s",
 	remote_major, remote_minor, remote_version);
+#if 0
+  /* Removed for now, to permit compatibility with latter versions.  The server
+     will reject our version and disconnect if it doesn't support it. */
   if (remote_major != PROTOCOL_MAJOR)
     fatal("Protocol major versions differ: %d vs. %d",
 	  PROTOCOL_MAJOR, remote_major);
+#endif
+
+  /* Check if remote side has protocol version >= 1.1. XXX remove this later. */
+  remote_protocol_1_1 = (remote_major >= 1 && remote_minor >= 1);
+  if (!remote_protocol_1_1)
+    {
+      log("Warning: Remote machine has old SSH software version.");
+      log("Warning: Installing a newer version is recommended.");
+    }
 
   /* Send our own protocol version identification. */
   sprintf(buf, "SSH-%d.%d-%s\n", PROTOCOL_MAJOR, PROTOCOL_MINOR, SSH_VERSION);
@@ -586,25 +644,6 @@ void ssh_login(RandomState *state, int host_key_valid,
     fatal("User id %d not found from user database.", (int)getuid());
   local_user = xstrdup(pw->pw_name);
   server_user = user ? user : local_user;
-  
-  /* Initialize the random number generator. */
-  sprintf(buf, "%s/%s", pw->pw_dir, SSH_CLIENT_SEEDFILE);
-  if (stat(buf, &st) < 0)
-    log("Creating random seed file ~/%s.  This may take a while.", 
-	SSH_CLIENT_SEEDFILE);
-  else
-    debug("Initializing random; seed %s", buf);
-  random_initialize(state, buf);
-  
-  /* Generate an encryption key for the session.   The key is a 256 bit
-     random number, interpreted as a 32-byte key, with the least significant
-     8 bits being the first byte of the key. */
-  mpz_init(&key);
-  rsa_random_integer(&key, state, 256);
-
-  /* Save the new random state. */
-  random_save(state, buf);
-  random_stir(state); /* This is supposed to be irreversible. */
 
   /* Initialize the connection in the packet protocol module. */
   packet_set_connection(sock, state);
@@ -645,13 +684,17 @@ void ssh_login(RandomState *state, int host_key_valid,
   debug("Received server public key (%d bits) and host key (%d bits).", 
 	public_key.bits, host_key.bits);
 
+  /* Compute the session id. */
+  compute_session_id(session_id, check_bytes, host_key.bits, &host_key.n, 
+		     public_key.bits, &public_key.n);
+
   /* Check if the host key is present in the user\'s list of known hosts
      or in the systemwide list. */
-  sprintf(buf, "%s/%s", pw->pw_dir, SSH_USER_HOSTFILE);
+  sprintf(buf, "%s/%s", pw->pw_dir, user_hostfile);
   host_status = check_host_in_hostfile(buf, host, host_key.bits, &host_key.e,
 				       &host_key.n);
   if (host_status == HOST_NEW)
-    host_status = check_host_in_hostfile(SSH_SYSTEM_HOSTFILE, host, 
+    host_status = check_host_in_hostfile(system_hostfile, host, 
 					 host_key.bits, &host_key.e, 
 					 &host_key.n);
 
@@ -701,18 +744,54 @@ void ssh_login(RandomState *state, int host_key_valid,
       break;
     }
 
-  /* Extract session key from the decrypted integer.  The lowest 8 bits are
-     the first byte of the encryption key. */
-  mpz_init_set(&session_key_int, &key);
-  mpz_init(&aux);
-  for (i = 0; i < sizeof(session_key); i++)
+  /* Generate a session key. */
+  
+  /* Initialize the random number generator. */
+  sprintf(buf, "%s/%s", pw->pw_dir, SSH_CLIENT_SEEDFILE);
+  if (stat(buf, &st) < 0)
+    log("Creating random seed file ~/%s.  This may take a while.", 
+	SSH_CLIENT_SEEDFILE);
+  else
+    debug("Initializing random; seed %s", buf);
+  random_initialize(state, buf);
+  
+  /* Generate an encryption key for the session.   The key is a 256 bit
+     random number, interpreted as a 32-byte key, with the least significant
+     8 bits being the first byte of the key. */
+  for (i = 0; i < 32; i++)
+    session_key[i] = random_get_byte(state);
+
+  /* Save the new random state. */
+  random_save(state, buf);
+  random_stir(state); /* This is supposed to be irreversible. */
+
+  if (remote_protocol_1_1)
     {
-      mpz_mod_2exp(&aux, &session_key_int, 8);
-      mpz_div_2exp(&session_key_int, &session_key_int, 8);
-      session_key[i] = mpz_get_ui(&aux);
+      /* According to the protocol spec, the first byte of the session key is
+	 the highest byte of the integer.  The session key is xored with the
+	 first 16 bytes of the session id. */
+      mpz_init_set_ui(&key, 0);
+      for (i = 0; i < SSH_SESSION_KEY_LENGTH; i++)
+	{
+	  mpz_mul_2exp(&key, &key, 8);
+	  if (i < 16)
+	    mpz_add_ui(&key, &key, session_key[i] ^ session_id[i]);
+	  else
+	    mpz_add_ui(&key, &key, session_key[i]);
+	}
     }
-  mpz_clear(&aux);
-  mpz_clear(&session_key_int);
+  else
+    { /* XXX remove this compatibility code later. */
+      /* In the old version, the session key was stored in the integer 
+	 with the first byte in the lowermost bits of the integer (i.e, lsb
+	 first).  Additionally, there was no xoring. */
+      mpz_init_set_ui(&key, 0);
+      for (i = 0; i < SSH_SESSION_KEY_LENGTH; i++)
+	{
+	  mpz_mul_2exp(&key, &key, 8);
+	  mpz_add_ui(&key, &key, session_key[SSH_SESSION_KEY_LENGTH - i - 1]);
+	}
+    }
 
   /* Encrypt the integer using the public key and host key of the server
      (key with smaller modulus first). */
@@ -776,7 +855,8 @@ void ssh_login(RandomState *state, int host_key_valid,
   debug("Sent encrypted session key.");
   
   /* Set the encryption key. */
-  packet_set_encryption_key(session_key, SSH_SESSION_KEY_LENGTH, cipher_type);
+  packet_set_encryption_key(session_key, SSH_SESSION_KEY_LENGTH, 
+			    cipher_type, 1);
 
   /* We will no longer need the session key here.  Destroy any extra copies. */
   memset(session_key, 0, sizeof(session_key));

@@ -15,8 +15,11 @@ precision integers.
 */
 
 /*
- * $Id: mpaux.h,v 1.1 1995/07/27 03:28:03 ylo Exp $
+ * $Id: mpaux.h,v 1.1.1.1 1996/02/18 21:38:10 ylo Exp $
  * $Log: mpaux.h,v $
+ * Revision 1.1.1.1  1996/02/18 21:38:10  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.1  1995/07/27  03:28:03  ylo
  * 	Auxiliary functions for manipulating mp-ints.
  *

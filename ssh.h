@@ -14,8 +14,12 @@ Generic header file for ssh.
 */
 
 /*
- * $Id: ssh.h,v 1.15 1995/09/27 02:16:24 ylo Exp $
+ * $Id: ssh.h,v 1.16 1995/10/02 01:31:13 ylo Exp $
  * $Log: ssh.h,v $
+ * Revision 1.16  1995/10/02  01:31:13  ylo
+ * 	Moved sshd.pid to PIDDIR.  Also changed file name.
+ * 	Added SSH_HOSTS_EQUIV (shosts.equiv).
+ *
  * Revision 1.15  1995/09/27  02:16:24  ylo
  * 	Added SSH_USER_RC and SSH_SYSTEM_RC.
  *
@@ -103,7 +107,7 @@ Generic header file for ssh.
 
 /* Minor protocol version.  Different version indicates minor incompatibility
    that does not prevent interoperation. */
-#define PROTOCOL_MINOR		1
+#define PROTOCOL_MINOR		2
 
 /* Name for the service.  The port named by this service overrides the default
    port if present. */
@@ -209,8 +213,9 @@ only by root, whereas ssh_config should be world-readable. */
 #define SSH_AUTH_PASSWORD	3
 #define SSH_AUTH_RHOSTS_RSA	4
 
-/* Protocol flags. */
+/* Protocol flags.  These are bit masks. */
 #define SSH_PROTOFLAG_SCREEN_NUMBER	1 /* X11 forwarding includes screen */
+#define SSH_PROTOFLAG_HOST_IN_FWD_OPEN	2 /* forwarding opens contain host */
 
 /* Definition of message types.  New values can be added, but old values
    should not be removed or without careful consideration of the consequences
@@ -254,6 +259,7 @@ only by root, whereas ssh_config should be world-readable. */
 #define SSH_CMSG_X11_FWD_WITH_AUTH_SPOOFING	34	/* proto,data (s,s) */
 #define SSH_CMSG_AUTH_RHOSTS_RSA		35	/* user,mod (s,mpi) */
 #define SSH_MSG_DEBUG				36	/* string */
+#define SSH_CMSG_REQUEST_COMPRESSION		37	/* level 1-9 (int) */
 
 /* Includes that need definitions above. */
 
@@ -283,9 +289,12 @@ void record_logout(int pid, const char *ttyname);
    a privileged port will be allocated to make the connection. 
    This requires super-user privileges if anonymous is false. 
    Connection_attempts specifies the maximum number of tries, one per
-   second. */
+   second.  This returns true on success, and zero on failure.  If the
+   connection is successful, this calls packet_set_connection for the
+   connection. */
 int ssh_connect(const char *host, int port, int connection_attempts,
-		int anonymous, uid_t original_real_uid);
+		int anonymous, uid_t original_real_uid,
+		const char *proxy_command, RandomState *random_state);
 
 /* Starts a dialog with the server, and authenticates the current user on the
    server.  This does not need any extra privileges.  The basic connection
@@ -294,23 +303,24 @@ int ssh_connect(const char *host, int port, int connection_attempts,
    This initializes the random state, and leaves it initialized (it will also
    have references from the packet module). */
 void ssh_login(RandomState *state, int host_key_valid, RSAPrivateKey *host_key,
-	       int sock, const char *host, 
-	       Options *options, uid_t original_real_uid);
+	       const char *host, Options *options, uid_t original_real_uid);
 
 /*------------ Definitions for various authentication methods. -------*/
 
 /* Tries to authenticate the user using the .rhosts file.  Returns true if
    authentication succeeds.  If ignore_rhosts is non-zero, this will not
-   consider .rhosts and .shosts (/etc/hosts.equiv will still be used). */
+   consider .rhosts and .shosts (/etc/hosts.equiv will still be used). 
+   If strict_modes is true, checks ownership and modes of .rhosts/.shosts. */
 int auth_rhosts(struct passwd *pw, const char *client_user,
-		int ignore_rhosts);
+		int ignore_rhosts, int strict_modes);
 
 /* Tries to authenticate the user using the .rhosts file and the host using
    its host key.  Returns true if authentication succeeds. */
 int auth_rhosts_rsa(RandomState *state,
 		    struct passwd *pw, const char *client_user,
 		    unsigned int bits, MP_INT *client_host_key_e,
-		    MP_INT *client_host_key_n, int ignore_rhosts);
+		    MP_INT *client_host_key_n, int ignore_rhosts,
+		    int strict_modes);
 
 /* Tries to authenticate the user using password.  Returns true if
    authentication succeeds. */
@@ -324,6 +334,10 @@ int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state);
 /* Parses an RSA key (number of bits, e, n) from a string.  Moves the pointer
    over the key.  Skips any whitespace at the beginning and at end. */
 int auth_rsa_read_key(char **cpp, unsigned int *bitsp, MP_INT *e, MP_INT *n);
+
+/* Returns the name of the machine at the other end of the socket.  The
+   returned string should be freed by the caller. */
+char *get_remote_hostname(int socket);
 
 /* Return the canonical name of the host in the other side of the current
    connection (as returned by packet_get_connection).  The host name is
@@ -439,8 +453,13 @@ void fatal(const char *fmt, ...);
 /*---------------- definitions for x11.c ------------------*/
 
 
-/* Allocate a new channel object and set its type and socket. */
-int channel_allocate(int type, int sock);
+/* Sets specific protocol options. */
+void channel_set_options(int hostname_in_open);
+
+/* Allocate a new channel object and set its type and socket.  Remote_name
+   must have been allocated with xmalloc; this will free it when the channel
+   is freed. */
+int channel_allocate(int type, int sock, char *remote_name);
 
 /* Free the channel and close its socket. */
 void channel_free(int channel);
@@ -488,6 +507,11 @@ int channel_max_fd(void);
 
 /* Returns true if there is still an open channel over the connection. */
 int channel_still_open(void);
+
+/* Returns a string containing a list of all open channels.  The list is
+   suitable for displaying to the user.  It uses crlf instead of newlines.
+   The caller should free the string with xfree. */
+char *channel_open_message();
 
 /* Initiate forwarding of connections to local port "port" through the secure
    channel to host:port from remote side.  This never returns if there
@@ -582,5 +606,11 @@ void server_loop(int pid, int fdin, int fdout, int fderr);
 
 /* Client side main loop for the interactive session. */
 int client_loop(int have_pty, int escape_char);
+
+/* Linked list of custom environment strings (see auth-rsa.c). */
+struct envstring {
+  struct envstring *next;
+  char *s;
+};
 
 #endif /* SSH_H */

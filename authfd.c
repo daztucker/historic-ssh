@@ -14,8 +14,11 @@ Functions for connecting the local authentication agent.
 */
 
 /*
- * $Id: authfd.c,v 1.5 1995/08/29 22:18:58 ylo Exp $
+ * $Id: authfd.c,v 1.6 1995/09/09 21:26:38 ylo Exp $
  * $Log: authfd.c,v $
+ * Revision 1.6  1995/09/09  21:26:38  ylo
+ * /m/shadows/u2/users/ylo/ssh/README
+ *
  * Revision 1.5  1995/08/29  22:18:58  ylo
  * 	Added remove_all_identities.
  *
@@ -67,7 +70,7 @@ int ssh_get_authentication_fd()
   if (sock < 0)
     return -1;
   
-  if (connect(sock, (struct sockaddr *)&sunaddr, sizeof(sunaddr)) < 0)
+  if (connect(sock, (struct sockaddr *)&sunaddr, AF_UNIX_SIZE(sunaddr)) < 0)
     {
       close(sock);
       return -1;
@@ -134,7 +137,7 @@ int ssh_get_authentication_connection_fd()
   /* Start listening for connections on the socket. */
   if (listen(listen_sock, 1) < 0)
     {
-      error("listen: %s", strerror(errno));
+      error("listen: %.100s", strerror(errno));
       close(listen_sock);
       ssh_close_authentication_socket(authfd);
       return -1;
@@ -234,7 +237,7 @@ int ssh_get_first_identity(AuthenticationConnection *auth,
   msg[4] = SSH_AGENTC_REQUEST_RSA_IDENTITIES;
   if (write(auth->fd, msg, 5) != 5)
     {
-      error("write auth->fd: %s", strerror(errno));
+      error("write auth->fd: %.100s", strerror(errno));
       return 0;
     }
 
@@ -245,7 +248,7 @@ int ssh_get_first_identity(AuthenticationConnection *auth,
       l = read(auth->fd, msg + 4 - len, len);
       if (l <= 0)
 	{
-	  error("read auth->fd: %s", strerror(errno));
+	  error("read auth->fd: %.100s", strerror(errno));
 	  return 0;
 	}
       len -= l;

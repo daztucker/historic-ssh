@@ -18,8 +18,11 @@ on a tty.
 */
 
 /*
- * $Id: login.c,v 1.7 1995/09/21 17:11:52 ylo Exp $
+ * $Id: login.c,v 1.1.1.1 1996/02/18 21:38:12 ylo Exp $
  * $Log: login.c,v $
+ * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.7  1995/09/21  17:11:52  ylo
  * 	Added NULL second argument to gettimeofday.
  *

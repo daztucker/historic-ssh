@@ -14,10 +14,14 @@ and ssh has the necessary privileges.)
 */
 
 /*
- * $Id: scp.c,v 1.19 1999/11/17 17:04:53 tri Exp $
+ * $Id: scp.c,v 1.20 2001/10/19 10:42:46 sjl Exp $
  * $Log: scp.c,v $
+ * Revision 1.20  2001/10/19 10:42:46  sjl
+ * 	Fixed sending of unitialized memory in case of an I/O error in
+ * 	read().
+ *
  * Revision 1.19  1999/11/17 17:04:53  tri
- * 	Fixed copyright notices.
+ *      Fixed copyright notices.
  *
  * Revision 1.18  1999/02/24 11:36:13  tri
  *      A statitstics int-overflow patch.
@@ -144,7 +148,7 @@ and ssh has the necessary privileges.)
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *      $Id: scp.c,v 1.19 1999/11/17 17:04:53 tri Exp $
+ *      $Id: scp.c,v 1.20 2001/10/19 10:42:46 sjl Exp $
  */
 
 #ifndef lint
@@ -1364,7 +1368,7 @@ run_err(const char *fmt, ...)
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *      $Id: scp.c,v 1.19 1999/11/17 17:04:53 tri Exp $
+ *      $Id: scp.c,v 1.20 2001/10/19 10:42:46 sjl Exp $
  */
 
 char *
@@ -1447,6 +1451,7 @@ allocbuf(bp, fd, blksize)
           bp->buf = xmalloc(size);
         else
           bp->buf = xrealloc(bp->buf, size);
+        memset(bp->buf, 0, size);
         bp->cnt = size;
         return (bp);
 }

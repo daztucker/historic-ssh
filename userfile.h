@@ -17,6 +17,10 @@ This works by forking a separate process to do the reading.
 
 /*
  * $Log: userfile.h,v $
+ * Revision 1.7  1996/10/29 22:48:43  kivinen
+ * 	Removed userfile_local_socket_connect and userfile_send
+ * 	prototypes.
+ *
  * Revision 1.6  1996/09/08 17:21:07  ttsalo
  * 	A lot of changes in agent-socket handling
  *
@@ -83,11 +87,6 @@ int userfile_read(UserFile f, void *buf, unsigned int len);
    Returns the number of bytes actually written; -1 indicates error. */
 int userfile_write(UserFile f, const void *buf, unsigned int len);
 
-/* Sends data to a socket.  Sends all data, unless an error is encountered.
-   Returns the number of bytes actually written; -1 indicates error. */
-int userfile_send(UserFile uf, const void *buf, unsigned int len,
-		  unsigned int flags);
-
 /* Reads a line from the file.  The line will be null-terminated, and
    will include the newline.  Returns a pointer to the given buffer,
    or NULL if no more data was available.  If a line is too long,
@@ -121,10 +120,6 @@ int userfile_pclose(UserFile uf);
    Permissions ----w--w- must not exist and owner must be either
    pw->pw_uid or root. Return value: 0 = not ok, 1 = ok */
 int userfile_check_owner_permissions(struct passwd *pw, const char *path);
-
-/* Open ( = create and connect) a unix-domain socket. Returns
-   UserFile-structure if successful. */
-UserFile userfile_local_socket_connect(uid_t uid, const char *path);
 
 /* Encapsulate a normal file descriptor inside a struct UserFile */
 UserFile userfile_encapsulate_fd(int fd);

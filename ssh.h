@@ -14,8 +14,16 @@ Generic header file for ssh.
 */
 
 /*
- * $Id: ssh.h,v 1.17 1997/04/05 22:01:10 kivinen Exp $
+ * $Id: ssh.h,v 1.19 1997/04/21 01:06:44 kivinen Exp $
  * $Log: ssh.h,v $
+ * Revision 1.19  1997/04/21 01:06:44  kivinen
+ * 	Fixed prototype for server_loop to have cleanup_context
+ * 	instead of ttyname.
+ *
+ * Revision 1.18  1997/04/17 04:17:02  kivinen
+ * 	Added read_confirmation prototype.
+ * 	Added ttyname to server_loop prototype.
+ *
  * Revision 1.17  1997/04/05 22:01:10  kivinen
  * 	Fixed typo in SSH_AUTH_KERBEROS.
  *
@@ -511,6 +519,10 @@ int auth_rsa_challenge_dialog(RandomState *state, unsigned int bits,
    this will run it with the given uid using userfile. */
 char *read_passphrase(uid_t uid, const char *prompt, int from_stdin);
 
+/* Reads a yes/no confirmation from /dev/tty.  Exits if EOF or "no" is
+   encountered. */
+void read_confirmation(const char *prompt);
+
 /* Saves the authentication (private) key in a file, encrypting it with
    passphrase.  The identification of the file (lowest 64 bits of n)
    will precede the key to provide identification of the key without
@@ -763,8 +775,11 @@ char *tilde_expand_filename(const char *filename, uid_t my_uid);
    the client and the program.  Note that the notion of stdin, stdout, and
    stderr in this function is sort of reversed: this function writes to
    stdin (of the child program), and reads from stdout and stderr (of the
-   child program). */
-void server_loop(int pid, int fdin, int fdout, int fderr);
+   child program).
+   This will close fdin, fdout and fderr after releasing pty (if ttyname is non
+   NULL) */
+void server_loop(int pid, int fdin, int fdout, int fderr,
+		 void *cleanup_context);
 
 /* Client side main loop for the interactive session. */
 int client_loop(int have_pty, int escape_char);

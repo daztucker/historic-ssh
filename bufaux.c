@@ -8,12 +8,21 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Wed Mar 29 02:24:47 1995 ylo
-Last modified: Wed Jun 28 22:37:58 1995 ylo
 
 Auxiliary functions for storing and retrieving various data types to/from
 Buffers.
 
 */
+
+/*
+ * $Id: bufaux.c,v 1.2 1995/07/13 01:17:49 ylo Exp $
+ * $Log: bufaux.c,v $
+ * Revision 1.2  1995/07/13  01:17:49  ylo
+ * 	Removed "Last modified" header.
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
 
 #include "includes.h"
 #include "ssh.h"

@@ -13,6 +13,21 @@ Server main loop for handling the interactive session.
 
 */
 
+/*
+ * $Id: serverloop.c,v 1.5 1996/09/29 13:42:55 ylo Exp $
+ * $Log: serverloop.c,v $
+ * Revision 1.5  1996/09/29 13:42:55  ylo
+ * 	Increased the time to wait for more data from 10 ms to 17 ms
+ * 	and bytes to 512 (I'm worried it might not always be
+ * 	working due to the delay being shorter than the systems
+ * 	fundamental clock tick).
+ *
+ * Revision 1.4  1996/09/14 08:42:26  ylo
+ * 	Added cvs logs.
+ *
+ * $EndLog$
+ */
+
 #include "includes.h"
 #include "xmalloc.h"
 #include "ssh.h"
@@ -390,11 +405,14 @@ void process_output(fd_set *writeset)
 		  buffer_len(&stdin_buffer));
       if (len <= 0)
 	{
-	  if (fdin == fdout)
-	    shutdown(fdin, 1); /* We will no longer send. */
-	  else
-	    close(fdin);
-	  fdin = -1;
+	  if (errno != EWOULDBLOCK)
+	    {
+	      if (fdin == fdout)
+		shutdown(fdin, 1); /* We will no longer send. */
+	      else
+		close(fdin);
+	      fdin = -1;
+	    }
 	}
       else
 	{
@@ -501,6 +519,16 @@ void server_loop(int pid, int fdin_arg, int fdout_arg, int fderr_arg)
   if (fderr == -1)
     fderr_eof = 1;
 
+  /*
+   * Set ttyfd to non-blocking i/o to avoid deadlock in process_output()
+   * when doing large paste from xterm into slow program such as vi.  - corey
+   */
+#if defined(O_NONBLOCK) && !defined(O_NONBLOCK_BROKEN)
+  (void)fcntl(fdin, F_SETFL, O_NONBLOCK);
+#else /* O_NONBLOCK && !O_NONBLOCK_BROKEN */
+  (void)fcntl(fdin, F_SETFL, O_NDELAY);
+#endif /* O_NONBLOCK && !O_NONBLOCK_BROKEN */
+
   /* Main loop of the server for the interactive session mode. */
   for (;;)
     {
@@ -530,9 +558,9 @@ void server_loop(int pid, int fdin_arg, int fdout_arg, int fderr_arg)
 	 each separate character. */
       max_time_milliseconds = 0;
       stdout_buffer_bytes = buffer_len(&stdout_buffer);
-      if (stdout_buffer_bytes != 0 && stdout_buffer_bytes < 256 &&
+      if (stdout_buffer_bytes != 0 && stdout_buffer_bytes < 512 &&
 	  stdout_buffer_bytes != previous_stdout_buffer_bytes)
-	max_time_milliseconds = 10; /* try again after a while */
+	max_time_milliseconds = 17; /* try again after a while (1/60sec)*/
       else
 	make_packets_from_stdout_data(); /* Send it now. */
       previous_stdout_buffer_bytes = buffer_len(&stdout_buffer);

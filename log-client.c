@@ -14,9 +14,12 @@ Client-side versions of debug(), log_msg(), etc.  These print to stderr.
 */
 
 /*
- * $Id: log-client.c,v 1.5 1996/12/04 18:16:15 ttsalo Exp $
+ * $Id: log-client.c,v 1.6 1998/05/23 20:21:37 kivinen Exp $
  * $Log: log-client.c,v $
- * Revision 1.5  1996/12/04 18:16:15  ttsalo
+ * Revision 1.6  1998/05/23  20:21:37  kivinen
+ * 	Changed () -> (void).
+ *
+ * Revision 1.5  1996/12/04  18:16:15  ttsalo
  *     debug() can now prefix every message with local hostname
  *
  * Revision 1.4  1996/10/29 22:37:59  kivinen
@@ -161,7 +164,7 @@ void fatal_remove_cleanup(void (*proc)(void *context), void *context)
 
 /* Executes fatal() cleanups. */
 
-static void do_fatal_cleanups()
+static void do_fatal_cleanups(void)
 {
   struct fatal_cleanup *cu, *next_cu;
   static int fatal_called = 0;

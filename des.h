@@ -13,6 +13,15 @@ information.
 
 */
 
+/*
+ * $Id: des.h,v 1.2 1995/07/13 01:22:57 ylo Exp $
+ * $Log: des.h,v $
+ * Revision 1.2  1995/07/13  01:22:57  ylo
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
+
 #ifndef DES_H
 #define DES_H
 

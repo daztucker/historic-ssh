@@ -14,8 +14,11 @@ Functions for manipulating the known hosts files.
 */
 
 /*
- * $Id: hostfile.c,v 1.2 1995/07/13 01:24:36 ylo Exp $
+ * $Id: hostfile.c,v 1.1.1.1 1996/02/18 21:38:12 ylo Exp $
  * $Log: hostfile.c,v $
+ * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.2  1995/07/13  01:24:36  ylo
  * 	Removed "Last modified" header.
  * 	Added cvs log.

@@ -15,39 +15,44 @@ output to the system log.
 */
 
 /*
- * $Id: log-server.c,v 1.6 1998/05/23 20:21:43 kivinen Exp $
+ * $Id: log-server.c,v 1.7 1999/02/21 19:52:24 ylo Exp $
  * $Log: log-server.c,v $
- * Revision 1.6  1998/05/23  20:21:43  kivinen
- * 	Changed () -> (void).
+ * Revision 1.7  1999/02/21 19:52:24  ylo
+ * 	Intermediate commit of ssh1.2.27 stuff.
+ * 	Main change is sprintf -> snprintf; however, there are also
+ * 	many other changes.
+ *
+ * Revision 1.6  1998/05/23 20:21:43  kivinen
+ *      Changed () -> (void).
  *
  * Revision 1.5  1998/01/02  06:18:49  kivinen
- * 	Fixed kerberos ticket name handling.
+ *      Fixed kerberos ticket name handling.
  *
  * Revision 1.4  1997/04/17 04:05:51  kivinen
- * 	Added return to end of syslog_severity to remove warning about
- * 	it.
+ *      Added return to end of syslog_severity to remove warning about
+ *      it.
  *
  * Revision 1.3  1997/03/27 03:09:58  kivinen
- * 	Added kerberos patches from Glenn Machin.
+ *      Added kerberos patches from Glenn Machin.
  *
  * Revision 1.2  1996/10/29 22:38:23  kivinen
- * 	log -> log_msg.
+ *      log -> log_msg.
  *
  * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
- * 	Imported ssh-1.2.13.
+ *      Imported ssh-1.2.13.
  *
  * Revision 1.5  1995/10/02  01:22:57  ylo
- * 	Include sys/syslog.h if needed.
+ *      Include sys/syslog.h if needed.
  *
  * Revision 1.4  1995/09/09  21:26:42  ylo
  * /m/shadows/u2/users/ylo/ssh/README
  *
  * Revision 1.3  1995/08/21  23:25:00  ylo
- * 	Added support for syslog facility.
+ *      Added support for syslog facility.
  *
  * Revision 1.2  1995/07/13  01:26:21  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
+ *      Removed "Last modified" header.
+ *      Added cvs log.
  *
  * $Endlog$
  */
@@ -66,14 +71,14 @@ static int log_quiet = 0;
 static int log_on_stderr = 0;
 
 /* Initialize the log.
-     av0	program name (should be argv[0])
-     on_stderr	print also on stderr
-     debug	send debugging messages to system log
-     quiet	don\'t log anything
+     av0        program name (should be argv[0])
+     on_stderr  print also on stderr
+     debug      send debugging messages to system log
+     quiet      don\'t log anything
      */
 
 void log_init(char *av0, int on_stderr, int debug, int quiet, 
-	      SyslogFacility facility)
+              SyslogFacility facility)
 {
   int log_facility;
   
@@ -114,7 +119,7 @@ void log_init(char *av0, int on_stderr, int debug, int quiet,
       break;
     default:
       fprintf(stderr, "Unrecognized internal syslog facility code %d\n",
-	      (int)facility);
+              (int)facility);
       exit(1);
     }
 
@@ -134,7 +139,7 @@ void log_msg(const char *fmt, ...)
   if (log_quiet)
     return;
   va_start(args, fmt);
-  vsprintf(buf, fmt, args);
+  vsnprintf(buf, sizeof(buf), fmt, args);
   va_end(args);
   if (log_on_stderr)
     fprintf(stderr, "log: %s\n", buf);
@@ -175,7 +180,7 @@ void log_severity(SyslogSeverity severity, const char *fmt, ...)
   if (log_quiet)
     return;
   va_start(args, fmt);
-  vsprintf(buf, fmt, args);
+  vsnprintf(buf, sizeof(buf), fmt, args);
   va_end(args);
   if (log_on_stderr)
     fprintf(stderr, "log: %s\n", buf);
@@ -191,7 +196,7 @@ void debug(const char *fmt, ...)
   if (!log_debug || log_quiet)
     return;
   va_start(args, fmt);
-  vsprintf(buf, fmt, args);
+  vsnprintf(buf, sizeof(buf), fmt, args);
   va_end(args);
   if (log_on_stderr)
     fprintf(stderr, "debug: %s\n", buf);
@@ -207,7 +212,7 @@ void error(const char *fmt, ...)
   if (log_quiet)
     return;
   va_start(args, fmt);
-  vsprintf(buf, fmt, args);
+  vsnprintf(buf, sizeof(buf), fmt, args);
   va_end(args);
   if (log_on_stderr)
     fprintf(stderr, "error: %s\n", buf);
@@ -246,14 +251,14 @@ void fatal_remove_cleanup(void (*proc)(void *context), void *context)
     {
       cu = *cup;
       if (cu->proc == proc && cu->context == context)
-	{
-	  *cup = cu->next;
-	  xfree(cu);
-	  return;
-	}
+        {
+          *cup = cu->next;
+          xfree(cu);
+          return;
+        }
     }
   fatal("fatal_remove_cleanup: no such cleanup function: 0x%lx 0x%lx\n",
-	(unsigned long)proc, (unsigned long)context);
+        (unsigned long)proc, (unsigned long)context);
 }
 
 static void do_fatal_cleanups(void)
@@ -270,24 +275,24 @@ static void do_fatal_cleanups(void)
 
       /* Call cleanup functions. */
       for (cu = fatal_cleanups; cu; cu = next_cu)
-	{
-	  next_cu = cu->next;
-	  debug("Calling cleanup 0x%lx(0x%lx)",
-		(unsigned long)cu->proc, (unsigned long)cu->context);
-	  (*cu->proc)(cu->context);
-	}
+        {
+          next_cu = cu->next;
+          debug("Calling cleanup 0x%lx(0x%lx)",
+                (unsigned long)cu->proc, (unsigned long)cu->context);
+          (*cu->proc)(cu->context);
+        }
 #ifdef KERBEROS
       /* If you forwarded a ticket you get one shot for proper
-	 authentication. */
+         authentication. */
       /* If tgt was passed unlink file */
       if (ticket)
-	{
-	  if (strcmp(ticket,"none"))
-	    /* ticket -> FILE:path */
-	    unlink(ticket + 5);
-	  else
-	    ticket = NULL;
-	}
+        {
+          if (strcmp(ticket,"none"))
+            /* ticket -> FILE:path */
+            unlink(ticket + 5);
+          else
+            ticket = NULL;
+        }
 #endif /* KERBEROS */
     }
 }
@@ -302,7 +307,7 @@ void fatal(const char *fmt, ...)
   if (log_quiet)
     exit(1);
   va_start(args, fmt);
-  vsprintf(buf, fmt, args);
+  vsnprintf(buf, sizeof(buf), fmt, args);
   va_end(args);
   if (log_on_stderr)
     fprintf(stderr, "fatal: %s\n", buf);
@@ -321,7 +326,7 @@ void fatal_severity(SyslogSeverity severity, const char *fmt, ...)
   if (log_quiet)
     exit(1);
   va_start(args, fmt);
-  vsprintf(buf, fmt, args);
+  vsnprintf(buf, sizeof(buf), fmt, args);
   va_end(args);
   if (log_on_stderr)
     fprintf(stderr, "fatal: %s\n", buf);

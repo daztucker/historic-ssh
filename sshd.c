@@ -18,8 +18,17 @@ agent connections.
 */
 
 /*
- * $Id: sshd.c,v 1.42 1997/04/23 00:05:35 kivinen Exp $
+ * $Id: sshd.c,v 1.44 1997/05/08 03:06:51 kivinen Exp $
  * $Log: sshd.c,v $
+ * Revision 1.44  1997/05/08 03:06:51  kivinen
+ * 	Fixed sighup handling (added select before accept, changed
+ * 	execv to execvp so sshd is searched from path).
+ *
+ * Revision 1.43  1997/04/27 21:51:11  kivinen
+ * 	Added F-SECURE stuff. Added {Allow,Deny}Forwarding{To,Port}
+ * 	feature. Added {Allow,Deny}Users feature from Steve Kann
+ * 	<stevek@SteveK.COM>.
+ *
  * Revision 1.42  1997/04/23 00:05:35  kivinen
  * 	Added ifdefs around password expiration and inactivity checks,
  * 	because some systems dont have sp_expire and sp_inact fields.
@@ -538,7 +547,7 @@ void sighup_restart()
 {
   log_msg("Received SIGHUP; restarting.");
   close(listen_sock);
-  execv(saved_argv[0], saved_argv);
+  execvp(saved_argv[0], saved_argv);
   log_msg("RESTART FAILED: av[0]='%s', error: %s.", 
       saved_argv[0], strerror(errno));
   exit(1);
@@ -618,6 +627,8 @@ int main(int ac, char **av)
   int opt, aux, sock_in, sock_out, newsock, i, pid, on = 1;
   int remote_major, remote_minor;
   int perm_denied = 0;
+  int ret;
+  fd_set fdset;
   struct sockaddr_in sin;
   char buf[100]; /* Must not be larger than remote_version. */
   char remote_version[100]; /* Must be at least as big as buf. */
@@ -678,6 +689,9 @@ int main(int ac, char **av)
 	  break;
 	case '?':
 	default:
+#ifdef F_SECURE_COMMERCIAL
+
+#endif /* F_SECURE_COMMERCIAL */
 	  fprintf(stderr, "sshd version %s [%s]\n", SSH_VERSION, HOSTTYPE);
 	  fprintf(stderr, "Usage: %s [options]\n", av0);
 	  fprintf(stderr, "Options:\n");
@@ -730,6 +744,9 @@ int main(int ac, char **av)
 	   debug_flag || options.fascist_logging, 
 	   options.quiet_mode, options.log_facility);
 
+#ifdef F_SECURE_COMMERCIAL
+
+#endif /* F_SECURE_COMMERCIAL */
   debug("sshd version %.100s [%.100s]", SSH_VERSION, HOSTTYPE);
 
   /* Load the host key.  It must have empty passphrase. */
@@ -972,11 +989,21 @@ int main(int ac, char **av)
 	{
 	  if (received_sighup)
 	    sighup_restart();
-	  /* Wait in accept until there is a connection. */
+	  
+	  /* Wait in select until there is a connection. */
+	  FD_ZERO(&fdset);
+	  FD_SET(listen_sock, &fdset);
+	  ret = select(listen_sock + 1, &fdset, NULL, NULL, NULL);
+	  if (ret < 0 || !FD_ISSET(listen_sock, &fdset))
+	    {
+	      if (errno == EINTR)
+		continue;
+	      error("select: %.100s", strerror(errno));
+	      continue;
+	    }
+	  
 	  aux = sizeof(sin);
 	  newsock = accept(listen_sock, (struct sockaddr *)&sin, &aux);
-	  if (received_sighup)
-	    sighup_restart();
 	  if (newsock < 0)
 	    {
 	      if (errno == EINTR)
@@ -1114,8 +1141,12 @@ int main(int ac, char **av)
     alarm(options.login_grace_time);
 
   /* Send our protocol version identification. */
-  sprintf(buf, "SSH-%d.%d-%.100s\n", 
+  sprintf(buf, "SSH-%d.%d-%.50s", 
 	  PROTOCOL_MAJOR, PROTOCOL_MINOR, SSH_VERSION);
+#ifdef F_SECURE_COMMERCIAL
+
+#endif /* F_SECURE_COMMERCIAL */
+  strcat(buf, "\n");
   if (write(sock_out, buf, strlen(buf)) != strlen(buf))
     fatal_severity(SYSLOG_SEVERITY_INFO,
 		   "Could not write ident string.");
@@ -1572,6 +1603,36 @@ int login_permitted(char *user, struct passwd *pwd)
       }
   }
 #endif /* CHECK_ETC_SHELLS */
+  
+  /* here we check the AllowUser and DenyUser config options - SteveK */
+  /* Check whether logins are permitted for this user. */
+  if (options.num_allow_users > 0)
+    {
+      int i;
+      for (i = 0; i < options.num_allow_users; i++)
+	if (match_pattern(user, options.allow_users[i]))
+	  break;
+      if (i >= options.num_allow_users)
+	{
+	  log_msg("Connection for %.200s not allowed from %s\n",
+		  user, get_canonical_hostname());
+	  return 0;
+	}
+    }
+  
+  /* Check whether logins are denied for this user. */
+  if (options.num_deny_users > 0)
+    {
+      int i;
+      for (i = 0; i < options.num_deny_users; i++)
+	if (match_pattern(user, options.deny_users[i]))
+	  {
+	    log_msg("Connection for %.200s denied from %s\n",
+		    user, get_canonical_hostname());
+	    return 0;
+	  }
+    }
+  
   return 1;
 }
 
@@ -2218,6 +2279,7 @@ void do_authenticated(struct passwd *pw)
   gid_t tty_gid;
   mode_t tty_mode;
   struct stat st;
+  int i;
   
   /* Cancel the alarm we set to limit the time taken for authentication. */
   alarm(0);
@@ -2228,6 +2290,18 @@ void do_authenticated(struct passwd *pw)
      client telling us, so we can equally well trust the client not to request
      anything bogus.) */
   channel_permit_all_opens();
+
+#ifdef F_SECURE_COMMERCIAL
+
+
+
+
+
+
+
+
+#endif /* F_SECURE_COMMERCIAL */
+      
 
   /* We stay in this loop until the client requests to execute a shell or a
      command. */

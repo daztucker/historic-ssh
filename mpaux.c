@@ -15,8 +15,14 @@ precision integers.
 */
 
 /*
- * $Id: mpaux.c,v 1.1 1995/07/27 03:28:15 ylo Exp $
+ * $Id: mpaux.c,v 1.2 1996/04/26 00:26:48 ylo Exp $
  * $Log: mpaux.c,v $
+ * Revision 1.2  1996/04/26 00:26:48  ylo
+ * 	Fixed problems with 16-bit Windows.
+ *
+ * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.1  1995/07/27  03:28:15  ylo
  * 	Auxiliary functions for manipulating mp-ins.
  *
@@ -40,7 +46,7 @@ void mp_linearize_msb_first(unsigned char *buf, unsigned int len,
   mpz_init_set(&aux, value);
   for (i = len; i >= 4; i -= 4)
     {
-      unsigned int limb = mpz_get_ui(&aux);
+      unsigned long limb = mpz_get_ui(&aux);
       PUT_32BIT(buf + i - 4, limb);
       mpz_div_2exp(&aux, &aux, 32);
     }
@@ -62,7 +68,7 @@ void mp_unlinearize_msb_first(MP_INT *value, const unsigned char *buf,
   mpz_set_ui(value, 0);
   for (i = 0; i + 4 <= len; i += 4)
     {
-      unsigned int limb = GET_32BIT(buf + i);
+      unsigned long limb = GET_32BIT(buf + i);
       mpz_mul_2exp(value, value, 32);
       mpz_add_ui(value, value, limb);
     }

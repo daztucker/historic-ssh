@@ -16,8 +16,28 @@ arbitrary tcp/ip connections, and the authentication agent connection.
 */
 
 /*
- * $Id: channels.c,v 1.3 1995/07/27 02:16:43 ylo Exp $
+ * $Id: channels.c,v 1.7 1995/09/06 15:58:14 ylo Exp $
  * $Log: channels.c,v $
+ * Revision 1.7  1995/09/06  15:58:14  ylo
+ * 	Added BROKEN_INET_ADDR.
+ *
+ * Revision 1.6  1995/08/29  22:20:40  ylo
+ * 	New file descriptor code for agent forwarding.
+ *
+ * Revision 1.5  1995/08/21  23:22:49  ylo
+ * 	Clear sockaddr_in structures before use.
+ *
+ * 	Reject X11 connections that don't match fake data.
+ *
+ * Revision 1.4  1995/08/18  22:47:11  ylo
+ * 	Fixed a typo (missing parentheses in packet_is_interactive
+ * 	call).
+ *
+ * 	Removed extra shutdown in channel_close_all().  This caused
+ * 	the "accept: software caused connection abort" messages and
+ * 	busy looping that made the previous version of ssh unusable on
+ * 	most systems.
+ *
  * Revision 1.3  1995/07/27  02:16:43  ylo
  * 	Fixed output draining on forwarded TCP/IP connections.
  * 	Use smaller packets for interactive sessions.
@@ -278,7 +298,7 @@ void channel_prepare_select(fd_set *readset, fd_set *writeset)
 		debug("Initial X11 packet contains bad byte order byte: 0x%x",
 		      ucp[0]);
 		ch->type = SSH_CHANNEL_OPEN;
-		goto redo;
+		goto reject;
 	      }
 
 	  /* Check if the whole packet is in buffer. */
@@ -292,7 +312,7 @@ void channel_prepare_select(fd_set *readset, fd_set *writeset)
 	    {
 	      debug("X11 connection uses different authentication protocol.");
 	      ch->type = SSH_CHANNEL_OPEN;
-	      goto redo;
+	      goto reject;
 	    }
 
 	  /* Check if authentication data matches our fake data. */
@@ -302,7 +322,7 @@ void channel_prepare_select(fd_set *readset, fd_set *writeset)
 	    {
 	      debug("X11 auth data does not match fake data.");
 	      ch->type = SSH_CHANNEL_OPEN;
-	      goto redo;
+	      goto reject;
 	    }
 
 	  /* Received authentication protocol and data match our fake data.
@@ -314,6 +334,20 @@ void channel_prepare_select(fd_set *readset, fd_set *writeset)
 	  /* Start normal processing for the channel. */
 	  ch->type = SSH_CHANNEL_OPEN;
 	  goto redo;
+	  
+	reject:
+	  /* We have received an X11 connection that has bad authentication
+	     information. */
+	  log("X11 connection rejected because of wrong authentication.\r\n");
+	  buffer_clear(&ch->input);
+	  buffer_clear(&ch->output);
+	  close(ch->sock);
+	  ch->sock = -1;
+	  ch->type = SSH_CHANNEL_CLOSED;
+	  packet_start(SSH_MSG_CHANNEL_CLOSE);
+	  packet_put_int(ch->remote_id);
+	  packet_send();
+	  break;
 
 	case SSH_CHANNEL_FREE:
 	default:
@@ -492,7 +526,7 @@ void channel_output_poll()
       if (len > 0)
 	{
 	  /* Send some data for the other side over the secure connection. */
-	  if (packet_is_interactive)
+	  if (packet_is_interactive())
 	    {
 	      if (len > 1024)
 		len = 1024;
@@ -703,10 +737,7 @@ void channel_close_all()
   for (i = 0; i < channels_alloc; i++)
     {
       if (channels[i].type != SSH_CHANNEL_FREE)
-	{
-	  shutdown(channels[i].sock, 2);
-	  close(channels[i].sock);
-	}
+	close(channels[i].sock);
     }
 }
 
@@ -765,6 +796,7 @@ void channel_request_local_forwarding(int port, const char *host,
     packet_disconnect("socket: %s", strerror(errno));
 
   /* Initialize socket address. */
+  memset(&sin, 0, sizeof(sin));
   sin.sin_family = AF_INET;
   sin.sin_addr.s_addr = INADDR_ANY;
   sin.sin_port = htons(port);
@@ -879,7 +911,12 @@ void channel_input_port_open()
 	}
     }
   
+  memset(&sin, 0, sizeof(sin));
+#ifdef BROKEN_INET_ADDR
+  sin.sin_addr.s_addr = inet_network(host);
+#else /* BROKEN_INET_ADDR */
   sin.sin_addr.s_addr = inet_addr(host);
+#endif /* BROKEN_INET_ADDR */
   if ((sin.sin_addr.s_addr & 0xffffffff) != 0xffffffff)
     {
       /* It was a valid numeric host address. */
@@ -1047,6 +1084,7 @@ char *x11_create_display_inet()
   for (display_number = 1; display_number < MAX_DISPLAYS; display_number++)
     {
       port = 6000 + display_number;
+      memset(&sin, 0, sizeof(sin));
       sin.sin_family = AF_INET;
       sin.sin_addr.s_addr = INADDR_ANY;
       sin.sin_port = htons(port);
@@ -1188,7 +1226,12 @@ void x11_input_open()
     }
   
   /* Try to parse the host name as a numeric IP address. */
+  memset(&sin, 0, sizeof(sin));
+#ifdef BROKEN_INET_ADDR
+  sin.sin_addr.s_addr = inet_network(buf);
+#else /* BROKEN_INET_ADDR */
   sin.sin_addr.s_addr = inet_addr(buf);
+#endif /* BROKEN_INET_ADDR */
   if ((sin.sin_addr.s_addr & 0xffffffff) != 0xffffffff)
     {
       /* It was a valid numeric host address. */
@@ -1341,69 +1384,94 @@ char *auth_get_socket_name()
 /* This if called to process SSH_CMSG_AGENT_REQUEST_FORWARDING on the server.
    This starts forwarding authentication requests. */
 
-void auth_input_request_forwarding(uid_t uid, gid_t gid)
+void auth_input_request_forwarding(struct passwd *pw)
 {
-#ifdef AGENT_USES_SOCKET
-
-  int sock, newch;
-  struct sockaddr_un sunaddr;
-
-  if (auth_get_socket_name() != NULL)
-    fatal("Protocol error: authentication forwarding requested twice.");
-
-  /* Allocate a buffer for the socket name, and format the name. */
-  channel_forwarded_auth_socket_name = xmalloc(100);
-  sprintf(channel_forwarded_auth_socket_name, SSH_AGENT_SOCKET, (int)getpid());
+  uid_t uid = pw->pw_uid;
+  gid_t gid = pw->pw_gid;
+  int pfd = get_permanent_fd(pw->pw_shell);
   
-  /* Create the socket. */
-  sock = socket(AF_UNIX, SOCK_STREAM, 0);
-  if (sock < 0)
-    packet_disconnect("socket: %s", strerror(errno));
-  /* Bind it to the name. */
-  sunaddr.sun_family = AF_UNIX;
-  strncpy(sunaddr.sun_path, channel_forwarded_auth_socket_name, 
-	  sizeof(sunaddr.sun_path));
-  if (bind(sock, (struct sockaddr *)&sunaddr, sizeof(sunaddr)) < 0)
-    packet_disconnect("bind: %s", strerror(errno));
-  /* Make the socket only accessible to the user himself. */
-  if (chmod(channel_forwarded_auth_socket_name, 0700) < 0)
-    packet_disconnect("chmod: %s", strerror(errno));
-  if (chown(channel_forwarded_auth_socket_name, uid, gid) < 0)
-    packet_disconnect("chown: %s", strerror(errno));
-  /* Start listening on the socket. */
-  if (listen(sock, 5) < 0)
-    packet_disconnect("listen: %s", strerror(errno));
-  /* Allocate a channel for the authentication agent socket. */
-  newch = channel_allocate(SSH_CHANNEL_AUTH_SOCKET, sock);
-  strcpy(channels[newch].path, channel_forwarded_auth_socket_name);
+  if (pfd < 0) 
+    {
+      int sock, newch;
+      struct sockaddr_un sunaddr;
+      
+      if (auth_get_socket_name() != NULL)
+	fatal("Protocol error: authentication forwarding requested twice.");
+    
+      /* Allocate a buffer for the socket name, and format the name. */
+      channel_forwarded_auth_socket_name = xmalloc(100);
+      sprintf(channel_forwarded_auth_socket_name, SSH_AGENT_SOCKET, 
+	      (int)getpid());
+    
+      /* Create the socket. */
+      sock = socket(AF_UNIX, SOCK_STREAM, 0);
+      if (sock < 0)
+	packet_disconnect("socket: %s", strerror(errno));
 
-#else /* AGENT_USES_SOCKET */
+      /* Bind it to the name. */
+      memset(&sunaddr, 0, sizeof(sunaddr));
+      sunaddr.sun_family = AF_UNIX;
+      strncpy(sunaddr.sun_path, channel_forwarded_auth_socket_name, 
+	      sizeof(sunaddr.sun_path));
+      if (bind(sock, (struct sockaddr *)&sunaddr, sizeof(sunaddr)) < 0)
+	packet_disconnect("bind: %s", strerror(errno));
 
-  int sockets[2], dups[SSH_NUM_DUPS], i;
+      /* Make the socket only accessible to the user himself. */
+      if (chmod(channel_forwarded_auth_socket_name, 0700) < 0)
+	packet_disconnect("chmod: %s", strerror(errno));
+      if (chown(channel_forwarded_auth_socket_name, uid, gid) < 0)
+	packet_disconnect("chown: %s", strerror(errno));
 
-  if (auth_get_fd() != -1)
-    fatal("Protocol error: authentication forwarding requested twice.");
-  
-  /* Dup some descriptors to get the authentication fd above descriptor 10,
-     because some shells arbitrarily close descriptors below that. */
-  for (i = 0; i < SSH_NUM_DUPS; i++)
-    dups[i] = dup(packet_get_connection());
+      /* Start listening on the socket. */
+      if (listen(sock, 5) < 0)
+	packet_disconnect("listen: %s", strerror(errno));
 
-  /* Create a socket pair. */
-  if (socketpair(AF_UNIX, SOCK_STREAM, 0, sockets) < 0)
-    packet_disconnect("socketpair: %s", strerror(errno));
+      /* Allocate a channel for the authentication agent socket. */
+      newch = channel_allocate(SSH_CHANNEL_AUTH_SOCKET, sock);
+      strcpy(channels[newch].path, channel_forwarded_auth_socket_name);
+    }
+  else 
+    {
+      int sockets[2], i, cnt, newfd;
+      int *dups = xmalloc(sizeof (int) * (pfd + 1));
+      
+      if (auth_get_fd() != -1)
+	fatal("Protocol error: authentication forwarding requested twice.");
 
-  /* Close duped descriptors. */
-  for (i = 0; i < SSH_NUM_DUPS; i++)
-    close(dups[i]);
-
-  /* Record the file descriptor to be passed to children. */
-  channel_forwarded_auth_fd = sockets[1];
-
-  /* Allcate a channel for the authentication fd. */
-  (void)channel_allocate(SSH_CHANNEL_AUTH_FD, sockets[0]);
-
-#endif /* AGENT_USES_SOCKET */
+      /* Create a socket pair. */
+      if (socketpair(AF_UNIX, SOCK_STREAM, 0, sockets) < 0)
+	packet_disconnect("socketpair: %s", strerror(errno));
+    
+      /* Dup some descriptors to get the authentication fd to pfd,
+	 because some shells arbitrarily close descriptors below that.
+	 Don't use dup2 because maybe some systems don't have it?? */
+      for (cnt = 0;; cnt++) 
+	{
+	  if ((dups[cnt] = dup(packet_get_connection())) < 0)
+	    fatal("auth_input_request_forwarding: dup failed");
+	  if (dups[cnt] == pfd)
+	    break;
+	}
+      close(dups[cnt]);
+      
+      /* Move the file descriptor we pass to children up high where
+	 the shell won't close it. */
+      newfd = dup(sockets[1]);
+      if (newfd != pfd)
+	fatal ("auth_input_request_forwarding: dup didn't return %d.", pfd);
+      close(sockets[1]);
+      sockets[1] = newfd;
+      /* Close duped descriptors. */
+      for (i = 0; i < cnt; i++)
+	close(dups[i]);
+      free(dups);
+    
+      /* Record the file descriptor to be passed to children. */
+      channel_forwarded_auth_fd = sockets[1];
+    
+      /* Allcate a channel for the authentication fd. */
+      (void)channel_allocate(SSH_CHANNEL_AUTH_FD, sockets[0]);
+    }
 }
 
 /* This is called to process an SSH_SMSG_AGENT_OPEN message. */

@@ -12,8 +12,33 @@ Created: Mon Aug 21 15:48:58 1995 ylo
 */
 
 /*
- * $Id: servconf.c,v 1.1.1.1 1996/02/18 21:38:12 ylo Exp $
+ * $Id: servconf.c,v 1.7 1997/03/27 03:14:16 kivinen Exp $
  * $Log: servconf.c,v $
+ * Revision 1.7  1997/03/27 03:14:16  kivinen
+ * 	Changed sAllow_Tcp_Forwarding to sAllowTcpForwarding and
+ * 	sKerberos_Or_Local_Passwd to sKerberosOrLocalPasswd.
+ *
+ * Revision 1.6  1997/03/27 03:12:39  kivinen
+ * 	Added kerberos patches from Glenn Machin.
+ * 	Added USELOGIN patches from Brian Cully.
+ *
+ * Revision 1.5  1997/03/26 05:33:16  kivinen
+ * 	Added idle_timeout option.
+ *
+ * Revision 1.4  1997/03/25 05:44:38  kivinen
+ * 	Added SilentDeny and Umask options.
+ * 	Added = to WHITESPACE to allow options in form foo=bar.
+ * 	Changed keywords to be case insensitive.
+ *
+ * Revision 1.3  1997/03/19 17:55:04  kivinen
+ * 	Added TIS authentication code from Andre April
+ * 	<Andre.April@cediti.be>.
+ * 	Added SECURE_RPC, SECURE_NFS and NIS_PLUS support from Andy
+ * 	Polyakov <appro@fy.chalmers.se>.
+ *
+ * Revision 1.2  1996/11/27 15:38:27  ttsalo
+ *     Added X11DisplayOffset-option
+ *
  * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
  * 	Imported ssh-1.2.13.
  *
@@ -44,16 +69,27 @@ void initialize_server_options(ServerOptions *options)
   options->fascist_logging = -1;
   options->print_motd = -1;
   options->x11_forwarding = -1;
+  options->x11_display_offset = -1;
   options->strict_modes = -1;
   options->keepalives = -1;
   options->log_facility = (SyslogFacility)-1;
   options->rhosts_authentication = -1;
   options->rhosts_rsa_authentication = -1;
   options->rsa_authentication = -1;
+  options->kerberos_authentication = -1;
+  options->kerberos_or_local_passwd = -1;
+  options->kerberos_tgt_passing = -1;
+  options->tis_authentication = -1;
+  options->allow_tcp_forwarding = -1;
   options->password_authentication = -1;
   options->permit_empty_passwd = -1;
+  options->use_login = -1;
+  options->silent_deny = -1;
+  options->forced_passwd_change = -1;
   options->num_allow_hosts = 0;
   options->num_deny_hosts = 0;
+  options->umask = -1;
+  options->idle_timeout = -1;
 }
 
 void fill_default_server_options(ServerOptions *options)
@@ -93,6 +129,8 @@ void fill_default_server_options(ServerOptions *options)
     options->print_motd = 1;
   if (options->x11_forwarding == -1)
     options->x11_forwarding = 1;
+  if (options->x11_display_offset == -1)
+    options->x11_display_offset = 1;
   if (options->strict_modes == -1)
     options->strict_modes = 1;
   if (options->keepalives == -1)
@@ -105,13 +143,39 @@ void fill_default_server_options(ServerOptions *options)
     options->rhosts_rsa_authentication = 1;
   if (options->rsa_authentication == -1)
     options->rsa_authentication = 1;
+  if (options->kerberos_authentication == -1)
+#if defined(KERBEROS) && defined(KRB5)
+    options->kerberos_authentication = 1;
+#else  /* defined(KERBEROS) && defined(KRB5) */
+    options->kerberos_authentication = 0;
+#endif /* defined(KERBEROS) && defined(KRB5) */
+  if (options->kerberos_or_local_passwd == -1)
+    options->kerberos_or_local_passwd = 0;
+  if (options->kerberos_tgt_passing == -1)
+#if defined(KERBEROS_TGT_PASSING) && defined(KRB5)
+    options->kerberos_tgt_passing = 1;
+#else  /* defined(KERBEROS_TGT_PASSING) && defined(KRB5) */
+    options->kerberos_tgt_passing = 0;
+#endif /* defined(KERBEROS_TGT_PASSING) && defined(KRB5) */
+  if (options->allow_tcp_forwarding = -1)
+    options->allow_tcp_forwarding = 0;
+  if (options->tis_authentication == -1)
+    options->tis_authentication = 0;
   if (options->password_authentication == -1)
     options->password_authentication = 1;
   if (options->permit_empty_passwd == -1)
-      options->permit_empty_passwd = 1;
+    options->permit_empty_passwd = 1;
+  if (options->use_login == -1)
+    options->use_login = 0;
+  if (options->silent_deny == -1)
+    options->silent_deny = 0;
+  if (options->forced_passwd_change == -1)
+    options->forced_passwd_change = 0;
+  if (options->idle_timeout == -1)
+    options->idle_timeout = 0;
 }
 
-#define WHITESPACE " \t\r\n"
+#define WHITESPACE " \t\r\n="
 
 /* Keyword tokens. */
 typedef enum 
@@ -119,9 +183,12 @@ typedef enum
   sPort, sHostKeyFile, sServerKeyBits, sLoginGraceTime, sKeyRegenerationTime,
   sPermitRootLogin, sQuietMode, sFascistLogging, sLogFacility,
   sRhostsAuthentication, sRhostsRSAAuthentication, sRSAAuthentication,
-  sPasswordAuthentication, sAllowHosts, sDenyHosts, sListenAddress,
-  sPrintMotd, sIgnoreRhosts, sX11Forwarding,
-  sStrictModes, sEmptyPasswd, sRandomSeedFile, sKeepAlives, sPidFile
+  sTISAuthentication, sPasswordAuthentication, sAllowHosts, sDenyHosts,
+  sListenAddress, sPrintMotd, sIgnoreRhosts, sX11Forwarding, sX11DisplayOffset,
+  sStrictModes, sEmptyPasswd, sRandomSeedFile, sKeepAlives, sPidFile,
+  sForcedPasswd, sUmask, sSilentDeny, sIdleTimeout, sUseLogin,
+  sKerberosAuthentication, sKerberosOrLocalPasswd, sKerberosTgtPassing,
+  sAllowTcpForwarding
 } ServerOpCodes;
 
 /* Textual representation of the tokens. */
@@ -131,30 +198,41 @@ static struct
   ServerOpCodes opcode;
 } keywords[] =
 {
-  { "Port", sPort },
-  { "HostKey", sHostKeyFile },
-  { "ServerKeyBits", sServerKeyBits },
-  { "LoginGraceTime", sLoginGraceTime },
-  { "KeyRegenerationInterval", sKeyRegenerationTime },
-  { "PermitRootLogin", sPermitRootLogin },
-  { "QuietMode", sQuietMode },
-  { "FascistLogging", sFascistLogging },
-  { "SyslogFacility", sLogFacility },
-  { "RhostsAuthentication", sRhostsAuthentication },
-  { "RhostsRSAAuthentication", sRhostsRSAAuthentication },
-  { "RSAAuthentication", sRSAAuthentication },
-  { "PasswordAuthentication", sPasswordAuthentication },
-  { "AllowHosts", sAllowHosts },
-  { "DenyHosts", sDenyHosts },
-  { "ListenAddress", sListenAddress },
-  { "PrintMotd", sPrintMotd },
-  { "IgnoreRhosts", sIgnoreRhosts },
-  { "X11Forwarding", sX11Forwarding },
-  { "StrictModes", sStrictModes },
-  { "PermitEmptyPasswords", sEmptyPasswd },
-  { "RandomSeed", sRandomSeedFile },
-  { "KeepAlive", sKeepAlives },
-  { "PidFile", sPidFile },
+  { "port", sPort },
+  { "hostkey", sHostKeyFile },
+  { "serverkeybits", sServerKeyBits },
+  { "logingracetime", sLoginGraceTime },
+  { "keyregenerationinterval", sKeyRegenerationTime },
+  { "permitrootlogin", sPermitRootLogin },
+  { "quietmode", sQuietMode },
+  { "fascistlogging", sFascistLogging },
+  { "syslogfacility", sLogFacility },
+  { "rhostsauthentication", sRhostsAuthentication },
+  { "rhostsrsaauthentication", sRhostsRSAAuthentication },
+  { "rsaauthentication", sRSAAuthentication },
+  { "tisauthentication", sTISAuthentication },
+  { "passwordauthentication", sPasswordAuthentication },
+  { "uselogin", sUseLogin },
+  { "allowhosts", sAllowHosts },
+  { "denyhosts", sDenyHosts },
+  { "listenaddress", sListenAddress },
+  { "printmotd", sPrintMotd },
+  { "ignorerhosts", sIgnoreRhosts },
+  { "x11forwarding", sX11Forwarding },
+  { "x11displayoffset", sX11DisplayOffset },
+  { "strictmodes", sStrictModes },
+  { "permitemptypasswords", sEmptyPasswd },
+  { "forcepasswdchange", sForcedPasswd },
+  { "randomseed", sRandomSeedFile },
+  { "keepalive", sKeepAlives },
+  { "pidfile", sPidFile },
+  { "umask", sUmask },
+  { "silentdeny", sSilentDeny },
+  { "idletimeout", sIdleTimeout },
+  { "kerberosauthentication", sKerberosAuthentication },
+  { "kerberosorlocalpasswd", sKerberosOrLocalPasswd },
+  { "kerberostgtpassing", sKerberosTgtPassing },
+  { "allowtcpforwarding", sAllowTcpForwarding },
   { NULL, 0 }
 };
 
@@ -164,17 +242,17 @@ static struct
   SyslogFacility facility;
 } log_facilities[] =
 {
-  { "DAEMON", SYSLOG_FACILITY_DAEMON },
-  { "USER", SYSLOG_FACILITY_USER },
-  { "AUTH", SYSLOG_FACILITY_AUTH },
-  { "LOCAL0", SYSLOG_FACILITY_LOCAL0 },
-  { "LOCAL1", SYSLOG_FACILITY_LOCAL1 },
-  { "LOCAL2", SYSLOG_FACILITY_LOCAL2 },
-  { "LOCAL3", SYSLOG_FACILITY_LOCAL3 },
-  { "LOCAL4", SYSLOG_FACILITY_LOCAL4 },
-  { "LOCAL5", SYSLOG_FACILITY_LOCAL5 },
-  { "LOCAL6", SYSLOG_FACILITY_LOCAL6 },
-  { "LOCAL7", SYSLOG_FACILITY_LOCAL7 },
+  { "daemon", SYSLOG_FACILITY_DAEMON },
+  { "user", SYSLOG_FACILITY_USER },
+  { "auth", SYSLOG_FACILITY_AUTH },
+  { "local0", SYSLOG_FACILITY_LOCAL0 },
+  { "local1", SYSLOG_FACILITY_LOCAL1 },
+  { "local2", SYSLOG_FACILITY_LOCAL2 },
+  { "local3", SYSLOG_FACILITY_LOCAL3 },
+  { "local4", SYSLOG_FACILITY_LOCAL4 },
+  { "local5", SYSLOG_FACILITY_LOCAL5 },
+  { "local6", SYSLOG_FACILITY_LOCAL6 },
+  { "local7", SYSLOG_FACILITY_LOCAL7 },
   { NULL, 0 }
 };
 
@@ -220,6 +298,8 @@ void read_server_config(ServerOptions *options, const char *filename)
       if (!*cp || *cp == '#')
 	continue;
       cp = strtok(cp, WHITESPACE);
+      for(i = 0; cp[i]; i++)
+	cp[i] = tolower(cp[i]);
       opcode = parse_token(cp, filename, linenum);
       switch (opcode)
 	{
@@ -233,7 +313,36 @@ void read_server_config(ServerOptions *options, const char *filename)
 		      filename, linenum);
 	      exit(1);
 	    }
-	  value = atoi(cp);
+	  if (*cp == '0')	/* Octal or hex */
+	    {
+	      int base;
+	      
+	      cp++;
+	      if (*cp == 'x')	/* Hex */
+		{
+		  cp++;
+		  base = 16;
+		}
+	      else
+		base = 8;
+	      value = 0;
+	      while ((base == 16 && isxdigit(*cp)) ||
+		     (base == 8 && isdigit(*cp) && *cp < '8'))
+		{
+		  value *= base;
+		  if (*cp >= 'a' && *cp <= 'f')
+		    value += *cp - 'a' + 10;
+		  else if (*cp >= 'A' && *cp <= 'F')
+		    value += *cp - 'A' + 10;
+		  else
+		    value += *cp - '0';
+		  cp++;
+		}
+	    }
+	  else
+	    {
+	      value = atoi(cp);
+	    }
 	  if (*intptr == -1)
 	    *intptr = value;
 	  break;
@@ -295,6 +404,8 @@ void read_server_config(ServerOptions *options, const char *filename)
 		      filename, linenum);
 	      exit(1);
 	    }
+	  for(i = 0; cp[i]; i++)
+	    cp[i] = tolower(cp[i]);
 	  if (strcmp(cp, "yes") == 0)
 	    value = 2;
 	  else if (strcmp(cp, "nopwd") == 0)
@@ -319,6 +430,8 @@ void read_server_config(ServerOptions *options, const char *filename)
 		      filename, linenum);
 	      exit(1);
 	    }
+	  for(i = 0; cp[i]; i++)
+	    cp[i] = tolower(cp[i]);
 	  if (strcmp(cp, "yes") == 0 || strcmp(cp, "true") == 0)
 	    value = 1;
 	  else
@@ -358,10 +471,34 @@ void read_server_config(ServerOptions *options, const char *filename)
 	  intptr = &options->rsa_authentication;
 	  goto parse_flag;
 	  
+ 	case sKerberosAuthentication:
+ 	  intptr = &options->kerberos_authentication;
+ 	  goto parse_flag;
+	  
+ 	case sKerberosOrLocalPasswd:
+ 	  intptr = &options->kerberos_or_local_passwd;
+ 	  goto parse_flag;
+	  
+ 	case sKerberosTgtPassing:
+ 	  intptr = &options->kerberos_tgt_passing;
+ 	  goto parse_flag;
+	  
+ 	case sAllowTcpForwarding:
+ 	  intptr = &options->allow_tcp_forwarding;
+	  goto parse_flag;
+	  
+	case sTISAuthentication:
+	  intptr = &options->tis_authentication;
+	  goto parse_flag;
+	  
 	case sPasswordAuthentication:
 	  intptr = &options->password_authentication;
 	  goto parse_flag;
 
+	case sUseLogin:
+	  intptr = &options->use_login;
+	  goto parse_flag;
+	  
 	case sPrintMotd:
 	  intptr = &options->print_motd;
 	  goto parse_flag;
@@ -369,6 +506,10 @@ void read_server_config(ServerOptions *options, const char *filename)
 	case sX11Forwarding:
 	  intptr = &options->x11_forwarding;
 	  goto parse_flag;
+
+        case sX11DisplayOffset:
+            intptr = &options->x11_display_offset;
+            goto parse_int;
 
 	case sStrictModes:
 	  intptr = &options->strict_modes;
@@ -381,6 +522,61 @@ void read_server_config(ServerOptions *options, const char *filename)
 	case sEmptyPasswd:
 	  intptr = &options->permit_empty_passwd;
 	  goto parse_flag;
+	  
+	case sSilentDeny:
+	  intptr = &options->silent_deny;
+	  goto parse_flag;
+
+	case sForcedPasswd:
+	  intptr = &options->forced_passwd_change;
+	  goto parse_flag;
+
+	case sUmask:
+	  intptr = &options->umask;
+	  goto parse_int;
+
+	case sIdleTimeout:
+	  cp = strtok(NULL, WHITESPACE);
+	  if (!cp)
+	    {
+	      fprintf(stderr, "%s line %d: missing integer value.\n", 
+		      filename, linenum);
+	      exit(1);
+	    }
+	  value = 0;
+	  while(isdigit(*cp))
+	    {
+	      value *= 10;
+	      value += *cp - '0';
+	      cp++;
+	    }
+	  *cp = tolower(*cp);
+	  if (*cp == 'w') /* Weeks */
+	    {
+	      value *= 7 * 24 * 60 * 60;
+	      cp++;
+	    }
+	  else if (*cp == 'd') /* Days */
+	    {
+	      value *= 24 * 60 * 60;
+	      cp++;
+	    }
+	  else if (*cp == 'h') /* Hours */
+	    {
+	      value *= 60 * 60;
+	      cp++;
+	    }
+	  else if (*cp == 'm') /* Minutes */
+	    {
+	      value *= 60;
+	      cp++;
+	    }
+	  else if (*cp == 's')
+	    {
+	      cp++;
+	    }
+	  options->idle_timeout = value;
+	  break;
 
 	case sLogFacility:
 	  cp = strtok(NULL, WHITESPACE);
@@ -390,6 +586,8 @@ void read_server_config(ServerOptions *options, const char *filename)
 		      filename, linenum);
 	      exit(1);
 	    }
+	  for(i = 0; cp[i]; i++)
+	    cp[i] = tolower(cp[i]);
 	  for (i = 0; log_facilities[i].name; i++)
 	    if (strcmp(log_facilities[i].name, cp) == 0)
 	      break;

@@ -15,8 +15,57 @@ login (authentication) dialog.
 */
 
 /*
- * $Id: sshconnect.c,v 1.7 1996/10/29 22:47:16 kivinen Exp $
+ * $Id: sshconnect.c,v 1.19 1997/03/27 03:11:35 kivinen Exp $
  * $Log: sshconnect.c,v $
+ * Revision 1.19  1997/03/27 03:11:35  kivinen
+ * 	Added kerberos patches from Glenn Machin.
+ *
+ * Revision 1.18  1997/03/26 07:11:08  kivinen
+ * 	Added local localhost mapping.
+ * 	Fixed some messages.
+ * 	Allow password authentication even when host key have
+ * 	changed, because we ask about it from user.
+ *
+ * Revision 1.17  1997/03/26 05:35:30  kivinen
+ * 	Changed uid 0 to UID_ROOT.
+ *
+ * Revision 1.16  1997/03/25 05:47:15  kivinen
+ * 	Added Rgethostbyname for SOCKS5.
+ *
+ * Revision 1.15  1997/03/19 21:16:22  kivinen
+ * 	Added local mapping of "localhost" to "127.0.0.1" to avoid dns
+ * 	attacks for localhost (the host key checking is disabled for
+ * 	localhost).
+ * 	Added yes/no prompt if host key is not known or changed.
+ * 	Disabled x11 and port forwardings if host key have changed.
+ *
+ * Revision 1.14  1997/03/19 17:45:36  kivinen
+ * 	Added SECURE_RPC, SECURE_NFS and NIS_PLUS support from Andy
+ * 	Polyakov <appro@fy.chalmers.se>.
+ * 	Disabled agent forwarding if host key doesn't match.
+ * 	Added TIS authentication code from Andre April
+ * 	<Andre.April@cediti.be>.
+ *
+ * Revision 1.13  1996/12/04 18:15:08  ttsalo
+ *     Added calls to ssh_close_authentication_connection
+ *
+ * Revision 1.12  1996/11/12 18:44:41  kivinen
+ * 	Changed password back to foos's password, as I was informed
+ * 	that Webster was in illiterate and the previous version was
+ * 	correct when using English grammar.
+ *
+ * Revision 1.11  1996/11/07 06:48:12  kivinen
+ * 	Fixed foos's password: prompt to foos' password:.
+ *
+ * Revision 1.10  1996/11/04 16:19:29  ttsalo
+ *       Improved error handling in code receiving protocol version byte
+ *
+ * Revision 1.9  1996/11/04 14:37:16  ttsalo
+ *       Fixed someone's typo (...VERSION_MAJOR... -> ...MAJOR_VERSION...)
+ *
+ * Revision 1.8  1996/11/04 06:34:24  ylo
+ * 	Updated processing of check_emulation output.
+ *
  * Revision 1.7  1996/10/29 22:47:16  kivinen
  * 	log -> log_msg.
  * 	Added username to password prompt.
@@ -116,6 +165,16 @@ login (authentication) dialog.
 #include "mpaux.h"
 #include "userfile.h"
 #include "emulate.h"
+
+#ifdef KERBEROS
+#ifdef KRB5
+#include <krb5.h>
+
+/* Global the contexts */
+krb5_context ssh_context = 0;
+krb5_auth_context auth_context = 0;
+#endif /* KRB5 */
+#endif /* KERBEROS */
 
 /* Session id for the current session. */
 unsigned char session_id[16];
@@ -313,6 +372,10 @@ int ssh_connect(const char *host, int port, int connection_attempts,
 	port = SSH_DEFAULT_PORT;
     }
 
+  /* Map localhost to ip-address locally */
+  if (strcmp(host, "localhost") == 0)
+    host = "127.0.0.1";
+  
   /* If a proxy command is given, connect using it. */
   if (proxy_command != NULL)
     return ssh_proxy_connect(host, port, original_real_uid, proxy_command,
@@ -348,7 +411,7 @@ int ssh_connect(const char *host, int port, int connection_attempts,
       
 	  /* Create a socket. */
 	  sock = ssh_create_socket(original_real_uid, 
-				   !anonymous && geteuid() == 0);
+				   !anonymous && geteuid() == UID_ROOT);
       
 	  /* Connect to the host. */
 #ifdef SOCKS
@@ -375,7 +438,11 @@ int ssh_connect(const char *host, int port, int connection_attempts,
 	    {
 	      struct hostent *hp_static;
 
+#ifdef SOCKS5
+	      hp_static = Rgethostbyname(host);
+#else
 	      hp_static = gethostbyname(host);
+#endif
 	      if (hp_static)
 		{
 		  hp = xmalloc(sizeof(struct hostent));
@@ -415,7 +482,7 @@ int ssh_connect(const char *host, int port, int connection_attempts,
 
 	      /* Create a socket for connecting. */
 	      sock = ssh_create_socket(original_real_uid, 
-				       !anonymous && geteuid() == 0 && 
+				       !anonymous && geteuid() == UID_ROOT && 
 				         port < 1024);
 
 	      /* Connect to the host. */
@@ -563,18 +630,24 @@ int try_agent_authentication()
 	  mpz_clear(&e);
 	  mpz_clear(&n);
 	  mpz_clear(&challenge);
+	  ssh_close_authentication_connection(auth);
 	  return 1;
 	}
 
       /* Otherwise it should return failure. */
       if (type != SSH_SMSG_FAILURE)
-	packet_disconnect("Protocol error waiting RSA auth response: %d", 
-			  type);
+	{
+	  ssh_close_authentication_connection(auth);
+	  packet_disconnect("Protocol error waiting RSA auth response: %d", 
+			    type);
+	}
     }
 
   mpz_clear(&e);
   mpz_clear(&n);
   mpz_clear(&challenge);
+
+  ssh_close_authentication_connection(auth);
 
   debug("RSA authentication using agent refused.");
   return 0;
@@ -625,7 +698,8 @@ int try_rsa_authentication(struct passwd *pw, const char *authfile,
   RSAPublicKey public_key;
   char *passphrase, *comment;
   int type, i;
-
+  int done;
+  
   /* Try to load identification for the authentication key. */
   if (!load_public_key(pw->pw_uid, authfile, &public_key, &comment))
     return 0; /* Could not load it.  Fail. */
@@ -665,7 +739,23 @@ int try_rsa_authentication(struct passwd *pw, const char *authfile,
 
   /* Load the private key.  Try first with empty passphrase; if it fails, 
      ask for a passphrase. */
-  if (!load_private_key(pw->pw_uid, authfile, "", &private_key, NULL))
+  done = load_private_key(pw->pw_uid, authfile, "", &private_key, NULL);
+#ifdef SECURE_RPC
+  if (!done)
+    {
+      passphrase = userfile_get_des_1_magic_phrase(pw->pw_uid);
+      if (passphrase != NULL)
+	{
+	  done = load_private_key(pw->pw_uid, authfile, passphrase,
+				  &private_key, NULL);
+	  if (done)
+	    debug("Using SUN-DES-1 magic phrase to decrypt the private key.");
+	  memset(passphrase, 0, strlen(passphrase));
+	  xfree(passphrase);
+	}
+    }
+#endif
+  if (!done)
     {
       char buf[300];
       /* Request passphrase from the user.  We read from /dev/tty to make
@@ -793,6 +883,259 @@ int try_rhosts_rsa_authentication(const char *local_user,
   return 0;
 }
 
+#ifdef KERBEROS
+int try_kerberos_authentication()
+{
+#ifdef KRB5
+  char *remotehost;
+  krb5_data auth;
+  krb5_error_code r;
+  int  tempint, type;
+  krb5_ccache ccache;
+  krb5_creds creds;
+  krb5_creds * new_creds = 0;
+  int ap_opts, ret_stat = 0;
+  krb5_keyblock   *session_key = 0;
+  krb5_ap_rep_enc_part *repl = 0;
+  struct sockaddr_in local, foreign;
+  
+  memset(&auth, 0 , sizeof(auth));
+  remotehost = (char *) get_canonical_hostname();
+  if (!ssh_context)
+    {
+      krb5_init_context(&ssh_context);
+      krb5_init_ets(ssh_context);
+    }
+  
+  if ((r = krb5_cc_default(ssh_context, &ccache)))
+    {
+      debug("Kerberos V5: could not get default ccache.");
+      goto cleanup;
+    }
+  
+  memset((char *)&creds, 0, sizeof(creds));
+  if ((r = krb5_sname_to_principal(ssh_context, remotehost,
+				   "host", KRB5_NT_SRV_HST,
+				   &creds.server)))
+    {
+      debug("Kerberos V5: error while constructing service name: %s.",
+	    error_message(r));
+      goto cleanup;
+    }
+  if ((r = krb5_cc_get_principal(ssh_context, ccache,
+				 &creds.client)))
+    {
+      debug("Kerberos V5: failure on principal (%s).",
+	    error_message(r));
+      goto cleanup;
+    }
+  
+  creds.keyblock.enctype=ENCTYPE_DES_CBC_CRC;
+  if ((r = krb5_get_credentials(ssh_context, 0,
+				ccache, &creds, &new_creds)))
+    {
+      debug("Kerberos V5: failure on credentials(%s).",
+	    error_message(r));
+      goto cleanup;
+    }
+  
+  /* ap_opts = AP_OPTS_MUTUAL_REQUIRED | AP_OPTS_USE_SUBKEY; */
+  ap_opts = 0;
+
+  if (!auth_context)
+    {
+      if ((r = krb5_auth_con_init(ssh_context, &auth_context)))
+	{
+	  debug("Kerberos V5: failed to init auth_context (%s)",
+		error_message(r));
+	  goto cleanup;
+        }
+      krb5_auth_con_setflags(ssh_context, auth_context,
+			     KRB5_AUTH_CONTEXT_RET_TIME);
+    }
+  
+  if ((r = krb5_mk_req_extended(ssh_context, &auth_context, ap_opts,
+				0, new_creds, &auth)))
+    {
+      debug("Kerberos V5: failed krb5_mk_req_extended (%s)",
+	    error_message(r));
+      goto cleanup;
+    }
+  
+  /* Send authentication info to server. */
+  packet_start(SSH_CMSG_AUTH_KERBEROS);
+  packet_put_string((char *) auth.data, auth.length);
+  packet_send();
+  packet_write_wait();
+  
+  tempint = sizeof(local);
+  memset(&local, 0, tempint);
+  if (getsockname(packet_get_connection_in(),
+		  (struct sockaddr *) &local, &tempint) < 0)
+    debug("getsockname failed: %.100s", strerror(errno));
+  
+  tempint = sizeof(foreign);
+  memset(&foreign, 0, tempint);
+  if (getpeername(packet_get_connection_in(),
+		  (struct sockaddr *)&foreign, &tempint) < 0)
+    debug("getpeername failed: %.100s", strerror(errno));
+  
+  if (auth.data)
+    {
+      free(auth.data); 
+      auth.data = 0;
+    }
+  
+    /* Get server reply. */
+  type = packet_read();
+  switch(type)
+    {
+    case SSH_SMSG_FAILURE:
+      debug("Kerberos V5 authentication failed.");
+      goto cleanup;
+      
+    case SSH_SMSG_AUTH_KERBEROS_RESPONSE:
+      /* Get server's response. */
+      auth.data = packet_get_string((unsigned int *) &auth.length);
+      
+      /* If his response isn't properly encrypted with the session key,
+         he's bogus. Also krb5_rd_rep will fail when MUTUAL AUTH is 
+         requested and the server does not send back a session encrypted
+         time stamp */
+      
+      if (r = krb5_rd_rep(ssh_context, auth_context, &auth, &repl))
+	{
+	  packet_disconnect("Kerberos V5 Authentication failed: %s",
+			    error_message(r));
+	  goto cleanup;
+	}
+      else
+	{
+	  debug("Kerberos V5 authentication accepted.");
+	  ret_stat = 1;
+	}
+      break;
+      
+    default:
+      packet_disconnect("Protocol error on Kerberos V5 response: %d", type);
+      goto cleanup;
+    }
+  
+cleanup:
+  krb5_free_cred_contents(ssh_context, &creds);
+  if (new_creds)
+    krb5_free_creds(ssh_context, new_creds);
+  if (session_key)
+    krb5_free_keyblock(ssh_context, session_key);
+  if (auth.data)
+    free(auth.data);
+  if (repl)
+    krb5_free_ap_rep_enc_part(ssh_context, repl);
+  
+  return(ret_stat);
+#endif /* KRB5 */
+}
+#endif /* KERBEROS */
+
+#ifdef KERBEROS_TGT_PASSING
+/* Forward our local Kerberos tgt to the server. */
+int send_kerberos_tgt()
+{
+#ifdef KRB5
+  char *remotehost;
+  krb5_principal client;
+  krb5_principal server;
+  krb5_ccache ccache;
+  krb5_data outbuf;
+  krb5_error_code r;
+  int type;
+  char server_name[128];
+  
+  remotehost = (char *) get_canonical_hostname();
+  memset(&outbuf, 0 , sizeof(outbuf));
+  
+  debug("Trying Kerberos V5 TGT passing.");
+  
+  if (!ssh_context)
+    {
+      krb5_init_context(&ssh_context);
+      krb5_init_ets(ssh_context);
+    }
+  if (!auth_context)
+    {
+      if ((r = krb5_auth_con_init(ssh_context, &auth_context)))
+	{
+	  debug("Kerberos V5: failed to init auth_context (%s)",
+		error_message(r));
+	  return 0 ;
+        }
+      krb5_auth_con_setflags(ssh_context, auth_context,
+			     KRB5_AUTH_CONTEXT_RET_TIME);
+    }
+  
+  if ((r = krb5_cc_default(ssh_context, &ccache)))
+    {
+      debug("Kerberos V5: could not get default ccache.");
+      return 0 ;
+    }
+  
+    if ((r = krb5_cc_get_principal(ssh_context, ccache,
+                                   &client)))
+      {
+        debug("Kerberos V5: failure on principal (%s)",
+	      error_message(r));
+        return 0 ;
+      }
+    
+    /* Somewhat of a hack here. We need to get the TGT for the
+       clients realm. However if remotehost is in another realm
+       krb5_fwd_tgt_creds will try to go to that realm to get
+       the TGT, which will fail. So we create the server 
+       principal and point it to clients realm. This way
+       we pass over a TGT of the clients realm. */
+    
+    sprintf(server_name,"host/%s@", remotehost);
+    strncat(server_name,client->realm.data,client->realm.length);
+    krb5_parse_name(ssh_context,server_name, &server);
+    server->type = KRB5_NT_SRV_HST;
+    
+    
+    if ((r = krb5_fwd_tgt_creds(ssh_context, auth_context, 0, client, 
+ 			        server, ccache, 1, &outbuf)))
+      {
+	debug("Kerberos V5 krb5_fwd_tgt_creds failure (%s)",
+	      error_message(r));
+	krb5_free_principal(ssh_context, client);
+        krb5_free_principal(ssh_context, server);
+	return 0 ;
+      }
+    packet_start(SSH_CMSG_HAVE_KERBEROS_TGT);
+    packet_put_string((char *)outbuf.data, outbuf.length);
+    packet_send();
+    packet_write_wait();
+    
+    if (outbuf.data)
+      free(outbuf.data);
+    krb5_free_principal(ssh_context, client);
+    krb5_free_principal(ssh_context, server);
+    
+    type = packet_read();
+    if (type == SSH_SMSG_SUCCESS)
+      {
+	debug("Kerberos V5 TGT passing was successful.");
+	return 1;
+      }
+    else
+      if (type != SSH_SMSG_FAILURE)
+	packet_disconnect("Protocol error on Kerberos tgt response: %d", type);
+      else 
+	debug("Kerberos V5 TGT passing failed.");
+    
+    return 0;
+#endif /* KRB5 */
+}
+#endif /* KERBEROS_TGT_PASSING */
+
 /* Waits for the server identification string, and sends our own identification
    string. */
 
@@ -801,14 +1144,19 @@ void ssh_exchange_identification()
   char buf[256], remote_version[256]; /* must be same size! */
   int remote_major, remote_minor, i;
   int my_major, my_minor;
+  int len;
   int connection_in = packet_get_connection_in();
   int connection_out = packet_get_connection_out();
 
   /* Read other side\'s version identification. */
   for (i = 0; i < sizeof(buf) - 1; i++)
     {
-      if (read(connection_in, &buf[i], 1) != 1)
-	fatal("read: %.100s", strerror(errno));
+      len = read(connection_in, &buf[i], 1);
+      if (len == 0)
+	fatal("Connection closed by foreign host.");
+      else
+	if (len < 0)
+	  fatal("read: %.100s", strerror(errno));
       if (buf[i] == '\r')
 	{
 	  buf[i] = '\n';
@@ -831,10 +1179,21 @@ void ssh_exchange_identification()
   debug("Remote protocol version %d.%d, remote software version %.100s",
 	remote_major, remote_minor, remote_version);
 
-  if (check_emulation(remote_major, remote_minor,
-		     &my_major, &my_minor) ==
-     EMULATE_VERSION_REALLY_TOO_OLD)
-    fatal("Remote machine has too old SSH software version.");
+  switch (check_emulation(remote_major, remote_minor,
+		     &my_major, &my_minor))
+    {
+    case EMULATE_VERSION_TOO_OLD:
+      fatal("Remote machine has too old SSH software version.");
+    case EMULATE_MAJOR_VERSION_MISMATCH:
+      fatal("Major protocol versions incompatible.");
+    case EMULATE_VERSION_NEWER:
+      /* We will emulate the old version. */
+      break;
+    case EMULATE_VERSION_OK:
+      break;
+    default:
+      fatal("Unexpected return value from check_emulation.");
+    }
   
   sprintf(buf, "SSH-%d.%d-%.100s\n", 
 	  my_major, my_minor, SSH_VERSION);
@@ -869,13 +1228,29 @@ void ssh_login(RandomState *state, int host_key_valid,
   unsigned char check_bytes[8];
   unsigned int supported_ciphers, supported_authentications, protocol_flags;
   HostStatus host_status;
-
+  char yes[50];
+#ifdef KERBEROS 
+#ifdef KRB5
+  char *kuser;
+  krb5_ccache ccache;
+  krb5_error_code problem;
+  krb5_principal client;
+#endif
+#endif
+  
   /* Convert the user-supplied hostname into all lowercase. */
   host = xstrdup(orighost);
   for (cp = host; *cp; cp++)
     if (isupper(*cp))
       *cp = tolower(*cp);
 
+  /* Map localhost to ip-address locally */
+  if (strcmp(host, "localhost") == 0)
+    {
+      xfree(host);
+      host = xstrdup("127.0.0.1");
+    }
+  
   /* Exchange protocol version identification strings with the server. */
   ssh_exchange_identification();
 
@@ -948,8 +1323,7 @@ void ssh_login(RandomState *state, int host_key_valid,
      and the user will get bogus HOST_CHANGED warnings.  This essentially
      disables host authentication for localhost; however, this is probably
      not a real problem. */
-  if (strcmp(host, "localhost") == 0 ||
-      strcmp(host, "127.0.0.1") == 0)
+  if (strcmp(host, "127.0.0.1") == 0)
     {
       debug("Forcing accepting of host key for localhost.");
       host_status = HOST_OK;
@@ -969,13 +1343,25 @@ void ssh_login(RandomState *state, int host_key_valid,
 	     is to abort. */
 	  fatal("No host key is known for %.200s and you have requested strict checking.", host);
 	}
+
+      error("Host key not found from the list of known hosts.");
+      do {
+	error("\nAre you sure you want to continue connecting (yes/no)? ");
+	if (fgets(yes, sizeof(yes), stdin) == NULL)
+	  fatal("Login aborted by user");
+	while (strlen(yes) >= 1 && isspace(yes[strlen(yes) - 1]))
+	  yes[strlen(yes) - 1] = '\0';
+	if (strcmp(yes, "no") == 0)
+	  exit(1);
+      } while (strcmp(yes, "yes") != 0);
+      
       /* If not in strict mode, add the key automatically to the local
 	 known_hosts file. */
       if (!add_host_to_hostfile(original_real_uid,
 				options->user_hostfile, host, host_key.bits,
 				&host_key.e, &host_key.n))
 	log_msg("Failed to add the host to the list of known hosts (%.500s).", 
-	    options->user_hostfile);
+		options->user_hostfile);
       else
 	log_msg("Host '%.200s' added to the list of known hosts.", host);
       break;
@@ -990,23 +1376,50 @@ void ssh_login(RandomState *state, int host_key_valid,
       error("Please contact your system administrator.");
       error("Add correct host key in %s to get rid of this message.", 
 	    options->user_hostfile);
-
+      
       /* If strict host key checking is in use, the user will have to edit
 	 the key manually and we can only abort. */
       if (options->strict_host_key_checking)
 	fatal("Host key for %.200s has changed and you have requested strict checking.", host);
-
+      
       /* If strict host key checking has not been requested, allow the
 	 connection but without password authentication. */
-      error("Password authentication is disabled to avoid trojan horses.");
-      options->password_authentication = 0;
+      if (options->forward_agent)
+	{
+	  error("Agent forwarding is disabled to avoid attacks by corrupted servers.");
+	  options->forward_agent = 0;
+	}
+      if (options->forward_x11)
+	{
+	  error("X11 forwarding is disabled to avoid attacks by corrupted servers.");
+	  options->forward_x11 = 0;
+	}
+      if (options->num_local_forwards > 0)
+	{
+	  error("Local port forwarding is disabled to avoid attacks by corrupted servers.");
+	  options->num_local_forwards = 0;
+	}
+      if (options->num_remote_forwards)
+	{
+	  error("Remote port forwarding is disabled to avoid attacks by corrupted servers.");
+	  options->num_remote_forwards = 0;
+	}
+      do {
+	error("\nAre you sure you want to continue connecting (yes/no)? ");
+	if (fgets(yes, sizeof(yes), stdin) == NULL)
+	  fatal("Login aborted by user");
+	while (strlen(yes) >= 1 && isspace(yes[strlen(yes) - 1]))
+	  yes[strlen(yes) - 1] = '\0';
+	if (strcmp(yes, "no") == 0)
+	  exit(1);
+      } while (strcmp(yes, "yes") != 0);
+      
       /* XXX Should permit the user to change to use the new id.  This could
          be done by converting the host key to an identifying sentence, tell
 	 that the host identifies itself by that sentence, and ask the user
 	 if he/she whishes to accept the authentication. */
       break;
     }
-
   /* Generate a session key. */
   
   /* Initialize the random number generator. */
@@ -1130,6 +1543,40 @@ void ssh_login(RandomState *state, int host_key_valid,
 
   debug("Received encrypted confirmation.");
 
+#ifdef KERBEROS 
+#ifdef KRB5
+  if (!ssh_context)
+    {
+      krb5_init_context(&ssh_context);
+      krb5_init_ets(ssh_context);
+    }
+  if ((supported_authentications & (1 << SSH_AUTH_KERBEROS)) &&
+      options->kerberos_authentication && options->no_user_given )
+    {
+      /* Send over fully qualified kerberos username for the 
+	 remote username. Let the server figure out what the 
+	 localname should be. */
+      
+      if (!krb5_cc_default(ssh_context, &ccache))
+	{
+	  if ((problem = krb5_cc_get_principal(ssh_context, ccache,
+					       &client)))
+	    {
+	      debug("Kerberos V5: failure on principal (%s).",
+                    error_message(problem));
+	    }
+	  else {
+	    if (!krb5_unparse_name(ssh_context, client, &kuser))
+	      server_user = kuser;
+	    krb5_free_principal(ssh_context, client);
+	  }
+	}
+      else
+	debug("Kerberos V5: could not get default ccache.");
+    }
+#endif /* KRB5 */
+#endif /* KERBEROS */
+  
   /* Send the name of the user to log in as on the server. */
   packet_start(SSH_CMSG_USER);
   packet_put_string(server_user, strlen(server_user));
@@ -1145,6 +1592,35 @@ void ssh_login(RandomState *state, int host_key_valid,
   if (type != SSH_SMSG_FAILURE)
     packet_disconnect("Protocol error: got %d in response to SSH_CMSG_USER",
 		      type);
+
+#ifdef KERBEROS_TGT_PASSING
+  /* Try Kerberos tgt passing if the server supports it. */
+  if ((supported_authentications & (1 << SSH_PASS_KERBEROS_TGT)) &&
+      options->kerberos_tgt_passing)
+    {
+      if (options->cipher == SSH_CIPHER_NONE)
+	log_msg("WARNING: Encryption is disabled! Ticket will be transmitted in the clear!");
+      (void)send_kerberos_tgt();
+    }
+#endif /* KERBEROS_TGT_PASSING */
+  
+#ifdef KERBEROS
+#ifdef KRB5
+  if ((supported_authentications & (1 << SSH_AUTH_KERBEROS)) &&
+      options->kerberos_authentication)
+    {
+      debug("Trying Kerberos V5 authentication.");
+#endif
+      if (try_kerberos_authentication()) {
+        /* The server should respond with success or failure. */
+        type = packet_read();
+        if (type == SSH_SMSG_SUCCESS)
+          return; /* Successful connection. */
+        if (type != SSH_SMSG_FAILURE)
+          packet_disconnect("Protocol error: got %d in response to Kerberos auth", type);
+      }
+    }
+#endif /* KERBEROS */
 
   /* Use rhosts authentication if running in privileged socket and we do not
      wish to remain anonymous. */
@@ -1190,6 +1666,50 @@ void ssh_login(RandomState *state, int host_key_valid,
 	if (try_rsa_authentication(pw, options->identity_files[i],
 				   !options->batch_mode))
 	  return; /* Successful connection. */
+    }
+  
+  /* Support for TIS authentication server
+     Contributed by Andre April <Andre.April@cediti.be>. */
+  /* Try Tis authentication daemon if the server supports it. */
+  if ((supported_authentications & (1 << SSH_AUTH_TIS)) &&
+      options->tis_authentication && !options->batch_mode)
+    {
+      char *prompt;
+      debug("Doing TIS authentication.");
+      if (options->cipher == SSH_CIPHER_NONE)
+	log_msg("WARNING: Encryption is disabled! Password will be transmitted in clear text.");
+      packet_start(SSH_CMSG_AUTH_TIS);
+      packet_send();
+      packet_write_wait();
+      
+      type = packet_read();
+      if (type == SSH_SMSG_FAILURE) {
+	/* Authentication failure : either the authentication server is */
+	/* not accessible (or unknown) or the user is not registered on */
+	/* the authentication server. Try next authentication method. */
+	debug("User cannot be identifier on authentication server.");
+      } else {
+	if (type != SSH_SMSG_AUTH_TIS_CHALLENGE) {
+	  packet_disconnect("Protocol error: got %d in response to TIS auth request",
+			    type);
+	}
+	prompt = packet_get_string(NULL);
+	/* Asks for password */
+	password = read_passphrase(pw->pw_uid, prompt, 0);
+	packet_start(SSH_CMSG_AUTH_TIS_RESPONSE);
+	packet_put_string(password, strlen(password));
+	memset(password, 0, strlen(password));
+	xfree(password);
+	packet_send();
+	packet_write_wait();
+	
+	type = packet_read();
+	if (type == SSH_SMSG_SUCCESS)
+	  return; /* Successful connection. */
+	if (type != SSH_SMSG_FAILURE)
+	  packet_disconnect("Protocol error: got %d in response to TIS auth",
+			    type);
+      }
     }
   
   /* Try password authentication if the server supports it. */

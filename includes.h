@@ -14,8 +14,19 @@ This file includes most of the needed system headers.
 */
 
 /*
- * $Id: includes.h,v 1.5 1996/08/11 22:30:59 ylo Exp $
+ * $Id: includes.h,v 1.8 1996/10/14 16:16:19 ttsalo Exp $
  * $Log: includes.h,v $
+ * Revision 1.8  1996/10/14 16:16:19  ttsalo
+ *       Support for OpenBSD (from Thorsten Lockert <tholo@SigmaSoft.COM>
+ *
+ * Revision 1.7  1996/10/14 02:37:12  ylo
+ * 	Removed spaces from error tokens so that compiler reports the
+ * 	error in the right place.
+ *
+ * Revision 1.6  1996/10/07 11:40:20  ttsalo
+ * 	Configuring for hurd and a small fix to do_popen()
+ * 	from "Charles M. Hannum" <mycroft@gnu.ai.mit.edu> added.
+ *
  * Revision 1.5  1996/08/11 22:30:59  ylo
  * 	Changed the way machine/endian.h include is tested (no longer
  * 	lists specific systems).
@@ -153,7 +164,7 @@ YOU_LOSE
 #endif
 
 #if !defined(USING_SGTTY) && !defined(USING_TERMIOS)
-  ERROR_NO_TERMIOS_OR_SGTTY
+  ERROR NO TERMIOS OR SGTTY
 #endif
 
 #ifdef STDC_HEADERS
@@ -182,8 +193,14 @@ char *strchr(), *strrchr();
 #ifdef HAVE_NETINET_IN_SYSTM_H
 #include <netinet/in_systm.h>
 #else /* Some old linux systems at least have in_system.h instead. */
+#ifdef HAVE_NETINET_IN_SYSTEM_H
 #include <netinet/in_system.h>
+#endif /* HAVE_NETINET_IN_SYSTEM_H */
 #endif /* HAVE_NETINET_IN_SYSTM_H */
+#ifdef __OpenBSD__
+#include <netgroup.h>
+#include <util.h>
+#endif
 #ifdef SCO
 /* SCO does not have a un.h and there is no appropriate substitute. */
 /* Latest news: it doesn't have AF_UNIX at all, but this allows
@@ -198,10 +215,12 @@ struct	sockaddr_un {
 #else /* SCO */
 #include <sys/un.h>
 #endif /* SCO */
-#if !defined(__PARAGON__)
+#ifdef HAVE_NETINET_IP_H
 #include <netinet/ip.h>
-#endif /* !__PARAGON__ */
+#endif /* HAVE_NETINET_IP_H */
+#ifdef HAVE_NETINET_TCP_H
 #include <netinet/tcp.h>
+#endif /* HAVE_NETINET_TCP_H */
 #if defined(HPSUX7_KLUDGES)
 struct linger {
         int             l_onoff;/* option on/off */

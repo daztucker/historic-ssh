@@ -14,8 +14,18 @@ Functions for reading the configuration file.
 */
 
 /*
- * $Id: readconf.h,v 1.1.1.1 1996/02/18 21:38:10 ylo Exp $
+ * $Id: readconf.h,v 1.4 1997/03/27 03:10:27 kivinen Exp $
  * $Log: readconf.h,v $
+ * Revision 1.4  1997/03/27 03:10:27  kivinen
+ * 	Added kerberos patches from Glenn Machin.
+ *
+ * Revision 1.3  1997/03/26 05:34:49  kivinen
+ * 	Added UsePriviledgedPort option.
+ *
+ * Revision 1.2  1997/03/19 17:54:45  kivinen
+ * 	Added TIS authentication code from Andre April
+ * 	<Andre.April@cediti.be>.
+ *
  * Revision 1.1.1.1  1996/02/18 21:38:10  ylo
  * 	Imported ssh-1.2.13.
  *
@@ -53,6 +63,9 @@ typedef struct
   int rhosts_authentication;	/* Try rhosts authentication. */
   int rhosts_rsa_authentication;/* Try rhosts with RSA authentication. */
   int rsa_authentication;	/* Try RSA authentication. */
+  int kerberos_authentication;	/* Try Kerberos authentication. */
+  int kerberos_tgt_passing;	/* Try Kerberos tgt passing. */
+  int tis_authentication;	/* Try TIS authsrv authentication. */
   int password_authentication;	/* Try password authentication. */
   int fallback_to_rsh;		/* Use rsh if cannot connect with ssh. */
   int use_rsh;			/* Always use rsh (don\'t try ssh). */
@@ -61,6 +74,7 @@ typedef struct
   int compression;		/* Compress packets in both directions. */
   int compression_level;	/* Compression level 1 (fast) to 9 (best). */
   int keepalives;		/* Set SO_KEEPALIVE. */
+  int use_priviledged_port;	/* Use priviledged port */
 
   int port;			/* Port to connect. */
   int connection_attempts;	/* Max attempts (seconds) before giving up */
@@ -68,6 +82,7 @@ typedef struct
   char *hostname;		/* Real host to connect. */
   char *proxy_command;		/* Proxy command for connecting the host. */
   char *user;			/* User to log in as. */
+  int no_user_given;		/* True if no user name given */
   int escape_char;		/* Escape character; -2 = none */
 
   char *system_hostfile;	/* Path for /etc/ssh_known_hosts. */

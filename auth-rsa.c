@@ -8,13 +8,26 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Mon Mar 27 01:46:52 1995 ylo
-Last modified: Wed Jul  5 19:19:59 1995 ylo
 
 RSA-based authentication.  This code determines whether to admit a login
 based on RSA authentication.  This file also contains functions to check
 validity of the host key.
 
 */
+
+/*
+ * $Id: auth-rsa.c,v 1.4 1995/07/26 23:30:49 ylo Exp $
+ * $Log: auth-rsa.c,v $
+ * Revision 1.4  1995/07/26  23:30:49  ylo
+ * 	Added code to support protocol version 1.1.  The md hash of
+ * 	RSA response must now include the session id.  Compatibility
+ * 	code still handles older versions.
+ *
+ * Revision 1.3  1995/07/13  01:13:35  ylo
+ * 	Removed the "Last modified" header.
+ *
+ * $Endlog$
+ */
 
 #include "includes.h"
 #include "rsa.h"
@@ -23,6 +36,7 @@ validity of the host key.
 #include "xmalloc.h"
 #include "ssh.h"
 #include "md5.h"
+#include "mpaux.h"
 
 /* Flags that may be set in authorized_keys options. */
 extern int no_port_forwarding_flag;
@@ -30,6 +44,13 @@ extern int no_agent_forwarding_flag;
 extern int no_x11_forwarding_flag;
 extern int no_pty_flag;
 extern char *forced_command;
+
+/* Session identifier that is used to bind key exchange and authentication
+   responses to a particular session. */
+extern unsigned char session_id[16];
+
+/* This is a compatibility kludge. */
+extern int remote_protocol_1_1;
 
 /* The .ssh/authorized_keys file contains public keys, one per line, in the
    following format:
@@ -76,25 +97,37 @@ int auth_rsa_challenge_dialog(RandomState *state, unsigned int bits,
   packet_send();
   packet_write_wait();
 
-  /* The client is supposed to respond with a 16-byte MD5 checksum of
-     the decrypted challenge converted to a 32 byte buffer by using
-     the least significant 8 bits for the first byte, etc.  We now compute
-     the correct response. */
-  for (i = 0; i < 32; i++)
-    {
-      mpz_mod_2exp(&aux, &challenge, 8);
-      buf[i] = mpz_get_ui(&aux);
-      mpz_div_2exp(&challenge, &challenge, 8);
+  if (remote_protocol_1_1)
+    { /* New protocol. */
+      /* The response is MD5 of decrypted challenge plus session id. */
+      mp_linearize_msb_first(buf, 32, &challenge);
+      MD5Init(&md);
+      MD5Update(&md, buf, 32);
+      MD5Update(&md, session_id, 16);
+      MD5Final(mdbuf, &md);
+    }
+  else
+    { /* XXX remove this compatibility code later. */
+      /* The client is supposed to respond with a 16-byte MD5 checksum of
+	 the decrypted challenge converted to a 32 byte buffer by using
+	 the least significant 8 bits for the first byte, etc.  We now compute
+	 the correct response. */
+      for (i = 0; i < 32; i++)
+	{
+	  mpz_mod_2exp(&aux, &challenge, 8);
+	  buf[i] = mpz_get_ui(&aux);
+	  mpz_div_2exp(&challenge, &challenge, 8);
+	}
+
+      MD5Init(&md);
+      MD5Update(&md, buf, 32);
+      MD5Final(mdbuf, &md);
     }
 
   /* We will no longer need these. */
   mpz_clear(&encrypted_challenge);
   mpz_clear(&challenge);
   mpz_clear(&aux);
-
-  MD5Init(&md);
-  MD5Update(&md, buf, 32);
-  MD5Final(mdbuf, &md);
   
   /* Wait for a response. */
   packet_read_expect(SSH_CMSG_AUTH_RSA_RESPONSE);

@@ -12,8 +12,14 @@ Created: Wed Apr 19 17:41:39 1995 ylo
 */
 
 /*
- * $Id: cipher.c,v 1.2 1995/07/13 01:19:45 ylo Exp $
+ * $Id: cipher.c,v 1.3 1995/08/18 22:48:01 ylo Exp $
  * $Log: cipher.c,v $
+ * Revision 1.3  1995/08/18  22:48:01  ylo
+ * 	Added code to permit compiling without idea.
+ *
+ * 	With triple-des, if the key length is only 16 bytes, reuse the
+ * 	beginning of the key for the third DES key.
+ *
  * Revision 1.2  1995/07/13  01:19:45  ylo
  * 	Removed "Last modified" header.
  * 	Added cvs log.
@@ -38,7 +44,9 @@ unsigned int cipher_mask()
 {
   unsigned int mask = 0;
   mask |= 1 << SSH_CIPHER_NONE;
+#ifndef WITHOUT_IDEA
   mask |= 1 << SSH_CIPHER_IDEA;
+#endif /* WITHOUT_IDEA */
   mask |= 1 << SSH_CIPHER_DES;
   mask |= 1 << SSH_CIPHER_3DES;
   mask |= 1 << SSH_CIPHER_TSS;
@@ -107,12 +115,14 @@ void cipher_set_key(CipherContext *context, int cipher,
     case SSH_CIPHER_NONE:
       break;
 
+#ifndef WITHOUT_IDEA
     case SSH_CIPHER_IDEA:
       if (keylen < 16)
 	error("Key length %d is insufficient for IDEA.", keylen);
       idea_set_key(&context->u.idea.key, padded);
       memset(context->u.idea.iv, 0, sizeof(context->u.idea.iv));
       break;
+#endif /* WITHOUT_IDEA */
 
     case SSH_CIPHER_DES:
       /* Note: the least significant bit of each byte of key is parity, 
@@ -132,7 +142,10 @@ void cipher_set_key(CipherContext *context, int cipher,
 	error("Key length %d is insufficient for 3DES.", keylen);
       des_set_key(padded, &context->u.des3.key1);
       des_set_key(padded + 8, &context->u.des3.key2);
-      des_set_key(padded + 16, &context->u.des3.key3);
+      if (keylen <= 16)
+	des_set_key(padded, &context->u.des3.key3);
+      else
+	des_set_key(padded + 16, &context->u.des3.key3);
       memset(context->u.des3.iv1, 0, sizeof(context->u.des3.iv1));
       memset(context->u.des3.iv2, 0, sizeof(context->u.des3.iv2));
       memset(context->u.des3.iv3, 0, sizeof(context->u.des3.iv3));
@@ -165,10 +178,12 @@ void cipher_encrypt(CipherContext *context, unsigned char *dest,
       memcpy(dest, src, len);
       break;
 
+#ifndef WITHOUT_IDEA
     case SSH_CIPHER_IDEA:
       idea_cfb_encrypt(&context->u.idea.key, context->u.idea.iv, 
 		       dest, src, len);
       break;
+#endif /* WITHOUT_IDEA */
 
     case SSH_CIPHER_DES:
       des_cbc_encrypt(&context->u.des.key, context->u.des.iv, dest, src, len);
@@ -206,10 +221,12 @@ void cipher_decrypt(CipherContext *context, unsigned char *dest,
       memcpy(dest, src, len);
       break;
 
+#ifndef WITHOUT_IDEA
     case SSH_CIPHER_IDEA:
       idea_cfb_decrypt(&context->u.idea.key, context->u.idea.iv, 
 		       dest, src, len);
       break;
+#endif /* WITHOUT_IDEA */
 
     case SSH_CIPHER_DES:
       des_cbc_decrypt(&context->u.des.key, context->u.des.iv, dest, src, len);

@@ -8,11 +8,23 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Wed Mar 29 03:46:59 1995 ylo
-Last modified: Mon Jul 10 22:50:53 1995 ylo
 
 The authentication agent program.
 
 */
+
+/*
+ * $Id: ssh-agent.c,v 1.3 1995/07/26 23:29:13 ylo Exp $
+ * $Log: ssh-agent.c,v $
+ * Revision 1.3  1995/07/26  23:29:13  ylo
+ * 	Print software version with usage message.
+ *
+ * Revision 1.2  1995/07/13  01:38:26  ylo
+ * 	Removed "Last modified" header.
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
 
 #include "includes.h"
 #include "ssh.h"
@@ -461,6 +473,7 @@ int main(int ac, char **av)
 
   if (ac < 2)
     {
+      fprintf(stderr, "ssh-agent version %s\n", SSH_VERSION);
       fprintf(stderr, "Usage: %s command\n", av[0]);
       exit(1);
     }

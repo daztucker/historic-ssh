@@ -14,8 +14,27 @@ Definitions for server configuration data and for the functions reading it.
 */
 
 /*
- * $Id: servconf.h,v 1.1.1.1 1996/02/18 21:38:10 ylo Exp $
+ * $Id: servconf.h,v 1.6 1997/03/27 03:14:31 kivinen Exp $
  * $Log: servconf.h,v $
+ * Revision 1.6  1997/03/27 03:14:31  kivinen
+ * 	Added kerberos patches from Glenn Machin.
+ * 	Added USELOGIN patches from Brian Cully.
+ *
+ * Revision 1.5  1997/03/26 05:33:54  kivinen
+ * 	Added idle_timeout option.
+ *
+ * Revision 1.4  1997/03/25 05:44:48  kivinen
+ * 	Added silent_deny and umask.
+ *
+ * Revision 1.3  1997/03/19 17:55:14  kivinen
+ * 	Added TIS authentication code from Andre April
+ * 	<Andre.April@cediti.be>.
+ * 	Added SECURE_RPC, SECURE_NFS and NIS_PLUS support from Andy
+ * 	Polyakov <appro@fy.chalmers.se>.
+ *
+ * Revision 1.2  1996/11/27 15:38:28  ttsalo
+ *     Added X11DisplayOffset-option
+ *
  * Revision 1.1.1.1  1996/02/18 21:38:10  ylo
  * 	Imported ssh-1.2.13.
  *
@@ -44,14 +63,29 @@ typedef struct
   int fascist_logging;		/* Perform very verbose logging. */
   int print_motd;		/* If true, print /etc/motd. */
   int x11_forwarding;		/* If true, permit inet (spoofing) X11 fwd. */
+  int x11_display_offset;	/* How much to offset the DISPLAY number */
   int strict_modes;		/* If true, require string home dir modes. */
   int keepalives;		/* If true, set SO_KEEPALIVE. */
+  time_t idle_timeout;		/* If non zero, sets idle-timeout */
   SyslogFacility log_facility;	/* Facility for system logging. */
   int rhosts_authentication;	/* If true, permit rhosts authentication. */
   int rhosts_rsa_authentication;/* If true, permit rhosts RSA authentication.*/
   int rsa_authentication;	/* If true, permit RSA authentication. */
+  int kerberos_authentication;	/* If true, permit Kerberos authentication. */
+  int kerberos_or_local_passwd; /* If true, permit kerberos and any other
+				   password authentication mechanism, such
+				   as SecurID or /etc/passwd */
+  int kerberos_tgt_passing;	/* If true, permit Kerberos tgt passing. */
+  int allow_tcp_forwarding;
+  int tis_authentication;	/* If true, permit TIS authsrv auth. */
   int password_authentication;  /* If true, permit password authentication. */
   int permit_empty_passwd;      /* If false, do not permit empty passwords. */
+  int use_login;		/* Use /bin/login if possible */
+  int silent_deny;		/* 1 = deny by closing sockets. */
+  int forced_passwd_change;     /* If true, force password change if empty
+				   password (first login), or password
+				   too old. */
+  int umask;			/* Umask */
   unsigned int num_allow_hosts;
   char *allow_hosts[MAX_ALLOW_HOSTS];
   unsigned int num_deny_hosts;

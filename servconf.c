@@ -12,8 +12,11 @@ Created: Mon Aug 21 15:48:58 1995 ylo
 */
 
 /*
- * $Id: servconf.c,v 1.7 1997/03/27 03:14:16 kivinen Exp $
+ * $Id: servconf.c,v 1.8 1997/04/05 21:50:07 kivinen Exp $
  * $Log: servconf.c,v $
+ * Revision 1.8  1997/04/05 21:50:07  kivinen
+ * 	Fixed bug in allow_tcp_forwarding code.
+ *
  * Revision 1.7  1997/03/27 03:14:16  kivinen
  * 	Changed sAllow_Tcp_Forwarding to sAllowTcpForwarding and
  * 	sKerberos_Or_Local_Passwd to sKerberosOrLocalPasswd.
@@ -157,7 +160,7 @@ void fill_default_server_options(ServerOptions *options)
 #else  /* defined(KERBEROS_TGT_PASSING) && defined(KRB5) */
     options->kerberos_tgt_passing = 0;
 #endif /* defined(KERBEROS_TGT_PASSING) && defined(KRB5) */
-  if (options->allow_tcp_forwarding = -1)
+  if (options->allow_tcp_forwarding == -1)
     options->allow_tcp_forwarding = 0;
   if (options->tis_authentication == -1)
     options->tis_authentication = 0;

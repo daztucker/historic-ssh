@@ -82,6 +82,26 @@ static unsigned long stdin_bytes, stdout_bytes, stderr_bytes;
 static int quit_pending; /* Set to non-zero to quit the client loop. */
 static int escape_char; /* Escape character. */
 
+/* Returns the user\'s terminal to normal mode if it had been put in raw 
+   mode. */
+
+void leave_raw_mode()
+{
+  if (!in_raw_mode)
+    return;
+  in_raw_mode = 0;
+#ifdef USING_TERMIOS
+  if (tcsetattr(fileno(stdin), TCSADRAIN, &saved_tio) < 0)
+    perror("tcsetattr");
+#endif /* USING_TERMIOS */
+#ifdef USING_SGTTY
+  if (ioctl(fileno(stdin), TIOCSETP, &saved_tio) < 0)
+    perror("ioctl(stdin, TIOCSETP, ...)");
+#endif /* USING_SGTTY */
+
+  fatal_remove_cleanup((void (*)(void *))leave_raw_mode, NULL);
+}
+
 /* Puts the user\'s terminal in raw mode. */
 
 void enter_raw_mode()
@@ -117,44 +137,33 @@ void enter_raw_mode()
     perror("ioctl(stdin, TIOCSETP, ...)");
   in_raw_mode = 1;
 #endif /* USING_SGTTY */
+
+  fatal_add_cleanup((void (*)(void *))leave_raw_mode, NULL);
 }  
 
-/* Returns the user\'s terminal to normal mode if it had been put in raw 
-   mode. */
-
-void leave_raw_mode()
-{
-  if (!in_raw_mode)
-    return;
-  in_raw_mode = 0;
-#ifdef USING_TERMIOS
-  if (tcsetattr(fileno(stdin), TCSADRAIN, &saved_tio) < 0)
-    perror("tcsetattr");
-#endif /* USING_TERMIOS */
-#ifdef USING_SGTTY
-  if (ioctl(fileno(stdin), TIOCSETP, &saved_tio) < 0)
-    perror("ioctl(stdin, TIOCSETP, ...)");
-#endif /* USING_SGTTY */
-}
-
 /* Puts stdin terminal in non-blocking mode. */
+
+/* Restores stdin to blocking mode. */
+
+void leave_non_blocking()
+{
+  if (in_non_blocking_mode)
+    {
+      (void)fcntl(fileno(stdin), F_SETFL, 0);
+      in_non_blocking_mode = 0;
+      fatal_remove_cleanup((void (*)(void *))leave_non_blocking, NULL);
+    }
+}
 
 void enter_non_blocking()
 {
   in_non_blocking_mode = 1;
 #if defined(O_NONBLOCK) && !defined(O_NONBLOCK_BROKEN)
   (void)fcntl(fileno(stdin), F_SETFL, O_NONBLOCK);
-#else /* O_NONBLOCK */
+#else /* O_NONBLOCK && !O_NONBLOCK_BROKEN */
   (void)fcntl(fileno(stdin), F_SETFL, O_NDELAY);
-#endif /* O_NONBLOCK */  
-}
-
-/* Restores stdin to blocking mode. */
-
-void leave_non_blocking()
-{
-  (void)fcntl(fileno(stdin), F_SETFL, 0);
-  in_non_blocking_mode = 0;
+#endif /* O_NONBLOCK && !O_NONBLOCK_BROKEN */
+  fatal_add_cleanup((void (*)(void *))leave_non_blocking, NULL);
 }
 
 #ifdef SIGWINCH
@@ -180,26 +189,6 @@ RETSIGTYPE signal_handler(int sig)
   channel_stop_listening();
   packet_close();
   fatal("Killed by signal %d.", sig);
-}
-
-/* Function to display an error message and exit.  This is in this file because
-   this needs to restore terminal modes before exiting.  See log-client.c
-   for other related functions. */
-
-void fatal(const char *fmt, ...)
-{
-  va_list args;
-  if (in_non_blocking_mode)
-    leave_non_blocking();
-  if (in_raw_mode)
-    leave_raw_mode();
-  va_start(args, fmt);
-  vfprintf(stderr, fmt, args);
-  fprintf(stderr, "\n");
-  va_end(args);
-  channel_stop_listening();
-  packet_close();
-  exit(255);
 }
 
 /* Returns current time in seconds from Jan 1, 1970 with the maximum available
@@ -535,8 +524,8 @@ void client_suspend_self()
 
 void client_process_input(fd_set *readset)
 {
-  int len;
-  char buf[8192];
+  int len, pid;
+  char buf[8192], *s;
 
   /* Read input from the server, and add any such data to the buffer of the
      packet subsystem. */
@@ -621,24 +610,24 @@ void client_process_input(fd_set *readset)
 		/* Get one character at a time. */
 		ch = buf[i];
 		
+		/* Check if we have a pending escape character. */
 		if (escape_pending)
 		  {
 		    /* We have previously seen an escape character. */
 		    /* Clear the flag now. */
 		    escape_pending = 0;
 		    /* Process the escaped character. */
-		    if (ch == '.')
+		    switch (ch)
 		      {
+		      case '.':
 			/* Terminate the connection. */
 			sprintf(buf, "%c.\r\n", escape_char);
 			buffer_append(&stderr_buffer, buf, strlen(buf));
 			stderr_bytes += strlen(buf);
 			quit_pending = 1;
 			return;
-		      }
-		    else
-		      if (ch == 'Z' - 64)
-			{
+
+		      case 'Z' - 64:
 			  /* Suspend the program. */
 			  /* Print a message to that effect to the user. */
 			  sprintf(buf, "%c^Z\r\n", escape_char);
@@ -650,8 +639,74 @@ void client_process_input(fd_set *readset)
 
 			  /* We have been continued. */
 			  continue;
-			}
-		      else
+			
+		      case '&':
+			/* Detach the program (continue to serve connections,
+			   but put in background and no more new 
+			   connections). */
+			if (!stdin_eof)
+			  {
+			    /* Sending SSH_CMSG_EOF alone does not always
+			       appear to be enough.  So we try to send an
+			       EOF character first. */
+			    packet_start(SSH_CMSG_STDIN_DATA);
+			    packet_put_string("\004", 1);
+			    packet_send();
+			    /* Close stdin. */
+			    stdin_eof = 1;
+			    if (buffer_len(&stdin_buffer) == 0)
+			      {
+				packet_start(SSH_CMSG_EOF);
+				packet_send();
+			      }
+			  }
+			/* Restore tty modes. */
+			leave_raw_mode();
+
+			/* Stop listening for new connections. */
+			channel_stop_listening();
+
+			printf("%c& [backgrounded]\n", escape_char);
+			
+			/* Fork into background. */
+			pid = fork();
+			if (pid < 0)
+			  {
+			    error("fork: %.100s", strerror(errno));
+			    continue;
+			  }
+			if (pid != 0)
+			  { /* This is the parent. */
+			    /* The parent just exits. */
+			    exit(0);
+			  }
+
+			/* The child continues serving connections. */
+			continue;
+
+		      case '?':
+			sprintf(buf, "%c?\r\n\
+Supported escape sequences:\r\n\
+~.  - terminate connection\r\n\
+~^Z - suspend ssh\r\n\
+~#  - list forwarded connections\r\n\
+~&  - background ssh (when waiting for connections to terminate)\r\n\
+~?  - this message\r\n\
+~~  - send the escape character by typing it twice\r\n\
+(Note that escapes are only recognized immediately after newline.)\r\n",
+				escape_char);
+			buffer_append(&stderr_buffer, buf, strlen(buf));
+			continue;
+
+		      case '#':
+			sprintf(buf, "%c#\r\n", escape_char);
+			buffer_append(&stderr_buffer, buf, strlen(buf));
+			s = channel_open_message();
+			buffer_append(&stderr_buffer, s, strlen(s));
+			xfree(s);
+			continue;
+
+		      default:
 			if (ch != escape_char)
 			  {
 			    /* Escape character followed by non-special
@@ -663,9 +718,11 @@ void client_process_input(fd_set *readset)
 			    stdin_bytes += 2;
 			    continue;
 			  }
-		    /* Note that escape character typed twice falls through
-		       here; the latter gets processed as a normal
-		       character below. */
+			/* Note that escape character typed twice falls through
+			   here; the latter gets processed as a normal
+			   character below. */
+			break;
+		      }
 		  }
 		else
 		  {
@@ -679,6 +736,7 @@ void client_process_input(fd_set *readset)
 			continue;
 		      }
 		  }
+
 		/* Normal character.  Record whether it was a newline,
 		   and append it to the buffer. */
 		last_was_cr = (ch == '\r' || ch == '\n');

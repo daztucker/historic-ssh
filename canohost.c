@@ -53,7 +53,8 @@ char *get_remote_hostname(int socket)
   if (getpeername(socket, (struct sockaddr *)&from, &fromlen) < 0)
     {
       error("getpeername failed: %.100s", strerror(errno));
-      return NULL;
+      strcpy(name, "UNKNOWN");
+      goto check_ip_options;
     }
   
   /* Map the IP address to a host name. */
@@ -81,7 +82,8 @@ char *get_remote_hostname(int socket)
       if (!hp)
 	{
 	  log("reverse mapping checking gethostbyname for %.700s failed - POSSIBLE BREAKIN ATTEMPT!", name);
-	  return NULL;
+	  strcpy(name, inet_ntoa(from.sin_addr));
+	  goto check_ip_options;
 	}
       /* Look for the address from the list of addresses. */
       for (i = 0; hp->h_addr_list[i]; i++)
@@ -94,7 +96,8 @@ char *get_remote_hostname(int socket)
 	  /* Address not found for the host name. */
 	  log("Address %.100s maps to %.600s, but this does not map back to the address - POSSIBLE BREAKIN ATTEMPT!",
 	      inet_ntoa(from.sin_addr), name);
-	  return NULL;
+	  strcpy(name, inet_ntoa(from.sin_addr));
+	  goto check_ip_options;
 	}
       /* Address was found for the host name.  We accept the host name. */
     }
@@ -104,6 +107,8 @@ char *get_remote_hostname(int socket)
       strcpy(name, inet_ntoa(from.sin_addr));
       log("Could not reverse map address %.100s.", name);
     }
+
+ check_ip_options:
   
 #ifdef IP_OPTIONS
   /* If IP options are supported, make sure there are none (log and clear
@@ -203,12 +208,31 @@ const char *get_remote_ipaddr()
   return canonical_host_ip;
 }
 
+/* Returns the port of the peer of the socket. */
+
+int get_peer_port(int sock)
+{
+  struct sockaddr_in from;
+  int fromlen;
+
+  /* Get IP address of client. */
+  fromlen = sizeof(from);
+  memset(&from, 0, sizeof(from));
+  if (getpeername(sock, (struct sockaddr *)&from, &fromlen) < 0)
+    {
+      error("getpeername failed: %.100s", strerror(errno));
+      return 0;
+    }
+
+  /* Return port number. */
+  return ntohs(from.sin_port);
+}
+
 /* Returns the port number of the remote host.  */
 
 int get_remote_port()
 {
-  struct sockaddr_in from;
-  int fromlen, socket;
+  int socket;
 
   /* If the connection is not a socket, return 65535.  This is intentionally
      chosen to be an unprivileged port number. */
@@ -218,15 +242,6 @@ int get_remote_port()
   /* Get client socket. */
   socket = packet_get_connection_in();
 
-  /* Get IP address of client. */
-  fromlen = sizeof(from);
-  memset(&from, 0, sizeof(from));
-  if (getpeername(socket, (struct sockaddr *)&from, &fromlen) < 0)
-    {
-      error("getpeername failed: %.100s", strerror(errno));
-      return 0;
-    }
-
-  /* Return port number. */
-  return ntohs(from.sin_port);
+  /* Get and return the peer port number. */
+  return get_peer_port(socket);
 }

@@ -172,9 +172,6 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define if you have /dev/pts and /dev/ptc devices (as in AIX). */
 #undef HAVE_DEV_PTS_AND_PTC
 
-/* Define if you have shadow passwords in /etc/master.passwd (NetBSD style). */
-#undef HAVE_ETC_MASTER_PASSWD
-
 /* Define if you have shadow passwords in /etc/security/passwd (AIX style). */
 #undef HAVE_ETC_SECURITY_PASSWD
 

@@ -31,15 +31,16 @@
 .ds LF Ylonen
 .ds RF FORMFEED[Page %]
 .ds CF
-.ds LH RFC nnnn
-.ds RH 26 October 1995
+.ds LH Internet-Draft
+.ds RH 15 November 1995
 .ds CH SSH (Secure Shell) Remote Login Protocol
 .na
 .hy 0
 .in 0
 Network Working Group					       T. Ylonen
-Request for Comments: nnnn	       Helsinki University of Technology
-Category: Experimental					 26 October 1995
+Internet-Draft			       Helsinki University of Technology
+draft-ylonen-ssh-protocol-00.txt			15 November 1995
+Expires: 15 May 1996
 
 .in 3
 
@@ -49,11 +50,24 @@ The SSH (Secure Shell) Remote Login Protocol
 .ti 0
 Status of This Memo
 
-This memo defines an Experimental Protocol for the Internet community.
-This memo does not specify an Internet standard of any kind.
-Discussion and suggestions for improvement are requested.
-Distribution of this memo is unlimited.
+This document is an Internet-Draft.   Internet-Drafts  are  working
+documents of the Internet Engineering Task Force (IETF), its areas,
+and its working groups.  Note that other groups may also distribute
+working documents as Internet-Drafts.
 
+Internet-Drafts are draft documents valid  for  a  maximum  of  six
+months  and  may  be updated, replaced, or obsoleted by other docu-
+ments at any time.  It is inappropriate to use  Internet-Drafts  as
+reference  material  or  to  cite them other than as ``work in pro-
+gress.''
+
+To learn the current status of any Internet-Draft, please check the
+``1id-abstracts.txt'' listing contained in the Internet- Drafts Shadow
+Directories on ftp.is.co.za (Africa), nic.nordu.net (Europe),
+munnari.oz.au (Pacific Rim), ds.internic.net (US East Coast), or
+ftp.isi.edu (US West Coast).
+
+The distribution of  this  memo  is  unlimited.
 
 .ti 0
 Introduction
@@ -61,7 +75,7 @@ Introduction
 SSH (Secure Shell) is a program to log into another computer over a
 network, to execute commands in a remote machine, and to move files
 from one machine to another.  It provides strong authentication and
-secure communications over insecure channels.  Its features include
+secure communications over insecure networks.  Its features include
 the following:
 .IP o
 Closes several security holes (e.g., IP, routing, and DNS spoofing).
@@ -69,7 +83,7 @@ New authentication methods: .rhosts together with RSA [RSA] based host
 authentication, and pure RSA authentication.
 .IP o
 All communications are automatically and transparently encrypted.
-Encryption is also used to protect against spoofed packets.
+Encryption is also used to protect integrity.
 .IP o
 X11 connection forwarding provides secure X11 sessions.
 .IP o
@@ -88,7 +102,7 @@ laptop, can be used to hold the user's RSA authentication keys.
 
 The goal has been to make the software as easy to use as possible for
 ordinary users.  The protocol has been designed to be as secure as
-possible while making it possible to create an implementations that
+possible while making it possible to create implementations that
 are easy to use and install.  The sample implementation has a number
 of convenient features that are not described in this document as they
 are not relevant for the protocol.
@@ -109,7 +123,7 @@ connect to the same server machine.
 
 The client and the server are connected via a TCP/IP [RFC0793] socket
 that is used for bidirectional communication.  Other types of
-transport could be used but are currently not defined.
+transport can be used but are currently not defined.
 
 When the client connects the server, the server accepts the connection
 and responds by sending back its version identification string.  The
@@ -122,11 +136,12 @@ human-readable.  If either side fails to understand or support the
 other side's version, it closes the connection.
 
 After the protocol identification phase, both sides switch to a packet
-based binary protocol.  The server starts by sending its host key,
-server key, and other information to the client.  The client then
-generates a 256 bit session key, encrypts it using both RSA [RSA] keys
-(see below for details), and sends the encrypted session key, selected
-cipher type, and other information to the server.  Both sides then
+based binary protocol.  The server starts by sending its host key
+(every host has an RSA key used to authenticate the host), server key
+(an RSA key regenerated every hour), and other information to the
+client.  The client then generates a 256 bit session key, encrypts it
+using both RSA keys (see below for details), and sends the encrypted
+session key and selected cipher type to the server.  Both sides then
 turn on encryption using the selected algorithm and key.  The server
 sends an encrypted confirmation message to the client.
 
@@ -227,10 +242,10 @@ compressed independently of each other.
 .ti 0
 Packet Encryption
 
-The protocol supports several encryption types.  During session
+The protocol supports several encryption methods.  During session
 initialization, the server sends a bitmask of all encryption methods
 that it supports, and the client selects one of these methods.  The
-client also generates as 256-bit session key (32 8-bit bytes) and
+client also generates a 256-bit random session key (32 8-bit bytes) and
 sends it to the server.
 
 The encryption methods supported by the current implementation, and
@@ -293,7 +308,8 @@ generator and takes feedback from the data.
 .IP SSH_CIPHER_RC4
 The first 16 bytes of the session key are used as the key for the
 server to client direction.  The remaining 16 bytes are used as the
-key for the client to server direction.
+key for the client to server direction.  This gives independent
+128-bit keys for each direction.
 
 This algorithm is the alleged RC4 cipher posted to the Usenet in 1995.
 It is widely believed to be equivalent with the original RSADSI RC4
@@ -332,7 +348,7 @@ msb first, giving the value of the integer.
 .ti 0
 TCP/IP Port Number and Other Options
 
-The server listens for connections on TCP/IP port 22 XXX.
+The server listens for connections on TCP/IP port 22.
 
 The client may connect the server from any port.  However, if the
 client wishes to use any form of .rhosts or /etc/hosts.equiv
@@ -361,35 +377,41 @@ protocol version number (not software distribution version).
 it is not interpreted by the remote side but may be useful for
 debugging.
 
-The client parses this string; if the protocol version number is not
-supported, it closes the connection and exits.  Otherwise, it sends a
-corresponding string containing its own information.  The server
-parses the client's string, and if compatible, sends the first packet
-using the binary packet protocol.
+The client parses the server's string, and sends a corresponding
+string with its own information in response.  If the server has lower
+version number, and the client contains special code to emulate it,
+the client responds with the lower number; otherwise it responds with
+its own number.  The server then compares the version number the
+client sent with its own, and determines whether they can work
+together.  The server either disconnects, or sends the first packet
+using the binary packet protocol and both sides start working
+according to the lower of the protocol versions.
 
 By convention, changes which keep the protocol compatible with
 previous versions keep the same major protocol version; changes that
 are not compatible increment the major version (which will hopefully
-never happen).  The version described in this document is 1.2.
+never happen).  The version described in this document is 1.3.
+
+The client will 
 
 .ti 0
 Key Exchange and Server Host Authentication
 
 The first message sent by the server using the packet protocol is
 SSH_SMSG_PUBLIC_KEY.  It declares the server's host key, server public
-key, supported ciphers, and supported authentication methods.
-Additionally it contains fields for protocol flags (to be used for
-compatible protocol extensions).  It also contains a 64-bit random
-number (cookie) that must be returned in the client's reply (to make IP
+key, supported ciphers, supported authentication methods, and flags
+for protocol extensions.  It also contains a 64-bit random number
+(cookie) that must be returned in the client's reply (to make IP
 spoofing more difficult).  No encryption is used for this message.
 
 Both sides compute a session id as follows.  The modulus of the server
-key is interpreted as a byte string (with minimum length to be able to
-hold the whole value), most significant byte first.  This string is
-concatenated with the server host key interpreted the same way.
-Additionally, the cookie is concatenated with this.  Both sides
-compute MD5 of the resulting string.  The resulting 16 bytes (128
-bits) are stored by both parties and are called the session id.
+key is interpreted as a byte string (without explicit length field,
+with minimum length able to hold the whole value), most significant
+byte first.  This string is concatenated with the server host key
+interpreted the same way.  Additionally, the cookie is concatenated
+with this.  Both sides compute MD5 of the resulting string.  The
+resulting 16 bytes (128 bits) are stored by both parties and are
+called the session id.
 
 The client responds with a SSH_CMSG_SESSION_KEY message, which
 contains the selected cipher type, a copy of the 64-bit cookie sent by
@@ -548,7 +570,7 @@ client host's public key.  (The padding and encryption algorithm is
 the same as that used for the session key.)
 
 The client decrypts the challenge using its private host key,
-concatenates this with the session key, and computes an MD5 checksum
+concatenates this with the session id, and computes an MD5 checksum
 of the resulting 48 bytes.  The MD5 output is returned as 16 bytes in
 a SSH_CMSG_AUTH_RSA_RESPONSE message.  (MD5 is used to deter chosen
 plaintext attacks against RSA; the session id binds it to a specific
@@ -649,18 +671,13 @@ gzip-compatible compression level (1-9) is passed as an argument.
 .IP SSH_CMSG_REQUEST_PTY
 Requests that a pseudo terminal device be allocated for this session.
 The user terminal type and terminal modes are supplied as arguments.
-.IP SSH_CMSG_X11_FWD_WITH_AUTH_SPOOFING
+.IP SSH_CMSG_X11_REQUEST_FORWARDING
 Requests forwarding of X11 connections from the remote machine to the
 local machine over the secure channel.  Causes an internet-domain
-socket to be allocated and the DISPLAY variable be set on the server.
+socket to be allocated and the DISPLAY variable to be set on the server.
 X11 authentication data is automatically passed to the server, and the
 client may implement spoofing of authentication data for added
 security.  The authentication data is passed as arguments.
-.IP SSH_CMSG_X11_REQUEST_FORWARDING
-Requests forwarding of X11 connections from the remote machine to the
-local machine over the secure channel.  Causes a unix-domain socket to
-be allocated and the DISPLAY variable be set on the server.  This
-message has no arguments.
 .IP SSH_CMSG_PORT_FORWARD_REQUEST
 Requests forwarding of a TCP/IP port on the server host over the
 secure channel.  What happens is that whenever a connection is made to
@@ -822,7 +839,7 @@ client responds to this message by sending SSH_CMSG_EXIT_CONFIRMATION
 and closes the socket; the server then closes the socket.  There are
 two purposes for the confirmation: some systems may lose previously
 sent data when the socket is closed, and closing the client side first
-causes any TCP/IP TIME_WAIT [RFC0793] waits occur on the client side, not
+causes any TCP/IP TIME_WAIT [RFC0793] waits to occur on the client side, not
 consuming server resources.
 
 If the program terminates due to a signal, the server will send
@@ -845,8 +862,8 @@ This flag can only be sent by the client.  It indicates that the X11
 forwarding requests it sends will include the screen number.
 .IP "2 SSH_PROTOFLAG_HOST_IN_FWD_OPEN"
 If both sides specify this flag, SSH_SMSG_X11_OPEN and
-SSH_MSG_PORT_OPEN messages will contain an additional field specifying
-the name of the host at the other end of the connection.
+SSH_MSG_PORT_OPEN messages will contain an additional field containing
+a description of the host at the other end of the connection.
 .RT
 
 .ti 0
@@ -857,9 +874,10 @@ given in the following table.  Messages with _MSG_ in their name may
 be sent by either side.  Messages with _CMSG_ are only sent by the
 client, and messages with _SMSG_ only by the server.
 
-It is permissible that a packet may contain additional data after the
-arguments specified below.  Any such data should be ignored by the
-receiver.  (This helps build compatible extensions.)
+A packet may contain additional data after the arguments specified
+below.  Any such data should be ignored by the receiver.  However, it
+is recommended that no such data be stored without good reason.  (This
+helps build compatible extensions.)
 .IP "0 SSH_MSG_NONE"
 This code is reserved.  This message type is never sent.
 .IP "1 SSH_MSG_DISCONNECT"
@@ -938,7 +956,7 @@ SSH_SMSG_FAILURE if access was not granted.  The server should check
 that the client side port number is less than 1024 (a privileged
 port), and immediately reject authentication if it is not.  Supporting
 this authentication method is optional.  This method should normally
-not be enable in the server because it is not safe.  (However, not
+not be enabled in the server because it is not safe.  (However, not
 enabling this only helps if rlogind and rshd are disabled.)
 .IP "6 SSH_CMSG_AUTH_RSA"
 .TS
@@ -962,12 +980,11 @@ authentication method is optional but recommended.
 l l.
 mp-int	encrypted challenge
 .TE
-Presents an RSA authentication challenge to the server.  The challenge
-is a 256 bit random value encrypted as described later in this
+Presents an RSA authentication challenge to the client.  The challenge
+is a 256-bit random value encrypted as described elsewhere in this
 document.  The client must decrypt the challenge using the RSA private
-key, and then compute the MD5 checksum of the 32 bytes forming the
-challenge, and send back the resulting 16 byte MD5 digest using
-SSH_CMSG_AUTH_RSA_RESPONSE.
+key, compute MD5 of the challenge plus session id, and send back the
+resulting 16 bytes using SSH_CMSG_AUTH_RSA_RESPONSE.
 .IP "8 SSH_CMSG_AUTH_RSA_RESPONSE"
 .TS
 ;
@@ -975,10 +992,9 @@ l l.
 16 bytes	MD5 of decrypted challenge
 .TE
 This message is sent by the client in response to an RSA challenge.
-The data field is the 16 bytes of the MD5 digest of the decrypted
-challenge.  The MD5 checksum is returned instead of the decrypted
-challenge to deter known-plaintext attacks against the RSA key.
-The server responds to this message with either SSH_SMSG_SUCCESS or
+The MD5 checksum is returned instead of the decrypted challenge to
+deter known-plaintext attacks against the RSA key.  The server
+responds to this message with either SSH_SMSG_SUCCESS or
 SSH_SMSG_FAILURE.
 .IP "9 SSH_CMSG_AUTH_PASSWORD"
 .TS
@@ -1073,7 +1089,7 @@ This message is sent by the server in response to a failed
 authentication operation to indicate that the user has not yet been
 successfully authenticated, and in response to a failed preparatory
 operation.  This is also sent in response to an authentication or
-preparatory request that is not recognized or supported.
+preparatory operation request that is not recognized or supported.
 .IP "16 SSH_CMSG_STDIN_DATA"
 .TS
 ;
@@ -1160,9 +1176,8 @@ Data is transmitted in a channel in these messages.  A channel is
 bidirectional, and both sides can send these messages.  There is no
 acknowledgement for these messages.  It is possible that either side
 receives these messages after it has sent SSH_MSG_CHANNEL_CLOSE for
-the channel; messages received in that state should be ignored.  These
-messages cannot be received after the party has sent or received
-SSH_MSG_CHANNEL_CLOSE_CONFIRMATION.
+the channel.  These messages cannot be received after the party has
+sent or received SSH_MSG_CHANNEL_CLOSE_CONFIRMATION.
 .IP "24 SSH_MSG_CHANNEL_CLOSE"
 .TS
 ;
@@ -1186,35 +1201,13 @@ l l.
 This message is sent in response to SSH_MSG_CHANNEL_CLOSE unless the
 channel was already closed.  When this message is sent or received,
 the channel is freed.
-.IP "26 SSH_CMSG_X11_REQUEST_FORWARDING"
-
-.TS
-;
-l l.
-32-bit int	screen number (if SSH_PROTOFLAG_SCREEN_NUMBER)
-.TE
-Sent by the client during the preparatory phase, this message requests
-that the server create a fake X11 display and set the DISPLAY
-environment variable accordingly.  Whenever a connection is made to
-the fake display (in the interactive session phase), the server will
-send SSH_SMSG_X11_OPEN to create a channel for the connection.  One
-should note that when this style of forwarding is used, the client
-cannot know which machine the connection originally came from, and
-thus the X server is unable to perform "xhost" style access control.
-It is recommended that the fake display that is created in response to
-this message be accessible from within the server machine only (i.e.,
-a UNIX domain socket).  If the X11 display uses XDM and/or
-MIT-MAGIC-COOKIE authentication [X11], using
-SSH_CMSG_X11_FWD_WITH_AUTH_SPOOFING is recommended instead (it is
-possible to try that first, and then use this message if the server
-does not support authentication spoofing).  Supporting this message is
-optional.
+.IP "26 (OBSOLETED; was unix-domain X11 forwarding)
 .IP "27 SSH_SMSG_X11_OPEN"
 .TS
 ;
 l l.
 32-bit int	local_channel
-string	originating_host_name (see below)
+string	originator_string (see below)
 .TE
 This message can be sent by the server during the interactive session
 mode to indicate that a client has connected the fake X server.
@@ -1223,9 +1216,9 @@ the connection.  The client should try to open a connection to the
 real X server, and respond with SSH_MSG_CHANNEL_OPEN_CONFIRMATION or
 SSH_MSG_CHANNEL_OPEN_FAILURE.
 
-The field originating_host_name is present if and only if both sides
+The field originator_string is present if both sides
 specified SSH_PROTOFLAG_HOST_IN_FWD_OPEN in the protocol flags.  It
-contains the name of the host originating the connection.
+contains a description of the host originating the connection.
 .IP "28 SSH_CMSG_PORT_FORWARD_REQUEST"
 .TS
 ;
@@ -1235,14 +1228,14 @@ string	host_to_connect
 32-bit int	port_to_connect
 .TE
 Sent by the client in the preparatory phase, this message requests
-than server_port on the server machine be forwarded over the secure
+that server_port on the server machine be forwarded over the secure
 channel to the client machine, and from there to the specified host
 and port.  The server should start listening on the port, and send
 SSH_MSG_PORT_OPEN whenever a connection is made to it.  Supporting
 this message is optional, and the server is free to reject any forward
 request.  For example, it is highly recommended that unless the user
 has been authenticated as root, forwarding any privileged port numbers
-below 1024 is denied.
+(below 1024) is denied.
 .IP "29 SSH_MSG_PORT_OPEN"
 .TS
 ;
@@ -1250,7 +1243,7 @@ l l.
 32-bit int	local_channel
 string	host_name
 32-bit int	port
-string	originating_host_name (see below)
+string	originator_string (see below)
 .TE
 Sent by either party in interactive session mode, this message
 indicates that a connection has been opened to a forwarded TCP/IP
@@ -1265,9 +1258,9 @@ local security by compromised remote side software.  Particularly, it
 is recommended that the client permit connections only to those ports
 for which it has requested forwarding with SSH_CMSG_PORT_FORWARD_REQUEST.
 
-The field originating_host_name is present if and only if both sides
+The field originator_string is present if both sides
 specified SSH_PROTOFLAG_HOST_IN_FWD_OPEN in the protocol flags.  It
-contains the name of the host originating the connection.
+contains a description of the host originating the connection.
 .IP "30 SSH_CMSG_AGENT_REQUEST_FORWARDING"
 
 (no arguments)
@@ -1277,7 +1270,7 @@ over the secure channel.  The method used by clients to contact the
 authentication agent within each machine is implementation and machine
 dependent.  If the server accepts this request, it should arrange that
 any clients run from this session will actually contact the server
-program when they try to contact an authentication agent.  The server
+program when they try to contact the authentication agent.  The server
 should then send a SSH_SMSG_AGENT_OPEN to open a channel to the agent,
 and the client should forward the connection to the real
 authentication agent.  Supporting this message is optional.
@@ -1308,7 +1301,7 @@ implementations are required to recognize and ignore it.
 
 Sent by the client in response to SSH_SMSG_EXITSTATUS.  This is the
 last message sent by the client.
-.IP "34 SSH_CMSG_X11_FWD_WITH_AUTH_SPOOFING"
+.IP "34 SSH_CMSG_X11_REQUEST_FORWARDING"
 .TS
 ;
 l l.
@@ -1324,7 +1317,7 @@ should be recorded by the server so that it is used as authentication
 on connections (e.g., in .Xauthority).  The authentication protocol
 must be one of the supported X11 authentication protocols, e.g.,
 "MIT-MAGIC-COOKIE-1".  Authentication data must be a lowercase hex
-string with even length.  Its interpretation is protocol dependent.
+string of even length.  Its interpretation is protocol dependent.
 The data is in a format that can be used with e.g. the xauth program.
 Supporting this message is optional.
 
@@ -1375,7 +1368,7 @@ some file), it can be very helpful for the user to make the cause of
 failure available.  On the other hand, one should not make too much
 information available for security reasons.  It is recommended that
 the client provides an option to display the debugging information
-sent by the sender (the user probably does not see it by default).
+sent by the sender (the user probably does not want to see it by default).
 The server can log debugging data sent by the client (if any).  Either
 party is free to ignore any received debugging data.  Every
 implementation must be able to receive this message, but no
@@ -1388,7 +1381,7 @@ l l.
 .TE
 This message can be sent by the client in the preparatory operations
 phase.  The server responds with SSH_SMSG_FAILURE if it does not
-support compression or does not support compression; it responds with
+support compression or does not want to compress; it responds with
 SSH_SMSG_SUCCESS if it accepted the compression request.  In the
 latter case the response to this packet will still be uncompressed,
 but all further packets in either direction will be compressed by gzip.
@@ -1399,7 +1392,7 @@ but all further packets in either direction will be compressed by gzip.
 Encoding of Terminal Modes
 
 Terminal modes (as passed in SSH_CMSG_REQUEST_PTY) are encoded into a
-byte stream.  It is intended that the concoding be portable across
+byte stream.  It is intended that the coding be portable across
 different environments.
 
 The tty mode description is a stream of bytes.  The stream consists of
@@ -1571,6 +1564,8 @@ l l.
 mp-int	public exponent
 mp-int	public modulus
 mp-int	challenge
+16 bytes	session_id
+32-bit int	response_type
 .TE
 Requests RSA decryption of random challenge to authenticate the other
 side.  The challenge will be decrypted with the RSA private key
@@ -1579,8 +1574,12 @@ corresponding to the given public key.
 The decrypted challenge must contain a zero in the highest (partial)
 byte, 2 in the next byte, followed by non-zero random bytes, a zero
 byte, and then the real challenge value in the lowermost bytes.  The
-real challenge must be 32 8-bit bytes.  MD5 of the real challenge is
-returned in SSH_AGENT_RSA_RESPONSE as 16 bytes.
+real challenge must be 32 8-bit bytes (256 bits).
+
+Response_type indicates the format of the response to be returned.
+Currently the only supported value is 1, which means to compute MD5 of
+the real challenge plus session id, and return the resulting 16 bytes
+in a SSH_AGENT_RSA_RESPONSE message.
 .IP "4 SSH_AGENT_RSA_RESPONSE"
 .TS
 ;
@@ -1615,6 +1614,8 @@ mp-int	public modulus
 mp-int	public exponent
 mp-int	private exponent
 mp-int	multiplicative inverse of p mod q
+mp-int	p
+mp-int	q
 string	comment
 .TE
 Registers an RSA key with the agent.  After this request, the agent can
@@ -1664,7 +1665,7 @@ Sons, 1994.  See also the following patents: PCT/CH91/00117, EP 0 482
 154 B1, US Pat. 5,214,703.
 .IP [PKCS#1]
 PKCS #1: RSA Encryption Standard.  Version 1.5, RSA Laboratories,
-November 1993.
+November 1993.  Available for anonymous ftp at ftp.rsa.com.
 .IP [POSIX]
 Portable Operating System Interface (POSIX) - Part 1: Application
 Program Interface (API) [C language], ISO/IEC 9945-1, IEEE Std 1003.1,
@@ -1723,14 +1724,15 @@ Routing spoofing is made ineffective (by host keys).
 .IP o
 All data is encrypted with strong algorithms to make eavesdropping as
 difficult as possible.  This includes encrypting any authentication
-information such as passwords.
+information such as passwords.  The information for decrypting session
+keys is destroyed every hour.
 .IP o
 Strong authentication methods: .rhosts combined with RSA host
 authentication, and pure RSA authentication.
 .IP o
 X11 connections and arbitrary TCP/IP ports can be forwarded securely.
 .IP o
-Man-in-the-middle attacks are deterred by using the host key to
+Man-in-the-middle attacks are deterred by using the server host key to
 encrypt the session key.
 .IP o
 Trojan horses to catch a password by routing manipulation are deterred
@@ -1743,10 +1745,10 @@ of the new form of .rhosts authentication, as well as server host
 validation, depends on the integrity of the host key and the files
 containing known host keys.
 
-The host key is stored in a root-readable file.  If the host key is
-compromised, it permits attackers to use IP, DNS and routing spoofing
-as with current rlogin and rsh.  It should never be any worse than the
-current situation.
+The host key is normally stored in a root-readable file.  If the host
+key is compromised, it permits attackers to use IP, DNS and routing
+spoofing as with current rlogin and rsh.  It should never be any worse
+than the current situation.
 
 The files containing known host keys are not sensitive.  However, if an
 attacker gets to modify the known host key files, it has the same
@@ -1759,28 +1761,27 @@ data communicated between an X server and a client running on a remote
 machine.  By creating a fake display on the server, and forwarding all
 X11 requests over the secure channel, SSH can be used to run any X11
 applications securely without any cooperation with the vendors of the
-X server or the application.  (A requirement is that the SSH client
-runs on the same machine as the X server - otherwise the last link
-will be unprotected, but for long-distance connections this can still
-be a major improvement.)
+X server or the application.
 
 Finally, the security of this program relies on the strength of the
 underlying cryptographic algorithms.  The RSA algorithm is used for
 authentication key exchange.  It is widely believed to be secure.  Of
 the algorithms used to encrypt the session, DES has a rather small key
-these days, probably permitting governments to break it in very short
-time with specialized hardware.  3DES is probably safe (but slower).
-IDEA is widely believed to be secure.  People have varying degrees of
-confidence in the other algorithms.  This program is not secure if
-used with no encryption at all.
+these days, probably permitting governments and organized criminals to
+break it in very short time with specialized hardware.  3DES is
+probably safe (but slower).  IDEA is widely believed to be secure.
+People have varying degrees of confidence in the other algorithms.
+This program is not secure if used with no encryption at all.
 
 
 .ti 0
 Additional Information
 
-Additional information (especially on the implementation) is available
-via WWW at http://www.cs.hut.fi/ssh.
+Additional information (especially on the implementation and mailing
+lists) is available via WWW at http://www.cs.hut.fi/ssh.
 
+Comments should be sent to Tatu Ylonen <ylo@cs.hut.fi> or the SSH
+Mailing List <ssh@clinet.fi>.
 
 .ti 0
 Author's Address

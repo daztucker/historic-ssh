@@ -26,10 +26,10 @@
 .\"
 .\" $Endlog$
 .\"
-.TH SSH-ADD 1 "Aug 24, 1995" "SSH" "SSH"
+.TH SSH-ADD 1 "November 8, 1995" "SSH" "SSH"
 
 .SH NAME
-ssh-add "\ \(em adds identities for the authentication agent
+ssh-add \- adds identities for the authentication agent
 
 .SH SYNOPSIS
 .B ssh-add
@@ -58,17 +58,13 @@ command line.  If any file requires a passphrase,
 .B ssh-add
 asks for the passphrase from the user.  If the user is using X11, the
 passphrase is requested using a small X11 program; otherwise it is
-read from the user's tty.
+read from the user's tty.  (Note: it may be necessary to redirect
+stdin from /dev/null to get the passphrase requested using X11.)
 .LP
 The authentication agent must be running and must be an ancestor of
 the current process for
-.B ssh-agent
+.B ssh-add
 to work.
-.LP
-All identities currently represented by the agent can be listed by
-giving the
-.B \-l
-option.
 
 .SH OPTIONS
 .TP 0.5i

@@ -79,7 +79,8 @@ void random_initialize(RandomState *state, const char *filename)
       state->state[0] += f;
       bytes = read(f, buf, sizeof(buf));
       close(f);
-      random_add_noise(state, buf, bytes);
+      if (bytes > 0)
+	random_add_noise(state, buf, bytes);
       memset(buf, 0, sizeof(buf));
     }
   else
@@ -151,9 +152,9 @@ void random_acquire_light_environmental_noise(RandomState *state)
       /* Set the descriptor into non-blocking mode. */
 #if defined(O_NONBLOCK) && !defined(O_NONBLOCK_BROKEN)
       fcntl(f, F_SETFL, O_NONBLOCK);
-#else /* O_NONBLOCK */  
+#else /* O_NONBLOCK && !O_NONBLOCK_BROKEN */
       fcntl(f, F_SETFL, O_NDELAY);
-#endif /* O_NONBLOCK */
+#endif /* O_NONBLOCK && !O_NONBLOCK_BROKEN */
       len = read(f, buf, sizeof(buf));
       close(f);
       if (len > 0)

@@ -39,6 +39,7 @@ to the system log.
 #include <sys/syslog.h>
 #endif /* NEED_SYS_SYSLOG_H */
 #include "packet.h"
+#include "xmalloc.h"
 #include "ssh.h"
 
 static int log_debug = 0;
@@ -153,12 +154,57 @@ void error(const char *fmt, ...)
   syslog(LOG_ERR, "error: %.500s", buf);
 }
 
+struct fatal_cleanup
+{
+  struct fatal_cleanup *next;
+  void (*proc)(void *);
+  void *context;
+};
+
+static struct fatal_cleanup *fatal_cleanups = NULL;
+
+/* Registers a cleanup function to be called by fatal() before exiting. */
+
+void fatal_add_cleanup(void (*proc)(void *), void *context)
+{
+  struct fatal_cleanup *cu;
+
+  cu = xmalloc(sizeof(*cu));
+  cu->proc = proc;
+  cu->context = context;
+  cu->next = fatal_cleanups;
+  fatal_cleanups = cu;
+}
+
+/* Removes a cleanup frunction to be called at fatal(). */
+
+void fatal_remove_cleanup(void (*proc)(void *context), void *context)
+{
+  struct fatal_cleanup **cup, *cu;
+  
+  for (cup = &fatal_cleanups; *cup; cup = &cu->next)
+    {
+      cu = *cup;
+      if (cu->proc == proc && cu->context == context)
+	{
+	  *cup = cu->next;
+	  xfree(cu);
+	  return;
+	}
+    }
+  fatal("fatal_remove_cleanup: no such cleanup function: 0x%lx 0x%lx\n",
+	(unsigned long)proc, (unsigned long)context);
+}
+
 /* Fatal messages.  This function never returns. */
 
 void fatal(const char *fmt, ...)
 {
   char buf[1024];
   va_list args;
+  struct fatal_cleanup *cu, *next_cu;
+  static int fatal_called = 0;
+
   if (log_quiet)
     exit(1);
   va_start(args, fmt);
@@ -168,11 +214,18 @@ void fatal(const char *fmt, ...)
     fprintf(stderr, "fatal: %s\n", buf);
   syslog(LOG_ERR, "fatal: %.500s", buf);
 
-  /* Unlink any X11 sockets if necessary. */
-  channel_stop_listening();
+  if (fatal_called)
+    exit(1);
+  fatal_called = 1;
 
-  /* Close the connection to the client. */
-  packet_close();
+  /* Call cleanup functions. */
+  for (cu = fatal_cleanups; cu; cu = next_cu)
+    {
+      next_cu = cu->next;
+      debug("Calling cleanup 0x%lx(0x%lx)",
+	    (unsigned long)cu->proc, (unsigned long)cu->context);
+      (*cu->proc)(cu->context);
+    }
 
   exit(1);
 }

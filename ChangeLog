@@ -1,11 +1,171 @@
+Fri Nov 17 16:19:20 1995  Tatu Ylonen  <ylo@trance.olari.clinet.fi>
+
+	* Released 1.2.12.
+
+	* channels.c: Commented out debugging messages about output draining.
+
+	* Added file OVERVIEW to give some idea about the structure of the
+	  ssh software.
+
+Thu Nov 16 16:40:17 1995  Tatu Ylonen  <ylo@trance.olari.clinet.fi>
+
+	* canohost.c (get_remote_hostname): Don't ever return NULL (causes
+	  segmentation violation).
+
+        * sshconnect.c: Host ip address printed incorrectly with -v.
+	
+	* Implemented SSH_TTY environment variable.
+
+Wed Nov 15 01:47:40 1995  Tatu Ylonen  <ylo@trance.olari.clinet.fi>
+
+	* Implemented server and client option KeepAlive to specify
+	  whether to set SO_KEEPALIVE.  Both default to "yes"; to disable
+	  keepalives, set the value to "no" in both the server and the
+	  client configuration files.  Updated manual pages.
+	
+	* sshd.c: Fixed Solaris utmp problem: wrong pid stored in utmp
+	  (patch from Petri Virkkula <argon@bat.cs.hut.fi>).
+
+	* login.c (record_logout): Fixed removing user from utmp on BSD
+	  (with HAVE_LIBUTIL_LOGIN).
+
+	* Added cleanup functions to be called from fatal().  Arranged for
+	  utmp to be cleaned if sshd terminates by calling fatal (e.g.,
+	  after dropping connection).  Eliminated separate client-side
+	  fatal() functions and moved fatal() to log-client.c.  Made all
+	  cleanups, including channel_stop_listening() and packet_close()
+	  be called using this mechanism.
+
+Thu Nov  9 09:58:05 1995  Tatu Ylonen  <ylo@soikko.cs.hut.fi>
+
+	* sshd.c: Permit immediate login with empty password only if
+	  password authentication is allowed.
+
+Wed Nov  8 00:43:55 1995  Tatu Ylonen  <ylo@soikko.cs.hut.fi>
+
+	* Eliminated unix-domain X11 forwarding.  Inet-domain forwarding is
+	  now the only supported form.  Renamed server option
+	  X11InetForwarding to X11Forwarding, and eliminated
+	  X11UnixForwarding.  Updated documentation.  Updated RFC (marked
+	  the SSH_CMSG_X11_REQUEST_FORWARDING message (code 26) as
+	  obsolete, and removed all references to it).  Increased protocol
+	  version number to 1.3.
+
+	* scp.c (main): Added -B (BatchMode).  Updated manual page.
+
+	* Cleaned up and updated all manual pages.
+
+	* clientloop.c: Added new escape sequences ~# (lists forwarded
+	  connections), ~& (background ssh when waiting for forwarded
+	  connections to terminate), ~? (list available escapes).
+	  Polished the output of the connection listing.  Updated
+	  documentation.
+
+	* uidswap.c: If _POSIX_SAVED_IDS is defined, don't change the real
+	  uid.  Assume that _POSIX_SAVED_IDS also applies to seteuid.
+	  This may solve problems with tcp_wrappers (libwrap) showing
+	  connections as coming from root.
+	
+Tue Nov  7 20:28:57 1995  Tatu Ylonen  <ylo@soikko.cs.hut.fi>
+
+	* Added RandomSeed server configuration option.  The argument
+	  specifies the location of the random seed file.  Updated
+	  documentation.
+	
+	* Locate perl5 in configure.  Generate make-ssh-known-hosts (with
+	  the correct path for perl5) in Makefile.in, and install it with
+	  the other programs.  Updated manual page.
+
+	* sshd.c (main): Added a call to umask to set the umask to a
+	  reasonable value.
+
+	* compress.c (buffer_compress): Fixed to follow the zlib
+	  documentation (which is slightly confusing).
+
+	* INSTALL: Added information about Linux libc.so.4 problem.
+
+Mon Nov  6 15:42:36 1995  Tatu Ylonen  <ylo@soikko.cs.hut.fi>
+
+	* (Actually autoconf fix) Installed patch to AC_ARG_PROGRAM.
+	
+	* sshd.c, sshd.8.in: Renamed $HOME/.environment ->
+	  $HOME/.ssh/environment.
+
+	* configure.in: Disable shadow password checking on convex.
+	  Convex has /etc/shadow, but sets pw_passwd automatically if
+	  running as root.
+
+	* Eliminated HAVE_ETC_MASTER_PASSWD (NetBSD, FreeBSD); the
+ 	  pw_passwd field is automatically filled if running as root.
+	  Put explicit code in configure.in to prevent shadow password
+	  checking on FreeBSD and NetBSD.
+	
+	* serverloop.c (signchld_handler): Don't print error if wait
+	  returns -1.
+
+	* Makefile.in (install): Fixed modes of data files.
+
+	* Makefile.in (install): Make links for slogin.1.
+
+	* make-ssh-known-hosts: Merged a patch from melo@ci.uminho.pt to
+	  fix the ping command.
+
+Fri Nov  3 16:25:28 1995  Tatu Ylonen  <ylo@soikko.cs.hut.fi>
+
+	* ssh.1.in: Added more information about X11 forwarding.
+
+Thu Nov  2 18:42:13 1995  Tatu Ylonen  <ylo@soikko.cs.hut.fi>
+
+	* Changes to use O_NONBLOCK_BROKEN consistently.
+
+	* pty.c (pty_make_controlling_tty): Use setpgid instead of
+	  setsid() on Ultrix.
+
+	* includes.h: Removed redundant #undefs for Ultrix and Sony News;
+	  these are already handled in configure.in.
+
+Tue Oct 31 13:31:28 1995  Tatu Ylonen  <ylo@soikko.cs.hut.fi>
+
+	* configure.in: Define SSH_WTMP to /var/adm/wtmp is wtmp not found.
+
+	* configure.in: Disable vhangup on Ultrix.  I am told this fixes
+	  the server problems.
+
+Sat Oct 28 14:22:05 1995  Tatu Ylonen  <ylo@soikko.cs.hut.fi>
+
+	* sshconnect.c: Fixed a bug in connecting to a multi-homed host.
+	  Restructured the connecting code to never try to use the same
+	  socket a second time after a failed connection.
+
+	* Makefile.in: Added explicit -m option to install, and umask 022
+	  when creating directories and the host key.
+
+Fri Oct 27 01:05:10 1995  Tatu Ylonen  <ylo@soikko.cs.hut.fi>
+
+	* Makefile.in: Added cleaning of $(ZLIBDIR) to clean and distclean.
+
+	* login.c (get_last_login_time): Fixed a typo (define -> defined).
+
 Thu Oct 26 01:28:07 1995  Tatu Ylonen  <ylo@soikko.cs.hut.fi>
+
+	* configure.in: Moved testing for ANSI C compiler after the host
+	  specific code (problems on HPUX).
+
+	* Minor fixes to /etc/default/login stuff from Bryan O'Sullivan.
+
+	* Fixed .SH NAME sections in manual pages.
+
+	* compress.c: Trying to fix a mysterious bug in the compression
+	  glue.
+
+	* ssh-1.2.11.
 
 	* scp.c: disable agent forwarding when running ssh from scp.
 
 	* Added compression of plaintext packets using the gzip library
  	  (zlib).  Client configuration options Compression and
 	  CompressionLevel (1-9 as in gzip).  New ssh and scp option -C
-	  (to enable compression).
+	  (to enable compression).  Updated RFC.
 
 Wed Oct 25 05:11:55 1995  Tatu Ylonen  <ylo@soikko.cs.hut.fi>
 
@@ -25,7 +185,8 @@ Tue Oct 24 00:29:01 1995  Tatu Ylonen  <ylo@soikko.cs.hut.fi>
 	* sshd.c: Made the packet code use two separate descriptors for
 	  the connection (one for input, the other for output).  This will
 	  make future extensions easier (e.g., non-socket transports, etc.).
-
+	  sshd -i now uses both stdin and stdout separately.
+	
 Mon Oct 23 21:29:28 1995  Tatu Ylonen  <ylo@soikko.cs.hut.fi>
 
 	* sshd.c: Merged execle -> execve patches from Mark Martinec
@@ -115,7 +276,7 @@ Sat Oct  7 03:08:06 1995  Tatu Ylonen  <ylo@shadows.cs.hut.fi>
 
 	* serverloop.c, clientloop.c: Ignore EAGAIN reported on read from
 	  connection.  Solaris has a kernel bug which causes select() to
-	  sometimes wake even though there is no data available.
+	  sometimes wake up even though there is no data available.
 
 	* Display all open connections when printing the "Waiting for
 	  forwarded connections to terminate" message.

@@ -114,6 +114,9 @@ void packet_set_connection(int fd_in, int fd_out, RandomState *state)
       buffer_init(&outgoing_packet);
       buffer_init(&incoming_packet);
     }
+
+  /* Kludge: arrange the close function to be called from fatal(). */
+  fatal_add_cleanup((void (*)(void *))packet_close, NULL);
 }
 
 /* Sets the connection into non-blocking mode. */
@@ -121,23 +124,23 @@ void packet_set_connection(int fd_in, int fd_out, RandomState *state)
 void packet_set_nonblocking()
 {
   /* Set the socket into non-blocking mode. */
-#ifdef O_NONBLOCK
+#if defined(O_NONBLOCK) && !defined(O_NONBLOCK_BROKEN)
   if (fcntl(connection_in, F_SETFL, O_NONBLOCK) < 0)
     error("fcntl O_NONBLOCK: %.100s", strerror(errno));
-#else /* O_NONBLOCK */  
+#else /* O_NONBLOCK && !O_NONBLOCK_BROKEN */
   if (fcntl(connection_in, F_SETFL, O_NDELAY) < 0)
     error("fcntl O_NDELAY: %.100s", strerror(errno));
-#endif /* O_NONBLOCK */
+#endif /* O_NONBLOCK && !O_NONBLOCK_BROKEN */
 
   if (connection_out != connection_in)
     {
-#ifdef O_NONBLOCK
+#if defined(O_NONBLOCK) && !defined(O_NONBLOCK_BROKEN)
       if (fcntl(connection_out, F_SETFL, O_NONBLOCK) < 0)
 	error("fcntl O_NONBLOCK: %.100s", strerror(errno));
-#else /* O_NONBLOCK */  
+#else /* O_NONBLOCK && !O_NONBLOCK_BROKEN */  
       if (fcntl(connection_out, F_SETFL, O_NDELAY) < 0)
 	error("fcntl O_NDELAY: %.100s", strerror(errno));
-#endif /* O_NONBLOCK */
+#endif /* O_NONBLOCK && !O_NONBLOCK_BROKEN */
     }
 }
 
@@ -665,7 +668,7 @@ int packet_not_very_much_data_to_write()
 
 /* Informs that the current session is interactive.  Sets IP flags for that. */
 
-void packet_set_interactive(int interactive)
+void packet_set_interactive(int interactive, int keepalives)
 {
   int on = 1;
 
@@ -677,12 +680,13 @@ void packet_set_interactive(int interactive)
   if (connection_in != connection_out)
     return;
 
-  /* For now, we always set SO_KEEPALIVE.  I know some people don't like this,
-     but otherwise the server may never notice if the client machine 
-     reboots. */
-  if (setsockopt(connection_in, SOL_SOCKET, SO_KEEPALIVE, (void *)&on, 
-		 sizeof(on)) < 0)
-    error("setsockopt SO_KEEPALIVE: %.100s", strerror(errno));
+  if (keepalives)
+    {
+      /* Set keepalives if requested. */
+      if (setsockopt(connection_in, SOL_SOCKET, SO_KEEPALIVE, (void *)&on, 
+		     sizeof(on)) < 0)
+	error("setsockopt SO_KEEPALIVE: %.100s", strerror(errno));
+    }
 
   if (interactive)
     {

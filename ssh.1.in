@@ -38,10 +38,10 @@
 .\" 
 .\" $Endlog$
 .\"
-.TH SSH 1 "Aug 24, 1995" "SSH" "SSH"
+.TH SSH 1 "November 8, 1995" "SSH" "SSH"
 
 .SH NAME
-ssh "\ \(em secure shell client (remote login program)
+ssh \- secure shell client (remote login program)
 
 .SH SYNOPSIS
 .B ssh
@@ -134,7 +134,7 @@ or
 exists in the user's home directory on the
 remote machine and contains a line containing the name of the client
 machine and the name of the user on that machine, the user is
-permitted to log in.  This form of authentication is normally not
+permitted to log in.  This form of authentication alone is normally not
 allowed by the server because it is not secure.
 .LP
 The second (and primary) authentication method is the
@@ -232,13 +232,22 @@ the remote command or shell will be automatically encrypted.
 If a pseudo-terminal has been allocated (normal login session), the
 user can disconnect with "~.", and suspend
 .B ssh
-with "~^Z".  A single tilde character can be sent as "~~" (or by
+with "~^Z".  All forwarded connections can be listed with "~#", and if
+the session blocks waiting for forwarded X11 or TCP/IP
+connections to terminate, it can be backgrounded with "~&" (this
+should not be used while the user shell is active, as it can cause the
+shell to hang).  All available escapes can be listed with "~?".
+.LP
+A single tilde character can be sent as "~~" (or by
 following the tilde by a character other than those described above).
 The escape character must always follow a newline to be interpreted as
 special.  The escape character can be changed in configuration files
-or on the command line.  If no pseudo tty has been allocated, the
+or on the command line.  
+.LP
+If no pseudo tty has been allocated, the
 session is transparent and can be used to reliably transfer binary
-data.
+data.  On most systems, setting the escape character to ``none'' will
+also make the session transparent even if a tty is used.
 .LP
 The session terminates when the command or shell in on the remote
 machine exists and all X11 and TCP/IP connections have been closed.
@@ -256,6 +265,22 @@ from the local machine.  The user should not manually set
 .BR \s-1DISPLAY\s0 ".
 Forwarding of X11 connections can be
 configured on the command line or in configuration files.
+.LP
+The DISPLAY value set by
+.B ssh
+will point to the server machine, but with a display number greater
+than zero.  This is normal, and happens because
+.B ssh
+creates a "proxy" X server on the server machine for forwarding the
+connections over the encrypted channel.
+.LP
+.B Ssh
+will also automatically set up Xauthority data on the server machine.
+For this purpose, it will generate a random authorization cookie,
+store it in Xauthority on the server, and verify that any forwarded
+connections carry this cookie and replace it by the real cookie when
+the connection is opened.  The real authentication cookie is never
+sent to the server machine (and no cookies are sent in the plain).
 .LP
 If the user is using an authentication agent, the connection to the agent
 is automatically forwarded to the remote side unless disabled on
@@ -280,7 +305,10 @@ ever changes,
 warns about this and disables password authentication to prevent a
 trojan horse from getting the user's password.  Another purpose of
 this mechanism is to prevent man-in-the-middle attacks which could
-otherwise be used to circumvent the encryption.
+otherwise be used to circumvent the encryption.  The
+.B StrictHostKeyChecking
+option (see below) can be used to prevent logins to machines whose
+host key is not known or has changed.
 
 
 .ne 5
@@ -296,24 +324,23 @@ Selects the cipher to use for encrypting the session.
 .B \s-1IDEA\s0
 is used by default.  It is believed to be secure. 
 .B \s-1DES\s0
-is the data encryption standard, but is breakable by major
+is the data encryption standard, but is breakable by 
 governments, large corporations, and major criminal organizations.
 .B \s-13DES\s0
 (triple-des) is encrypt-decrypt-encrypt triple with three different
 keys.  It is presumably more secure than
-.BR \s-1DES\s0 ".
+DES.  It is used as default if both sites do not support IDEA.
 .B \s-1RC4\s0
-is the (alleged)
-.B \s-1RC4\s0
-algorithm posted in the Usenet News in 1995 (\fB\s-1RC4\s0\fR was
+is the RC4
+algorithm posted in the Usenet News in 1995 (RC4 was
 originally a trade secret algorithm of RSA Data Security and has not
 been published; however, this implementation is widely believed to be
 equivalent).  This is the fastest algorithm currently supported.
 .B \s-1TSS\s0
-is a fast home-grown algorithm based on
-.BR \s-1MD5\s0 ".
-The algorithm may also be selected on a per-host basis in the
-configuration file.
+is a fast home-grown algorithm based on MD5. 
+.B none
+disables encryption entirely; it is only intended for debugging, and
+it renders the connection insecure.
 .ne 3
 .TP
 .B \-e \fIch\fR\||\|\fI^ch\fR\||\|\fInone\fR
@@ -330,6 +357,8 @@ Requests ssh to go to background after authentication.  This is useful
 if ssh is going to ask for passwords or passphrases, but the user
 wants it in the background.  This implies 
 .B \-n.
+The recommended way to start X11 programs at a remote site is with
+something like "ssh -f host xterm".
 .ne 3
 .TP
 .BI \-i \ identity_file
@@ -359,6 +388,9 @@ connection will be automatically forwarded over an encrypted channel.
 The
 .B ssh
 program will be put in the background.
+(This does not work if
+.B ssh
+needs to ask for a password or passphrase; see also the -f option.)
 .ne 3
 .TP
 .BI \-o "\ 'option'
@@ -397,7 +429,17 @@ basis in a configuration file.
 .ne 3
 .TP
 .B \-C
-Requests gzip compression of all data.
+Requests compression of all data (including stdin, stdout, stderr, and
+data for forwarded X11 and TCP/IP connections).  The compression
+algorithm is the same used by gzip, and the "level" can be controlled
+by the
+.B CompressionLevel
+option (see below).  Compression is desirable on modem lines and other
+slow connections, but will only slow down things on fast networks.
+The default value can be set on a host-by-host basis in the
+configuration files; see the
+.B Compress
+option below.
 .ne 3
 .TP
 .BI \-L "\ port:host:hostport
@@ -423,7 +465,8 @@ connection is forwarded over the secure channel, and a connection is
 made to
 .B host:hostport
 from the local machine.  Port forwardings can also be specified in the
-configuration file.  Only root can forward privileged ports.
+configuration file.  Privileged ports can be forwarded only when
+logging in as root on the remote machine.
 
 .SH CONFIGURATION FILES
 .LP
@@ -450,6 +493,10 @@ keywords and their meanings are as follows (note that the
 configuration files are case-sensitive):
 .ne 3
 .TP
+.de YN
+"\fByes\fR" or "\fBno\fR".
+..
+
 .B Host
 Restricts the following declarations (up to the next
 .B Host
@@ -458,24 +505,55 @@ given after the keyword.  '*' and '?' can be as wildcards in the
 patterns.  A single '*' as a pattern can be used to provide global
 defaults for all hosts.  The host is the
 .IR hostname
-argument given on the command line.
+argument given on the command line (i.e., the name is not converted to
+a canonicalized host name before matching).
 .ne 3
 .TP
-.B UseRsh
-Specifies that rlogin/rsh should be used for this host.  It is
-possible that the host does not at all support the
-.B ssh
-protocol.  This causes
-.B ssh
-to exec 
-.B rsh.
-All other options (except
-.BR HostName )
-are ignored if this has been specified.  The argument must be
-.de YN
-"\fByes\fR" or "\fBno\fR."
-..
+.B BatchMode
+If set to "yes", passphrase/password querying will be disabled.  This
+option is useful in scripts and other batch jobs where you have no
+user to supply the password.  The argument must be
 .YN
+.ne 3
+.TP
+.B Cipher
+Specifies the cipher to use for encrypting the session.  Currently,
+.IR idea ",
+.IR des ",
+.IR 3des ",
+.IR rc4 ",
+.IR tss ",
+and
+.I none
+are supported.  The default is "idea" (or "3des" if "idea" is not
+supported by both hosts).  Using "none" (no encryption) is intended
+only for debugging, and will render the connection insecure.
+.ne 3
+.TP
+.B Compression
+Specifies whether to use compression.  The argument must be
+.YN
+.ne 3
+.TP
+.B CompressionLevel
+Specifies the compression level to use if compression is enable.  The
+argument must be an integer from 1 (fast) to 9 (slow, best).  The
+default level is 6, which is good for most applications.  The meaning
+of the values is the same as in GNU GZIP.
+.ne 3
+.TP
+.B ConnectionAttempts
+Specifies the number of tries (one per second) to make before falling
+back to rsh or exiting.  The argument must be an integer.  This may be
+useful in scripts if the connection sometimes fails.
+.ne 3
+.TP
+.B EscapeChar
+Sets the escape character (default: ~).  The escape character can also
+be set on the command line.  The argument should be a single
+character, '^' followed by a letter, or ``none'' to disable the escape
+character entirely (making the connection transparent for binary
+data).
 .ne 3
 .TP
 .B FallBackToRsh 
@@ -488,139 +566,6 @@ listening on the remote host),
 should automatically be used instead (after a suitable warning about
 the session being unencrypted).  The argument must be
 .YN
-.ne 3
-.B BatchMode
-If set to "yes", passphrase/password querying will be disabled.  This
-option is useful in scripts and other batch jobs where you have no
-user to supply the password.  The argument must be
-.YN
-.ne 3
-.TP
-.B StrictHostKeyChecking
-If this flag is set to "yes", 
-.B ssh
-ssh will never automatically add host keys to the
-$HOME/.ssh/known_hosts file.  This provides maximum protection against
-trojan horse attacks.  However, it can be somewhat annoying if you
-don't have good /etc/ssh_known_hosts files installed and frequently
-connect new hosts.  Basically this option forces the user to manually
-add any new hosts.  Normally this option is disabled, and new hosts
-will automatically be added to the known host files.  The host keys of
-known hosts will be verified automatically in either case.  The
-argument must be
-.YN
-.ne3
-.TP
-.B HostName
-Specifies the real host name to log into.  This can be used to specify
-nicnames or abbreviations for hosts.  Default is the name given on the
-command line.  Numeric IP addresses are also permitted (both on the
-command line and in
-.B HostName
-specifications).
-.ne 3
-.TP
-.B Port
-Specifies the port number to connect on the remote host.  Default is
-22.
-.ne 3
-.TP
-.B ProxyCommand
-Specifies the command to use to connect to the server.  The command
-string extend to the end of the line, and is executed with /bin/sh.
-In the command string, %h will be substituted by the host name to
-connect, and %p by the port.  The command can be basically anything,
-and should read from its stdin and write to its stdout.  It should
-eventually connect an
-.B sshd
-server running on some machine, or execute
-"sshd -i" somewhere.  Host key management will be done using the
-HostName of the host being connected (defaulting to the name typed by
-the user).
-.ne 3
-.TP
-.B ConnectionAttempts
-Specifies the number of tries (one per second) to make before falling
-back to rsh or exiting.  The argument must be an integer.
-.ne 3
-.TP
-.B User
-Specifies the user to log in as.  This can be useful if you have a
-different user name in different machines.  This saves the trouble of
-having to remember to give the user name on the command line.
-.ne 3
-.TP
-.B EscapeChar
-Sets the escape character (default: ~).  The escape character can also
-be set on the command line.  The argument should be a single
-character, '^' followed by a letter, or ``none''.
-.ne 3
-.TP
-.B Cipher
-Specifies the cipher to use for encrypting the session.  Currently,
-.IR idea ",
-.IR des ",
-.IR 3des ",
-.IR tss ",
-and
-.I none
-are supported.  \fB\s-1IDEA\s0\fR is the default.
-.ne 3
-.TP
-.B Compression
-Specifies whether to use compression.  The argument must be
-.YN
-.ne 3
-.TP
-.B CompressionLevel
-Specifies the compression level to use if compression is enable.  The
-argument must be an integer from 1 (fast) to 9 (slow, best).  The
-default level is 6.  The meaning of the values is the same as in GNU
-GZIP.
-.ne 3
-.TP
-.B RhostsAuthentication
-Specifies whether to try rhosts based authentication.  Note that this
-declaration only affects the client side and has no effect whatsoever
-on security.  Disabling rhosts authentication may reduce
-authentication time on slow connections when rhosts authentication is
-not used.  Most servers do not support RhostsAuthentication because it
-is not secure (see RhostsRSAAuthentication).  The argument to this
-keyword must be
-.YN
-.\" Yes I know it does not make sense, but the full-stop inside quotes
-.\" is part of the rules of typography
-.ne 3
-.TP
-.B RhostsRSAAuthentication
-Specifies whether to try rhosts based authentication with RSA host
-authentication.  The argument must be
-.YN
-.ne 3
-.TP
-.B PasswordAuthentication
-Specifies whether to use password authentication.  The argument to
-this keyword must be
-.YN
-.ne 3
-.TP
-.B RSAAuthentication
-Specifies whether to use RSA authentication.  The argument to this
-keyword must be
-.YN
-RSA authentication will only be
-attempted if the identity file exists, or an authentication agent is
-running.
-.ne 3
-.TP
-.B IdentityFile
-Specifies the file from which the user's RSA authentication identity
-is read (default \fI\s+2.\s0ssh/identity\fR in the user's home directory).
-Additionally, any identities represented by the authentication agent
-will be used for authentication.  The file name may use the tilde
-syntax to refer to a user's home directory.  It is possible to have
-multiple identity files specified in configuration files; all these
-identities will be tried in sequence.
 .ne 3
 .TP
 .B ForwardAgent
@@ -637,6 +582,45 @@ set.  The argument must be
 .YN
 .ne 3
 .TP
+.B GlobalKnownHostsFile
+Specifies a file to use instead of 
+.IR @ETCDIR@/ssh_known_hosts ".
+.ne 3
+.TP
+.B HostName
+Specifies the real host name to log into.  This can be used to specify
+nicnames or abbreviations for hosts.  Default is the name given on the
+command line.  Numeric IP addresses are also permitted (both on the
+command line and in
+.B HostName
+specifications).
+.ne 3
+.TP
+.B IdentityFile
+Specifies the file from which the user's RSA authentication identity
+is read (default \fI\s+2.\s0ssh/identity\fR in the user's home directory).
+Additionally, any identities represented by the authentication agent
+will be used for authentication.  The file name may use the tilde
+syntax to refer to a user's home directory.  It is possible to have
+multiple identity files specified in configuration files; all these
+identities will be tried in sequence.
+.ne 3
+.TP
+.B KeepAlive
+Specifies whether the system should send keepalive messages to the
+other side.  If they are sent, death of the connection or crash of one
+of the machines will be properly noticed.  However, this means that
+connections will die if the route is down temporarily, and some people
+find it annoying.  
+
+The default is "yes" (to send keepalives), and the client will notice
+if the network goes down or the remote host dies.  This is important
+in scripts, and many users want it too.
+
+To disable keepalives, the value should be set to "no" in both the
+server and the client configuration files.
+.ne 3
+.TP
 .B LocalForward
 Specifies that a TCP/IP port on the local machine be forwarded over
 the secure channel to given host:port from the remote machine.  The
@@ -644,6 +628,36 @@ first argument must be a port number, and the second must be
 host:port.  Multiple forwardings may be specified, and additional
 forwardings can be given on the command line.  Only the root can
 forward privileged ports.
+.ne 3
+.TP
+.B PasswordAuthentication
+Specifies whether to use password authentication.  The argument to
+this keyword must be
+.YN
+.ne 3
+.TP
+.B Port
+Specifies the port number to connect on the remote host.  Default is
+22.
+.ne 3
+.TP
+.B ProxyCommand
+Specifies the command to use to connect to the server.  The command
+string extends to the end of the line, and is executed with /bin/sh.
+In the command string, %h will be substituted by the host name to
+connect and %p by the port.  The command can be basically anything,
+and should read from its stdin and write to its stdout.  It should
+eventually connect an
+.B sshd
+server running on some machine, or execute
+"sshd -i" somewhere.  Host key management will be done using the
+HostName of the host being connected (defaulting to the name typed by
+the user).
+
+Note that
+.B ssh
+can also be configured to support the SOCKS system using the
+--with-socks compile-time configuration option.
 .ne 3
 .TP
 .B RemoteForward
@@ -655,29 +669,160 @@ forwardings can be given on the command line.  Only the root can
 forward privileged ports.
 .ne 3
 .TP
-.B GlobalKnownHostsFile
-Specifies a file to use instead of @ETCDIR@/ssh_known_hosts.
+.B RhostsAuthentication
+Specifies whether to try rhosts based authentication.  Note that this
+declaration only affects the client side and has no effect whatsoever
+on security.  Disabling rhosts authentication may reduce
+authentication time on slow connections when rhosts authentication is
+not used.  Most servers do not permit RhostsAuthentication because it
+is not secure (see RhostsRSAAuthentication).  The argument to this
+keyword must be
+.YN
+.ne 3
+.TP
+.B RhostsRSAAuthentication
+Specifies whether to try rhosts based authentication with RSA host
+authentication.  This is the primary authentication method for most
+sites.  The argument must be
+.YN
+.ne 3
+.TP
+.B RSAAuthentication
+Specifies whether to try RSA authentication.  The argument to this
+keyword must be
+.YN
+RSA authentication will only be
+attempted if the identity file exists, or an authentication agent is
+running.
+.ne 3
+.TP
+.B StrictHostKeyChecking
+If this flag is set to "yes", 
+.B ssh
+ssh will never automatically add host keys to the
+.I $HOME/.ssh/known_hosts
+file, and refuses to connect hosts whose host key has changed.  This
+provides maximum protection against trojan horse attacks.  However, it
+can be somewhat annoying if you don't have good
+.I /etc/ssh_known_hosts
+files installed and frequently
+connect new hosts.  Basically this option forces the user to manually
+add any new hosts.  Normally this option is disabled, and new hosts
+will automatically be added to the known host files.  The host keys of
+known hosts will be verified automatically in either case.  The
+argument must be
+.YN
+.ne3
+.TP
+.B User
+Specifies the user to log in as.  This can be useful if you have a
+different user name in different machines.  This saves the trouble of
+having to remember to give the user name on the command line.
 .ne 3
 .TP
 .B UserKnownHostsFile
 Specifies a file to use instead of \fI$HOME/\s+2.\s0ssh/known_hosts\fR.
-
-.SH INSTALLATION
-.LP
-.B Ssh
-is normally installed as suid root.  It needs root privileges only for
-rhosts authentication (rhosts authentication requires that the
-connection must come from a privileged port, and allocating such a
-port requires root privileges).  It also needs to be able to read
-\fI@ETCDIR@/ssh_host_key\fR to perform
-.B \s-1RSA\s0
-host authentication.  It is possible to use
+.ne 3
+.TP
+.B UseRsh
+Specifies that rlogin/rsh should be used for this host.  It is
+possible that the host does not at all support the
 .B ssh
-without root privileges, but rhosts authentication will then be
-disabled.  
-.B Ssh
-drops any extra privileges immediately after the connection to the
-remote host has been made.
+protocol.  This causes
+.B ssh
+to immediately exec 
+.B rsh.
+All other options (except
+.BR HostName )
+are ignored if this has been specified.  The argument must be
+.YN
+
+.SH ENVIRONMENT
+.LP
+.B Ssh 
+will normally set the following environment variables:
+.TP
+.B DISPLAY
+The DISPLAY variable indicates the location of the X11 server.  It is
+automatically set by 
+.B ssh
+to point to a value of the form "hostname:n" where hostname indicates
+the host where the shell runs, and n is an integer >= 1.  Ssh uses
+this special value to forward X11 connections over the secure
+channel.  The user should normally not set DISPLAY explicitly, as that
+will render the X11 connection insecure (and will require the user to
+manually copy any required authorization cookies).
+.ne 3
+.TP
+.B HOME
+Set to the path of the user's home directory.
+.ne 3
+.TP
+.B LOGNAME
+Synonym for USER; set for compatibility with systems that use
+this variable.
+.ne 3
+.TP
+.B MAIL
+Set to point the user's mailbox.
+.ne 3
+.TP
+.B PATH
+Set to the default PATH, as specified when compiling
+.B ssh
+or, on some systems, 
+.I /etc/environment 
+or 
+.IR /etc/default/login ".
+.ne 3
+.TP
+.B SSH_AUTHENTICATION_FD
+This is set to an integer value if you are using the authentication
+agent and a connection to it has been forwarded.  The value indicates
+a file descriptor number used for communicating with the agent.  On
+some systems, 
+.B SSH_AUTHENTICATION_SOCKET
+may be used instead to
+indicate the path of a unix-domain socket used to communicate with the
+agent (this method is less secure, and is only used on systems that
+don't support the first method).
+.ne 3
+.TP
+.B SSH_CLIENT
+Identifies the client end of the connection.  The variable contains
+three space-separated values: client ip-address, client port number,
+and server port number.
+.ne 3
+.TP
+.B SSH_TTY
+This is set to the name of the tty (path to the device) associated
+with the current shell or command.  If the current session has no tty,
+this variable is not set.
+.ne 3
+.TP
+.B TZ
+The timezone variable is set to indicate the present timezone if it
+was set when the daemon was started (e.i., the daemon passes the value
+on to new connections).
+.ne 3
+.TP
+.B USER
+Set to the name of the user logging in.
+.LP
+.RT
+Additionally, 
+.B ssh
+reads 
+.I /etc/environment 
+and 
+.IR $HOME/.ssh/environment ", 
+and adds lines of
+the format 
+.I VARNAME=value
+to the environment.  Some systems may have
+still additional mechanisms for setting up the environment, such as
+.I /etc/default/login
+on Solaris.
 
 .ne 3
 .SH FILES
@@ -808,14 +953,61 @@ same.  Additionally, successful RSA host authentication is normally
 required.  This file should only be writable by root.
 .TP
 .I @ETCDIR@/shosts.equiv
-This file is processed exactly as /etc/hosts.equiv.  This file may be
-useful to permit logins using
+This file is processed exactly as 
+.IR /etc/hosts.equiv ".  
+This file may be useful to permit logins using
 .B ssh
 but not using rsh/rlogin.
+.ne 3
+.TP
+.I @ETCDIR@/sshrc
+Commands in this file are executed by
+.B ssh
+when the user logs in just before the user's shell (or command) is started.
+See the
+.B sshd
+manual page for more information.
+.ne 3
+.TP
+.I $HOME/.ssh/rc
+Commands in this file are executed by
+.B ssh
+when the user logs in just before the user's shell (or command) is
+started.
+See the 
+.B sshd
+manual page for more information.
+
+.SH INSTALLATION
+.LP
+.B Ssh
+is normally installed as suid root.  It needs root privileges only for
+rhosts authentication (rhosts authentication requires that the
+connection must come from a privileged port, and allocating such a
+port requires root privileges).  It also needs to be able to read
+\fI@ETCDIR@/ssh_host_key\fR to perform
+.B \s-1RSA\s0
+host authentication.  It is possible to use
+.B ssh
+without root privileges, but rhosts authentication will then be
+disabled.  
+.B Ssh
+drops any extra privileges immediately after the connection to the
+remote host has been made.
+.LP
+Considerable work has been put into making
+.B sshd
+secure.  However, if you find a security problem, please report it
+immediately to <ssh-bugs@cs.hut.fi>.
+
 
 .SH AUTHOR
 .LP
 Tatu Ylonen <ylo@cs.hut.fi>
+.LP
+Information about new releases, mailing lists, and other related
+issues can be found from the ssh WWW home page at
+http://www.cs.hut.fi/ssh.
 
 .SH SEE ALSO
 .BR sshd (8),

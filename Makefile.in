@@ -101,6 +101,7 @@ INSTALL		= @INSTALL@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_DATA	= @INSTALL_DATA@
 WISH		= @WISH@
+PERL		= @PERL@
 
 RSAREFDEP	= @RSAREFDEP@
 
@@ -159,7 +160,7 @@ MAN8GENERATED = sshd.8
 MAN8SOURCES = sshd.8.in
 
 DISTFILES = COPYING README README.SECURID INSTALL TODO libdes-README \
-	libdes-COPYING libdes-ARTISTIC gnu-COPYING-GPL \
+	libdes-COPYING libdes-ARTISTIC gnu-COPYING-GPL OVERVIEW \
 	configure configure.in config.guess config.sub Makefile.in \
 	ssh-askpass.wish check-fds.c host_config.sample config.sample \
 	acconfig.h config.h.in server_config.sample \
@@ -169,7 +170,8 @@ DISTFILES = COPYING README README.SECURID INSTALL TODO libdes-README \
 
 DISTNAME = ssh-`sed 's/.*"\(.*\)".*/\1/' version.h`
 
-NORMAL_PROGRAMS = ssh-keygen ssh-askpass ssh-agent ssh-add scp
+NORMAL_PROGRAMS = ssh-keygen ssh-askpass ssh-agent ssh-add scp \
+		  make-ssh-known-hosts
 SBIN_PROGRAMS = sshd
 PROGRAMS = ssh $(SBIN_PROGRAMS) $(NORMAL_PROGRAMS)
 SSH_PROGRAM = $(bindir)/ssh
@@ -214,6 +216,11 @@ ssh-askpass: ssh-askpass.wish
 	echo "#! $(WISH) -f" >ssh-askpass
 	cat $(srcdir)/ssh-askpass.wish >>ssh-askpass
 	chmod +x ssh-askpass
+
+make-ssh-known-hosts: make-ssh-known-hosts.pl
+	-rm -f make-ssh-known-hosts
+	sed "s#&PERL&#$(PERL)#" <$(srcdir)/make-ssh-known-hosts.pl >make-ssh-known-hosts
+	chmod +x make-ssh-known-hosts
 
 gen_minfd: $(GEN_MINFD_OBJS)
 	$(CC) $(LDFLAGS) -o gen_minfd $(GEN_MINFD_OBJS) $(LIBS)
@@ -267,27 +274,27 @@ generate-host-key:
 	-@if test -f $(install_prefix)$(HOST_KEY_FILE); \
           then echo "You already have a host key in $(install_prefix)$(HOST_KEY_FILE)."; \
 	  else \
-	    echo "Generating 1024 bit host key."; \
+	    umask 022; echo "Generating 1024 bit host key."; \
 	    ./ssh-keygen -b 1024 -f $(install_prefix)$(HOST_KEY_FILE) -N ''; \
 	  fi
 
 # Creates install directories
 make-dirs:
-	-if test '!' -d $(install_prefix)$(prefix); then \
-	  mkdir $(install_prefix)$(prefix); fi
-	-if test '!' -d $(install_prefix)$(exec_prefix); then \
-	  mkdir $(install_prefix)$(exec_prefix); fi
-	-if test '!' -d $(install_prefix)$(etcdir); then \
-	  mkdir $(install_prefix)$(etcdir); fi
-	-if test '!' -d $(install_prefix)$(bindir); then \
-	  mkdir $(install_prefix)$(bindir); fi
-	-if test '!' -d $(install_prefix)$(sbindir); then \
-	  mkdir $(install_prefix)$(sbindir); fi
-	-if test '!' -d $(install_prefix)$(mandir); then \
-	  mkdir $(install_prefix)$(mandir); fi
-	-if test '!' -d $(install_prefix)$(man1dir); then \
-	  mkdir $(install_prefix)$(man1dir); fi
-	-if test '!' -d $(install_prefix)$(man8dir); then \
+	-umask 022; if test '!' -d $(install_prefix)$(prefix); then \
+	  mkdir $(install_prefix)$(prefix); fi; \
+	if test '!' -d $(install_prefix)$(exec_prefix); then \
+	  mkdir $(install_prefix)$(exec_prefix); fi; \
+	if test '!' -d $(install_prefix)$(etcdir); then \
+	  mkdir $(install_prefix)$(etcdir); fi; \
+	if test '!' -d $(install_prefix)$(bindir); then \
+	  mkdir $(install_prefix)$(bindir); fi; \
+	if test '!' -d $(install_prefix)$(sbindir); then \
+	  mkdir $(install_prefix)$(sbindir); fi; \
+	if test '!' -d $(install_prefix)$(mandir); then \
+	  mkdir $(install_prefix)$(mandir); fi; \
+	if test '!' -d $(install_prefix)$(man1dir); then \
+	  mkdir $(install_prefix)$(man1dir); fi; \
+	if test '!' -d $(install_prefix)$(man8dir); then \
 	  mkdir $(install_prefix)$(man8dir); fi
 
 # Ssh is preferably installed suid root.  It can also be used non-root,
@@ -299,7 +306,7 @@ make-dirs:
 # bound to a non-privileged port).  Also, password authentication may
 # not be available if non-root and using shadow passwords.
 install: $(PROGRAMS) make-dirs generate-host-key
-	$(INSTALL_PROGRAM) -o root -m 4755 ssh $(install_prefix)$(bindir)/ssh
+	$(INSTALL_PROGRAM) -o root -m 04755 ssh $(install_prefix)$(bindir)/ssh
 	-if test "`echo ssh | sed '$(transform)'`" '!=' ssh; then \
 	  rm -f $(install_prefix)$(bindir)/`echo ssh | sed '$(transform)'`; \
 	  $(LN_S) ssh \
@@ -311,7 +318,7 @@ install: $(PROGRAMS) make-dirs generate-host-key
 	  $(LN_S) ssh \
 	    $(install_prefix)$(bindir)/`echo slogin | sed '$(transform)'`; fi
 	-for p in $(NORMAL_PROGRAMS); do \
-	  $(INSTALL_PROGRAM) $$p $(install_prefix)$(bindir)/$$p; \
+	  $(INSTALL_PROGRAM) -m 0755 $$p $(install_prefix)$(bindir)/$$p; \
 	  if test "`echo $$p | sed '$(transform)'`" '!=' $$p; then \
 	    rm -f $(install_prefix)$(bindir)/`echo $$p | sed '$(transform)'`; \
 	    $(LN_S) $$p \
@@ -323,22 +330,29 @@ install: $(PROGRAMS) make-dirs generate-host-key
 	-rm -f $(install_prefix)$(bindir)/sshd
 	-rm -f $(install_prefix)$(bindir)/`echo sshd | sed '$(transform)'`
 	-for p in $(SBIN_PROGRAMS); do \
-	  $(INSTALL_PROGRAM) $$p $(install_prefix)$(sbindir)/$$p; \
+	  $(INSTALL_PROGRAM) -m 0755 $$p $(install_prefix)$(sbindir)/$$p; \
 	  if test "`echo $$p | sed '$(transform)'`" '!=' $$p; then \
 	    rm -f $(install_prefix)$(sbindir)/`echo $$p | sed '$(transform)'`;\
 	    $(LN_S) $$p \
 	      $(install_prefix)$(sbindir)/`echo $$p | sed '$(transform)'`; fi;\
 	done
 	-for p in $(MAN1PAGES); do \
-	  $(INSTALL_DATA) $(srcdir)/$$p $(install_prefix)$(man1dir)/$$p ; \
+	  $(INSTALL_DATA) -m 0644 $(srcdir)/$$p $(install_prefix)$(man1dir)/$$p ; \
 	  if test "`echo $$p | sed '$(transform)'`" '!=' $$p; then \
 	    rm -f $(install_prefix)$(man1dir)/`echo $$p | sed '$(transform)'`;\
 	    $(LN_S) $$p \
 	      $(install_prefix)$(man1dir)/`echo $$p | sed '$(transform)'`; \
 	  fi; \
 	done
+	rm -f $(install_prefix)$(man1dir)/slogin.1
+	$(LN_S) ssh.1 $(install_prefix)$(man1dir)/slogin.1
+	if test "`echo slogin.1 | sed '$(transform)'`" '!=' slogin.1; then \
+	  rm -f $(install_prefix)$(man1dir)/`echo slogin.1 | sed '$(transform)'`;\
+	  $(LN_S) ssh.1 \
+	    $(install_prefix)$(man1dir)/`echo slogin.1 | sed '$(transform)'`; \
+	fi
 	-for p in $(MAN1GENERATED); do \
-	  $(INSTALL_DATA) $$p $(install_prefix)$(man1dir)/$$p ; \
+	  $(INSTALL_DATA) -m 0644 $$p $(install_prefix)$(man1dir)/$$p ; \
 	  if test "`echo $$p | sed '$(transform)'`" '!=' $$p; then \
 	    rm -f $(install_prefix)$(man1dir)/`echo $$p | sed '$(transform)'`;\
 	    $(LN_S) $$p \
@@ -346,19 +360,19 @@ install: $(PROGRAMS) make-dirs generate-host-key
 	  fi; \
 	done
 	-for p in $(MAN8GENERATED); do \
-	  $(INSTALL_DATA) $$p $(install_prefix)$(man8dir)/$$p; \
+	  $(INSTALL_DATA) -m 0644 $$p $(install_prefix)$(man8dir)/$$p; \
 	  if test "`echo $$p | sed '$(transform)'`" '!=' $$p; then \
 	    rm -f $(install_prefix)$(man8dir)/`echo $$p | sed '$(transform)'`;\
 	    $(LN_S) $$p \
 	      $(install_prefix)$(man8dir)/`echo $$p | sed '$(transform)'`; fi;\
 	done
 	-if test '!' -f $(install_prefix)$(HOST_CONFIG_FILE); then \
-	  $(INSTALL_DATA) $(srcdir)/host_config.sample \
+	  $(INSTALL_DATA) -m 0644 $(srcdir)/host_config.sample \
 	    $(install_prefix)$(HOST_CONFIG_FILE); fi
 	-if test '!' -f $(install_prefix)$(SERVER_CONFIG_FILE); then \
 	  cat $(srcdir)/server_config.sample | \
 	  sed "s#_ETCDIR_#$(etcdir)#g" >/tmp/ssh_inst.$$; \
-	  $(INSTALL_DATA) /tmp/ssh_inst.$$ \
+	  $(INSTALL_DATA) -m 0644 /tmp/ssh_inst.$$ \
 	    $(install_prefix)$(SERVER_CONFIG_FILE); \
 	  rm -f /tmp/ssh_inst.$$; fi
 
@@ -377,7 +391,7 @@ uninstall:
 	  rm -f $(install_prefix)$(man1dir)/$$p; \
 	  rm -f $(install_prefix)$(man1dir)/`echo $$p | sed '$(transform)'`; \
 	done
-	for p in $(MAN8PAGES); do \
+	for p in $(MAN8GENERATED); do \
 	  rm -f $(install_prefix)$(man8dir)/$$p; \
 	  rm -f $(install_prefix)$(man8dir)/`echo $$p | sed '$(transform)'`; \
 	done
@@ -386,11 +400,13 @@ clean:
 	-rm -f *.o minfd.h gmon.out core $(PROGRAMS) gen_minfd rfc-pg
 	cd $(GMPDIR); $(MAKE) clean
 #	cd $(RSAREFSRCDIR); rm -f *.o *.a
+	cd $(ZLIBDIR); $(MAKE) clean
 
 distclean: clean
 	-rm -f Makefile config.status config.cache config.log config.h
 	-rm -f ssh.1 sshd.8 make-ssh-known-hosts.1
 	cd $(GMPDIR); $(MAKE) clean
+	cd $(ZLIBDIR); $(MAKE) clean
 
 dist:
 	-rm -rf $(DISTNAME)
@@ -414,4 +430,4 @@ dist:
 	 (echo "s/\.$$old_version\"/.$$new_version\"/g"; echo w; echo q) | ed version.h >/dev/null
 
 depend:
-	$(MAKEDEP) -I$(srcdir) -I. -I$(GMPDIR) $(DEFS) $(SRCS)
+	$(MAKEDEP) -I$(srcdir) -I. -I$(GMPDIR) -I$(ZLIBDIR) $(DEFS) $(SRCS)

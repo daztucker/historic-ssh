@@ -42,22 +42,22 @@
 .\"
 .\" $Endlog$
 .\"
-.TH SSHD 8 "Aug 24, 1995" "SSH" "SSH"
+.TH SSHD 8 "November 8, 1995" "SSH" "SSH"
 
 .SH NAME
-sshd "\ \(em secure shell daemon
+sshd \- secure shell daemon
 
 .SH SYNOPSIS
 .na
 .B sshd
 [\c
-.B \-d \c
-]
-[\c
 .BI \-b \ bits\fR\c
 ]
 [\c
-.BI \-p \ port\fR\c
+.B \-d \c
+]
+[\c
+.BI \-f \ config_file\fR\c
 ]
 [\c
 .BI \-g \ login_grace_time\fR\c
@@ -72,10 +72,10 @@ sshd "\ \(em secure shell daemon
 .BI \-k \ key_gen_time\fR\c
 ]
 [\c
-.B \-q \c
+.BI \-p \ port\fR\c
 ]
 [\c
-.BI \-f \ config_file\fR\c
+.B \-q \c
 ]
 .ad
 
@@ -84,7 +84,7 @@ sshd "\ \(em secure shell daemon
 .LP
 .B Sshd 
 (Secure Shell Daemon) is the daemon program for 
-.B ssh ".
+.BR ssh ".
 Together these programs replace rlogin and rsh programs, and
 provide secure encrypted communications between two untrusted hosts
 over an insecure network.  The programs are intended to be as easy to
@@ -92,7 +92,9 @@ install and use as possible.
 .LP
 .B Sshd
 is the daemon that listens for connections from clients.  It is
-normally started at boot from /etc/rc.local or equivalent.  It forks a new
+normally started at boot from 
+.I /etc/rc.local
+or equivalent.  It forks a new
 daemon for each incoming connection.  The forked daemons handle
 key exchange, encryption, authentication, command execution,
 and data exchange.
@@ -104,14 +106,14 @@ This key is normally regenerated every hour if it has been used, and
 is never stored on disk.
 .LP
 Whenever a client connects the daemon, the daemon sends its host
-and server public keys to the client.  The client then compares the
+and server public keys to the client.  The client compares the
 host key against its own database to verify that it has not changed.
 The client then generates a 256 bit random number.  It encrypts this
 random number using both the host key and the server key, and sends
 the encrypted number to the server.  Both sides then start to use this
 random number as a session key which is used to encrypt all further
 communications in the session.  The rest of the session is encrypted
-using an conventional cipher.  Currently, 
+using a conventional cipher.  Currently, 
 .BR \s-1IDEA\s0 ",
 .BR \s-1DES\s0 ",
 .BR \s-1\&3DES\s0 ",
@@ -123,12 +125,14 @@ is used by default.  The client selects the encryption algorithm to use
 from those offered by the server.
 .LP
 Next, the server and the client enter an authentication dialog.  The
-client tries to authenticate itself using \|\s+2.\s0rhosts authentication,
-\|\s+2.\s0rhosts authentication combined with RSA host authentication, RSA
-challenge-response authentication, or password based authentication.
-Rhosts authentication is normally disabled because it is fundamentally
-insecure, but can be enabled at compile time if desired.  System
-security is not improved unless 
+client tries to authenticate itself using \|\s+2.\s0rhosts
+authentication, \|\s+2.\s0rhosts authentication combined with RSA host
+authentication, RSA challenge-response authentication, or password
+based authentication.
+.LP
+Rhosts authentication is normally disabled
+because it is fundamentally insecure, but can be enabled in the server
+configuration file if desired.  System security is not improved unless
 .BR rshd "(8),
 .BR rlogind "(8),
 .BR rexecd "(8), and
@@ -141,21 +145,20 @@ into that machine).
 .LP
 If the client successfully authenticates itself, a dialog for
 preparing the session is entered.  At this time the client may request
-things like allocating a pseudo-tty, forwarding X11 connections over
-the secure channel, forwarding TCP/IP connections over the secure
-channel, or forwarding the authentication agent connection over the
-secure channel.
+things like allocating a pseudo-tty, forwarding X11 connections,
+forwarding TCP/IP connections, or forwarding the authentication agent
+connection over the secure channel.
 .LP
 Finally, the client either requests a shell or execution of a command.
 The sides then enter session mode.  In this mode, either side may send
 data at any time, and such data is forwarded to/from the shell or
-command on the server side, and user terminal in the client side.
+command on the server side, and the user terminal in the client side.
 .LP
-When the user program terminates, and all forwarded X11 and other
+When the user program terminates and all forwarded X11 and other
 connections have been closed, the server sends command exit status to
 the client, and both sides exit.
 .LP
-.B Ssh 
+.B Sshd 
 can be configured using command-line options or a configuration
 file.  Command-line options override values specified in the
 configuration file.
@@ -163,9 +166,8 @@ configuration file.
 
 .SH OPTIONS
 .TP
-.BI \-f \ configuration_file
-Specifies the name of the configuration file.  The default is
-.BR @ETCDIR@/sshd_config ".
+.BI \-b \ bits
+Specifies the number of bits in the server key (default 768).
 .TP
 .B \-d
 Debug mode.  The server sends verbose debug output to the system
@@ -173,12 +175,9 @@ log, and does not put itself in the background.  The server also will
 not fork and will only process one connection.  This option is only
 intended for debugging for the server.
 .TP
-.BI \-b \ bits
-Specifies the number of bits in the server key (default 768).
-.TP
-.BI \-p \ port
-Specifies the port on which the server listens for connections
-(default 22).
+.BI \-f \ configuration_file
+Specifies the name of the configuration file.  The default is
+.IR @ETCDIR@/sshd_config ".
 .TP
 .BI \-g \ login_grace_time
 Gives the grace time for clients to authenticate themselves (default
@@ -188,18 +187,17 @@ indicates no limit.
 .TP
 .BI \-h \ host_key_file
 Specifies the file from which the host key is read (default
-@ETCDIR@/ssh_host_key).  This option must be given if sshd is not run as
-root (as the normal host file is normally not readable by anyone but root).
+.IR @ETCDIR@/ssh_host_key).  
+This option must be given if sshd is not run as root (as the normal
+host file is normally not readable by anyone but root).
 .TP
 .B \-i
 Specifies that sshd is being run from inetd.  Sshd is normally not run
 from inetd because it needs to generate the server key before it can
 respond to the client, and this may take tens of seconds.  Clients
 would have to wait too long if the key was regenerated every time.
-However, with small key sizes (\c
-.I e.g.
-512) using sshd from inetd may be
-feasible.
+However, with small key sizes (e.g.  512) using sshd from inetd may
+be feasible.
 .TP
 .BI \-k \ key_gen_time
 Specifies how often the server key is regenerated (default 3600
@@ -209,118 +207,24 @@ it becomes impossible to recover the key for decrypting intercepted
 communications even if the machine is cracked into or physically
 seized.  A value of zero indicates that the key will never be regenerated.
 .TP
+.BI \-p \ port
+Specifies the port on which the server listens for connections
+(default 22).
+.TP
 .B \-q
-Quiet mode.  Nothing is sent to the system log.  Normally, beginning,
+Quiet mode.  Nothing is sent to the system log.  Normally the beginning,
 authentication, and termination of each connection is logged.
 
 .SH CONFIGURATION FILE
 
 .B Sshd
-reads configuration data from \f4@ETCDIR@/sshd_config\f1 (or the file
-specified with -f on the command line).  The file contains
-keyword-value pairs, one per line.  Lines starting with '#' and empty
-lines are interpreted as comments.
+reads configuration data from 
+.I @ETCDIR@/sshd_config
+(or the file specified with -f on the command line).  The file
+contains keyword-value pairs, one per line.  Lines starting with '#'
+and empty lines are interpreted as comments.
 
 The following keywords are possible.
-.TP
-.B Port
-Specifies the port number that
-.B sshd
-listens on.
-.TP
-.B HostKey
-Specifies the file containing the private host key (default
-.IR @ETCDIR@/ssh_host_key ").
-.TP
-.B ServerKeyBits
-Defines the number of bits in the server key.  The minimum value is 512.
-.TP
-.B LoginGraceTime
-The server disconnects after this time if the user has not
-successfully logged in.  If the value is 0, there is no time limit.
-The recommended value is 600 (seconds).
-.TP
-.B KeyRegenerationInterval
-The server key is automatically regenerated after this many seconds
-(if it has been used).  The purpose of regeneration is to prevent
-decrypting captured sessions by later breaking into the machine and
-stealing the keys.  The key is never stored anywhere.  If the value is
-0, the key is never regenerated.  The recommended value is 3600
-(seconds).
-.de YN
-"\fByes\fR" or "\fBno\fR."
-..
-.TP
-.B PermitRootLogin
-Specifies whether the root can log in using
-.B ssh.
-The value must be
-.YN
-Root login with RSA authentication when the "command" option has been
-specified will be allowed regardless of the value of this setting.
-.TP
-.B IgnoreRhosts
-Specifies that rhosts and shosts files will not be used in
-authentication.  /etc/hosts.equiv and @ETCDIR@/shosts.equiv are still
-used.  The argument must be
-.YN
-.TP
-.B QuietMode
-Specifies whether the system runs in quiet mode.  In quiet mode,
-nothing is logged in the system log, except fatal errors.
-.TP
-.B FascistLogging
-Specifies whether to use verbose logging.  Verbose logging violates
-the privacy of users and is not recommended.  The argument must be
-.YN
-.TP
-.B PrintMotd
-Specifies whether
-.B sshd
-should print /etc/motd when a user logs in interactively.  (On some
-systems it is also printed by the shell.)  The argument must be
-.YN
-.TP
-.B X11InetForwarding
-Specifies whether X11 forwarding from an internet domain socket (with
-authentication spoofing) is enabled (the normal state is enabled).
-The argument must be
-.YN
-.TP
-.B X11UnixForwarding
-Specifies whether X11 forwarding from a unix domain socket is
-enabled (the normal state is enabled).  The argument must be
-.YN
-.TP
-.B StrictModes
-Specifies whether ssh should check file modes and ownership of the
-user's home directory and rhosts files before accepting login.  This
-is normally desirable because novices sometimes accidentally leave their
-directory or files world-writable.  The argument must be
-.YN
-.TP
-.B SyslogFacility
-Gives the facility code that is used when logging messages from
-.B sshd.
-The possible values are: DAEMON, USER, AUTH, LOCAL0, LOCAL1, LOCAL2,
-LOCAL3, LOCAL4, LOCAL5, LOCAL6, LOCAL7.  The default is DAEMON.
-.TP
-.B RhostsAuthentication
-Specifies whether authentication using rhosts or /etc/hosts.equiv
-files is sufficient.  Normally, this method should not be permitted
-because it is insecure.  RhostsRSAAuthentication should be used
-instead, because it performs RSA-based host authentication in addition
-to normal rhosts or /etc/hosts.equiv authentication.
-.TP
-.B RhostsRSAAuthentication
-Specifies whether rhosts or /etc/hosts.equiv authentication together
-with successful RSA host authentication is allowed.
-.TP
-.B RSAAuthentication
-Specifies whether pure RSA authentication is allowed.
-.TP
-.B PasswordAuthentication
-Specifies whether password authentication is allowed.
 .TP
 .B AllowHosts
 This keyword can be followed by any number of host name patterns,
@@ -328,22 +232,156 @@ separated by spaces.  If specified, login is allowed only from hosts
 whose name matches one of the patterns.  '*' and '?' can be used as
 wildcards in the patterns.  Normal name servers are used to map the
 client's host into a canonical host name.  If the name cannot be
-mapped, its IP-address is used as the host name.
+mapped, its IP-address is used as the host name.  By default all hosts
+are allowed to connect.
+
+Note that
+.B sshd
+can also be configured to use tcp_wrappers using the --with-libwrap
+compile-time configuration option.
 .TP
 .B DenyHosts
 This keyword can be followed by any number of host name patterns,
 separated by spaces.  If specified, login is disallowed from the hosts
 whose name matches any of the patterns.
+.TP
+.B FascistLogging
+Specifies whether to use verbose logging.  Verbose logging violates
+the privacy of users and is not recommended.  The argument must be
+"yes" or "no" (without the quotes).  The default is "no".
+.TP
+.B HostKey
+Specifies the file containing the private host key (default
+.IR @ETCDIR@/ssh_host_key ").
+.TP
+.B IgnoreRhosts
+Specifies that rhosts and shosts files will not be used in
+authentication.
+.I /etc/hosts.equiv
+and
+.I @ETCDIR@/shosts.equiv 
+are still used.  The default is "no".
+.TP
+.B KeepAlive
+Specifies whether the system should send keepalive messages to the
+other side.  If they are sent, death of the connection or crash of one
+of the machines will be properly noticed.  However, this means that
+connections will die if the route is down temporarily, and some people
+find it annoying.  On the other hand, if keepalives are not send,
+sessions may hang indefinitely on the server, leaving "ghost" users
+and consuming server resources.
 
-.SH LOGIN
+The default is "yes" (to send keepalives), and the server will notice
+if the network goes down or the client host reboots.  This avoids
+infinitely hanging sessions.
+
+To disable keepalives, the value should be set to "no" in both the
+server and the client configuration files.
+.TP
+.B KeyRegenerationInterval
+The server key is automatically regenerated after this many seconds
+(if it has been used).  The purpose of regeneration is to prevent
+decrypting captured sessions by later breaking into the machine and
+stealing the keys.  The key is never stored anywhere.  If the value is
+0, the key is never regenerated.  The default is 3600
+(seconds).
+.TP
+.B LoginGraceTime
+The server disconnects after this time if the user has not
+successfully logged in.  If the value is 0, there is no time limit.
+The default is 600 (seconds).
+.TP
+.B PasswordAuthentication
+Specifies whether password authentication is allowed.
+The default is "yes".
+.TP
+.B PermitEmptyPasswords
+When password authentication is allowed, it specifies whether the
+server allows login to accounts with empty password strings.  The default
+is "yes".
+.TP
+.B PermitRootLogin
+Specifies whether the root can log in using
+.BR ssh .
+The default is "yes".
+
+Root login with RSA authentication when the "command" option has been
+specified will be allowed regardless of the value of this setting
+(which may be useful for taking remote backups even if root login is
+normally not allowed).
+.TP
+.B Port
+Specifies the port number that
+.B sshd
+listens on.  The default is 22.
+.TP
+.B PrintMotd
+Specifies whether
+.B sshd
+should print 
+.I /etc/motd
+when a user logs in interactively.  (On some systems it is also
+printed by the shell, /etc/profile, or equivalent.)  The default is
+"yes".
+.TP
+.B QuietMode
+Specifies whether the system runs in quiet mode.  In quiet mode,
+nothing is logged in the system log, except fatal errors.  The default
+is "no".
+.TP
+.B RandomSeed
+Specifies the file containing the random seed for the server; this
+file is created automatically and updated regularly.  The default is
+.IR @ETCDIR@/ssh_random_seed ".
+.TP
+.B RhostsAuthentication
+Specifies whether authentication using rhosts or /etc/hosts.equiv
+files is sufficient.  Normally, this method should not be permitted
+because it is insecure.  RhostsRSAAuthentication should be used
+instead, because it performs RSA-based host authentication in addition
+to normal rhosts or /etc/hosts.equiv authentication.
+The default is "no".
+.TP
+.B RhostsRSAAuthentication
+Specifies whether rhosts or /etc/hosts.equiv authentication together
+with successful RSA host authentication is allowed.  The default is "yes".
+.TP
+.B RSAAuthentication
+Specifies whether pure RSA authentication is allowed.  The default is "yes".
+.TP
+.B ServerKeyBits
+Defines the number of bits in the server key.  The minimum value is
+512, and the default is 768.
+.TP
+.B StrictModes
+Specifies whether ssh should check file modes and ownership of the
+user's home directory and rhosts files before accepting login.  This
+is normally desirable because novices sometimes accidentally leave their
+directory or files world-writable.  The default is "yes".
+.TP
+.B SyslogFacility
+Gives the facility code that is used when logging messages from
+.B sshd.
+The possible values are: DAEMON, USER, AUTH, LOCAL0, LOCAL1, LOCAL2,
+LOCAL3, LOCAL4, LOCAL5, LOCAL6, LOCAL7.  The default is DAEMON.
+.TP
+.B X11Forwarding
+Specifies whether X11 forwarding is permitted.  The default is "yes".
+Note that disabling X11 forwarding does not improve security in any
+way, as users can always install their own forwarders.
+
+.SH LOGIN PROCESS
 
 When a user successfully logs in,
-.B ssh
+.B sshd
 does the following:
 .IP 1.
 If the login is on a tty, and no command has been specified,
-prints last login time and /etc/motd (unless prevented in the
-configuration file or by \s+2.\s0hushlogin; see below).
+prints last login time and 
+.B /etc/motd
+(unless prevented in the configuration file or by
+.IR $HOME/\s+2.\s0hushlogin ;
+see the FILES section).
 .IP 2.
 If the login is on a tty, records login time.
 .IP 3.
@@ -356,7 +394,7 @@ Sets up basic environment.
 .IP 6.
 Reads /etc/environment if it exists.
 .IP 7.
-Reads $HOME/.environment if it exists.
+Reads $HOME/.ssh/environment if it exists.
 .IP 8.
 Changes to user's home directory.
 .IP 9.
@@ -367,24 +405,6 @@ authentication protocol and cookie in standard input.
 Runs user's shell or command.
 .RT
 
-
-.SH INSTALLATION
-.LP
-.B Sshd 
-is normally run as root.  If it is not run as root, it can
-only log in as the user it is running as, and password authentication
-may not work if the system uses shadow passwords.  An alternative
-host key file must also be used.
-.LP
-Considerable work has been put to making
-.B sshd
-secure.  However, if you find a security problem, please report it
-immediately to <ssh-bugs@cs.hut.fi>.
-.LP
-.B Sshd 
-is normally started from 
-.I /etc/rc.local
-or equivalent at system boot.
 
 .SH AUTHORIZED_KEYS FILE FORMAT
 .LP
@@ -398,7 +418,7 @@ spaces: options, bits, exponent, modulus, comment.  The options field
 is optional; its presence is determined by whether the line starts
 with a number or not (the option field never starts with a number).
 The bits, exponent, modulus and comment fields give the RSA key; the
-comment field is not used for anything (but may be convenient to the
+comment field is not used for anything (but may be convenient for the
 user to identify the key).
 .LP
 Note that lines in this file are usually several hundred bytes long
@@ -450,10 +470,8 @@ type are permitted.
 .TP
 .B no-port-forwarding
 Forbids TCP/IP forwarding when this key is used for authentication.
-Any port forward requests by the client will return an error.
-This might be used
-.I e.g.
-in connection with the
+Any port forward requests by the client will return an error.  This
+might be used e.g.  in connection with the
 .B command
 option.
 .TP
@@ -472,7 +490,7 @@ Prevents tty allocation (a request to allocate a pty will fail).
 .LP
 1024 33 12121.\|.\|.\|312314325 ylo@foo.bar
 .LP
-host="*.niksula.hut.fi,!pc.niksula.hut.fi" 1024 35 23.\|.\|.\|2334 ylo@niksula
+from="*.niksula.hut.fi,!pc.niksula.hut.fi" 1024 35 23.\|.\|.\|2334 ylo@niksula
 .LP
 command="dump /home",no-pty,no-port-forwarding 1024 33 23.\|.\|.\|2323 backup.hut.fi
 
@@ -491,7 +509,7 @@ its key is added to the per-user file.  The recommended way to create
 .I @ETCDIR@/ssh_known_hosts
 is to use the
 .B make-ssh-known-hosts
-script.
+command.
 .LP
 Each line in these files contains the following fields: hostnames,
 bits, exponent, modulus, comment.  The fields are separated by spaces.
@@ -505,9 +523,7 @@ pattern, it is not accepted (by that line) even if it matched another
 pattern on the line.
 .LP
 Bits, exponent, and modulus are taken directly from the host key; they
-can be obtained
-.I e.g.
-from
+can be obtained e.g.  from
 .IR @ETCDIR@/ssh_host_key.pub ".
 The optional comment field continues to the end of the line, and is not used.
 .LP
@@ -534,9 +550,11 @@ and adding the host names at the front.
 closenet,closenet.hut.fi,.\|.\|.\|,130.233.208.41 1024 37 159.\|.\|.93 closenet.hut.fi
 
 .SH FILES
+.TP
 .I @ETCDIR@/sshd_config
 Contains configuration data for
-.B sshd.  This file should be writable by root only, but it is recommended
+.BR sshd .  
+This file should be writable by root only, but it is recommended
 (though not necessary) that it be world-readable.
 .TP
 .I @ETCDIR@/ssh_host_key
@@ -656,7 +674,7 @@ all environments (normal rsh/rlogin only process it on AIX and
 potentially some other systems).  The file should be writable only by
 root, and should be world-readable.
 .TP
-.I \&$HOME/\s+2.\s0environment
+.I \&$HOME/\s+2.\s0ssh/environment
 This file is read into the environment after /etc/environment.  It has
 the same format.  The file should be writable only by the user; it
 need not be readable by anyone else.
@@ -687,9 +705,32 @@ Like $HOME/\s+2.\s0ssh/rc.  This can be used to specify
 machine-specific login-time initializations globally.  This file
 should be writable only by root, and should be world-readable.
 
+
+.SH INSTALLATION
+.LP
+.B Sshd 
+is normally run as root.  If it is not run as root, it can
+only log in as the user it is running as, and password authentication
+may not work if the system uses shadow passwords.  An alternative
+host key file must also be used.
+.LP
+.B Sshd 
+is normally started from 
+.I /etc/rc.local
+or equivalent at system boot.
+.LP
+Considerable work has been put to making
+.B sshd
+secure.  However, if you find a security problem, please report it
+immediately to <ssh-bugs@cs.hut.fi>.
+
 .SH AUTHOR
 .LP
 Tatu Ylonen <ylo@cs.hut.fi>
+.LP
+Information about new releases, mailing lists, and other related
+issues can be found from the ssh WWW home page at
+http://www.cs.hut.fi/ssh.
 
 .SH SEE ALSO
 .LP

@@ -1,4 +1,4 @@
-#!/usr/local/bin/perl -w
+#! &PERL& -w
 # -*- perl -*-
 ######################################################################
 # make-ssh-known-hosts.pl -- Make ssh-known-hosts file
@@ -126,9 +126,9 @@ if (defined($opt_nslookup)) { $nslookup = $opt_nslookup; }
 
 if (defined($opt_ping)) { $ping = $opt_ping; }
 
-if (defined($opt_pingpostoptions)) { $ping = $opt_pingpostoptions; }
+if (defined($opt_pingpostoptions)) { $pingpostoptions = $opt_pingpostoptions; }
 
-if (defined($opt_pingpreoptions)) { $ping = $opt_pingpreoptions; }
+if (defined($opt_pingpreoptions)) { $pingpreoptions = $opt_pingpreoptions; }
 
 if (defined($opt_ssh)) { $ssh = $opt_ssh; } else {
     $ssh = "$ssh $sshdisablepasswordoption";

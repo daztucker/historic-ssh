@@ -1,4 +1,4 @@
-/* maximum file descriptors = 1024 */
+/* maximum file descriptors = 3240 */
 
 struct Min_Auth_Fd {
   int fd;
@@ -7,10 +7,7 @@ struct Min_Auth_Fd {
 
 static struct Min_Auth_Fd mafd[] = {
   { 4, "sh" },
-  { 4, "jsh" },
-  { 4, "ksh" },
-  { 20, "tcsh" },
-  { 4, "bash" },
+  { 64, "csh" },
   { 64, "zsh" },
   { 0, "" },
 };

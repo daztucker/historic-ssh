@@ -23,10 +23,10 @@
 .\"
 .\" $Endlog$
 .\"
-.TH SSH-AGENT 1 "Aug 24, 1995" "SSH" "SSH"
+.TH SSH-AGENT 1 "November 8, 1995" "SSH" "SSH"
 
 .SH NAME
-ssh-agent "\ \(em authentication agent
+ssh-agent \- authentication agent
 
 .SH SYNOPSIS
 .LP
@@ -43,7 +43,7 @@ is started in the beginning of an X-session or a login session, and
 all other windows or programs are started as children of the ssh-agent
 program (the
 .IR command
-normally starts windows or is the user shell).  Programs started under
+normally starts X or is the user shell).  Programs started under
 the agent inherit a connection to the agent, and the agent is
 automatically used for RSA authentication when logging to other
 machines using
@@ -67,7 +67,7 @@ displays the identities currently held by the agent.
 .LP
 The idea is that the agent is run in the user's local PC, laptop, or
 terminal.  Authentication data need not be stored on any other
-machine, and authentication passphrases never go over a network.
+machine, and authentication passphrases never go over the network.
 However, the connection to the agent is forwarded over
 .B ssh
 remote logins, and the user can thus use the privileges given by the

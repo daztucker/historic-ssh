@@ -133,7 +133,7 @@
 
 AC_INIT(sshd.c)
 AC_CONFIG_HEADER(config.h)
-AC_PREREQ(2.0)
+AC_PREREQ(2.4)
 
 if test -f /etc/krb.conf; then
   AC_MSG_WARN(Ssh does not yet support Kerberos!)
@@ -143,13 +143,6 @@ AC_CANONICAL_HOST
 
 AC_PROG_CC
 AC_C_CROSS
-
-AC_MSG_CHECKING([that the compiler works])
-AC_TRY_RUN([ main(int ac, char **av) { return 0; } ],
-    AC_MSG_RESULT(yes),
-    AC_MSG_RESULT(no)
-    AC_MSG_ERROR(Could not compile and run even a trivial ANSI C program - check CC.),
-    AC_MSG_ERROR(Could not compile and run even a trivial ANSI C program - check CC.))
 
 case "$host" in
   *-*-sunos4.1.1*)
@@ -166,7 +159,7 @@ case "$host" in
     no_libsun=yes
     ;;
   *-sgi-irix6*)
-    # d-champion@uchicago.edu
+    # from d-champion@uchicago.edu
     no_libsocket=yes
     no_libsun=yes
     if test "`uname -s`" = "IRIX64"; then
@@ -187,11 +180,9 @@ case "$host" in
     no_vhangup=yes
     ;;
   *-dec-ultrix*)
-    # Ultrix instructions from dmckilli@qc.bell.ca.
-    # I am told Ultrix still has problemms setting controlling tty.
-    # Please let me know how to do it if you know.
+    # Ultrix stuff from dmckilli@qc.bell.ca, jbotz@orixa.mtholyoke.edu.
     AC_DEFINE(O_NONBLOCK_BROKEN)
-    no_setsid=yes
+    no_vhangup=yes
     AC_TRY_COMPILE([#include <syslog.h>],
 		   [int foo = LOG_DAEMON; ],
 		   ,
@@ -220,7 +211,7 @@ case "$host" in
     fi
     ;;
   *-*-nextstep*)
-    # Nextstep support contributed by a person who wants to remain anonymous
+    # Nextstep support from a person who wants to remain anonymous
     no_termios=yes
     AC_DEFINE(SPEED_T_IN_STDTYPES_H)
     ;;
@@ -256,10 +247,26 @@ case "$host" in
     AC_DEFINE(USE_STRLEN_FOR_AF_UNIX)
     ;;
   i*86-unknown-sco*)
+    # From moi@dio.com
     AC_DEFINE(HAVE_SCO_ETC_SHADOW)
     AC_DEFINE(SCO)
     no_ranlib=yes
     LIBS="-L/usr/lib/libp -lprot -lx $LIBS"
+    ;;
+  *-convex-bsd*)
+    # From mark.martinec@nsc.ijs.si
+    # On Convex, getpwnam sets pw_passwd if running as root
+    no_shadows_password_checking=yes
+    ;;
+  *-*-freebsd*)
+    # From Ollivier Robert: FreeBSD and NetBSD use master.passwd, but set
+    # pw_passwd automatically when running as root.
+    no_shadow_password_checking=yes
+    ;;
+  *-*-netbsd*)
+    # From Ollivier Robert: FreeBSD and NetBSD use master.passwd, but set
+    # pw_passwd automatically when running as root.
+    no_shadow_password_checking=yes
     ;;
   *)
     ;;
@@ -268,6 +275,13 @@ esac
 # Socket pairs appear to be broken on several systems.  I don't know exactly
 # where, so I'll use pipes everywhere for now.
 AC_DEFINE(USE_PIPES)
+
+AC_MSG_CHECKING([that the compiler works])
+AC_TRY_RUN([ main(int ac, char **av) { return 0; } ],
+    AC_MSG_RESULT(yes),
+    AC_MSG_RESULT(no)
+    AC_MSG_ERROR(Could not compile and run even a trivial ANSI C program - check CC.),
+    AC_MSG_ERROR(Could not compile and run even a trivial ANSI C program - check CC.))
 
 if test -z "$no_pipe"; then
 if test -n "$GCC"; then
@@ -363,6 +377,13 @@ if test -n "$XAUTH_PATH"; then
   AC_DEFINE_UNQUOTED(XAUTH_PATH, "$XAUTH_PATH")
 fi
 
+AC_PATH_PROGS(PERL, perl5 perl5.001 perl, not found)
+if test "x$PERL" = "xnot found" || $PERL -e 'exit ($] >= 5)'; then
+  unset ac_cv_path_PERL
+  PERL="/usr/local/bin/perl"
+  AC_MSG_WARN(perl version 5 not found - make-ssh-known-hosts will not work)
+fi
+
 AC_MSG_CHECKING(for pseudo ttys)
 if test -c /dev/ptmx && test -c /dev/pts/0
 then
@@ -386,25 +407,24 @@ else
   AC_MSG_RESULT(no)
 fi
 
-AC_MSG_CHECKING(for shadow passwords)
-if test -f /etc/master.passwd; then
-  AC_DEFINE(HAVE_ETC_MASTER_PASSWD)
-  AC_MSG_RESULT(/etc/master.passwd)
-elif test -f /etc/shadow; then
-  AC_DEFINE(HAVE_ETC_SHADOW)
-  AC_MSG_RESULT(/etc/shadow)
-elif test -n "$os_aix"; then
-  AC_DEFINE(HAVE_ETC_SECURITY_PASSWD)
-  AC_MSG_RESULT(/etc/security/passwd)
-elif test -n "$os_sunos"; then
-  AC_DEFINE(HAVE_ETC_SECURITY_PASSWD_ADJUNCT)
-  AC_MSG_RESULT(/etc/security/passwd.adjunct)
-else
-  AC_MSG_RESULT(no)
+if test -z "$no_shadows_password_checking"; then
+  AC_MSG_CHECKING(for shadow passwords)
+  if test -f /etc/shadow; then
+    AC_DEFINE(HAVE_ETC_SHADOW)
+    AC_MSG_RESULT(/etc/shadow)
+  elif test -n "$os_aix"; then
+    AC_DEFINE(HAVE_ETC_SECURITY_PASSWD)
+    AC_MSG_RESULT(/etc/security/passwd)
+  elif test -n "$os_sunos"; then
+    AC_DEFINE(HAVE_ETC_SECURITY_PASSWD_ADJUNCT)
+    AC_MSG_RESULT(/etc/security/passwd.adjunct)
+  else
+    AC_MSG_RESULT(no)
+  fi
 fi
 
 AC_MSG_CHECKING(location of mail spool files)
-for dir in /usr/spool/mail /usr/mail /var/spool/mail /var/mail NEWMAIL
+for dir in /var/spool/mail /var/mail /usr/spool/mail /usr/mail NEWMAIL
 do
   if test "$dir" = "NEWMAIL"; then
     AC_DEFINE(HAVE_TILDE_NEWMAIL)
@@ -451,6 +471,7 @@ elif test -f /etc/wtmp; then
   AC_DEFINE(SSH_WTMP, "/etc/wtmp")
   AC_MSG_RESULT(/etc/wtmp)
 else
+  AC_DEFINE(SSH_WTMP, "/var/adm/wtmp")
   AC_MSG_RESULT(not found)
 fi
 
@@ -568,7 +589,7 @@ AC_ARG_WITH(path,
 
 AC_MSG_CHECKING(etcdir)
 AC_ARG_WITH(etcdir,
-[  --with-etcdir=PATH      Directory containing ssh system files (default /etc)],
+[  --with-etcdir=PATH      Directory containing ssh system files (default /etc).],
 [ case "$withval" in
   no)
     AC_MSG_ERROR(Need ETCDIR.)

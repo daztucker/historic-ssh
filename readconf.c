@@ -94,6 +94,7 @@ Functions for reading the configuration files.
      FallBackToRsh no
      UseRsh no
      StrictHostKeyChecking yes
+     KeepAlives no
      IdentityFile ~/.ssh/identity
      Port 22
      Cipher idea
@@ -116,7 +117,8 @@ typedef enum
   oIdentityFile, oHostName, oPort, oCipher, oRemoteForward, oLocalForward, 
   oUser, oHost, oEscapeChar, oRhostsRSAAuthentication, oProxyCommand,
   oGlobalKnownHostsFile, oUserKnownHostsFile, oConnectionAttempts,
-  oBatchMode, oStrictHostKeyChecking, oCompression, oCompressionLevel
+  oBatchMode, oStrictHostKeyChecking, oCompression, oCompressionLevel,
+  oKeepAlives
 } OpCodes;
 
 /* Textual representations of the tokens. */
@@ -152,6 +154,7 @@ static struct
   { "StrictHostKeyChecking", oStrictHostKeyChecking },
   { "Compression", oCompression },
   { "CompressionLevel", oCompressionLevel },
+  { "KeepAlive", oKeepAlives },
   { NULL, 0 }
 };
 
@@ -287,6 +290,10 @@ void process_config_line(Options *options, const char *host,
       
     case oCompression:
       intptr = &options->compression;
+      goto parse_flag;
+
+    case oKeepAlives:
+      intptr = &options->keepalives;
       goto parse_flag;
 
     case oCompressionLevel:
@@ -506,6 +513,7 @@ void initialize_options(Options *options)
   options->batch_mode = -1;
   options->strict_host_key_checking = -1;
   options->compression = -1;
+  options->keepalives = -1;
   options->compression_level = -1;
   options->port = -1;
   options->connection_attempts = -1;
@@ -548,6 +556,8 @@ void fill_default_options(Options *options)
     options->strict_host_key_checking = 0;
   if (options->compression == -1)
     options->compression = 0;
+  if (options->keepalives == -1)
+    options->keepalives = 1;
   if (options->compression_level == -1)
     options->compression_level = 6;
   if (options->port == -1)

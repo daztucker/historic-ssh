@@ -52,24 +52,26 @@ The zlib compression library is copyright Jean-loup Gailly and Mark
 Adler.  Anyone is permitted to use the library for any purpose.  A
 copy of the license conditions can be found in zlib095/README.
 
-The make-ssh-known-hosts script is distributed under the GNU General
+The make-ssh-known-hosts script was contributed by Tero Kivinen
+<kivinen@niksula.hut.fi> and is distributed under the GNU General
 Public License.  A copy can be found in gnu-COPYING-GPL.
 
 Some files, such as memmove.c and random.c, are owned by the Regents
-of the University of California, but can be freely used and
+of the University of California, and can be freely used and
 distributed.  License terms are included in the affected files.  The
 file scp.c is derived from code owned by the Regents of the University
 of California, and can be used freely.
 
 The TSS encryption algorithm implementation in tss.c is copyright Timo
-Rinne and Cirion Oy.  It is used with permission, and permission has
-been given for anyone to use it for any purpose as part of ssh.
+Rinne <tri@iki.fi> and Cirion Oy.  It is used with permission, and
+permission has been given for anyone to use it for any purpose as part
+of ssh.
 
 The MD5 implementation in md5.c was taken from PGP and is due to Colin
 Plumb.  Comments in the file indicate that it is in the public domain.
 
 The 32-bit CRC implementation in crc32.c is due to Gary S. Brown.
-Comments in the file indicate it may be used as desired without
+Comments in the file indicate it may be used for any purpose without
 restrictions.
 
 

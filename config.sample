@@ -21,6 +21,7 @@ Host pooh
 
 Host shadows.cs.hut.fi shadows
   RhostsAuthentication yes
+  KeepAlive no
   RemoteForward 30000 olari.clinet.fi:23
   LocalForward 30001 lk-hp-13.hut.fi:23
   IdentityFile ~/.identityfiles/shadows
@@ -30,6 +31,7 @@ Host ngs.fi *.ngs.fi
   FallBackToRsh no
   PasswordAuthentication no
   IdentityFile ~/.identityfiles/ngs
+  KeepAlive no
   Compression yes
   CompressionLevel 9
 

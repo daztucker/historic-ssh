@@ -1,17 +1,14 @@
 Julkaise RFC/Internet Draft.
 
-uidswap on POSIX (AIX): see POSIX 4.2.2.2(1): it just might work.
+SunOS has utmp problems (slot 0?).
 
-Consider changing AllowHosts/DenyHosts semantic to match that used in tcp_wrappers.
+READMEn alku on liian pitk{.
 
-keylogin?
+Merge rdist into the ssh distribution.
+  - patch for stdin/stdout
+  - -P arguments
+  - configure/makefile
 
-Check impact of unix-domain socket protections, particularly on HPUX.
-Message from mark.martinec@nsc.ijs.si.
+When sshd Address Already in Use, print error to stderr.
 
-Put rdist distribution and patches available in ssh ftp directory.
-
-Check server waiting 10 ms before sending a small packet.
-
-HPSUX has utmp problems.  (Bert Gijsbers <bert@mc.bio.uva.nl>)
-HPUX utmp: pty/ttyp1 vs. ttyp1
+mcooper@usc.edu says `tty` returns 'not a tty' when run from /etc/sshrc after 'ssh $host' where the server is a sunos 4.1.3 host.

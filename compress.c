@@ -68,46 +68,29 @@ void buffer_compress(Buffer *input_buffer, Buffer *output_buffer)
   char buf[4096];
   int status;
 
+  /* This case is not handled below. */
+  if (buffer_len(input_buffer) == 0)
+    return;
+
+  /* Input is the contents of the input buffer. */
   outgoing_stream.next_in = buffer_ptr(input_buffer);
   outgoing_stream.avail_in = buffer_len(input_buffer);
 
-  outgoing_stream.next_out = buf;
-  outgoing_stream.avail_out = sizeof(buf);
-
-  while (outgoing_stream.avail_in > 0)
-    {
-      status = deflate(&outgoing_stream, Z_NO_FLUSH);
-      switch (status)
-	{
-	case Z_OK:
-	  buffer_append(output_buffer, buf,
-			sizeof(buf) - outgoing_stream.avail_out);
-	  outgoing_stream.next_out = buf;
-	  outgoing_stream.avail_out = sizeof(buf);
-	  break;
-	case Z_STREAM_END:
-	  fatal("buffer_compress: deflate returned Z_STREAM_END");
-	  /*NOTREACHED*/
-	case Z_STREAM_ERROR:
-	  fatal("buffer_compress: deflate returned Z_STREAM_ERROR");
-	  /*NOTREACHED*/
-	case Z_BUF_ERROR:
-	  fatal("buffer_compress: deflate returned Z_BUF_ERROR");
-	  /*NOTREACHED*/
-	default:
-	  fatal("buffer_compress: deflate returned %d", status);
-	}
-    }
+  /* Loop compressing until deflate() returns with avail_out != 0. */
   do
     {
+      /* Set up fixed-size output buffer. */
+      outgoing_stream.next_out = buf;
+      outgoing_stream.avail_out = sizeof(buf);
+
+      /* Compress as much data into the buffer as possible. */
       status = deflate(&outgoing_stream, Z_PARTIAL_FLUSH);
       switch (status)
 	{
 	case Z_OK:
+	  /* Append compressed data to output_buffer. */
 	  buffer_append(output_buffer, buf,
 			sizeof(buf) - outgoing_stream.avail_out);
-	  outgoing_stream.next_out = buf;
-	  outgoing_stream.avail_out = sizeof(buf);
 	  break;
 	case Z_STREAM_END:
 	  fatal("buffer_compress: deflate returned Z_STREAM_END");
@@ -120,6 +103,7 @@ void buffer_compress(Buffer *input_buffer, Buffer *output_buffer)
 	  /*NOTREACHED*/
 	default:
 	  fatal("buffer_compress: deflate returned %d", status);
+	  /*NOTREACHED*/
 	}
     }
   while (outgoing_stream.avail_out == 0);

@@ -2,13 +2,13 @@ Ssh (Secure Shell) is a program to log into another computer over a
 network, to execute commands in a remote machine, and to move files
 from one machine to another.  It provides strong authentication and
 secure communications over insecure channels.  It is inteded as a
-replacement for rlogin, rsh, and rcp.
+replacement for rlogin, rsh, rcp, and rdist.
 
 See the file INSTALL for installation instructions.  See COPYING for
 license terms and other legal issues.  See RFC for a description of
 the protocol.  There is a WWW page for ssh; see http://www.cs.hut.fi/ssh.
 
-This file has been updated to match ssh-1.2.
+This file has been updated to match ssh-1.2.12.
 
 
 FEATURES
@@ -98,6 +98,10 @@ FEATURES
  o  Automatically executes conventional rsh (after displaying a
     warning) if the server machine is not running sshd.
 
+ o  Optional compression of all data with gzip (including forwarded X11
+    and TCP/IP port data), which may result in significant speedups on
+    slow connections.
+
  o  Complete replacement for rlogin, rsh, and rcp.
 
 
@@ -117,7 +121,7 @@ likes.  Many incidents have been encountered worldwide where crackers
 have started programs on workstations without the owners knowledge
 just to listen to the network and collect passwords.  Programs for
 doing this are available on the Internet, or can be built by a
-competent programmer in a few days.
+competent programmer in a few hours.
 
 Any information that you type or is printed on your screen can be
 monitored, recorded, and analyzed.  For example, an intruder who has
@@ -150,7 +154,7 @@ tax reports, political documents, unpublished manuscripts, etc.
 
 One should also be aware that economical intelligence and industrial
 espionage has recently become a major priority of the intelligence
-agencies of major government.  President Clinton recently assigned
+agencies of major governments.  President Clinton recently assigned
 economical espionage as the primary task of the CIA, and the French
 have repeatedly been publicly boasting about their achievements on
 this field.
@@ -200,7 +204,7 @@ state must never get so strong that people become unable to spread
 contra-offical information and unable to overturn the government if it
 is bad.  The danger is that when you notice that the government is
 too powerful, it is too late.  Also, the real power may not be where
-the official government is. 
+the official government is.
 
 For these reasons (privacy, protecting trade secrets, and making it
 more difficult to create a totalitarian state), I think that strong
@@ -482,8 +486,9 @@ may be with a rubber hose.
 
 LEGAL ISSUES
 
-See the file COPYING for copying, licensing, and distribution
-information.
+As far as I am concerned, anyone is permitted to use this software
+freely.  However, see the file COPYING for detailed copying,
+licensing, and distribution information.
 
 In some countries, particularly France, Russia, Iraq, and Pakistan,
 it may be illegal to use any encryption at all without a special
@@ -508,7 +513,9 @@ There is a mailing list for ssh.  It is ssh@clinet.fi.  If you would
 like to join, send a message to majordomo@clinet.fi with "subscribe
 ssh" in body.
 
-The WWW home page for ssh is http://www.cs.hut.fi/ssh.  It contains an archive of the mailing list.
+The WWW home page for ssh is http://www.cs.hut.fi/ssh.  It contains an
+archive of the mailing list, and detailed information about new
+releases, mailing lists, and other relevant issues.
 
 Bug reports should be sent to ssh-bugs@cs.hut.fi.
 
@@ -534,15 +541,16 @@ The author can be contacted via ordinary mail at
 ACKNOWLEDGEMENTS
 
 I thank Tero Kivinen, Timo Rinne, Janne Snabb, and Heikki Suonsivu for
-their help and comments in the design, implementation and porting the
+their help and comments in the design, implementation and porting of
 this software.  I also thank numerous contributors, including but not
-limited to Walker Aumann, Hans-Werner Braun, Stephane Bortzmeyer,
-David Dombek, Jerome Etienne, Bill Fithen, Mark Fullmer, Bert
-Gijsbers, Andreas Gustafsson, Michael Henits, Steve Johnson, Thomas
-Koenig, Felix Leitner, Gunnar Lindberg, Andrew Macpherson, Marc
-Martinec, Paul Mauvais, Donald McKillican, Leon Mlakar, Robert
-Muchsel, Mark Treacy, Bryan O'Sullivan, Ollivier Robert, Jakob
-Schlyter, Tomasz Surmacz, Alvar Vinacua, Michael Warfield, and
+limited to Walker Aumann, Jurgen Botz, Hans-Werner Braun, Stephane
+Bortzmeyer, Adrian Colley, Michael Cooper, David Dombek, Jerome
+Etienne, Bill Fithen, Mark Fullmer, Bert Gijsbers, Andreas Gustafsson,
+Michael Henits, Steve Johnson, Thomas Koenig, Felix Leitner, Gunnar
+Lindberg, Andrew Macpherson, Marc Martinec, Paul Mauvais, Donald
+McKillican, Leon Mlakar, Robert Muchsel, Mark Treacy, Bryan
+O'Sullivan, Mikael Suokas, Ollivier Robert, Jakob Schlyter, Tomasz
+Surmacz, Alvar Vinacua, Petri Virkkula, Michael Warfield, and
 Cristophe Wolfhugel.
 
 Thanks also go to Philip Zimmermann, whose PGP software and the

@@ -57,6 +57,7 @@ typedef struct
   int strict_host_key_checking;	/* Strict host key checking. */
   int compression;		/* Compress packets in both directions. */
   int compression_level;	/* Compression level 1 (fast) to 9 (best). */
+  int keepalives;		/* Set SO_KEEPALIVE. */
 
   int port;			/* Port to connect. */
   int connection_attempts;	/* Max attempts (seconds) before giving up */

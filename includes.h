@@ -292,21 +292,6 @@ struct	sockaddr_un {
 WARNING_MACROS_IN_SYS_STAT_H_ARE_BROKEN_ON_YOUR_SYSTEM_READ_INCLUDES_H
 #endif /* STAT_MACROS_BROKEN */
 
-#if defined(__sgi) && defined(__SVR3)
-/* IRIX 4 cc wants to have getpass() prototype but include files
-   do not define it. */
-char *getpass(const char *);
-#endif
-
-#ifdef ultrix
-#undef O_NONBLOCK
-#undef HAVE_SETSID
-#endif
-
-#ifdef sony_news
-#undef HAVE_VHANGUP
-#endif
-
 #if USE_STRLEN_FOR_AF_UNIX
 #define AF_UNIX_SIZE(unaddr) \
   (sizeof((unaddr).sun_family) + strlen((unaddr).sun_path) + 1)

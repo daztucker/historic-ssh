@@ -1,3 +1,4 @@
+.\" -*- nroff -*-
 .\" ----------------------------------------------------------------------
 .\" make-ssh-known-hosts.1 -- Make ssh-known-hosts file
 .\" Copyright (c) 1995 Tero Kivinen
@@ -55,13 +56,13 @@
 .\" Tero.Kivinen@hut.fi
 .\"
 .\"
-.TH MAKE-SSH-KNOWN-HOSTS 1 "June 28, 1995" "ssh tools" "ssh tools"
+.TH MAKE-SSH-KNOWN-HOSTS 1 "November 8, 1995" "ssh tools" "ssh tools"
 .SH NAME
-make-ssh-known-hosts.pl "\- make ssh_known_hosts file from dns data
+make-ssh-known-hosts \- make ssh_known_hosts file from DNS data
 .SH SYNOPSIS
 .na
 .TP
-.B make-ssh-known-hosts.pl
+.B make-ssh-known-hosts
 .RB "[\|" "\-\-initialdns "\c
 .I initial_dns\c
 \|]
@@ -116,60 +117,58 @@ make-ssh-known-hosts.pl "\- make ssh_known_hosts file from dns data
 
 .SH DESCRIPTION
 .LP
-The
-.B make-ssh-known-hosts.pl
-is a
-.B perl
-version 5 script that creates the
-.B @ETCDIR@/ssh_known_hosts
-file that contains the public keys of known hosts. 
-That file is used by
-.B sshd\c
-\| to authenticate the client machine, and if the client's hostname is
-not found from
-.B @ETCDIR@/ssh_known_hosts
-.B sshd
-disables
-.B .rhosts
-authentication. The
-.B @ETCDIR@/ssh_known_hosts
-is also used by
+.B make-ssh-known-hosts
+is a perl5 script that helps create the
+.I @ETCDIR@/ssh_known_hosts
+file, which is used by
 .B ssh
-to check that the public key returned by the remote host
-matches the one stored in the local
-.B @ETCDIR@/ssh_known_hosts
-file (to prevent man-in-the-middle attacs).
-
+to contain the host keys of all publicly known hosts.  
+.B Ssh
+does not normally permit login using rhosts or /etc/hosts.equiv
+authentication unless the server knows the client's host key.  In
+addition, the host keys are used to prevent man-in-the-middle attacks.
+.LP
+In addition to
+.IR @ETCDIR@/ssh_known_hosts ",
+.B ssh
+also uses the
+.I $HOME/.ssh/known_hosts
+file.  This file, however, is intended to contain only those hosts
+that the particular user needs but are not in the global file.  It is
+intended that the
+.I @ETCDIR@/ssh_known_hosts
+file be maintained by the system administration, and periodically
+updated to contain the host keys for any new hosts.
 .LP
 The
-.B make-ssh-known-hosts.pl
-program finds all the hosts in the domain by making a DNS query to the
+.B make-ssh-known-hosts
+program finds all the hosts in a domain by making a DNS query to the
 master domain name server of the domain. The master domain name server
-is located by searching the SOA record of the domain from the initial
+is located by searching for the SOA record of the domain from the initial
 domain name server (which can be specified with the
 .B \-\-initialdns
 option). The master domain name server can also be given directly with
+the
 .B \-\-server
 option.
+.LP
 After getting the hostname list
-.B make-ssh-known-hosts.pl
+.B make-ssh-known-hosts
 tries to get the public key from every host in the domain. It first
 uses
 .B ping
-to check that the host is alive, and if it is alive it tries to run
+to check if the host is alive, and if so, it tries to run
 the command
 .B cat @ETCDIR@/ssh_host_key.pub
-in the remote machine with
-.B ssh\c
-\|. If the command succeeds, it knows the remote machine has
+on the remote machine using
+.BR ssh ".
+If the command succeeds, it knows the remote machine has
 .B ssh
 installed properly, and it then extracts the public key from the
 output, and prints the
 .B @ETCDIR@/ssh_known_hosts
-entry to the
-.B STDOUT\c
-\|.
-
+entry for it to 
+.BR STDOUT ".
 .LP
 If the command fails for some reason, it checks if the
 .B ssh
@@ -177,23 +176,31 @@ client still got the public key from the remote host in the initial dialog,
 and if so, it will print a proper entry, but comment it out (unless the
 .B \-\-trustdaemon
 option is given).
-
 .LP
 .I Domain_name
-is the domain name that is searched.
-.B Take_regexp
-is a perl regular expression that matches the host to be taken from the
+is the domain name for which the file is to be generated.  Many sites
+will want to include several domains in their
+.I @ETCDIR@/ssh_known_hosts
+file.  The entries for each domain should be extracted separately by
+running
+.B make-ssh-known-hosts
+once for each domain.  The results should then be combined to create
+the final file.
+.LP
+.I Take_regexp
+is a perl regular expression that matches the hosts to be taken from the
 domain. The data matched contains all the DNS records in the form "\|\c
 .B fieldname=value\c
 \|". The fields are separated with newline, and the perl match is made in
 multiline mode and it is case insensetive. The multiline mode means
 that you can use a regexp like "\|\c
-.B ^wks=*telnet.*$\c
+.B ^wks=.*telnet.*$\c
 \|" to match all hosts that have WKS (well known services) field that
-contain value "telnet".
-.B Remove_regexp
-is similar but those hosts are not added that match that regexp
-(use it to filter out PCs and Macs with hinfo field: "\|\c
+contains value "telnet".
+.LP
+.I Remove_regexp
+is similar but those hosts that match the regexp are not added (it can
+be used for example to filter out PCs and Macs using the hinfo field: "\|\c
 .B ^hinfo=.*(mac|pc)\c
 \|").
 
@@ -224,14 +231,17 @@ example, if subdomainlist is "\|\c
 file it has aliases "\|\c
 .I foobar, foobar.foo, foobar.foo.bar, foobar.foo.bar.zappa, foobar.foo.bar.zappa.hut.fi\c
 \|". The default action is to take all subparts of the host but the
-second last host by host basis.
+second last on a host by host basis.  (The last element is usually the
+country code, and something like 
+.I foobar.foo.bar.zappa.hut 
+would not make sense.)
 
 .TP
 .BI "\-\-debug " "debug_level"\c
 .TP
 .BI "\-de " "debug_level"\c
 \&Set the debug level. Default is 5, bigger values give more output.
-Using big value (like 999) will print lots of debugging output.
+Using a big value (like 999) will print lots of debugging output.
 
 .TP
 .BI "\-\-timeout " "exec_timeout"\c
@@ -241,7 +251,7 @@ Using big value (like 999) will print lots of debugging output.
 .B ping
 or
 .B ssh
-commands. Default is 60 seconds.
+commands.  The default is 60 seconds.
 
 .TP
 .BI "\-\-passwordtimeout " "timeout_when_asking_password"\c
@@ -328,7 +338,7 @@ program, including all options.
 .LP
 The following command:
 .IP
-.B example# perl5 make-ssh-known-hosts.pl cs.hut.fi > \c
+.B example# make-ssh-known-hosts cs.hut.fi > \c
 .B @ETCDIR@/ssh_known_hosts
 .LP
 finds all public keys of the hosts in
@@ -337,9 +347,9 @@ domain and put them to
 .B @ETCDIR@/ssh_known_hosts
 file splitting domain names on a per host basis.
 .LP
-The command (if your perl5 is in /usr/local/bin):
+The command
 .IP
-.B example% ./make-ssh-known-hosts hut.fi '^wks=.*ssh' > \c
+.B example% make-ssh-known-hosts hut.fi '^wks=.*ssh' > \c
 .B hut-hosts
 .LP
 finds all hosts in
@@ -349,7 +359,7 @@ file. This would require that the domain name server of hut.fi would
 define all hosts running ssh to have entry ssh in their WKS record.
 Because nobody yet adds ssh to WKS, it would be better to use command
 .IP
-.B example% ./make-ssh-known-hosts hut.fi '^wks=.*telnet' > \c
+.B example% make-ssh-known-hosts hut.fi '^wks=.*telnet' > \c
 .B hut-hosts
 .LP
 that would take those host having telnet service. This uses default
@@ -358,7 +368,7 @@ subdomain list.
 .LP
 The command:
 .IP
-.B example% ./make-ssh-known-hosts hut.fi 'dipoli.hut.fi' '^hinfo=.*(mac|pc)' > \c
+.B example% make-ssh-known-hosts hut.fi 'dipoli.hut.fi' '^hinfo=.*(mac|pc)' > \c
 .B dipoli-hosts
 .LP
 finds all hosts in hut.fi domain that are in dipoli.hut.fi subdomain

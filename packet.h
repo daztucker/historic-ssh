@@ -43,17 +43,17 @@ Interface for the packet protocol functions.
 void packet_set_connection(int fd_in, int fd_out, RandomState *state);
 
 /* Puts the connection file descriptors into non-blocking mode. */
-void packet_set_nonblocking();
+void packet_set_nonblocking(void);
 
 /* Returns the file descriptor used for input. */
-int packet_get_connection_in();
+int packet_get_connection_in(void);
 
 /* Returns the file descriptor used for output. */
-int packet_get_connection_out();
+int packet_get_connection_out(void);
 
 /* Closes the connection (both descriptors) and clears and frees
    internal data structures. */ 
-void packet_close();
+void packet_close(void);
 
 /* Causes any further packets to be encrypted using the given key.  The same
    key is used for both sending and reception.  However, both directions
@@ -67,17 +67,17 @@ void packet_set_encryption_key(const unsigned char *key, unsigned int keylen,
 void packet_set_protocol_flags(unsigned int flags);
 
 /* Returns the remote protocol flags set earlier by the above function. */
-unsigned int packet_get_protocol_flags();
+unsigned int packet_get_protocol_flags(void);
 
 /* Enables compression in both directions starting from the next packet. */
 void packet_start_compression(int level);
 
 /* Informs that the current session is interactive.  Sets IP flags for optimal
    performance in interactive use. */
-void packet_set_interactive();
+void packet_set_interactive(int interactive, int keepalives);
 
 /* Returns true if the current connection is interactive. */
-int packet_is_interactive();
+int packet_is_interactive(void);
 
 /* Starts constructing a packet to send. */
 void packet_start(int type);
@@ -96,10 +96,10 @@ void packet_put_string(const char *buf, unsigned int len);
 
 /* Finalizes and sends the packet.  If the encryption key has been set,
    encrypts the packet before sending. */
-void packet_send();
+void packet_send(void);
 
 /* Waits until a packet has been received, and returns its type. */
-int packet_read();
+int packet_read(void);
 
 /* Waits until a packet has been received, verifies that its type matches
    that given, and gives a fatal error and exits if there is a mismatch. */
@@ -112,21 +112,21 @@ void packet_read_expect(int type);
    SSH_MSG_DISCONNECT is handled specially here.  Also,
    SSH_MSG_IGNORE messages are skipped by this function and are never returned
    to higher levels. */
-int packet_read_poll();
+int packet_read_poll(void);
 
 /* Buffers the given amount of input characters.  This is intended to be
    used together with packet_read_poll. */
 void packet_process_incoming(const char *buf, unsigned int len);
 
 /* Returns a character (0-255) from the packet data. */
-unsigned int packet_get_char();
+unsigned int packet_get_char(void);
 
 /* Returns an integer from the packet data. */
-unsigned int packet_get_int();
+unsigned int packet_get_int(void);
 
 /* Returns an arbitrary precision integer from the packet data.  The integer
    must have been initialized before this call. */
-void packet_get_mp_int();
+void packet_get_mp_int(MP_INT *value);
 
 /* Returns a string from the packet data.  The string is allocated using
    xmalloc; it is the responsibility of the calling program to free it when
@@ -152,16 +152,16 @@ void packet_send_debug(const char *fmt, ...);
 
 /* Checks if there is any buffered output, and tries to write some of the
    output. */
-void packet_write_poll();
+void packet_write_poll(void);
 
 /* Waits until all pending output data has been written. */
-void packet_write_wait();
+void packet_write_wait(void);
 
 /* Returns true if there is buffered data to write to the connection. */
-int packet_have_data_to_write();
+int packet_have_data_to_write(void);
 
 /* Returns true if there is not too much data to write to the connection. */
-int packet_not_very_much_data_to_write();
+int packet_not_very_much_data_to_write(void);
 
 /* Stores tty modes from the fd into current packet. */
 void tty_make_modes(int fd);

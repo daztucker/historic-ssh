@@ -236,6 +236,14 @@ int main(int ac, char **av)
      port has been created (actually, when the connection has been made, as
      we may need to create the port several times). */
   temporarily_use_uid(original_real_uid);
+
+#ifdef HAVE_UMASK
+  /* Set our umask to something reasonable, as some files are created with 
+     the default umask.  This will make them world-readable but writable 
+     only by the owner, which is ok for all files for which we don't set
+     the modes explicitly. */
+  umask(022);
+#endif /* HAVE_UMASK */
   
   /* Save our own name. */
   av0 = av[0];
@@ -531,7 +539,9 @@ int main(int ac, char **av)
   restore_uid();
 
   /* Open a connection to the remote host.  This needs root privileges if
-     rhosts_authentication is true. */
+     rhosts_authentication is true.  Note that the random_state is not
+     yet used by this call, although a pointer to it is stored, and thus it
+     need not be initialized. */
   ok = ssh_connect(host, options.port, options.connection_attempts,
 		   !options.rhosts_authentication &&
 		   !options.rhosts_rsa_authentication,
@@ -713,28 +723,11 @@ int main(int ac, char **av)
 	  interactive = 1;
 	}
       else
-	log("Warning: Remote host denied X11 authentication spoofing.");
-
-      if (!forwarded)
-	{
-	  /* We were unable to use inet-domain X11 forwarding.  Try with
-	     unix domain sockets.  The user should have "xhost localhost"
-	     done (or for whatever host the user is running the client 
-	     from). */
-	  debug("Requesting X11 forwarding for unix domain socket.");
-	  x11_request_forwarding();
-
-	  /* Read response from the server. */
-	  type = packet_read();
-	  if (type == SSH_SMSG_SUCCESS)
-	    interactive = 1;
-	  else
-	    log("Warning: Remote host denied X11 forwarding.");
-	}
+	log("Warning: Remote host denied X11 forwarding.");
     }
 
   /* Tell the packet module whether this is an interactive session. */
-  packet_set_interactive(interactive);
+  packet_set_interactive(interactive, options.keepalives);
 
   /* Clear agent forwarding if we don\'t have an agent. */
   authfd = ssh_get_authentication_fd();

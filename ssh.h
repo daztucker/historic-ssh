@@ -107,7 +107,7 @@ Generic header file for ssh.
 
 /* Minor protocol version.  Different version indicates minor incompatibility
    that does not prevent interoperation. */
-#define PROTOCOL_MINOR		2
+#define PROTOCOL_MINOR		3
 
 /* Name for the service.  The port named by this service overrides the default
    port if present. */
@@ -248,7 +248,7 @@ only by root, whereas ssh_config should be world-readable. */
 #define SSH_MSG_CHANNEL_DATA			23	/* ch,data (int,str) */
 #define SSH_MSG_CHANNEL_CLOSE			24	/* channel (int) */
 #define SSH_MSG_CHANNEL_CLOSE_CONFIRMATION	25	/* channel (int) */
-#define SSH_CMSG_X11_REQUEST_FORWARDING		26	/* */
+/*      SSH_CMSG_X11_REQUEST_FORWARDING         26         OBSOLETE */
 #define SSH_SMSG_X11_OPEN			27	/* channel (int) */
 #define SSH_CMSG_PORT_FORWARD_REQUEST		28	/* p,host,hp (i,s,i) */
 #define SSH_MSG_PORT_OPEN			29	/* ch,h,p (i,s,i) */
@@ -256,7 +256,7 @@ only by root, whereas ssh_config should be world-readable. */
 #define SSH_SMSG_AGENT_OPEN			31	/* port (int) */
 #define SSH_MSG_IGNORE				32	/* string */
 #define SSH_CMSG_EXIT_CONFIRMATION		33	/* */
-#define SSH_CMSG_X11_FWD_WITH_AUTH_SPOOFING	34	/* proto,data (s,s) */
+#define SSH_CMSG_X11_REQUEST_FORWARDING		34	/* proto,data (s,s) */
 #define SSH_CMSG_AUTH_RHOSTS_RSA		35	/* user,mod (s,mpi) */
 #define SSH_MSG_DEBUG				36	/* string */
 #define SSH_CMSG_REQUEST_COMPRESSION		37	/* level 1-9 (int) */
@@ -342,14 +342,17 @@ char *get_remote_hostname(int socket);
 /* Return the canonical name of the host in the other side of the current
    connection (as returned by packet_get_connection).  The host name is
    cached, so it is efficient to call this several times. */
-const char *get_canonical_hostname();
+const char *get_canonical_hostname(void);
 
 /* Returns the remote IP address as an ascii string.  The value need not be
    freed by the caller. */
-const char *get_remote_ipaddr();
+const char *get_remote_ipaddr(void);
+
+/* Returns the port number of the peer of the socket. */
+int get_peer_port(int sock);
 
 /* Returns the port number of the remote host. */
-int get_remote_port();
+int get_remote_port(void);
 
 /* Tries to match the host name (which must be in all lowercase) against the
    comma-separated sequence of subpatterns (each possibly preceded by ! to 
@@ -450,6 +453,14 @@ void error(const char *fmt, ...);
    This call never returns. */
 void fatal(const char *fmt, ...);
 
+/* Registers a cleanup function to be called by fatal() before exiting. 
+   It is permissible to call fatal_remove_cleanup for the function itself
+   from the function. */
+void fatal_add_cleanup(void (*proc)(void *context), void *context);
+
+/* Removes a cleanup frunction to be called at fatal(). */
+void fatal_remove_cleanup(void (*proc)(void *context), void *context);
+
 /*---------------- definitions for x11.c ------------------*/
 
 
@@ -480,7 +491,7 @@ void channel_output_poll(void);
 void channel_input_data(void);
 
 /* Returns true if no channel has too much buffered data. */
-int channel_not_very_much_buffered_data();
+int channel_not_very_much_buffered_data(void);
 
 /* This is called after receiving CHANNEL_CLOSE. */
 void channel_input_close(void);
@@ -511,7 +522,7 @@ int channel_still_open(void);
 /* Returns a string containing a list of all open channels.  The list is
    suitable for displaying to the user.  It uses crlf instead of newlines.
    The caller should free the string with xfree. */
-char *channel_open_message();
+char *channel_open_message(void);
 
 /* Initiate forwarding of connections to local port "port" through the secure
    channel to host:port from remote side.  This never returns if there

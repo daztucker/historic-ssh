@@ -20,38 +20,38 @@
 .\"
 .\" $Endlog$
 .\"
-.TH SSH-KEYGEN 1 "Aug 24, 1995" "SSH" "SSH"
+.TH SSH-KEYGEN 1 "November 8, 1995" "SSH" "SSH"
 
 .SH NAME
-ssh-keygen "\ \(em authentication key generation
+ssh-keygen \- authentication key generation
 
 .SH SYNOPSIS
 .LP
 .B ssh-keygen
-[
-.BI \-b \ bits
+[\c
+.BI \-b \ bits\c
 ]
-[
-.BI \-N \ new_passphrase
+[\c
+.BI \-N \ new_passphrase\c
 ]
-[
-.BI \-C \ comment
+[\c
+.BI \-C \ comment\c
 ]
 
 .B "ssh-keygen \-p
-[
-.BI \-P \ old_passphrase
+[\c
+.BI \-P \ old_passphrase\c
 ]
-[
-.BI \-N \ new_passphrase
+[\c
+.BI \-N \ new_passphrase\c
 ]
 
 .B "ssh-keygen \-c
-[
-.BI \-P \ passphrase
+[\c
+.BI \-P \ passphrase\c
 ]
-[
-.BI \-C \ comment
+[\c
+.BI \-C \ comment\c
 ]
 
 .SH DESCRIPTION 
@@ -68,21 +68,19 @@ Additionally, the system administrator may use this to generate host keys.
 .LP
 Normally this program generates the key and asks for a file in which
 to store the private key.  The public key is stored in a file with the
-same name with ".pub" appended.  The program also asks for a
+same name but ".pub" appended.  The program also asks for a
 passphrase.  The passphrase may be empty to indicate no passphrase
 (host keys must have empty passphrase), or it may be a string of
 arbitrary length.  Good passphrases are 10-30 characters long and are
 not simple sentences or otherwise easily guessable (English
 prose has only 1-2 bits of entropy per word, and provides very bad
-passphrases).  There is no way to recover a lost passphrase (you will
-have to generate a new key and copy the corresponding public key to
-other machines).
-.LP
-.B Ssh-keygen
-can also be used to change the passphrase of a private key file.  To
-do this, use the
+passphrases).  The passphrase can be changed later by using the
 .B \-p
 option.
+.LP
+There is no way to recover a lost passphrase.  If the passphrase is
+lost or forgotten, you will have to generate a new key and copy the
+corresponding public key to other machines.
 .LP
 There is also a comment field in the key file that is only for
 convenience to the user to help identify the key.  The comment can
@@ -100,23 +98,32 @@ bits.  Generally 1024 bits is considered sufficient, and key sizes
 above that no longer improve security but make things slower.  The
 default is 1024 bits.
 .TP
+.B \-c
+Requests changing the comment in the private and public key files.
+The program will prompt for the file containing the private keys, for
+passphrase if the key has one, and for the new comment.
+.TP
 .B \-p
 Requests changing the passphrase of a private key file instead of
 creating a new private key.  The program will prompt for the file
 containing the private key, for the old passphrase, and twice for the
 new passphrase.
 .TP
-.B \-c
-Requests changing the comment in the private and public key files.
-The program will prompt for the file containing the private keys, for
-passphrase if the key has one, and for the new comment.
+.B \-C
+Provides the new comment.
+.TP
+.B \-N
+Provides the new passphrase.
+.TP
+.B \-P
+Provides the (old) passphrase.
 
 .SH FILES
 .TP 0.6i
 .I \&$HOME/\s+2.\s0ssh/random_seed
 Used for seeding the random number generator.  This file should not be
 readable by anyone but the user.  This file is created the first time
-the program is run.
+the program is run, and is updated every time.
 .TP
 .I \&$HOME/\s+2.\s0ssh/identity
 Contains the RSA authentication identity of the user.  This file

@@ -198,6 +198,55 @@ int ssh_proxy_connect(const char *host, int port, uid_t original_real_uid,
   return 1;
 }
 
+/* Creates a (possibly privileged) socket for use as the ssh connection. */
+
+int ssh_create_socket(uid_t original_real_uid, int privileged)
+{
+  int sock;
+
+  /* If we are running as root and want to connect to a privileged port,
+     bind our own socket to a privileged port. */
+  if (privileged)
+    {
+      struct sockaddr_in sin;
+      int p;
+      for (p = 1023; p > 512; p--)
+	{
+	  sock = socket(AF_INET, SOCK_STREAM, 0);
+	  if (sock < 0)
+	    fatal("socket: %.100s", strerror(errno));
+	  
+	  /* Initialize the desired sockaddr_in structure. */
+	  memset(&sin, 0, sizeof(sin));
+	  sin.sin_family = AF_INET;
+	  sin.sin_addr.s_addr = INADDR_ANY;
+	  sin.sin_port = htons(p);
+
+	  /* Try to bind the socket to the privileged port. */
+	  if (bind(sock, (struct sockaddr *)&sin, sizeof(sin)) >= 0)
+	    break; /* Success. */
+	  if (errno == EADDRINUSE)
+	    {
+	      close(sock);
+	      continue;
+	    }
+	  fatal("bind: %.100s", strerror(errno));
+	}
+      debug("Allocated local port %d.", p);
+    }
+  else
+    { 
+      /* Just create an ordinary socket on arbitrary port.  We use the
+	 user's uid to create the socket. */
+      temporarily_use_uid(original_real_uid);
+      sock = socket(AF_INET, SOCK_STREAM, 0);
+      if (sock < 0)
+	fatal("socket: %.100s", strerror(errno));
+      restore_uid();
+    }
+  return sock;
+}
+
 /* Opens a TCP/IP connection to the remote server on the given host.  If
    port is 0, the default port will be used.  If anonymous is zero,
    a privileged port will be allocated to make the connection. 
@@ -250,50 +299,6 @@ int ssh_connect(const char *host, int port, int connection_attempts,
     {
       if (attempt > 0)
 	debug("Trying again...");
-      
-      /* Create a socket. */
-
-      /* If we are running as root and want to connect to a privileged port,
-	 bind our own socket to a privileged port. */
-      if (!anonymous && geteuid() == 0 && port < 1024)
-	{
-	  struct sockaddr_in sin;
-	  int p;
-	  for (p = 1023; p > 512; p--)
-	    {
-	      /* Use the user's uid to create the socket.  I am hoping
-		 this might solve the problem with tcp_wrappers displaying
-		 the client user as root. */
-	      sock = socket(AF_INET, SOCK_STREAM, 0);
-	      if (sock < 0)
-		fatal("socket: %.100s", strerror(errno));
-
-	      /* Initialize the desired sockaddr_in structure. */
-	      memset(&sin, 0, sizeof(sin));
-	      sin.sin_family = AF_INET;
-	      sin.sin_addr.s_addr = INADDR_ANY;
-	      sin.sin_port = htons(p);
-	      if (bind(sock, (struct sockaddr *)&sin, sizeof(sin)) >= 0)
-		break;
-	      if (errno == EADDRINUSE)
-		{
-		  close(sock);
-		  continue;
-		}
-	      fatal("bind: %.100s", strerror(errno));
-	    }
-	  debug("Allocated local port %d.", p);
-	}
-      else
-	{ 
-	  /* Just create an ordinary socket on arbitrary port.  We use the
-	     user's uid to create the socket. */
-	  temporarily_use_uid(original_real_uid);
-	  sock = socket(AF_INET, SOCK_STREAM, 0);
-	  if (sock < 0)
-	    fatal("socket: %.100s", strerror(errno));
-	  restore_uid();
-	}
 
       /* Try to parse the host name as a numeric inet address. */
       memset(&hostaddr, 0, sizeof(hostaddr));
@@ -310,6 +315,11 @@ int ssh_connect(const char *host, int port, int connection_attempts,
 	  debug("Connecting to %.100s port %d.", 
 		inet_ntoa(hostaddr.sin_addr), port);
       
+	  /* Create a socket. */
+	  sock = ssh_create_socket(original_real_uid, 
+				   !anonymous && geteuid() == 0 && 
+				     port < 1024);
+      
 	  /* Connect to the host.  We use the user's uid in the hope that
 	     it will help with the problems of tcp_wrappers showing the
 	     remote uid as root. */
@@ -317,11 +327,16 @@ int ssh_connect(const char *host, int port, int connection_attempts,
 	  if (connect(sock, (struct sockaddr *)&hostaddr, sizeof(hostaddr))
 	      >= 0)
 	    {
+	      /* Successful connect. */
 	      restore_uid();
 	      break;
 	    }
 	  debug("connect: %.100s", strerror(errno));
 	  restore_uid();
+
+	  /* Destroy the failed socket. */
+	  shutdown(sock, 2);
+	  close(sock);
 	}
       else
 	{ 
@@ -338,11 +353,19 @@ int ssh_connect(const char *host, int port, int connection_attempts,
 	     sequence until the connection succeeds. */
 	  for (i = 0; hp->h_addr_list[i]; i++)
 	    {
+	      /* Set the address to connect to. */
 	      hostaddr.sin_family = hp->h_addrtype;
-	      memcpy(&hostaddr.sin_addr, hp->h_addr_list[0], 
+	      memcpy(&hostaddr.sin_addr, hp->h_addr_list[i],
 		     sizeof(hostaddr.sin_addr));
+
 	      debug("Connecting to %.200s [%.100s] port %d.",
 		    host, inet_ntoa(hostaddr.sin_addr), port);
+
+	      /* Create a socket for connecting. */
+	      sock = ssh_create_socket(original_real_uid, 
+				       !anonymous && geteuid() == 0 && 
+				         port < 1024);
+
 	      /* Connect to the host.  We use the user's uid in the hope that
 	         it will help with tcp_wrappers showing the remote uid as
 		 root. */
@@ -350,18 +373,22 @@ int ssh_connect(const char *host, int port, int connection_attempts,
 	      if (connect(sock, (struct sockaddr *)&hostaddr, 
 			  sizeof(hostaddr)) >= 0)
 		{
+		  /* Successful connection. */
 		  restore_uid();
 		  break;
 		}
 	      debug("connect: %.100s", strerror(errno));
 	      restore_uid();
+
+	      /* Close the failed socket; there appear to be some problems 
+		 when reusing a socket for which connect() has already 
+		 returned an error. */
+	      shutdown(sock, 2);
+	      close(sock);
 	    }
 	  if (hp->h_addr_list[i])
 	    break; /* Successful connection. */
 	}
-      /* Failed to connect the socket.  Destroy the socket. */
-      shutdown(sock, 2);
-      close(sock);
 
       /* Sleep a moment before retrying. */
       sleep(1);
@@ -379,8 +406,8 @@ int ssh_connect(const char *host, int port, int connection_attempts,
   setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (void *)&on, sizeof(on));
 #endif /* TCP_NODELAY */
 #ifdef SO_LINGER
-  linger.l_onoff = 0;
-  linger.l_linger = 0;
+  linger.l_onoff = 1;
+  linger.l_linger = 5;
   setsockopt(sock, SOL_SOCKET, SO_LINGER, (void *)&linger, sizeof(linger));
 #endif /* SO_LINGER */
 
@@ -401,7 +428,7 @@ int try_agent_authentication()
   AuthenticationConnection *auth;
   unsigned char response[16];
   unsigned int i;
-
+  
   /* Get connection to the agent. */
   auth = ssh_get_authentication_connection();
   if (!auth)
@@ -428,7 +455,7 @@ int try_agent_authentication()
       
       /* Wait for server's response. */
       type = packet_read();
-
+      
       /* The server sends failure if it doesn\'t like our key or does not
 	 support RSA authentication. */
       if (type == SSH_SMSG_FAILURE)
@@ -436,16 +463,16 @@ int try_agent_authentication()
 	  debug("Server refused our key.");
 	  continue;
 	}
-
+      
       /* Otherwise it should have sent a challenge. */
       if (type != SSH_SMSG_AUTH_RSA_CHALLENGE)
 	packet_disconnect("Protocol error during RSA authentication: %d", 
 			  type);
-
+      
       packet_get_mp_int(&challenge);
-
+      
       debug("Received RSA challenge from server.");
-
+      
       /* Ask the agent to decrypt the challenge. */
       if (!ssh_decrypt_challenge(auth, bits, &e, &n, &challenge, 
 				 session_id, 1, response))
@@ -455,16 +482,16 @@ int try_agent_authentication()
 	  log("Authentication agent failed to decrypt challenge.");
 	  memset(response, 0, sizeof(response));
 	}
-
+      
       debug("Sending response to RSA challenge.");
-
+      
       /* Send the decrypted challenge back to the server. */
       packet_start(SSH_CMSG_AUTH_RSA_RESPONSE);
       for (i = 0; i < 16; i++)
 	packet_put_char(response[i]);
       packet_send();
       packet_write_wait();
-  
+      
       /* Wait for response from the server. */
       type = packet_read();
 

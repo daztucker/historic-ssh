@@ -294,7 +294,7 @@ void do_exec_no_pty(const char *command, struct passwd *pw,
 		    const char *auth_data);
 void do_child(const char *command, struct passwd *pw, const char *term,
 	      const char *display, const char *auth_proto,
-	      const char *auth_data);
+	      const char *auth_data, const char *ttyname);
 
 
 /* Signal handler for SIGHUP.  Sshd execs itself when it receives SIGHUP;
@@ -367,7 +367,7 @@ RETSIGTYPE key_regeneration_alarm(int sig)
       rsa_generate_key(&sensitive_data.private_key, &public_key, 
 		       &sensitive_data.random_state, options.server_key_bits);
       random_stir(&sensitive_data.random_state);
-      random_save(&sensitive_data.random_state, SSH_DAEMON_SEED_FILE);
+      random_save(&sensitive_data.random_state, options.random_seed_file);
       key_used = 0;
       log("RSA key generation complete.");
     }
@@ -383,9 +383,8 @@ int main(int ac, char **av)
 {
   extern char *optarg;
   extern int optind;
-  int opt, aux, sock_in, sock_out, newsock, i, pid;
+  int opt, aux, sock_in, sock_out, newsock, i, pid, on = 1;
   int remote_major, remote_minor;
-  int on = 1;
   struct sockaddr_in sin;
   char buf[100]; /* Must not be larger than remote_version. */
   char remote_version[100]; /* Must be at least as big as buf. */
@@ -574,8 +573,8 @@ int main(int ac, char **av)
 
   /* Initialize the random number generator. */
   debug("Initializing random number generator; seed file %.200s", 
-	SSH_DAEMON_SEED_FILE);
-  random_initialize(&sensitive_data.random_state, SSH_DAEMON_SEED_FILE);
+	options.random_seed_file);
+  random_initialize(&sensitive_data.random_state, options.random_seed_file);
   
   /* Chdir to the root directory so that the current disk can be unmounted
      if desired. */
@@ -600,7 +599,7 @@ int main(int ac, char **av)
 		       &sensitive_data.random_state,
 		   options.server_key_bits);
       random_stir(&sensitive_data.random_state);
-      random_save(&sensitive_data.random_state, SSH_DAEMON_SEED_FILE);
+      random_save(&sensitive_data.random_state, options.random_seed_file);
       log("RSA key generation complete.");
     }
   else
@@ -616,8 +615,8 @@ int main(int ac, char **av)
       setsockopt(listen_sock, SOL_SOCKET, SO_REUSEADDR, (void *)&on, 
 		 sizeof(on));
 #ifdef SO_LINGER
-      linger.l_onoff = 0;
-      linger.l_linger = 0;
+      linger.l_onoff = 1;
+      linger.l_linger = 5;
       setsockopt(listen_sock, SOL_SOCKET, SO_LINGER, (void *)&linger, 
 		 sizeof(linger));
 #endif /* SO_LINGER */
@@ -662,7 +661,7 @@ int main(int ac, char **av)
 		       &sensitive_data.random_state,
 		       options.server_key_bits);
       random_stir(&sensitive_data.random_state);
-      random_save(&sensitive_data.random_state, SSH_DAEMON_SEED_FILE);
+      random_save(&sensitive_data.random_state, options.random_seed_file);
       log("RSA key generation complete.");
 
       /* Schedule server key regeneration alarm. */
@@ -776,10 +775,10 @@ int main(int ac, char **av)
   /* Set socket options for the connection.  We want the socket to close
      as fast as possible without waiting for anything.  If the connection
      is not a socket, these will do nothing. */
-  setsockopt(sock_in, SOL_SOCKET, SO_REUSEADDR, (void *)&on, sizeof(on));
+  /* setsockopt(sock_in, SOL_SOCKET, SO_REUSEADDR, (void *)&on, sizeof(on)); */
 #ifdef SO_LINGER
-  linger.l_onoff = 0;
-  linger.l_linger = 0;
+  linger.l_onoff = 1;
+  linger.l_linger = 5;
   setsockopt(sock_in, SOL_SOCKET, SO_LINGER, (void *)&linger, sizeof(linger));
 #endif /* SO_LINGER */
 
@@ -1064,7 +1063,7 @@ void do_connection(int privileged_port)
 /* Performs authentication of an incoming connection.  Session key has already
    been exchanged and encryption is enabled.  User is the user name to log
    in as (received from the clinet).  Privileged_port is true if the
-   connection comes from a privileged port (used for .rhosts authentication). */
+   connection comes from a privileged port (used for .rhosts authentication).*/
 
 void do_authentication(char *user, int privileged_port)
 {
@@ -1120,7 +1119,7 @@ void do_authentication(char *user, int privileged_port)
   debug("Attempting authentication for %.100s.", user);
 
   /* If the user has no password, accept authentication immediately. */
-  if (auth_password(user, ""))
+  if (options.password_authentication && auth_password(user, ""))
     {
       /* Authentication with empty password succeeded. */
       debug("Login for user %.100s accepted without authentication.", user);
@@ -1425,32 +1424,9 @@ void do_authenticated(struct passwd *pw)
 	  break;
 
 	case SSH_CMSG_X11_REQUEST_FORWARDING:
-	  if (!options.x11_unix_forwarding)
+	  if (!options.x11_forwarding)
 	    {
-	      packet_send_debug("X11 unix domain forwarding disabled in server configuration file.");
-	      goto fail;
-	    }
-	  if (no_x11_forwarding_flag)
-	    {
-	      packet_send_debug("X11 forwarding not permitted for this authentication.");
-	      goto fail;
-	    }
-	  debug("Received request for X11 forwarding.");
-	  if (display)
-	    packet_disconnect("Protocol error: X11 display already set.");
-	  if (packet_get_protocol_flags() & SSH_PROTOFLAG_SCREEN_NUMBER)
-	    screen = packet_get_int();
-	  else
-	    screen = 0;
-	  display = x11_create_display(screen);
-	  if (!display)
-	    goto fail;
-	  break;
-
-	case SSH_CMSG_X11_FWD_WITH_AUTH_SPOOFING:
-	  if (!options.x11_inet_forwarding)
-	    {
-	      packet_send_debug("X11 inet domain forwarding disabled in server configuration file.");
+	      packet_send_debug("X11 forwarding disabled in server configuration file.");
 	      goto fail;
 	    }
 #ifdef XAUTH_PATH
@@ -1500,7 +1476,8 @@ void do_authenticated(struct passwd *pw)
 
 	case SSH_CMSG_EXEC_SHELL:
 	  /* Set interactive/non-interactive mode. */
-	  packet_set_interactive(have_pty || display != NULL);
+	  packet_set_interactive(have_pty || display != NULL, 
+				 options.keepalives);
 	    
 	  if (forced_command != NULL)
 	    goto do_forced_command;
@@ -1514,7 +1491,8 @@ void do_authenticated(struct passwd *pw)
 
 	case SSH_CMSG_EXEC_CMD:
 	  /* Set interactive/non-interactive mode. */
-	  packet_set_interactive(have_pty || display != NULL);
+	  packet_set_interactive(have_pty || display != NULL,
+				 options.keepalives);
 
 	  if (forced_command != NULL)
 	    goto do_forced_command;
@@ -1635,7 +1613,7 @@ void do_exec_no_pty(const char *command, struct passwd *pw,
 #endif /* USE_PIPES */
 
       /* Do processing for the child (exec command etc). */
-      do_child(command, pw, NULL, display, auth_proto, auth_data);
+      do_child(command, pw, NULL, display, auth_proto, auth_data, NULL);
       /*NOTREACHED*/
     }
   if (pid < 0)
@@ -1661,6 +1639,28 @@ void do_exec_no_pty(const char *command, struct passwd *pw,
 #endif /* USE_PIPES */
 }
 
+struct pty_cleanup_context
+{
+  const char *ttyname;
+  int pid;
+};
+
+/* Function to perform cleanup if we get aborted abnormally (e.g., due to a
+   dropped connection). */
+
+void pty_cleanup_proc(void *context)
+{
+  struct pty_cleanup_context *cu = context;
+
+  debug("pty_cleanup_proc called");
+
+  /* Record that the user has logged out. */
+  record_logout(cu->pid, cu->ttyname);
+
+  /* Release the pseudo-tty. */
+  pty_release(cu->ttyname);
+}
+
 /* This is called to fork and execute a command when we have a tty.  This
    will call do_child from the child, and server_loop from the parent after
    setting up file descriptors, controlling tty, updating wtmp, utmp,
@@ -1681,6 +1681,7 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
   int quiet_login;
   struct sockaddr_in from;
   int fromlen;
+  struct pty_cleanup_context cleanup_context;
 
   /* Get remote host name. */
   hostname = get_canonical_hostname();
@@ -1693,6 +1694,8 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
   /* Fork the child. */
   if ((pid = fork()) == 0)
     { 
+      pid = getpid();
+
       /* Child.  Reinitialize the log because the pid has changed. */
       log_init(av0, debug_flag && !inetd_flag, debug_flag, options.quiet_mode, 
 	       options.log_facility);
@@ -1731,7 +1734,8 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
 	}
 
       /* Record that there was a login on that terminal. */
-      record_login(pid, ttyname, pw->pw_name, pw->pw_uid, hostname, &from);
+      record_login(pid, ttyname, pw->pw_name, pw->pw_uid, hostname, 
+		   &from);
 
       /* Check if .hushlogin exists. */
       sprintf(line, "%.200s/.hushlogin", pw->pw_dir);
@@ -1771,7 +1775,7 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
 	}
 
       /* Do common processing for the child, such as execing the command. */
-      do_child(command, pw, term, display, auth_proto, auth_data);
+      do_child(command, pw, term, display, auth_proto, auth_data, ttyname);
       /*NOTREACHED*/
     }
   if (pid < 0)
@@ -1786,9 +1790,18 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
   if (fdout < 0)
     packet_disconnect("dup failed: %.100s", strerror(errno));
 
+  /* Add a cleanup function to clear the utmp entry and record logout time
+     in case we call fatal() (e.g., the connection gets closed). */
+  cleanup_context.pid = pid;
+  cleanup_context.ttyname = ttyname;
+  fatal_add_cleanup(pty_cleanup_proc, (void *)&cleanup_context);
+
   /* Enter interactive session. */
   server_loop(pid, ptyfd, fdout, -1);
   /* server_loop has closed ptyfd and fdout. */
+
+  /* Cancel the cleanup function. */
+  fatal_remove_cleanup(pty_cleanup_proc, (void *)&cleanup_context);
 
   /* Record that the user has logged out. */
   record_logout(pid, ttyname);
@@ -1927,13 +1940,10 @@ void read_etc_default_login(char ***env, unsigned int *envsize,
   defenv[0] = NULL;
   read_environment_file(&defenv, &defenvsize, "/etc/default/login");
 
-  /* Set SHELL if ALTSHELL is defined. */
-#if 0
+  /* Set SHELL if ALTSHELL is YES. */
   def = child_get_env(defenv, "ALTSHELL");
   if (def != NULL && strcmp(def, "YES") == 0)
-    child_set_env(&env, &envsize, "SHELL", shell); /* XXX? */
-XXX XXX ???
-#endif
+    child_set_env(env, envsize, "SHELL", pw->pw_shell);
 
   /* Set PATH from SUPATH if we are logging in as root, and PATH
      otherwise.  If neither of these exists, we use the default ssh
@@ -1976,7 +1986,7 @@ XXX XXX ???
 
   /* Set up the file size ulimit if ULIMIT is set. */
   def = child_get_env(defenv, "ULIMIT");
-  if (def != NULL)
+  if (def != NULL && atoi(def) > 0)
     ulimit(UL_SETFSIZE, atoi(def));
 
   /* Free the temporary environment. */
@@ -1993,7 +2003,7 @@ XXX XXX ???
 
 void do_child(const char *command, struct passwd *pw, const char *term,
 	      const char *display, const char *auth_proto, 
-	      const char *auth_data)
+	      const char *auth_data, const char *ttyname)
 {
   const char *shell, *cp;
   char buf[256];
@@ -2067,7 +2077,6 @@ void do_child(const char *command, struct passwd *pw, const char *term,
   child_set_env(&env, &envsize, "USER", pw->pw_name);
   child_set_env(&env, &envsize, "LOGNAME", pw->pw_name);
   child_set_env(&env, &envsize, "HOME", pw->pw_dir);
-  child_set_env(&env, &envsize, "SHELL", shell);
   child_set_env(&env, &envsize, "PATH", DEFAULT_PATH);
 
   /* Let it inherit timezone if we have one. */
@@ -2087,6 +2096,9 @@ void do_child(const char *command, struct passwd *pw, const char *term,
 #ifdef HAVE_ETC_DEFAULT_LOGIN
   /* Read /etc/default/login; this exists at least on Solaris 2.x. */
   read_etc_default_login(&env, &envsize, pw);
+#else /* HAVE_ETC_DEFAULT_LOGIN */
+  /* Normal systems set SHELL by default. */
+  child_set_env(&env, &envsize, "SHELL", shell);
 #endif /* HAVE_ETC_DEFAULT_LOGIN */
 
   /* Set custom environment options from RSA authentication. */
@@ -2111,6 +2123,10 @@ void do_child(const char *command, struct passwd *pw, const char *term,
   sprintf(buf, "%.50s %d %d", 
 	  get_remote_ipaddr(), get_remote_port(), options.port);
   child_set_env(&env, &envsize, "SSH_CLIENT", buf);
+
+  /* Set SSH_TTY if we have a pty. */
+  if (ttyname)
+    child_set_env(&env, &envsize, "SSH_TTY", ttyname);
 
   /* Set TERM if we have a pty. */
   if (term)
@@ -2138,8 +2154,8 @@ void do_child(const char *command, struct passwd *pw, const char *term,
      at least on AIX, but could be useful also elsewhere.) */
   read_environment_file(&env, &envsize, "/etc/environment");
 
-  /* Read $HOME/.environment. */
-  sprintf(buf, "%.200s/.environment", pw->pw_dir);
+  /* Read $HOME/.ssh/environment. */
+  sprintf(buf, "%.200s/.ssh/environment", pw->pw_dir);
   read_environment_file(&env, &envsize, buf);
 
   /* If debugging, dump the environment to stderr. */

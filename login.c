@@ -67,7 +67,7 @@ on a tty.
 unsigned long get_last_login_time(uid_t uid, const char *name, 
 				  char *buf, unsigned int bufsize)
 {
-#if defined(HAVE_LASTLOG_H) || define(HAVE_LASTLOG)
+#if defined(HAVE_LASTLOG_H) || defined(HAVE_LASTLOG)
   struct lastlog ll;
   char lastlogfile[500];
   int fd;
@@ -409,7 +409,7 @@ void record_login(int pid, const char *ttyname, const char *user, uid_t uid,
 void record_logout(int pid, const char *ttyname)
 {
 #ifdef HAVE_LIBUTIL_LOGIN
-  const char *line = ttyname + 8; /* /dev/ttyq8 -> q8 */
+  const char *line = ttyname + 5; /* /dev/ttyq8 -> ttyq8 */
   if (logout(line))
     logwtmp(line, "", "");
 #else /* HAVE_LIBUTIL_LOGIN */

@@ -52,14 +52,15 @@ RETSIGTYPE sigchld_handler(int sig)
   int wait_pid;
   debug("Received SIGCHLD.");
   wait_pid = wait((int *)&child_wait_status);
-  if (wait_pid == -1)
-    error("Strange, wait inside SIGCHLD handler returned -1.");
-  if (wait_pid != child_pid)
-    error("Strange, got SIGCHLD and wait returned pid %d but child is %d",
-	  wait_pid, child_pid);
-  if (WIFEXITED(child_wait_status) ||
-      WIFSIGNALED(child_wait_status))
-    child_terminated = 1;
+  if (wait_pid != -1)
+    {
+      if (wait_pid != child_pid)
+	error("Strange, got SIGCHLD and wait returned pid %d but child is %d",
+	      wait_pid, child_pid);
+      if (WIFEXITED(child_wait_status) ||
+	  WIFSIGNALED(child_wait_status))
+	child_terminated = 1;
+    }
   signal(SIGCHLD, sigchld_handler);
 }
 

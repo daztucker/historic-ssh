@@ -3,22 +3,23 @@
 Port 22
 ListenAddress 0.0.0.0
 HostKey _ETCDIR_/ssh_host_key
+RandomSeed _ETCDIR_/ssh_random_seed
 ServerKeyBits 768
 LoginGraceTime 600
 KeyRegenerationInterval 3600
 PermitRootLogin yes
 IgnoreRhosts no
 StrictModes yes
-StrictHostKeyChecking no
 QuietMode no
-X11InetForwarding yes
-X11UnixForwarding yes
+X11Forwarding yes
 FascistLogging no
 PrintMotd yes
+KeepAlive yes
 SyslogFacility DAEMON
 RhostsAuthentication no
 RhostsRSAAuthentication yes
 RSAAuthentication yes
 PasswordAuthentication yes
+PermitEmptyPasswords yes
 # AllowHosts *.our.com friend.other.com
 # DenyHosts lowsecurity.theirs.com *.evil.org evil.org

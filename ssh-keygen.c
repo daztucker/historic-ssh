@@ -567,17 +567,3 @@ int main(int ac, char **av)
   
   exit(0);
 }
-
-/* May need to restore terminal modes and non-blocking status.  This should
-   really be in log-client.c, but ssh.c wants to redefine this, and so must
-   we too. */
-
-void fatal(const char *fmt, ...)
-{
-  va_list args;
-  va_start(args, fmt);
-  vfprintf(stderr, fmt, args);
-  fprintf(stderr, "\n");
-  va_end(args);
-  exit(1);
-}

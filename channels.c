@@ -80,7 +80,7 @@ arbitrary tcp/ip connections, and the authentication agent connection.
 #include "authfd.h"
 #include "uidswap.h"
 
-/* Directory in which the fake unix-domain X11 displays are created. */
+/* Directory in which the fake unix-domain X11 displays reside. */
 #define X11_DIR "/tmp/.X11-unix"
 
 /* Maximum number of fake X11 displays to try. */
@@ -88,18 +88,17 @@ arbitrary tcp/ip connections, and the authentication agent connection.
 
 /* Definitions for channel types. */
 #define SSH_CHANNEL_FREE		0 /* This channel is free (unused). */
-#define SSH_CHANNEL_X11_LISTENER	1 /* Listening for X11 connections. */
-#define SSH_CHANNEL_X11_INET_LISTENER	2 /* Listening for inet X11 conn. */
-#define SSH_CHANNEL_PORT_LISTENER	3 /* Listening on a port. */
-#define SSH_CHANNEL_OPENING		4 /* waiting for confirmation */
-#define SSH_CHANNEL_OPEN		5 /* normal open two-way channel */
-#define SSH_CHANNEL_CLOSED		6 /* waiting for close confirmation */
-#define SSH_CHANNEL_AUTH_FD		7 /* authentication fd */
-#define SSH_CHANNEL_AUTH_SOCKET		8 /* authentication socket */
-#define SSH_CHANNEL_AUTH_SOCKET_FD	9 /* connection to auth socket */
-#define SSH_CHANNEL_X11_OPEN		10 /* reading first X11 packet */
-#define SSH_CHANNEL_INPUT_DRAINING	11 /* sending remaining data to conn */
-#define SSH_CHANNEL_OUTPUT_DRAINING	12 /* sending remaining data to app */
+#define SSH_CHANNEL_X11_LISTENER	1 /* Listening for inet X11 conn. */
+#define SSH_CHANNEL_PORT_LISTENER	2 /* Listening on a port. */
+#define SSH_CHANNEL_OPENING		3 /* waiting for confirmation */
+#define SSH_CHANNEL_OPEN		4 /* normal open two-way channel */
+#define SSH_CHANNEL_CLOSED		5 /* waiting for close confirmation */
+#define SSH_CHANNEL_AUTH_FD		6 /* authentication fd */
+#define SSH_CHANNEL_AUTH_SOCKET		7 /* authentication socket */
+#define SSH_CHANNEL_AUTH_SOCKET_FD	8 /* connection to auth socket */
+#define SSH_CHANNEL_X11_OPEN		9 /* reading first X11 packet */
+#define SSH_CHANNEL_INPUT_DRAINING	10 /* sending remaining data to conn */
+#define SSH_CHANNEL_OUTPUT_DRAINING	11 /* sending remaining data to app */
 
 /* Data structure for channel data.  This is iniailized in channel_allocate
    and cleared in channel_free. */
@@ -202,6 +201,10 @@ int channel_allocate(int type, int sock, char *remote_name)
       channels = xmalloc(channels_alloc * sizeof(Channel));
       for (i = 0; i < channels_alloc; i++)
 	channels[i].type = SSH_CHANNEL_FREE;
+
+      /* Kludge: arrange a call to channel_stop_listening if we terminate
+	 with fatal(). */
+      fatal_add_cleanup((void (*)(void *))channel_stop_listening, NULL);
     }
 
   /* Try to find a free slot where to put the new channel. */
@@ -271,7 +274,6 @@ void channel_prepare_select(fd_set *readset, fd_set *writeset)
       switch (ch->type)
 	{
 	case SSH_CHANNEL_X11_LISTENER:
-	case SSH_CHANNEL_X11_INET_LISTENER:
 	case SSH_CHANNEL_PORT_LISTENER:
 	case SSH_CHANNEL_AUTH_SOCKET:
 	case SSH_CHANNEL_AUTH_SOCKET_FD:
@@ -301,7 +303,7 @@ void channel_prepare_select(fd_set *readset, fd_set *writeset)
 	case SSH_CHANNEL_OUTPUT_DRAINING:
 	  if (buffer_len(&ch->output) == 0)
 	    {
-	      debug("Freeing channel %d after output drain.", i);
+	      /* debug("Freeing channel %d after output drain.", i); */
 	      channel_free(i);
 	      break;
 	    }
@@ -413,7 +415,6 @@ void channel_after_select(fd_set *readset, fd_set *writeset)
       switch (ch->type)
 	{
 	case SSH_CHANNEL_X11_LISTENER:
-	case SSH_CHANNEL_X11_INET_LISTENER:
 	  /* This is our fake X11 server socket. */
 	  if (FD_ISSET(ch->sock, readset))
 	    {
@@ -426,14 +427,15 @@ void channel_after_select(fd_set *readset, fd_set *writeset)
 		  break;
 		}
 	      remote_hostname = get_remote_hostname(newsock);
-	      newch = channel_allocate(SSH_CHANNEL_OPENING, newsock,
-				       ch->type == SSH_CHANNEL_X11_LISTENER ?
-				       xstrdup("unix domain X11 connection") :
-				       remote_hostname);
+	      sprintf(buf, "X11 connection from %.200s port %d",
+		      remote_hostname, get_peer_port(newsock));
+	      xfree(remote_hostname);
+	      newch = channel_allocate(SSH_CHANNEL_OPENING, newsock, 
+				       xstrdup(buf));
 	      packet_start(SSH_SMSG_X11_OPEN);
 	      packet_put_int(newch);
 	      if (have_hostname_in_open)
-		packet_put_string(remote_hostname, strlen(remote_hostname));
+		packet_put_string(buf, strlen(buf));
 	      packet_send();
 	    }
 	  break;
@@ -453,14 +455,18 @@ void channel_after_select(fd_set *readset, fd_set *writeset)
 		  break;
 		}
 	      remote_hostname = get_remote_hostname(newsock);
-	      newch = channel_allocate(SSH_CHANNEL_OPENING, newsock,
-				       remote_hostname);
+	      sprintf(buf, "port %d, connection from %.200s port %d",
+		      ch->listening_port, remote_hostname,
+		      get_peer_port(newsock));
+	      xfree(remote_hostname);
+	      newch = channel_allocate(SSH_CHANNEL_OPENING, newsock, 
+				       xstrdup(buf));
 	      packet_start(SSH_MSG_PORT_OPEN);
 	      packet_put_int(newch);
 	      packet_put_string(ch->path, strlen(ch->path));
 	      packet_put_int(ch->host_port);
 	      if (have_hostname_in_open)
-		packet_put_string(remote_hostname, strlen(remote_hostname));
+		packet_put_string(buf, strlen(buf));
 	      packet_send();
 	    }
 	  break;
@@ -637,7 +643,6 @@ int channel_not_very_much_buffered_data()
       switch (channels[i].type)
 	{
 	case SSH_CHANNEL_X11_LISTENER:
-	case SSH_CHANNEL_X11_INET_LISTENER:
 	case SSH_CHANNEL_PORT_LISTENER:
 	case SSH_CHANNEL_AUTH_SOCKET:
 	case SSH_CHANNEL_AUTH_SOCKET_FD:
@@ -690,8 +695,8 @@ void channel_input_close()
       buffer_consume(&channels[channel].input, 
 		     buffer_len(&channels[channel].input));
       channels[channel].type = SSH_CHANNEL_OUTPUT_DRAINING;
-      debug("Setting status to output draining; output len = %d",
-	    buffer_len(&channels[channel].output));
+      /* debug("Setting status to output draining; output len = %d",
+	 buffer_len(&channels[channel].output)); */
     }
 }
 
@@ -762,14 +767,13 @@ void channel_stop_listening()
     {
       switch (channels[i].type)
 	{
-	case SSH_CHANNEL_X11_LISTENER:
 	case SSH_CHANNEL_AUTH_SOCKET:
 	  close(channels[i].sock);
 	  remove(channels[i].path);
 	  channel_free(i);
 	  break;
 	case SSH_CHANNEL_PORT_LISTENER:
-	case SSH_CHANNEL_X11_INET_LISTENER:
+	case SSH_CHANNEL_X11_LISTENER:
 	  close(channels[i].sock);
 	  channel_free(i);
 	  break;
@@ -809,7 +813,6 @@ int channel_still_open()
       {
       case SSH_CHANNEL_FREE:
       case SSH_CHANNEL_X11_LISTENER:
-      case SSH_CHANNEL_X11_INET_LISTENER:
       case SSH_CHANNEL_PORT_LISTENER:
       case SSH_CHANNEL_CLOSED:
       case SSH_CHANNEL_AUTH_FD:
@@ -847,7 +850,6 @@ char *channel_open_message()
       {
       case SSH_CHANNEL_FREE:
       case SSH_CHANNEL_X11_LISTENER:
-      case SSH_CHANNEL_X11_INET_LISTENER:
       case SSH_CHANNEL_PORT_LISTENER:
       case SSH_CHANNEL_CLOSED:
       case SSH_CHANNEL_AUTH_FD:
@@ -973,7 +975,7 @@ void channel_input_port_open()
 {
   int remote_channel, sock, newch, host_port, i;
   struct sockaddr_in sin;
-  char *host;
+  char *host, *originator_string;
   struct hostent *hp;
 
   /* Get remote channel number. */
@@ -984,6 +986,12 @@ void channel_input_port_open()
 
   /* Get port to connect to. */
   host_port = packet_get_int();
+
+  /* Get remote originator name. */
+  if (have_hostname_in_open)
+    originator_string = packet_get_string(NULL);
+  else
+    originator_string = xstrdup("unknown (remote did not supply name)");
 
   /* Check if opening that port is permitted. */
   if (!all_opens_permitted)
@@ -1057,8 +1065,7 @@ void channel_input_port_open()
   /* Successful connection. */
 
   /* Allocate a channel for this connection. */
-  newch = channel_allocate(SSH_CHANNEL_OPEN, sock,
-			   xstrdup(host));
+  newch = channel_allocate(SSH_CHANNEL_OPEN, sock, originator_string);
   channels[newch].remote_id = remote_channel;
   
   /* Send a confirmation to the remote host. */
@@ -1080,86 +1087,6 @@ void channel_input_port_open()
   packet_start(SSH_MSG_CHANNEL_OPEN_FAILURE);
   packet_put_int(remote_channel);
   packet_send();
-}
-  
-
-/* Creates a port for X11 connections, and starts listening for it.
-   Returns the display name, or NULL if an error was encountered. */
-
-char *x11_create_display(int screen_number)
-{
-  struct stat st;
-  int i, sock, display_number = 0;
-  struct sockaddr_un ssun;
-  char buf[100];
-
-  /* Check that the /tmp/.X11-unix directory exists, and create it if it
-     doesn't. */
-  if (stat(X11_DIR, &st) < 0)
-    {
-      /* Create the directory.  Make it world writable, but with sticky bit. */
-      if (mkdir(X11_DIR, 0777|S_ISVTX) < 0)
-	{
-	  error("Could not create %.100s", X11_DIR);
-	  return NULL;
-	}
-    }
-
-  /* Find am available display number.  X0 is reserved for the real local 
-     display. */
-  for (i = 1; i < MAX_DISPLAYS; i++)
-    {
-      /* Create a socket for it. */
-      sock = socket(AF_UNIX, SOCK_STREAM, 0);
-      if (sock < 0)
-	{
-	  error("socket: %.100s", strerror(errno));
-	  return NULL;
-	}
-      /* Try to bind the socket to the appropriate name. */
-      ssun.sun_family = AF_UNIX;
-      sprintf(ssun.sun_path, "%.80s/X%d", X11_DIR, i);
-
-      if (bind(sock, (struct sockaddr *)&ssun, AF_UNIX_SIZE(ssun)) < 0)
-	{
-	  /* Failed, this display already exists.  (Might just be a leftover
-	     unix domain socket, but there is no easy way to know without
-	     potential race conditions.) */
-	  close(sock);
-	  continue;
-	}
-
-      /* Found an available display number. */
-      display_number = i;
-      break;
-    }
-
-  if (i >= MAX_DISPLAYS)
-    {
-      /* Failed to find an available display number. */
-      packet_send_debug("Could not create socket in %.100s.", X11_DIR);
-      error("Could not create socket in %.100s.", X11_DIR);
-      return NULL;
-    }
-
-  /* Start listening for connections on the socket. */
-  if (listen(sock, 5) < 0)
-    {
-      error("listen: %.100s", strerror(errno));
-      close(sock);
-      return NULL;
-    }
-
-  /* Allocate a channel for the socket. */
-  i = channel_allocate(SSH_CHANNEL_X11_LISTENER, sock,
-		       xstrdup("X11 unix domain listener"));
-  /* Save the path of the socket.  The socket will be removed in
-     channel_stop_listening. */
-  strcpy(channels[i].path, ssun.sun_path);
-  
-  /* Return a suitable value for the DISPLAY environment variable. */
-  sprintf(buf, "unix:%d.%d", display_number, screen_number);
-  return xstrdup(buf);
 }
 
 /* Creates an internet domain socket for listening for X11 connections. 
@@ -1254,7 +1181,7 @@ char *x11_create_display_inet(int screen_number)
 #endif /* HPSUX_NONSTANDARD_X11_KLUDGE */
 	    
   /* Allocate a channel for the socket. */
-  (void)channel_allocate(SSH_CHANNEL_X11_INET_LISTENER, sock,
+  (void)channel_allocate(SSH_CHANNEL_X11_LISTENER, sock,
 			 xstrdup("X11 inet listener"));
 
   /* Return a suitable value for the DISPLAY environment variable. */
@@ -1423,32 +1350,6 @@ void x11_input_open()
   packet_send();
 }
 
-/* Requests forwarding of X11 connections.  This should be called on the 
-   client only. */
-
-void x11_request_forwarding()
-{
-  int screen_number;
-  const char *cp;
-
-  cp = getenv("DISPLAY");
-  if (cp)
-    cp = strchr(cp, ':');
-  if (cp)
-    cp = strchr(cp, '.');
-  if (cp)
-    screen_number = atoi(cp + 1);
-  else
-    screen_number = 0;
-  x11_saved_proto = NULL;
-  x11_saved_data = NULL;
-  x11_fake_data = NULL;
-  packet_start(SSH_CMSG_X11_REQUEST_FORWARDING);
-  packet_put_int(screen_number);
-  packet_send();
-  packet_write_wait();
-}
-
 /* Requests forwarding of X11 connections, generates fake authentication
    data, and enables authentication spoofing. */
 
@@ -1494,7 +1395,7 @@ void x11_request_forwarding_with_spoofing(RandomState *state,
     sprintf(new_data + 2 * i, "%02x", (unsigned char)x11_fake_data[i]);
 
   /* Send the request packet. */
-  packet_start(SSH_CMSG_X11_FWD_WITH_AUTH_SPOOFING);
+  packet_start(SSH_CMSG_X11_REQUEST_FORWARDING);
   packet_put_string(proto, strlen(proto));
   packet_put_string(new_data, strlen(new_data));
   packet_put_int(screen_number);

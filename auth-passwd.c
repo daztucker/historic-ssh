@@ -59,6 +59,7 @@ the password is valid for the user.
 #endif /* HAVE_ETC_SECURITY_PASSWD_ADJUNCT */
 #include "packet.h"
 #include "ssh.h"
+#include "servconf.h"
 
 #ifdef HAVE_SECURID
 /* Support for Security Dynamics SecurID card.
@@ -78,10 +79,17 @@ static int securid_initialized = 0;
 
 int auth_password(const char *server_user, const char *password)
 {
+  extern ServerOptions options;
   extern char *crypt(const char *key, const char *salt);
   struct passwd *pw;
   char *encrypted_password;
   char correct_passwd[200];
+
+  if (*password == '\0' && options.permit_empty_passwd == 0)
+  {
+      packet_send_debug("Server does not permit empty password login.");
+      return 0;
+  }
 
   /* Get the encrypted password for the user. */
   pw = getpwnam(server_user);
@@ -181,27 +189,6 @@ int auth_password(const char *server_user, const char *password)
     endpwaent();
   }
 #else /* HAVE_ETC_SECURITY_PASSWD_ADJUNCT */
-#ifdef HAVE_ETC_MASTER_PASSWD
-  {
-    char line[1024], user[200], passwd[200];
-    FILE *f;
-    f = fopen("/etc/master.passwd", "r");
-    if (f)
-      {
-	while (fgets(line, sizeof(line), f))
-	  {
-	    if (sscanf(line, "%100[^:]:%100[^:]:", user, passwd) != 2)
-	      continue;
-	    if (strcmp(user, server_user) == 0)
-	      {
-		strncpy(correct_passwd, passwd, sizeof(correct_passwd));
-		break;
-	      }
-	  }
-	fclose(f);
-      }
-  }
-#else /* HAVE_ETC_MASTER_PASSWD */
 #ifdef HAVE_ETC_SECURITY_PASSWD
   {
     FILE *f;
@@ -238,7 +225,6 @@ int auth_password(const char *server_user, const char *password)
       }
   }
 #endif /* HAVE_ETC_SECURITY_PASSWD */
-#endif /* HAVE_ETC_MASTER_PASSWD */
 #endif /* HAVE_ETC_SECURITY_PASSWD_ADJUNCT */
 #endif /* HAVE_ETC_SHADOW */
 #endif /* HAVE_SCO_ETC_SHADOW */

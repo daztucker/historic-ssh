@@ -342,13 +342,13 @@ void process_message(SocketEntry *e)
 void new_socket(int type, int fd)
 {
   unsigned int i, old_alloc;
-#ifdef O_NONBLOCK
+#if defined(O_NONBLOCK) && !defined(O_NONBLOCK_BROKEN)
   if (fcntl(fd, F_SETFL, O_NONBLOCK) < 0)
     error("fcntl O_NONBLOCK: %s", strerror(errno));
-#else /* O_NONBLOCK */  
+#else /* O_NONBLOCK && !O_NONBLOCK_BROKEN */
   if (fcntl(fd, F_SETFL, O_NDELAY) < 0)
     error("fcntl O_NDELAY: %s", strerror(errno));
-#endif /* O_NONBLOCK */
+#endif /* O_NONBLOCK && !O_NONBLOCK_BROKEN */
 
   if (fd > max_fd)
     max_fd = fd;
@@ -651,14 +651,4 @@ int main(int ac, char **av)
       after_select(&readset, &writeset);
     }
   /*NOTREACHED*/
-}
-
-void fatal(const char *fmt, ...)
-{
-  va_list args;
-  va_start(args, fmt);
-  vfprintf(stderr, fmt, args);
-  fprintf(stderr, "\n");
-  va_end(args);
-  exit(1);
 }

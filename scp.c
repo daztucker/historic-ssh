@@ -118,6 +118,10 @@ int verbose = 0;
 /* This is set to non-zero if compression is desired. */
 int compress = 0;
 
+/* This is set to non-zero if running in batch mode (that is, password
+   and passphrase queries are not allowed). */
+int batchmode = 0;
+
 /* This is set to the cipher type string if given on the command line. */
 char *cipher = NULL;
 
@@ -177,6 +181,8 @@ int do_cmd(char *host, char *remuser, char *cmd, int *fdin, int *fdout)
 	args[i++] = "-v";
       if (compress)
 	args[i++] = "-C";
+      if (batchmode)
+	args[i++] = "-oBatchMode yes";
       if (cipher != NULL)
 	{
 	  args[i++] = "-c";
@@ -271,7 +277,7 @@ main(argc, argv)
 	extern int optind;
 
 	fflag = tflag = 0;
-	while ((ch = getopt(argc, argv, "dfprtvCc:i:P:")) != EOF)
+	while ((ch = getopt(argc, argv, "dfprtvBCc:i:P:")) != EOF)
 		switch(ch) {			/* User-visible flags. */
 		case 'p':
 			pflag = 1;
@@ -302,6 +308,9 @@ main(argc, argv)
 			break;
 		case 'v':
 			verbose = 1;
+		  	break;
+		case 'B':
+		  	batchmode = 1;
 		  	break;
 		case 'C':
 		  	compress = 1;

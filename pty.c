@@ -267,8 +267,12 @@ void pty_make_controlling_tty(int *ttyfd, const char *ttyname)
     }
 #endif /* TIOCNOTTY */
 #ifdef HAVE_SETSID
+#ifdef ultrix
+  setpgrp(0, 0);
+#else /* ultrix */
   if (setsid() < 0)
     error("setsid: %.100s", strerror(errno));
+#endif /* ultrix */
 #endif /* HAVE_SETSID */
   
   /* Verify that we are successfully disconnected from the controlling tty. */

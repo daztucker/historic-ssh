@@ -15,8 +15,12 @@ the password is valid for the user.
 */
 
 /*
- * $Id: auth-passwd.c,v 1.2 1996/02/18 21:53:45 ylo Exp $
+ * $Id: auth-passwd.c,v 1.3 1996/09/08 17:36:51 ttsalo Exp $
  * $Log: auth-passwd.c,v $
+ * Revision 1.3  1996/09/08 17:36:51  ttsalo
+ * 	Patches for HPUX 10.x shadow passwords from
+ * 	vincent@ucthpx.uct.ac.za (Russell Vincent) merged.
+ *
  * Revision 1.2  1996/02/18 21:53:45  ylo
  * 	Test for HAVE_ULTRIX_SHADOW_PASSWORDS instead of ultrix
  * 	(mips-dec-mach3 has ultrix defined, but does not support the
@@ -56,9 +60,15 @@ the password is valid for the user.
 # include <sys/audit.h>
 # include <prot.h>
 #else /* HAVE_SCO_ETC_SHADOW */
+#ifdef HAVE_HPUX_TCB_AUTH
+# include <sys/types.h>
+# include <hpsecurity.h>
+# include <prot.h>
+#else /* HAVE_HPUX_TCB_AUTH */
 #ifdef HAVE_ETC_SHADOW
 #include <shadow.h>
 #endif /* HAVE_ETC_SHADOW */
+#endif /* HAVE_HPUX_TCB_AUTH */
 #endif /* HAVE_SCO_ETC_SHADOW */
 #ifdef HAVE_ETC_SECURITY_PASSWD_ADJUNCT
 #include <sys/label.h>
@@ -180,7 +190,7 @@ int auth_password(const char *server_user, const char *password)
   /* If we have shadow passwords, lookup the real encrypted password from
      the shadow file, and replace the saved encrypted password with the
      real encrypted password. */
-#ifdef HAVE_SCO_ETC_SHADOW
+#if defined(HAVE_SCO_ETC_SHADOW) || defined(HAVE_HPUX_TCB_AUTH)
   {
     struct pr_passwd *pr = getprpwnam(saved_pw_name);
     pr = getprpwnam(saved_pw_name);
@@ -188,7 +198,7 @@ int auth_password(const char *server_user, const char *password)
       strncpy(correct_passwd, pr->ufld.fd_encrypt, sizeof(correct_passwd));
     endprpwent();
   }
-#else /* HAVE_SCO_ETC_SHADOW */
+#else /* defined(HAVE_SCO_ETC_SHADOW) || defined(HAVE_HPUX_TCB_AUTH) */
 #ifdef HAVE_ETC_SHADOW
   {
     struct spwd *sp = getspnam(saved_pw_name);

@@ -14,9 +14,12 @@ Interface to packet compression for ssh.
 */
 
 /*
- * $Id: compress.c,v 1.2 1996/10/13 14:32:45 ttsalo Exp $
+ * $Id: compress.c,v 1.3 1998/05/23 20:21:29 kivinen Exp $
  * $Log: compress.c,v $
- * Revision 1.2  1996/10/13 14:32:45  ttsalo
+ * Revision 1.3  1998/05/23  20:21:29  kivinen
+ * 	Changed () -> (void).
+ *
+ * Revision 1.2  1996/10/13  14:32:45  ttsalo
  *         Some casts from char to unsigned char
  *
  * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
@@ -47,7 +50,7 @@ void buffer_compress_init(int level)
 
 /* Frees any data structures allocated for compression. */
 
-void buffer_compress_uninit()
+void buffer_compress_uninit(void)
 {
   debug("compress outgoing: raw data %lu, compressed %lu, factor %.2f",
 	outgoing_stream.total_in, outgoing_stream.total_out,

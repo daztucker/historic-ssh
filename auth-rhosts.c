@@ -16,8 +16,11 @@ the login based on rhosts authentication.  This file also processes
 */
 
 /*
- * $Id: auth-rhosts.c,v 1.6 1995/08/29 22:18:18 ylo Exp $
+ * $Id: auth-rhosts.c,v 1.7 1995/09/09 21:26:37 ylo Exp $
  * $Log: auth-rhosts.c,v $
+ * Revision 1.7  1995/09/09  21:26:37  ylo
+ * /m/shadows/u2/users/ylo/ssh/README
+ *
  * Revision 1.6  1995/08/29  22:18:18  ylo
  * 	Permit using ip addresses in .rhosts and .shosts files.
  *
@@ -60,9 +63,12 @@ static int casefold_equal(const char *a, const char *b)
 }
 
 /* Tries to authenticate the user using the .shosts or .rhosts file.  
-   Returns true if authentication succeeds.  */
+   Returns true if authentication succeeds.  If ignore_rhosts is
+   true, only /etc/hosts.equiv will be considered (.rhosts and .shosts
+   are ignored). */
 
-int auth_rhosts(struct passwd *pw, const char *client_user)
+int auth_rhosts(struct passwd *pw, const char *client_user,
+		int ignore_rhosts)
 {
   struct sockaddr_in from;
   char buf[1024]; /* Note: must not be larger than host, user, dummy below. */
@@ -72,27 +78,23 @@ int auth_rhosts(struct passwd *pw, const char *client_user)
   struct stat st;
   static const char *rhosts_files[] = { ".shosts", ".rhosts", NULL };
   unsigned int rhosts_file_index;
-#ifdef HAVE_SETEUID
-  uid_t saveduid;
-#endif /* HAVE_SETEUID */
 
   /* Quick check: if the user has no .shosts or .rhosts files, return failure
      immediately without doing costly lookups from name servers. */
-#ifdef HAVE_SETEUID
-  saveduid = geteuid();
-  seteuid(pw->pw_uid);
-#endif /* HAVE_SETEUID */
+  /* Switch to the user's uid. */
+  temporarily_use_uid(pw->pw_uid);
   for (rhosts_file_index = 0; rhosts_files[rhosts_file_index];
        rhosts_file_index++)
     {
       /* Check users .rhosts or .shosts. */
-      sprintf(buf, "%s/%s", pw->pw_dir, rhosts_files[rhosts_file_index]);
+      sprintf(buf, "%.500s/%.100s", 
+	      pw->pw_dir, rhosts_files[rhosts_file_index]);
       if (stat(buf, &st) >= 0)
 	break;
     }
-#ifdef HAVE_SETEUID
-  seteuid(saveduid);
-#endif /* HAVE_SETEUID */
+  /* Switch back to privileged uid. */
+  restore_uid();
+
   if (!rhosts_files[rhosts_file_index] && stat("/etc/hosts.equiv", &st) < 0)
     return 0; /* The user has no .shosts or .rhosts file. */
 
@@ -181,14 +183,14 @@ int auth_rhosts(struct passwd *pw, const char *client_user)
     }
   
   /* Check all .rhosts files (currently .shosts and .rhosts). */
-#ifdef HAVE_SETEUID
-  seteuid(pw->pw_uid);
-#endif /* HAVE_SETEUID */
+  /* Temporarily use the user's uid. */
+  temporarily_use_uid(pw->pw_uid);
   for (rhosts_file_index = 0; rhosts_files[rhosts_file_index];
        rhosts_file_index++)
     {
       /* Check users .rhosts or .shosts. */
-      sprintf(buf, "%s/%s", pw->pw_dir, rhosts_files[rhosts_file_index]);
+      sprintf(buf, "%.500s/%.100s", 
+	      pw->pw_dir, rhosts_files[rhosts_file_index]);
       if (stat(buf, &st) < 0)
 	continue; /* No such file. */
 
@@ -203,10 +205,18 @@ int auth_rhosts(struct passwd *pw, const char *client_user)
 	      pw->pw_name, buf);
 	  packet_send_debug("Rhosts authentication refused for %.100s: bad modes for %.200s",
 			    pw->pw_name, buf);
-#ifdef HAVE_SETEUID
-          seteuid(saveduid);
-#endif /* HAVE_SETEUID */
+	  /* Restore the privileged uid. */
+	  restore_uid();
 	  return 0;
+	}
+
+      /* Check if we have been configured to ignore .rhosts and .shosts 
+	 files. */
+      if (ignore_rhosts)
+	{
+	  packet_send_debug("Server has been configured to ignore %.100s.",
+			    rhosts_files[rhosts_file_index]);
+	  continue;
 	}
   
       /* Open the .rhosts file. */
@@ -265,9 +275,8 @@ int auth_rhosts(struct passwd *pw, const char *client_user)
 	  fclose(f);
 	  packet_send_debug("Authentication accepted by %.100s",
 			    rhosts_files[rhosts_file_index]);
-#ifdef HAVE_SETEUID
-          seteuid(saveduid);
-#endif /* HAVE_SETEUID */
+	  /* Restore the privileged uid. */
+	  restore_uid();
 	  return 1;
 	}
       /* Authentication using this file denied. */
@@ -275,8 +284,7 @@ int auth_rhosts(struct passwd *pw, const char *client_user)
     }
 
   /* Rhosts authentication denied. */
-#ifdef HAVE_SETEUID
-  seteuid(saveduid);
-#endif /* HAVE_SETEUID */
+  /* Restore the privileged uid. */
+  restore_uid();
   return 0;
 }

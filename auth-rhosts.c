@@ -16,8 +16,14 @@ the login based on rhosts authentication.  This file also processes
 */
 
 /*
- * $Id: auth-rhosts.c,v 1.4 1995/07/27 00:37:00 ylo Exp $
+ * $Id: auth-rhosts.c,v 1.6 1995/08/29 22:18:18 ylo Exp $
  * $Log: auth-rhosts.c,v $
+ * Revision 1.6  1995/08/29  22:18:18  ylo
+ * 	Permit using ip addresses in .rhosts and .shosts files.
+ *
+ * Revision 1.5  1995/08/22  14:05:16  ylo
+ * 	Added uid-swapping.
+ *
  * Revision 1.4  1995/07/27  00:37:00  ylo
  * 	Added /etc/hosts.equiv in quick test.
  *
@@ -60,15 +66,22 @@ int auth_rhosts(struct passwd *pw, const char *client_user)
 {
   struct sockaddr_in from;
   char buf[1024]; /* Note: must not be larger than host, user, dummy below. */
-  const char *name;
+  const char *name, *ipaddr;
   int port, fromlen, socket;
   FILE *f;
   struct stat st;
   static const char *rhosts_files[] = { ".shosts", ".rhosts", NULL };
   unsigned int rhosts_file_index;
+#ifdef HAVE_SETEUID
+  uid_t saveduid;
+#endif /* HAVE_SETEUID */
 
   /* Quick check: if the user has no .shosts or .rhosts files, return failure
      immediately without doing costly lookups from name servers. */
+#ifdef HAVE_SETEUID
+  saveduid = geteuid();
+  seteuid(pw->pw_uid);
+#endif /* HAVE_SETEUID */
   for (rhosts_file_index = 0; rhosts_files[rhosts_file_index];
        rhosts_file_index++)
     {
@@ -77,6 +90,9 @@ int auth_rhosts(struct passwd *pw, const char *client_user)
       if (stat(buf, &st) >= 0)
 	break;
     }
+#ifdef HAVE_SETEUID
+  seteuid(saveduid);
+#endif /* HAVE_SETEUID */
   if (!rhosts_files[rhosts_file_index] && stat("/etc/hosts.equiv", &st) < 0)
     return 0; /* The user has no .shosts or .rhosts file. */
 
@@ -113,6 +129,7 @@ int auth_rhosts(struct passwd *pw, const char *client_user)
   /* Ok, the connection is from a privileged port.  Get the name of the
      remote host. */
   name = get_canonical_hostname();
+  ipaddr = get_remote_ipaddr();
 
   /* If not superuser, local and remote users are the same, 
      try /etc/hosts.equiv. */
@@ -164,6 +181,9 @@ int auth_rhosts(struct passwd *pw, const char *client_user)
     }
   
   /* Check all .rhosts files (currently .shosts and .rhosts). */
+#ifdef HAVE_SETEUID
+  seteuid(pw->pw_uid);
+#endif /* HAVE_SETEUID */
   for (rhosts_file_index = 0; rhosts_files[rhosts_file_index];
        rhosts_file_index++)
     {
@@ -183,6 +203,9 @@ int auth_rhosts(struct passwd *pw, const char *client_user)
 	      pw->pw_name, buf);
 	  packet_send_debug("Rhosts authentication refused for %.100s: bad modes for %.200s",
 			    pw->pw_name, buf);
+#ifdef HAVE_SETEUID
+          seteuid(saveduid);
+#endif /* HAVE_SETEUID */
 	  return 0;
 	}
   
@@ -232,13 +255,19 @@ int auth_rhosts(struct passwd *pw, const char *client_user)
 	      continue; /* Ignore some potentially occurring wrong hostnames.*/
 	    }
       
-	  if (!casefold_equal(host, name) || strcmp(user, client_user) != 0)
-	    continue; /* No match. */
+	  if (!casefold_equal(host, name) && strcmp(host, ipaddr) != 0)
+	    continue; /* Different hostname. */
+
+	  if (strcmp(user, client_user) != 0)
+	    continue; /* Different username. */
 	  
 	  /* Authentication accepted by .rhosts. */
 	  fclose(f);
 	  packet_send_debug("Authentication accepted by %.100s",
 			    rhosts_files[rhosts_file_index]);
+#ifdef HAVE_SETEUID
+          seteuid(saveduid);
+#endif /* HAVE_SETEUID */
 	  return 1;
 	}
       /* Authentication using this file denied. */
@@ -246,5 +275,8 @@ int auth_rhosts(struct passwd *pw, const char *client_user)
     }
 
   /* Rhosts authentication denied. */
+#ifdef HAVE_SETEUID
+  seteuid(saveduid);
+#endif /* HAVE_SETEUID */
   return 0;
 }

@@ -1,7 +1,10 @@
 .\" -*- nroff -*-
 .\"
-.\" $Id: RFC.nroff,v 1.7 1995/09/24 23:57:48 ylo Exp $
+.\" $Id: RFC.nroff,v 1.1.1.1 1996/02/18 21:38:10 ylo Exp $
 .\" $Log: RFC.nroff,v $
+.\" Revision 1.1.1.1  1996/02/18 21:38:10  ylo
+.\" 	Imported ssh-1.2.13.
+.\"
 .\" Revision 1.7  1995/09/24  23:57:48  ylo
 .\" 	Added passing of screen number to server.
 .\"

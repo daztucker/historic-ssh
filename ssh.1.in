@@ -9,8 +9,11 @@
 .\"
 .\" Created: Sat Apr 22 21:55:14 1995 ylo
 .\"
-.\" $Id: ssh.1.in,v 1.9 1995/10/02 01:28:11 ylo Exp $
+.\" $Id: ssh.1.in,v 1.1.1.1 1996/02/18 21:38:13 ylo Exp $
 .\" $Log: ssh.1.in,v $
+.\" Revision 1.1.1.1  1996/02/18 21:38:13  ylo
+.\" 	Imported ssh-1.2.13.
+.\"
 .\" Revision 1.9  1995/10/02  01:28:11  ylo
 .\" 	Make substitutions in configure.
 .\"

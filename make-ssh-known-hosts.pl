@@ -21,15 +21,15 @@
 # must be preserved on all copies.
 ######################################################################
 #         Program: make-ssh-known-hosts.pl
-#	  $Source: /p/shadows/CVS/ssh/make-ssh-known-hosts.pl,v $
+#	  $Source: /ssh/CVS/ssh/make-ssh-known-hosts.pl,v $
 #	  Author : $Author: ylo $
 #
 #	  (C) Tero Kivinen 1995 <Tero.Kivinen@hut.fi>
 #
 #	  Creation          : 19:52 Jun 27 1995 kivinen
 #	  Last Modification : 03:14 Jan 31 1996 kivinen
-#	  Last check in     : $Date: 1995/10/02 01:23:45 $
-#	  Revision number   : $Revision: 1.4 $
+#	  Last check in     : $Date: 1996/02/18 21:38:10 $
+#	  Revision number   : $Revision: 1.1.1.1 $
 #	  State             : $State: Exp $
 #	  Version	    : 1.331
 #	  Edit time	    : 235 min
@@ -37,6 +37,9 @@
 #	  Description       : Make ssh-known-host file from dns data.
 #
 #	  $Log: make-ssh-known-hosts.pl,v $
+#	  Revision 1.1.1.1  1996/02/18 21:38:10  ylo
+#	  	Imported ssh-1.2.13.
+#
 # Revision 1.4  1995/10/02  01:23:45  ylo
 # 	Ping packet size fixes from Kivinen.
 #
@@ -64,7 +67,7 @@ use POSIX;
 use Socket;
 use Fcntl;
 
-$version = ' $Id: make-ssh-known-hosts.pl,v 1.4 1995/10/02 01:23:45 ylo Exp $ ';
+$version = ' $Id: make-ssh-known-hosts.pl,v 1.1.1.1 1996/02/18 21:38:10 ylo Exp $ ';
 
 $command_line = "$0 ";
 foreach $a (@ARGV) {

@@ -128,6 +128,7 @@ void process_buffered_input_packets()
 	  channel_input_data();
 	  break;
 	  
+#ifdef SUPPORT_OLD_CHANNELS
 	case SSH_MSG_CHANNEL_CLOSE:
 	  debug("Received channel close.");
 	  channel_input_close();
@@ -137,6 +138,18 @@ void process_buffered_input_packets()
 	  debug("Received channel close confirmation.");
 	  channel_input_close_confirmation();
 	  break;
+#else
+	case SSH_MSG_CHANNEL_INPUT_EOF:
+	  debug("Received channel input eof.");
+	  channel_ieof();	  
+	  break;
+
+	case SSH_MSG_CHANNEL_OUTPUT_CLOSED:
+	  debug("Received channel output closed.");
+	  channel_oclosed();
+	  break;
+
+#endif
 
 	default:
 	  /* In this phase, any unexpected messages cause a protocol

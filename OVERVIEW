@@ -1,4 +1,4 @@
-This document is inteded for those who wish to read the ssh source
+This document is intended for those who wish to read the ssh source
 code.  This tries to give an overview of the structure of the code.
       
 Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
@@ -37,7 +37,7 @@ these programs.
 	       configuration files and generates host key if they don't exist.
 	 uninstall: removes installed executables and manual pages.
 	 clean: removes object files, executables, and some temporary files.
-	 distclean: removes all generated files ("distrigution state").
+	 distclean: removes all generated files ("distribution state").
 	 depend: updates dependencies.
 	 RFC: run RFC.nroff trough nroff to generate a new version of the RFC.
 	 dist: generate a distribution ".tar.gz" file.
@@ -78,7 +78,7 @@ these programs.
 
     - The distribution also contains the file random.c which offers a
       substitute for the BSD random() function.  This function is only
-      refernced from the gmp library; the function where it is used is
+      referenced from the gmp library; the function where it is used is
       only used in the gmp primality checking functions (ssh uses the
       Fermat test in addition to the gmp primality test).
 

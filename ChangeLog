@@ -1,3 +1,51 @@
+Fri Apr 26 03:12:19 1996  Tatu Ylonen  <ylo@pilari.ssh.fi>
+
+	* sshd.c: Fixed ip address in "Closing connection" message when
+	  run from inetd.
+
+	* sshd.c: Improved error messages related to not being able to 
+	  read host key when not root.
+
+	* ssh-agent.c: Fixed bugs when receiving multiple simultaneous
+	  connections.
+
+	* ssh-agent.c: Fixed major memory leaks.
+
+	* signals.c: Check for SIGURG == ISGIO (Linux).
+
+	* pty.c: Fixed process group setting on NeXT.
+
+	* mpaux.c: Fixed some 32-bit dependencies to make the code run on
+	  16-bit machines.
+
+	* No longer check for perl5.001 (just perl5 and perl now).
+
+	* Also grep "installed" when checking for OSF/1 C2 security.
+
+	* Fixed SOCKS support.  Fixed bugs in reconnecting with SOCKS.
+
+	* Added support for HPUX 7.x.
+
+	* Makefile.in: don't include make-ssh-known-hosts.1 in
+	  DISTFILES.
+
+	* No longer remove some long ago obsoleted files in install.
+
+Sun Feb 18 18:20:26 1996  Tatu Ylonen  <ylo@trance.olari.clinet.fi>
+
+	* sshd.c: Use setluid to set login uid on OSF/1.
+
+Thu Feb 15 11:17:26 1996  Tatu Ylonen  <ylo@trance.olari.clinet.fi>
+
+	* sshconnect.c: When connecting with proxy, close userfile pipes
+	  after fork.
+
+Wed Feb 14 00:28:50 1996  Tatu Ylonen  <ylo@trance.olari.clinet.fi>
+
+	* configure.in: don't use setsid on mips-dec-mach3.
+
+	* cipher.h: comments about len in encrypt and decrypt.
+
 Sun Feb 11 16:35:37 1996  Tatu Ylonen  <ylo@trance.olari.clinet.fi>
 
 	* Released 1.2.13.

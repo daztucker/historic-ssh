@@ -98,14 +98,17 @@ This software has been used at least in the following environments.
 	ConvexOS 10.1; Convex
 	DGUX 5.4R2.10; DGUX
 	FreeBSD 1.x, 2.x; Pentium
-	HPUX 9.0x, 10.0; HPPA
+	HPUX 7.x, 9.x, 10.0; HPPA
 	IRIX 5.2, 5.3; SGI Indy
 	IRIX 6.0.1; Mips-R8000
 	Linux 1.2.x Slackware 2.1.0, RedHat 2.1; i486
+	Linux/Mach3, Macintosh(PowerPC)
 	Mach3; Mips
 	Mach3/Lites; i386
 	Machten 2.2VM (m68k); Macintosh
-	NetBSD 1.0A; Pentium, Sparc
+	NCR Unix 3.00; NCR S40
+	NetBSD 1.0A, 1.1; Pentium, Sparc, Mac68k
+	NextSTEP 3.3; i486
 	OSF/1 3.0, 3.2, 3.2a; Alpha
 	Sequent Dynix/ptx 3.2.0 V2.1.0; i386
 	SCO Unix; i386 (client only)

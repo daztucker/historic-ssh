@@ -20,21 +20,24 @@
 .\" must be preserved on all copies.
 .\" ----------------------------------------------------------------------
 .\"       Program: make-ssh-known-hosts.1
-.\"	  $Source: /p/shadows/CVS/ssh/make-ssh-known-hosts.1.in,v $
+.\"	  $Source: /ssh/CVS/ssh/make-ssh-known-hosts.1.in,v $
 .\"	  Author : $Author: ylo $
 .\"
 .\"	  (C) Tero Kivinen 1995 <Tero.Kivinen@hut.fi>
 .\"
 .\"	  Creation          : 03:51 Jun 28 1995 kivinen
 .\"	  Last Modification : 03:44 Jun 28 1995 kivinen
-.\"	  Last check in     : $Date: 1995/10/02 01:23:23 $
-.\"	  Revision number   : $Revision: 1.5 $
+.\"	  Last check in     : $Date: 1996/02/18 21:38:13 $
+.\"	  Revision number   : $Revision: 1.1.1.1 $
 .\"	  State             : $State: Exp $
 .\"	  Version	    : 1.1
 .\"
 .\"	  Description       : Manual page for make-ssh-known-hosts.pl
 .\"
 .\"	  $Log: make-ssh-known-hosts.1.in,v $
+.\"	  Revision 1.1.1.1  1996/02/18 21:38:13  ylo
+.\"	  	Imported ssh-1.2.13.
+.\"
 .\" Revision 1.5  1995/10/02  01:23:23  ylo
 .\" 	Make substitutions by configure.
 .\"

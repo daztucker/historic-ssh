@@ -1,7 +1,7 @@
 Ssh (Secure Shell) is a program to log into another computer over a
 network, to execute commands in a remote machine, and to move files
 from one machine to another.  It provides strong authentication and
-secure communications over insecure channels.  It is inteded as a
+secure communications over insecure channels.  It is intended as a
 replacement for rlogin, rsh, rcp, and rdist.
 
 See the file INSTALL for installation instructions.  See COPYING for
@@ -201,7 +201,7 @@ used for questionable purposes.  I find that it is better to tolerate
 a small amount of crime in the society than to let the society become
 fully controlled.  I am in favor of a fairly strong state, but the
 state must never get so strong that people become unable to spread
-contra-offical information and unable to overturn the government if it
+contra-official information and unable to overturn the government if it
 is bad.  The danger is that when you notice that the government is
 too powerful, it is too late.  Also, the real power may not be where
 the official government is.
@@ -310,7 +310,7 @@ securely.
 If there is an authentication agent on the client side, connection to
 it will be automatically forwarded to the server side.
 
-For more infomation, see the manual pages ssh(1), sshd(8), scp(1),
+For more information, see the manual pages ssh(1), sshd(8), scp(1),
 ssh-keygen(1), ssh-agent(1), ssh-add(1), and make-ssh-known-hosts(1)
 included in this distribution.
 
@@ -369,9 +369,9 @@ may be useful.
 
 RSA AUTHENTICATION
 
-RSA authentication is based on public key cryptograpy.  The idea is
+RSA authentication is based on public key cryptography.  The idea is
 that there are two encryption keys, one for encryption and another for
-decryption.  It is not possible (on human timescale) to derive the
+decryption.  It is not possible (on human time scale) to derive the
 decryption key from the encryption key.  The encryption key is called
 the public key, because it can be given to anyone and it is not
 secret.  The decryption key, on the other hand, is secret, and is
@@ -440,7 +440,7 @@ uses the name servers to obtain the canonical name of the client host,
 looks for its public key in its known host files, and requires the
 client to prove that it knows the private host key.  This prevents IP
 and routing spoofing attacks (as long as the client machine private
-host key has not been compromized), but is still vulnerable to DNS
+host key has not been compromised), but is still vulnerable to DNS
 attacks (to a limited extent), and relies on the integrity of the
 client machine as to who is requesting to log in.  This prevents
 outsiders from attacking, but does not protect against very powerful
@@ -471,7 +471,7 @@ communications, and a very talented root user might even be able to
 send his/her own requests to your authentication agent.
 
 One should also be aware that computers send out electromagnetic
-radition that can sometimes be picked up hundreds of meters away.
+radiation that can sometimes be picked up hundreds of meters away.
 Your keyboard is particularly easy to listen to.  The image on your
 monitor might also be seen on another monitor in a van parked behind
 your house.
@@ -497,7 +497,7 @@ strong encryption.
 
 This software may be freely imported into the United States; however,
 the United States Government may consider re-exporting it a criminal
-offence.
+offense.
 
 Note that any information and cryptographic algorithms used in this
 software are publicly available on the Internet and at any major
@@ -549,15 +549,15 @@ Adam, Walker Aumann, Jurgen Botz, Hans-Werner Braun, Stephane
 Bortzmeyer, Bill Broadley, Adrian Colley, Michael Cooper, David
 Dombek, Ian Donaldson, Danek Duvall, Jerome Etienne, Bill Fithen, Mark
 Fullmer, Bert Gijsbers, Klaus Guntermann, Andreas Gustafsson, Michael
-Henits, Ton Hospel, Cedomir Igaly, Steve Johnson, Thomas Koenig, Felix
-Leitner, Gunnar Lindberg, Harald Lundberg, Andrew Macpherson, Marc
-Martinec, Paul Mauvais, David Mazieres, Donald McKillican, Pedro Melo,
-Leon Mlakar, Robert Muchsel, Mark Treacy, Bryan O'Sullivan, Mikael
-Suokas, Ollivier Robert, Jakob Schlyter, Wayne Schroeder, Harlan
-Stenn, Tomasz Surmacz, Dragan Vecerina, Alvar Vinacua, Petri Virkkula,
-Michael Warfield, Brian Weaver, Peter Wemm, Mike Williams, and
-Cristophe Wolfhugel.  My apologies to people whom I have forgotten to
-list.
+Henits, Ton Hospel, Cedomir Igaly, Steve Johnson, Thomas Koenig,
+Joseph Lappa, Felix Leitner, Gunnar Lindberg, Harald Lundberg, Andrew
+Macpherson, Marc Martinec, Paul Mauvais, David Mazieres, Donald
+McKillican, Pedro Melo, Leon Mlakar, Robert Muchsel, Mark Treacy,
+Bryan O'Sullivan, Mikael Suokas, Ollivier Robert, Jakob Schlyter,
+Wayne Schroeder, Harlan Stenn, Tomasz Surmacz, Holger Trapp, Dragan
+Vecerina, Wietse Venema, Alvar Vinacua, Petri Virkkula, Michael
+Warfield, Brian Weaver, Peter Wemm, Mike Williams, and Cristophe
+Wolfhugel.  My apologies to people whom I have forgotten to list.
 
 Thanks also go to Philip Zimmermann, whose PGP software and the
 associated legal battle provided inspiration, motivation, and many

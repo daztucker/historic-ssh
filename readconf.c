@@ -14,8 +14,15 @@ Functions for reading the configuration files.
 */
 
 /*
- * $Id: readconf.c,v 1.11 1998/01/02 06:19:58 kivinen Exp $
+ * $Id: readconf.c,v 1.13 1998/04/30 01:55:12 kivinen Exp $
  * $Log: readconf.c,v $
+ * Revision 1.13  1998/04/30 01:55:12  kivinen
+ * 	Added PasswordPromptLogin and PasswordPromptHost options, so
+ * 	now the password prompt is configurable.
+ *
+ * Revision 1.12  1998/03/27 16:59:33  kivinen
+ * 	Added GatewayPorts option.
+ *
  * Revision 1.11  1998/01/02 06:19:58  kivinen
  * 	Added xauthlocation option.
  *
@@ -158,7 +165,7 @@ typedef enum
   oBatchMode, oStrictHostKeyChecking, oCompression, oCompressionLevel,
   oKeepAlives, oUsePriviledgedPort, oKerberosAuthentication,
   oKerberosTgtPassing, oClearAllForwardings, oNumberOfPasswordPrompts,
-  oXauthPath
+  oXauthPath, oGatewayPorts, oPasswordPromptLogin, oPasswordPromptHost, 
 } OpCodes;
 
 /* Textual representations of the tokens. */
@@ -202,6 +209,9 @@ static struct
   { "clearallforwardings", oClearAllForwardings },
   { "numberofpasswordprompts", oNumberOfPasswordPrompts },
   { "xauthlocation", oXauthPath },
+  { "gatewayports", oGatewayPorts },
+  { "passwordpromptlogin", oPasswordPromptLogin },
+  { "passwordprompthost", oPasswordPromptHost },
   { NULL, 0 }
 };
 
@@ -488,6 +498,14 @@ void process_config_line(Options *options, const char *host,
       intptr = &options->number_of_password_prompts;
       goto parse_int;
 
+    case oPasswordPromptLogin:
+      intptr = &options->password_prompt_login;
+      goto parse_flag;
+      
+    case oPasswordPromptHost:
+      intptr = &options->password_prompt_host;
+      goto parse_flag;
+
     case oCipher:
       intptr = &options->cipher;
       cp = strtok(NULL, WHITESPACE);
@@ -591,6 +609,10 @@ void process_config_line(Options *options, const char *host,
  	*charptr = tilde_expand_filename(cp, getuid());
       break;
       
+    case oGatewayPorts:
+      intptr = &options->gateway_ports;
+      goto parse_flag;
+      
     default:
       fatal("parse_config_file: Unimplemented opcode %d", opcode);
     }
@@ -662,6 +684,8 @@ void initialize_options(Options *options)
   options->port = -1;
   options->connection_attempts = -1;
   options->number_of_password_prompts = -1;
+  options->password_prompt_login = -1;
+  options->password_prompt_host = -1;
   options->cipher = -1;
   options->num_identity_files = 0;
   options->hostname = NULL;
@@ -676,6 +700,7 @@ void initialize_options(Options *options)
   options->use_priviledged_port = -1;
   options->no_user_given = 0;
   options->xauth_path = NULL;
+  options->gateway_ports = -1;
 }
 
 /* Called after processing other sources of option data, this fills those
@@ -731,6 +756,10 @@ void fill_default_options(Options *options)
     options->connection_attempts = 4;
   if (options->number_of_password_prompts == -1)
     options->number_of_password_prompts = 1;
+  if (options->password_prompt_login == -1)
+    options->password_prompt_login = 1;
+  if (options->password_prompt_host == -1)
+    options->password_prompt_host = 1;
   if (options->cipher == -1)
     options->cipher = SSH_CIPHER_NOT_SET; /* Selected in ssh_login(). */
   if (options->clear_all_forwardings == 1)
@@ -762,5 +791,7 @@ void fill_default_options(Options *options)
   if (options->xauth_path == NULL)
     options->xauth_path = "xauth";
 #endif  /* !XAUTH_PATH */
+  if (options->gateway_ports == -1)
+    options->gateway_ports = 0;
 }
 

@@ -14,8 +14,11 @@ Functions for manipulating the known hosts files.
 */
 
 /*
- * $Id: hostfile.c,v 1.1.1.1 1996/02/18 21:38:12 ylo Exp $
+ * $Id: hostfile.c,v 1.2 1997/03/19 21:13:51 kivinen Exp $
  * $Log: hostfile.c,v $
+ * Revision 1.2  1997/03/19 21:13:51  kivinen
+ * 	Enlarged line buffer in check_host_in_hostfile to 16384.
+ *
  * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
  * 	Imported ssh-1.2.13.
  *
@@ -179,7 +182,7 @@ HostStatus check_host_in_hostfile(uid_t uid,
 				  MP_INT *e, MP_INT *n)
 {
   UserFile uf;
-  char line[8192];
+  char line[16384];
   MP_INT ke, kn;
   unsigned int kbits, hostlen;
   char *cp, *cp2;

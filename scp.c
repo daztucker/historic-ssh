@@ -11,8 +11,11 @@ and ssh has the necessary privileges.)
 */
 
 /*
- * $Id: scp.c,v 1.7 1995/09/13 12:00:30 ylo Exp $
+ * $Id: scp.c,v 1.8 1995/09/27 02:14:56 ylo Exp $
  * $Log: scp.c,v $
+ * Revision 1.8  1995/09/27  02:14:56  ylo
+ * 	Added support for SCO.
+ *
  * Revision 1.7  1995/09/13  12:00:30  ylo
  * 	Don't use -l unless user name is explicitly given (so that
  * 	User works in .ssh/config).
@@ -66,7 +69,7 @@ and ssh has the necessary privileges.)
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$Id: scp.c,v 1.7 1995/09/13 12:00:30 ylo Exp $
+ *	$Id: scp.c,v 1.8 1995/09/27 02:14:56 ylo Exp $
  */
 
 #ifndef lint
@@ -129,7 +132,7 @@ int do_cmd(char *host, char *remuser, char *cmd, int *fdin, int *fdout)
 
   if (verbose)
     fprintf(stderr, "Executing: host %s, user %s, command %s\n",
-	    host, remuser, cmd);
+	    host, remuser ? remuser : "(unspecified)", cmd);
 
   /* Create a socket pair for communicating with ssh. */
   if (pipe(pin) < 0)
@@ -817,12 +820,20 @@ bad:			run_err("%s: %s", np, strerror(errno));
 #endif
 		if (pflag) {
 			if (exists || omode != mode)
+#ifdef HAVE_FCHMOD
 				if (fchmod(ofd, omode))
+#else /* HAVE_FCHMOD */
+				if (chmod(np, omode))
+#endif /* HAVE_FCHMOD */
 					run_err("%s: set mode: %s",
 					    np, strerror(errno));
 		} else {
 			if (!exists && omode != mode)
+#ifdef HAVE_FCHMOD
 				if (fchmod(ofd, omode & ~mask))
+#else /* HAVE_FCHMOD */
+				if (chmod(np, omode & ~mask))
+#endif /* HAVE_FCHMOD */
 					run_err("%s: set mode: %s",
 					    np, strerror(errno));
 		}
@@ -952,7 +963,7 @@ run_err(const char *fmt, ...)
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$Id: scp.c,v 1.7 1995/09/13 12:00:30 ylo Exp $
+ *	$Id: scp.c,v 1.8 1995/09/27 02:14:56 ylo Exp $
  */
 
 char *

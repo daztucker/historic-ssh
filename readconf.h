@@ -14,8 +14,11 @@ Functions for reading the configuration file.
 */
 
 /*
- * $Id: readconf.h,v 1.9 1998/04/30 01:55:19 kivinen Exp $
+ * $Id: readconf.h,v 1.10 1998/07/08 00:46:37 kivinen Exp $
  * $Log: readconf.h,v $
+ * Revision 1.10  1998/07/08 00:46:37  kivinen
+ * 	Fixed typo (privileged).
+ *
  * Revision 1.9  1998/04/30  01:55:19  kivinen
  * 	Added PasswordPromptLogin and PasswordPromptHost options, so
  * 	now the password prompt is configurable.
@@ -92,7 +95,7 @@ typedef struct
   int compression;		/* Compress packets in both directions. */
   int compression_level;	/* Compression level 1 (fast) to 9 (best). */
   int keepalives;		/* Set SO_KEEPALIVE. */
-  int use_priviledged_port;	/* Use priviledged port */
+  int use_privileged_port;	/* Use privileged port */
 
   int port;			/* Port to connect. */
   int connection_attempts;	/* Max attempts (seconds) before giving up */

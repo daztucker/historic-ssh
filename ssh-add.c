@@ -14,8 +14,11 @@ Adds an identity to the authentication server, or removes an identity.
 */
 
 /*
- * $Id: ssh-add.c,v 1.2 1995/07/13 01:38:15 ylo Exp $
+ * $Id: ssh-add.c,v 1.3 1995/08/29 22:24:21 ylo Exp $
  * $Log: ssh-add.c,v $
+ * Revision 1.3  1995/08/29  22:24:21  ylo
+ * 	Added delete_all.
+ *
  * Revision 1.2  1995/07/13  01:38:15  ylo
  * 	Removed "Last modified" header.
  * 	Added cvs log.
@@ -58,6 +61,29 @@ void delete_file(const char *filename)
     fprintf(stderr, "Could not remove identity: %s\n", filename);
   rsa_clear_public_key(&key);
   xfree(comment);
+  ssh_close_authentication_connection(ac);
+}
+
+void delete_all()
+{
+  AuthenticationConnection *ac;
+  
+  /* Get a connection to the agent. */
+  ac = ssh_get_authentication_connection();
+  if (!ac)
+    {
+      fprintf(stderr,
+	      "Could not open a connection to your authentication agent.\n");
+      return;
+    }
+
+  /* Send a request to remove all identities. */
+  if (ssh_remove_all_identities(ac))
+    fprintf(stderr, "All identities removed.\n");
+  else
+    fprintf(stderr, "Failed to remove all identitities.\n");
+  
+  /* Close the connection to the agent. */
   ssh_close_authentication_connection(ac);
 }
 
@@ -191,6 +217,12 @@ int main(int ac, char **av)
       if (strcmp(av[i], "-d") == 0)
 	{
 	  deleting = 1;
+	  continue;
+	}
+      if (strcmp(av[i], "-D") == 0)
+	{
+	  delete_all();
+	  no_files = 0;
 	  continue;
 	}
       no_files = 0;

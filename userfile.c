@@ -14,8 +14,11 @@ Created: Wed Jan 24 20:19:53 1996 ylo
 
 /*
  * $Log: userfile.c,v $
+ * Revision 1.21  2001/02/20 12:10:27  sjl
+ * 	Secure RPC patch.
+ *
  * Revision 1.20  1999/11/17 17:05:01  tri
- * 	Fixed copyright notices.
+ *      Fixed copyright notices.
  *
  * Revision 1.19  1999/02/21 19:53:01  ylo
  *      Intermediate commit of ssh1.2.27 stuff.
@@ -1147,7 +1150,11 @@ char *userfile_get_des_1_magic_phrase(uid_t uid)
       memset(buf, 0, sizeof(buf));
       snprintf(buf, sizeof(buf), "ssh.%04X", geteuid());
       memcpy(block.c, buf, sizeof(block.c));
-      if (getnetname(buf))
+      if (getnetname(buf)
+#ifdef HAVE_KEY_SECRETKEY_IS_SET
+          && key_secretkey_is_set()
+#endif /* HAVE_KEY_SECRETKEY_IS_SET */
+          )
         {
           if (key_encryptsession(buf, &block) == 0)
             {

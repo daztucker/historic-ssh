@@ -14,8 +14,11 @@ This file includes most of the needed system headers.
 */
 
 /*
- * $Id: includes.h,v 1.11 1995/09/27 02:14:08 ylo Exp $
+ * $Id: includes.h,v 1.12 1995/10/02 01:22:37 ylo Exp $
  * $Log: includes.h,v $
+ * Revision 1.12  1995/10/02  01:22:37  ylo
+ * 	Added machine/endian.h on Paragon.
+ *
  * Revision 1.11  1995/09/27  02:14:08  ylo
  * 	Added support for SCO unix.
  *
@@ -171,7 +174,10 @@ struct	sockaddr_un {
 	short	sun_family;		/* AF_UNIX */
 	char	sun_path[108];		/* path name (gag) */
 };
-#else
+/* SCO needs sys/stream.h and sys/ptem.h */
+#include <sys/stream.h>
+#include <sys/ptem.h>
+#else /* SCO */
 #include <sys/un.h>
 #endif /* SCO */
 #if !defined(__PARAGON__)

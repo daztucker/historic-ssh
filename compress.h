@@ -14,8 +14,11 @@ Interface to packet compression for ssh.
 */
 
 /*
- * $Id: compress.h,v 1.1.1.1 1996/02/18 21:38:11 ylo Exp $
+ * $Id: compress.h,v 1.2 1997/03/26 07:11:32 kivinen Exp $
  * $Log: compress.h,v $
+ * Revision 1.2  1997/03/26 07:11:32  kivinen
+ * 	Fixed prototypes.
+ *
  * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
  * 	Imported ssh-1.2.13.
  *
@@ -30,7 +33,7 @@ Interface to packet compression for ssh.
 void buffer_compress_init(int level);
 
 /* Frees any data structures allocated by buffer_compress_init. */
-void buffer_compress_uninit();
+void buffer_compress_uninit(void);
 
 /* Compresses the contents of input_buffer into output_buffer.  All
    packets compressed using this function will form a single

@@ -14,8 +14,11 @@ Definitions for server configuration data and for the functions reading it.
 */
 
 /*
- * $Id$
- * $Log$
+ * $Id: servconf.h,v 1.1.1.1 1996/02/18 21:38:10 ylo Exp $
+ * $Log: servconf.h,v $
+ * Revision 1.1.1.1  1996/02/18 21:38:10  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * $EndLog$
  */
 

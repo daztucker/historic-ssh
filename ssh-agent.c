@@ -14,8 +14,17 @@ The authentication agent program.
 */
 
 /*
- * $Id: ssh-agent.c,v 1.16 1997/03/19 17:39:36 kivinen Exp $
+ * $Id: ssh-agent.c,v 1.17 1997/04/05 21:58:15 kivinen Exp $
  * $Log: ssh-agent.c,v $
+ * Revision 1.17  1997/04/05 21:58:15  kivinen
+ * 	Fixed agent option parsing. Added -- option support, patch from
+ * 	Charles M. Hannum <mycroft@gnu.ai.mit.edu>.
+ * 	Added closing of agent socket in parent, patch from Charles M.
+ * 	Hannum <mycroft@gnu.ai.mit.edu>.
+ * 	Added check for existance of O_NOCTTY (patch from
+ * 	KOJIMA Hajime <kjm@rins.ryukoku.ac.jp>).
+ * 	Added setting of SSH_AGENT_PID when running command too.
+ *
  * Revision 1.16  1997/03/19 17:39:36  kivinen
  * 	Added -c (csh style shell) and -s (/bin/sh style shell)
  * 	options.
@@ -571,22 +580,31 @@ int main(int ac, char **av)
       sh[strlen(sh)-3] == 'c')
     binsh = 0;
   
-  while(ac > 1) {
-    if (av[1][0] == '-')
-      {
-	for(i = 1; av[1][i] != '\0'; i++)
-	  {
-	    switch (av[1][i])
-	      {
-	      case 's': binsh = 1; break;
-	      case 'c': binsh = 0; break;
-	      default: erflg++; break;
-	      }
-	  }
-	av++;
-	ac--;
-      }
-  }
+  while (ac > 1)
+    {
+      if (av[1][0] == '-')
+	{
+	  if (av[1][1] == '-' && av[1][2] == '\0')
+	    {
+	      av++;
+	      ac--;
+	      break;
+	    }
+	  for(i = 1; av[1][i] != '\0'; i++)
+	    {
+	      switch (av[1][i])
+		{
+		case 's': binsh = 1; break;
+		case 'c': binsh = 0; break;
+		default: erflg++; break;
+		}
+	    }
+	  av++;
+	  ac--;
+	}
+      else
+	break;
+    }
   if (erflg)
     {
       fprintf(stderr, "Usage: ssh-agent [-cs] [command [args...]]\n");
@@ -689,7 +707,12 @@ fail_socket_setup:
   else
     pid = 1;			/* Run only parent code */
   if (pid != 0)
-    { /* Parent - execute the given command, if given command. */
+    {
+      /* Parent - execute the given command, if given command. */
+
+      /* Close the agent socket */
+      close(sock);
+      
       if (ac == 1)
 	{			/* No command given print socket name */
 	  if (creation_failed)
@@ -697,7 +720,7 @@ fail_socket_setup:
 	      printf("echo Agent creation failed, no agent started\n");
 	      exit(0);
 	    }
-
+	  
 	  if (!binsh)
 	    {			/* shell is *csh */
 	      printf("setenv SSH_AUTHENTICATION_SOCKET %s;\n",
@@ -718,6 +741,8 @@ fail_socket_setup:
 	{
 	  sprintf(buf, "SSH_AUTHENTICATION_SOCKET=%s", socket_name);
 	  putenv(buf);
+	  sprintf(buf, "SSH_AGENT_PID=%d", pid);
+	  putenv(buf);
 	}
       execvp(av[1], av + 1);
       perror(av[1]);
@@ -733,7 +758,11 @@ fail_socket_setup:
 #ifdef TIOCNOTTY
   {
     int fd;
-    fd = open("/dev/tty", O_RDWR|O_NOCTTY);
+#ifdef O_NOCTTY
+    fd = open("/dev/tty", O_RDWR | O_NOCTTY);
+#else
+    fd = open("/dev/tty", O_RDWR);
+#endif
     if (fd >= 0)
       {
 	(void)ioctl(fd, TIOCNOTTY, NULL);

@@ -14,8 +14,16 @@ This file includes most of the needed system headers.
 */
 
 /*
- * $Id: includes.h,v 1.3 1996/04/26 00:33:48 ylo Exp $
+ * $Id: includes.h,v 1.5 1996/08/11 22:30:59 ylo Exp $
  * $Log: includes.h,v $
+ * Revision 1.5  1996/08/11 22:30:59  ylo
+ * 	Changed the way machine/endian.h include is tested (no longer
+ * 	lists specific systems).
+ * 	Added optional defines of _S_IFMT and _S_IFDIR.
+ *
+ * Revision 1.4  1996/07/12 07:19:23  ttsalo
+ * 	SCO v5 support
+ *
  * Revision 1.3  1996/04/26 00:33:48  ylo
  * 	Added support for HPUX 7.x.
  *
@@ -95,7 +103,7 @@ YOU_LOSE
 #endif
 #endif
 
-#ifdef SCO
+#if defined(SCO) && !defined(SCO5)
 /* this is defined so that winsize gets ifdef'd in termio.h */
 #define _IBCS2
 #endif
@@ -109,10 +117,11 @@ YOU_LOSE
 #undef uint32
 #endif /* __mips */
 
-#if defined(bsd_44) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__PARAGON__) || defined(__MACHTEN__)
+#ifdef HAVE_MACHINE_ENDIAN_H
 #include <sys/param.h>
 #include <machine/endian.h>
 #endif
+
 #if defined(linux)
 #include <endian.h>
 #endif
@@ -299,6 +308,12 @@ struct linger {
 #ifndef S_ISDIR
 /* NextStep apparently fails to define this. */
 #define S_ISDIR(mode)   (((mode)&(_S_IFMT))==(_S_IFDIR))
+#endif
+#ifndef _S_IFMT
+#define _S_IFMT 0170000
+#endif
+#ifndef _S_IFDIR
+#define _S_IFDIR 0040000
 #endif
 
 #if USE_STRLEN_FOR_AF_UNIX

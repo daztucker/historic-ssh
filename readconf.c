@@ -14,8 +14,15 @@ Functions for reading the configuration files.
 */
 
 /*
- * $Id: readconf.c,v 1.5 1997/03/27 03:10:16 kivinen Exp $
+ * $Id: readconf.c,v 1.7 1997/04/23 00:01:18 kivinen Exp $
  * $Log: readconf.c,v $
+ * Revision 1.7  1997/04/23 00:01:18  kivinen
+ * 	Added ClearAllForwardins and NumberOfPasswordPrompts options.
+ *
+ * Revision 1.6  1997/04/17 04:21:08  kivinen
+ * 	Changed StrictHostKeyChecking to have three possible values,
+ * 	yes, no, and ask.
+ *
  * Revision 1.5  1997/03/27 03:10:16  kivinen
  * 	Added kerberos patches from Glenn Machin.
  *
@@ -138,7 +145,7 @@ typedef enum
   oGlobalKnownHostsFile, oUserKnownHostsFile, oConnectionAttempts,
   oBatchMode, oStrictHostKeyChecking, oCompression, oCompressionLevel,
   oKeepAlives, oUsePriviledgedPort, oKerberosAuthentication,
-  oKerberosTgtPassing
+  oKerberosTgtPassing, oClearAllForwardings, oNumberOfPasswordPrompts
 } OpCodes;
 
 /* Textual representations of the tokens. */
@@ -179,6 +186,8 @@ static struct
   { "usepriviledgedport", oUsePriviledgedPort },
   { "kerberosauthentication", oKerberosAuthentication },
   { "kerberostgtpassing", oKerberosTgtPassing },
+  { "clearallforwardings", oClearAllForwardings },
+  { "numberofpasswordprompts", oNumberOfPasswordPrompts },
   { NULL, 0 }
 };
 
@@ -325,8 +334,27 @@ void process_config_line(Options *options, const char *host,
       goto parse_flag;
 
     case oStrictHostKeyChecking:
-      intptr = &options->strict_host_key_checking;
-      goto parse_flag;
+      cp = strtok(NULL, WHITESPACE);
+      if (!cp)
+	fatal("%.200s line %d: Missing yes/no/ask argument.",
+	      filename, linenum);
+      value = 0; /* To avoid compiler warning... */
+      for(i = 0; cp[i]; i++)
+	cp[i] = tolower(cp[i]);
+      if (strcmp(cp, "yes") == 0 || strcmp(cp, "true") == 0)
+	value = 1;
+      else
+	if (strcmp(cp, "no") == 0 || strcmp(cp, "false") == 0)
+	  value = 0;
+	else
+	  if (strcmp(cp, "ask") == 0)
+	    value = 2;
+	  else
+	    fatal("%.200s line %d: Bad yes/no/ask argument.", 
+		  filename, linenum);
+      if (*activep && options->strict_host_key_checking == -1)
+	options->strict_host_key_checking = value;
+      break;
       
     case oCompression:
       intptr = &options->compression;
@@ -440,6 +468,10 @@ void process_config_line(Options *options, const char *host,
       intptr = &options->connection_attempts;
       goto parse_int;
 
+    case oNumberOfPasswordPrompts:
+      intptr = &options->number_of_password_prompts;
+      goto parse_int;
+
     case oCipher:
       intptr = &options->cipher;
       cp = strtok(NULL, WHITESPACE);
@@ -449,6 +481,10 @@ void process_config_line(Options *options, const char *host,
       if (*activep && *intptr == -1)
 	*intptr = value;
       break;
+      
+    case oClearAllForwardings:
+      intptr = &options->clear_all_forwardings;
+      goto parse_flag;
       
     case oRemoteForward:
       cp = strtok(NULL, WHITESPACE);
@@ -595,6 +631,7 @@ void initialize_options(Options *options)
   options->compression_level = -1;
   options->port = -1;
   options->connection_attempts = -1;
+  options->number_of_password_prompts = -1;
   options->cipher = -1;
   options->num_identity_files = 0;
   options->hostname = NULL;
@@ -603,6 +640,7 @@ void initialize_options(Options *options)
   options->escape_char = -1;
   options->system_hostfile = NULL;
   options->user_hostfile = NULL;
+  options->clear_all_forwardings = -1;
   options->num_local_forwards = 0;
   options->num_remote_forwards = 0;
   options->use_priviledged_port = -1;
@@ -647,7 +685,7 @@ void fill_default_options(Options *options)
   if (options->batch_mode == -1)
     options->batch_mode = 0;
   if (options->strict_host_key_checking == -1)
-    options->strict_host_key_checking = 0;
+    options->strict_host_key_checking = 2;
   if (options->use_priviledged_port == -1)
     options->use_priviledged_port = 1;
   if (options->compression == -1)
@@ -660,8 +698,16 @@ void fill_default_options(Options *options)
     options->port = 0; /* Filled in ssh_connect. */
   if (options->connection_attempts == -1)
     options->connection_attempts = 4;
+  if (options->number_of_password_prompts == -1)
+    options->number_of_password_prompts = 1;
   if (options->cipher == -1)
     options->cipher = SSH_CIPHER_NOT_SET; /* Selected in ssh_login(). */
+  if (options->clear_all_forwardings == 1)
+    {
+      options->num_local_forwards = 0;
+      options->num_remote_forwards = 0;
+    }
+
   if (options->num_identity_files == 0)
     {
       options->identity_files[0] = 

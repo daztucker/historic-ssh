@@ -16,8 +16,21 @@ of X11, TCP/IP, and authentication connections.
 */
 
 /*
- * $Id: ssh.c,v 1.5 1995/07/27 00:40:34 ylo Exp $
+ * $Id: ssh.c,v 1.9 1995/08/31 09:23:32 ylo Exp $
  * $Log: ssh.c,v $
+ * Revision 1.9  1995/08/31  09:23:32  ylo
+ * 	Copy struct pw.
+ *
+ * Revision 1.8  1995/08/29  22:33:24  ylo
+ * 	Clear IEXTEN when going to raw mode.
+ *
+ * Revision 1.7  1995/08/21  23:28:32  ylo
+ * 	Added -q.
+ * 	Added dummy syslog facility argument to log_init.
+ *
+ * Revision 1.6  1995/08/18  22:56:33  ylo
+ * 	Clarified some error messages.
+ *
  * Revision 1.5  1995/07/27  00:40:34  ylo
  * 	Added GlobalKnownHostsFile and UserKnownHostsFile.
  *
@@ -52,6 +65,9 @@ RandomState random_state;
 /* Flag indicating whether debug mode is on.  This can be set on the
    command line. */
 int debug_flag = 0;
+
+/* Flag indicating whether quiet mode is on. */
+int quiet_flag = 0;
 
 /* Flag indicating whether to allocate a pseudo tty.  This can be set on the
    command line, and is automatically set if no command is given on the command
@@ -124,6 +140,9 @@ void enter_raw_mode()
   tio.c_iflag |= IGNPAR;
   tio.c_iflag &= ~(ISTRIP|INLCR|IGNCR|ICRNL|IXON|IXANY|IXOFF);
   tio.c_lflag &= ~(ISIG|ICANON|ECHO|ECHOE|ECHOK|ECHONL);
+#ifdef IEXTEN
+  tio.c_lflag &= ~IEXTEN;
+#endif /* IEXTEN */
   tio.c_oflag &= ~OPOST;
   tio.c_cc[VMIN] = 1;
   tio.c_cc[VTIME] = 0;
@@ -168,7 +187,7 @@ void leave_raw_mode()
 void enter_non_blocking()
 {
   in_non_blocking_mode = 1;
-#ifdef O_NONBLOCK
+#if defined(O_NONBLOCK) && !defined(O_NONBLOCK_BROKEN)
   (void)fcntl(fileno(stdin), F_SETFL, O_NONBLOCK);
 #else /* O_NONBLOCK */
   (void)fcntl(fileno(stdin), F_SETFL, O_NDELAY);
@@ -239,6 +258,7 @@ void usage()
   fprintf(stderr, "  -i file     Identity for RSA authentication (default: ~/.ssh/identity).\n");
   fprintf(stderr, "  -t          Tty; allocate a tty even if command is given.\n");
   fprintf(stderr, "  -v          Verbose; display verbose debugging messages.\n");
+  fprintf(stderr, "  -q          Quiet; don't display any warning messages.\n");
   fprintf(stderr, "  -f          Fork into background after authentication.\n");
   fprintf(stderr, "  -e char     Set escape character; ``none'' = disable (default: ~).\n");
   fprintf(stderr, "  -c cipher   Select encryption algorithm: ``idea'' (default, secure),\n");
@@ -295,7 +315,7 @@ int main(int ac, char **av)
   Buffer command;
   struct winsize ws;
   struct stat st;
-  struct passwd *pw;
+  struct passwd *pw, pwcopy;
   int interactive = 0, dummy;
   
   /* Save our own name. */
@@ -384,6 +404,10 @@ int main(int ac, char **av)
 #else /* RSAREF */
 	  fprintf(stderr, "International version.  Does not use RSAREF.\n");
 #endif /* RSAREF */
+	  break;
+
+	case 'q':
+	  quiet_flag = 1;
 	  break;
 
 	case 'e':
@@ -508,16 +532,31 @@ int main(int ac, char **av)
   if (!isatty(fileno(stdin)))
     {
       if (tty_flag)
-	log("Pseudo-terminal will not be allocated because stdin is not a terminal.");
+	fprintf(stderr, "Pseudo-terminal will not be allocated because stdin is not a terminal.\n");
       tty_flag = 0;
     }
 
-  /* Initialize "log" output.  Since we are the client all output actually
-     goes to the terminal. */
-  log_init(av[0], 1, debug_flag, 0);
-
   /* Get user data. */
   pw = getpwuid(getuid());
+  if (!pw)
+    {
+      fprintf(stderr, "You don't exist, go away!\n");
+      exit(1);
+    }
+  
+  /* Take a copy of the returned structure. */
+  memset(&pwcopy, 0, sizeof(pwcopy));
+  pwcopy.pw_name = xstrdup(pw->pw_name);
+  pwcopy.pw_passwd = xstrdup(pw->pw_passwd);
+  pwcopy.pw_uid = pw->pw_uid;
+  pwcopy.pw_gid = pw->pw_gid;
+  pwcopy.pw_dir = xstrdup(pw->pw_dir);
+  pwcopy.pw_shell = xstrdup(pw->pw_shell);
+  pw = &pwcopy;
+
+  /* Initialize "log" output.  Since we are the client all output actually
+     goes to the terminal. */
+  log_init(av[0], 1, debug_flag, quiet_flag, SYSLOG_FACILITY_USER);
 
   /* Read per-user configuration file. */
   sprintf(buf, "%s/%s", pw->pw_dir, SSH_USER_CONFFILE);
@@ -586,10 +625,12 @@ int main(int ac, char **av)
   if (sock == -1)
     {
       if (options.port != 0)
-	log("Connection to %.100s on port %d was refused.", 
-	    host, options.port);
+	log("Secure connection to %.100s on port %d refused%s.", 
+	    host, options.port,
+	    options.fallback_to_rsh ? "; reverting to insecure method" : "");
       else
-	log("Connection to %.100s was refused.", host);
+	log("Secure connection to %.100s refused%s.", host,
+	    options.fallback_to_rsh ? "; reverting to insecure method" : "");
 
       if (options.fallback_to_rsh)
 	{

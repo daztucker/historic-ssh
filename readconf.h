@@ -14,8 +14,11 @@ Functions for reading the configuration file.
 */
 
 /*
- * $Id: readconf.h,v 1.3 1995/07/27 00:39:10 ylo Exp $
+ * $Id: readconf.h,v 1.4 1995/09/24 23:59:57 ylo Exp $
  * $Log: readconf.h,v $
+ * Revision 1.4  1995/09/24  23:59:57  ylo
+ * 	Added connection_attempts.
+ *
  * Revision 1.3  1995/07/27  00:39:10  ylo
  * 	Added GlobalKnownHostsFile and UserKnownHostsFile.
  *
@@ -52,6 +55,7 @@ typedef struct
   int use_rsh;			/* Always use rsh (don\'t try ssh). */
 
   int port;			/* Port to connect. */
+  int connection_attempts;	/* Max attempts (seconds) before giving up */
   int cipher;			/* Cipher to use. */
   char *hostname;		/* Real host to connect. */
   char *user;			/* User to log in as. */

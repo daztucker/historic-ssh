@@ -8,13 +8,22 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Sun Apr 23 19:33:07 1995 ylo
-Last modified: Sun Apr 23 19:54:22 1995 ylo
 
 This program is used by configure to check if shells close all file
 descriptors on this system.  This works by creating desciptor 25, and executes
 the given command.  See also fd-check-2.c.
 
 */
+
+/*
+ * $Id: fd-check-1.c,v 1.2 1995/07/13 01:23:18 ylo Exp $
+ * $Log: fd-check-1.c,v $
+ * Revision 1.2  1995/07/13  01:23:18  ylo
+ * 	Removed "Last modified" header.
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
 
 #include <stdio.h>
 

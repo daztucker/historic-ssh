@@ -10,6 +10,16 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 /*
  * $Log: acconfig.h,v $
+ * Revision 1.3  1996/04/26 00:37:21  ylo
+ * 	Added HPSUX7_KLUDGES.
+ * 	Removed SOCKS defines for socket functions.
+ *
+ * Revision 1.2  1996/02/18 21:54:02  ylo
+ * 	Added HAVE_ULTRIX_SHADOW_PASSWORDS.
+ *
+ * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.16  1995/10/02  01:18:13  ylo
  * 	Added NEED_SYS_SYSLOG_H (Ultrix).
  * 	Added HAVE_SCO_ETC_SHADOW and SCO.
@@ -180,6 +190,10 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
    address instead of the host name in DISPLAY. */
 #undef HPSUX_NONSTANDARD_X11_KLUDGE
 
+/* Define this is compiling on HPSUX 7.x.  This will avoid including
+   arpa/inet.h, and will define struct linger in includes.h. */
+#undef HPSUX7_KLUDGES
+
 /* Define this if inet_network should be used instead of inet_addr.  This is
    the case on DGUX 5.4. */
 #undef BROKEN_INET_ADDR
@@ -200,17 +214,14 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
    into ttymodes.c from system headers. */
 #undef SPEED_T_IN_STDTYPES_H
 
-/* Define this if compiling with SOCKS (the firewall traversal library).
-   Also, you must define connect, getsockname, bind, accept, listen, and
-   select to their R-versions. */
+/* Define this if compiling on Ultrix.  Defining this does not actually require
+   shadow passwords to be present; this just includes support for them. */
+#undef HAVE_ULTRIX_SHADOW_PASSWORDS
+
+/* Define this if compiling with SOCKS (the firewall traversal library). */
 #undef SOCKS
-#undef connect
-#undef getsockname
-#undef bind
-#undef accept
-#undef listen
-#undef select
 
 /* Define these if on SCO Unix. */
 #undef HAVE_SCO_ETC_SHADOW
 #undef SCO
+

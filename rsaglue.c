@@ -19,11 +19,14 @@ using the --with-rsaref configure option.
 */
 
 /*
- * $Id: rsaglue.c,v 1.10 2001/02/03 09:47:59 ylo Exp $
+ * $Id: rsaglue.c,v 1.11 2001/12/11 03:39:26 sjl Exp $
  * $Log: rsaglue.c,v $
+ * Revision 1.11  2001/12/11 03:39:26  sjl
+ * 	Fixed a bug with kill() use.
+ *
  * Revision 1.10  2001/02/03 09:47:59  ylo
- * 	Improved patch for bleisenbacher attack to avoid creating
- * 	possible denial of service issue.
+ *      Improved patch for bleisenbacher attack to avoid creating
+ *      possible denial of service issue.
  *
  * Revision 1.9  2001/02/01 21:11:28  ylo
  *      Kludged a fix for a theoretical bleisenbacher attack discovered by
@@ -277,7 +280,7 @@ void rsa_private_decrypt(MP_INT *output, MP_INT *input, RSAPrivateKey *key)
       if (time(NULL) - last_kill_time > 60 && getppid() != 1)
         {
           last_kill_time = time(NULL);
-          kill(SIGALRM, getppid());
+          kill(getppid(), SIGALRM);
         }
       fatal("Bad result from rsa_private_decrypt");
     }

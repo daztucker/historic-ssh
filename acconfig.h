@@ -10,6 +10,10 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 /*
  * $Log: acconfig.h,v $
+ * Revision 1.16  1995/10/02  01:18:13  ylo
+ * 	Added NEED_SYS_SYSLOG_H (Ultrix).
+ * 	Added HAVE_SCO_ETC_SHADOW and SCO.
+ *
  * Revision 1.15  1995/09/27  02:47:19  ylo
  * 	Added SOCKS stuff.
  *
@@ -83,6 +87,9 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define if you have shadow passwords in /etc/shadow (Solaris style). */
 #undef HAVE_ETC_SHADOW
 
+/* Define if you have system login defaults in /etc/default/login. */
+#undef HAVE_ETC_DEFAULT_LOGIN
+
 /* Define if utmp structure has host field. */
 #undef HAVE_HOST_IN_UTMP
 
@@ -119,6 +126,21 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 /* Default path for lastlog.  Determined by configure. */
 #undef SSH_LASTLOG
+
+/* This is defined if we found a lastlog file.  The presence of lastlog.h
+   alone is not a sufficient indicator (at least newer BSD systems have
+   lastlog but no lastlog.h. */
+#undef HAVE_LASTLOG
+
+/* Define this if libutil.a contains BSD 4.4 compatible login(), logout(),
+   and logwtmp() calls. */
+#undef HAVE_LIBUTIL_LOGIN
+
+/* Location of system mail spool directory. */
+#undef MAIL_SPOOL_DIRECTORY
+
+/* Defined if mail goes to $HOME/newmail instead of a global mail spool. */
+#undef HAVE_TILDE_NEWMAIL
 
 /* Define this to be the default user path if you don't like the default. 
    See the --with-path=<path> configure option. */

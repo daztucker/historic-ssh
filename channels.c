@@ -16,8 +16,17 @@ arbitrary tcp/ip connections, and the authentication agent connection.
 */
 
 /*
- * $Id: channels.c,v 1.7 1995/09/06 15:58:14 ylo Exp $
+ * $Id: channels.c,v 1.10 1995/09/10 23:25:35 ylo Exp $
  * $Log: channels.c,v $
+ * Revision 1.10  1995/09/10  23:25:35  ylo
+ * 	Fixed HPSUX DISPLAY kludge.
+ *
+ * Revision 1.9  1995/09/10  22:45:23  ylo
+ * 	Changed Unix domain socket and umask stuff.
+ *
+ * Revision 1.8  1995/09/09  21:26:39  ylo
+ * /m/shadows/u2/users/ylo/ssh/README
+ *
  * Revision 1.7  1995/09/06  15:58:14  ylo
  * 	Added BROKEN_INET_ADDR.
  *
@@ -58,6 +67,7 @@ arbitrary tcp/ip connections, and the authentication agent connection.
 #include "xmalloc.h"
 #include "buffer.h"
 #include "authfd.h"
+#include "uidswap.h"
 
 /* Directory in which the fake unix-domain X11 displays are created. */
 #define X11_DIR "/tmp/.X11-unix"
@@ -382,7 +392,7 @@ void channel_after_select(fd_set *readset, fd_set *writeset)
 	      newsock = accept(ch->sock, &addr, &addrlen);
 	      if (newsock < 0)
 		{
-		  error("accept: %s", strerror(errno));
+		  error("accept: %.100s", strerror(errno));
 		  break;
 		}
 	      newch = channel_allocate(SSH_CHANNEL_OPENING, newsock);
@@ -403,7 +413,7 @@ void channel_after_select(fd_set *readset, fd_set *writeset)
 	      newsock = accept(ch->sock, &addr, &addrlen);
 	      if (newsock < 0)
 		{
-		  error("accept: %s", strerror(errno));
+		  error("accept: %.100s", strerror(errno));
 		  break;
 		}
 	      newch = channel_allocate(SSH_CHANNEL_OPENING, newsock);
@@ -793,7 +803,7 @@ void channel_request_local_forwarding(int port, const char *host,
   /* Create a port to listen for the host. */
   sock = socket(AF_INET, SOCK_STREAM, 0);
   if (sock < 0)
-    packet_disconnect("socket: %s", strerror(errno));
+    packet_disconnect("socket: %.100s", strerror(errno));
 
   /* Initialize socket address. */
   memset(&sin, 0, sizeof(sin));
@@ -803,11 +813,11 @@ void channel_request_local_forwarding(int port, const char *host,
   
   /* Bind the socket to the address. */
   if (bind(sock, (struct sockaddr *)&sin, sizeof(sin)) < 0)
-    packet_disconnect("bind: %s", strerror(errno));
+    packet_disconnect("bind: %.100s", strerror(errno));
       
   /* Start listening for connections on the socket. */
   if (listen(sock, 5) < 0)
-    packet_disconnect("listen: %s", strerror(errno));
+    packet_disconnect("listen: %.100s", strerror(errno));
 	    
   /* Allocate a channel number for the socket. */
   ch = channel_allocate(SSH_CHANNEL_PORT_LISTENER, sock);
@@ -946,14 +956,14 @@ void channel_input_port_open()
   sock = socket(sin.sin_family, SOCK_STREAM, 0);
   if (sock < 0)
     {
-      error("socket: %s", strerror(errno));
+      error("socket: %.100s", strerror(errno));
       goto fail;
     }
 
   /* Connect to the host/port. */
   if (connect(sock, (struct sockaddr *)&sin, sizeof(sin)) < 0)
     {
-      error("connect %.100s:%d: %s", host, host_port,
+      error("connect %.100s:%d: %.100s", host, host_port,
 	    strerror(errno));
       close(sock);
       goto fail;
@@ -998,19 +1008,17 @@ char *x11_create_display()
   char buf[100];
 
   /* Check that the /tmp/.X11-unix directory exists, and create it if it
-     doesn\'t. */
+     doesn't. */
   if (stat(X11_DIR, &st) < 0)
     {
       /* Create the directory.  Make it world writable, but with sticky bit. */
       if (mkdir(X11_DIR, 0777|S_ISVTX) < 0)
 	{
-	  error("Could not create %s", X11_DIR);
+	  error("Could not create %.100s", X11_DIR);
 	  return NULL;
 	}
-      /* Make it owned by root. */
-      (void)chown(X11_DIR, 0, 0);
     }
-  
+
   /* Find am available display number.  X0 is reserved for the real local 
      display. */
   for (i = 1; i < MAX_DISPLAYS; i++)
@@ -1019,13 +1027,14 @@ char *x11_create_display()
       sock = socket(AF_UNIX, SOCK_STREAM, 0);
       if (sock < 0)
 	{
-	  error("socket: %s", strerror(errno));
+	  error("socket: %.100s", strerror(errno));
 	  return NULL;
 	}
       /* Try to bind the socket to the appropriate name. */
       ssun.sun_family = AF_UNIX;
-      sprintf(ssun.sun_path, "%s/X%d", X11_DIR, i);
-      if (bind(sock, (struct sockaddr *)&ssun, sizeof(ssun)) < 0)
+      sprintf(ssun.sun_path, "%.80s/X%d", X11_DIR, i);
+
+      if (bind(sock, (struct sockaddr *)&ssun, AF_UNIX_SIZE(ssun)) < 0)
 	{
 	  /* Failed, this display already exists.  (Might just be a leftover
 	     unix domain socket, but there is no easy way to know without
@@ -1033,6 +1042,7 @@ char *x11_create_display()
 	  close(sock);
 	  continue;
 	}
+
       /* Found an available display number. */
       display_number = i;
       break;
@@ -1041,14 +1051,15 @@ char *x11_create_display()
   if (i >= MAX_DISPLAYS)
     {
       /* Failed to find an available display number. */
-      error("Could not create socket in %s.", X11_DIR);
+      packet_send_debug("Could not create socket in %.100s.", X11_DIR);
+      error("Could not create socket in %.100s.", X11_DIR);
       return NULL;
     }
 
   /* Start listening for connections on the socket. */
   if (listen(sock, 5) < 0)
     {
-      error("listen: %s", strerror(errno));
+      error("listen: %.100s", strerror(errno));
       close(sock);
       return NULL;
     }
@@ -1058,8 +1069,6 @@ char *x11_create_display()
   /* Save the path of the socket.  The socket will be removed in
      channel_stop_listening. */
   strcpy(channels[i].path, ssun.sun_path);
-  /* Make the socket accessible by anyone. */
-  chmod(ssun.sun_path, 0777);
   
   /* Return a suitable value for the DISPLAY environment variable. */
   sprintf(buf, "unix:%d", display_number);
@@ -1092,13 +1101,13 @@ char *x11_create_display_inet()
       sock = socket(AF_INET, SOCK_STREAM, 0);
       if (sock < 0)
 	{
-	  error("socket: %s", strerror(errno));
+	  error("socket: %.100s", strerror(errno));
 	  return NULL;
 	}
       
       if (bind(sock, (struct sockaddr *)&sin, sizeof(sin)) < 0)
 	{
-	  debug("bind port %d: %s", port, strerror(errno));
+	  debug("bind port %d: %.100s", port, strerror(errno));
 	  shutdown(sock, 2);
 	  close(sock);
 	  continue;
@@ -1114,32 +1123,51 @@ char *x11_create_display_inet()
   /* Start listening for connections on the socket. */
   if (listen(sock, 5) < 0)
     {
-      error("listen: %s", strerror(errno));
+      error("listen: %.100s", strerror(errno));
       shutdown(sock, 2);
       close(sock);
       return NULL;
     }
+
+  /* Set up a suitable value for the DISPLAY variable. */
+#ifdef HPSUX_NONSTANDARD_X11_KLUDGE
+  /* HPSUX has some special shared memory stuff in their X server, which
+     appears to be enable if the host name matches that of the local machine.
+     However, it can be circumvented by using the IP address of the local
+     machine instead.  */
+  if (gethostname(hostname, sizeof(hostname)) < 0)
+    fatal("gethostname: %.100s", strerror(errno));
+  {
+    struct hostent *hp;
+    struct in_addr addr;
+    hp = gethostbyname(hostname);
+    if (!hp->h_addr_list[0])
+      {
+	error("Could not server IP address for %.200d.", hostname);
+	packet_send_debug("Could not get server IP address for %.200d.", 
+			  hostname);
+	shutdown(sock, 2);
+	close(sock);
+	return NULL;
+      }
+    memcpy(&addr, hp->h_addr_list[0], sizeof(addr));
+    sprintf(buf, "%.100s:%d", inet_ntoa(addr), display_number);
+  }
+#else /* HPSUX_NONSTANDARD_X11_KLUDGE */
+#ifdef HAVE_GETHOSTNAME
+  if (gethostname(hostname, sizeof(hostname)) < 0)
+    fatal("gethostname: %.100s", strerror(errno));
+  sprintf(buf, "%.400s:%d", hostname, display_number);
+#else /* HAVE_GETHOSTNAME */
+  if (uname(&uts) < 0)
+    fatal("uname: %s", strerror(errno));
+  sprintf(buf, "%.400s:%d", uts.nodename, display_number);
+#endif /* HAVE_GETHOSTNAME */
+#endif /* HPSUX_NONSTANDARD_X11_KLUDGE */
 	    
   /* Allocate a channel for the socket. */
   (void)channel_allocate(SSH_CHANNEL_X11_INET_LISTENER, sock);
 
-  /* Set up a suitable value for the DISPLAY variable. */
-#ifdef HAVE_GETHOSTNAME
-  if (gethostname(hostname, sizeof(hostname)) < 0)
-    {
-      fatal("gethostname: %s", strerror(errno));
-      exit(1);
-    }
-  sprintf(buf, "%s:%d", hostname, display_number);
-#else
-  if (uname(&uts) < 0)
-    {
-      fatal("uname: %s", strerror(errno));
-      exit(1);
-    }
-  sprintf(buf, "%s:%d", uts.nodename, display_number);
-#endif
-  
   /* Return a suitable value for the DISPLAY environment variable. */
   return xstrdup(buf);
 }
@@ -1189,15 +1217,15 @@ void x11_input_open()
       sock = socket(AF_UNIX, SOCK_STREAM, 0);
       if (sock < 0)
 	{
-	  error("socket: %s", strerror(errno));
+	  error("socket: %.100s", strerror(errno));
 	  goto fail;
 	}
       /* Connect it to the display socket. */
       ssun.sun_family = AF_UNIX;
-      sprintf(ssun.sun_path, "%s/X%d", X11_DIR, display_number);
-      if (connect(sock, (struct sockaddr *)&ssun, sizeof(ssun)) < 0)
+      sprintf(ssun.sun_path, "%.80s/X%d", X11_DIR, display_number);
+      if (connect(sock, (struct sockaddr *)&ssun, AF_UNIX_SIZE(ssun)) < 0)
 	{
-	  error("connect %s: %s", ssun.sun_path, strerror(errno));
+	  error("connect %.100s: %.100s", ssun.sun_path, strerror(errno));
 	  close(sock);
 	  goto fail;
 	}
@@ -1263,13 +1291,13 @@ void x11_input_open()
   sock = socket(sin.sin_family, SOCK_STREAM, 0);
   if (sock < 0)
     {
-      error("socket: %s", strerror(errno));
+      error("socket: %.100s", strerror(errno));
       goto fail;
     }
   /* Connect it to the display. */
   if (connect(sock, (struct sockaddr *)&sin, sizeof(sin)) < 0)
     {
-      error("connect %.100s:%d: %s", buf, 6000 + display_number, 
+      error("connect %.100s:%d: %.100s", buf, 6000 + display_number, 
 	    strerror(errno));
       close(sock);
       goto fail;
@@ -1386,9 +1414,10 @@ char *auth_get_socket_name()
 
 void auth_input_request_forwarding(struct passwd *pw)
 {
-  uid_t uid = pw->pw_uid;
-  gid_t gid = pw->pw_gid;
   int pfd = get_permanent_fd(pw->pw_shell);
+#ifdef HAVE_UMASK
+  mode_t savedumask;
+#endif /* HAVE_UMASK */
   
   if (pfd < 0) 
     {
@@ -1406,25 +1435,34 @@ void auth_input_request_forwarding(struct passwd *pw)
       /* Create the socket. */
       sock = socket(AF_UNIX, SOCK_STREAM, 0);
       if (sock < 0)
-	packet_disconnect("socket: %s", strerror(errno));
+	packet_disconnect("socket: %.100s", strerror(errno));
 
       /* Bind it to the name. */
       memset(&sunaddr, 0, sizeof(sunaddr));
       sunaddr.sun_family = AF_UNIX;
       strncpy(sunaddr.sun_path, channel_forwarded_auth_socket_name, 
 	      sizeof(sunaddr.sun_path));
-      if (bind(sock, (struct sockaddr *)&sunaddr, sizeof(sunaddr)) < 0)
-	packet_disconnect("bind: %s", strerror(errno));
 
-      /* Make the socket only accessible to the user himself. */
-      if (chmod(channel_forwarded_auth_socket_name, 0700) < 0)
-	packet_disconnect("chmod: %s", strerror(errno));
-      if (chown(channel_forwarded_auth_socket_name, uid, gid) < 0)
-	packet_disconnect("chown: %s", strerror(errno));
+#ifdef HAVE_UMASK
+      savedumask = umask(0077);
+#endif /* HAVE_UMASK */
+
+      /* Temporarily use a privileged uid. */
+      temporarily_use_uid(pw->pw_uid);
+
+      if (bind(sock, (struct sockaddr *)&sunaddr, AF_UNIX_SIZE(sunaddr)) < 0)
+	packet_disconnect("bind: %.100s", strerror(errno));
+
+      /* Restore the privileged uid. */
+      restore_uid();
+
+#ifdef HAVE_UMASK
+      umask(savedumask);
+#endif /* HAVE_UMASK */
 
       /* Start listening on the socket. */
       if (listen(sock, 5) < 0)
-	packet_disconnect("listen: %s", strerror(errno));
+	packet_disconnect("listen: %.100s", strerror(errno));
 
       /* Allocate a channel for the authentication agent socket. */
       newch = channel_allocate(SSH_CHANNEL_AUTH_SOCKET, sock);
@@ -1440,7 +1478,7 @@ void auth_input_request_forwarding(struct passwd *pw)
 
       /* Create a socket pair. */
       if (socketpair(AF_UNIX, SOCK_STREAM, 0, sockets) < 0)
-	packet_disconnect("socketpair: %s", strerror(errno));
+	packet_disconnect("socketpair: %.100s", strerror(errno));
     
       /* Dup some descriptors to get the authentication fd to pfd,
 	 because some shells arbitrarily close descriptors below that.

@@ -15,8 +15,28 @@ login (authentication) dialog.
 */
 
 /*
- * $Id: sshconnect.c,v 1.15 1995/09/27 02:16:40 ylo Exp $
+ * $Id: sshconnect.c,v 1.6 1996/05/25 23:33:12 ylo Exp $
  * $Log: sshconnect.c,v $
+ * Revision 1.6  1996/05/25 23:33:12  ylo
+ * 	Fixed a minor bug in the logic used to determine whether to allocate
+ * 	a privileged local port.
+ *
+ * Revision 1.5  1996/04/26 00:24:10  ylo
+ * 	Fixed SOCKS code.
+ * 	Fixed reconnecting with SOCKS.
+ *
+ * Revision 1.4  1996/04/22 23:49:46  huima
+ * Changed protocol version to 1.4, added calls to emulate module.
+ *
+ * Revision 1.3  1996/02/19  16:07:23  huima
+ * 	Minor fixes.
+ *
+ * Revision 1.2  1996/02/18  21:50:23  ylo
+ * 	Added a call to userfile_close_pipes in proxy code.
+ *
+ * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.15  1995/09/27  02:16:40  ylo
  * 	Eliminated compiler warning.
  *
@@ -91,6 +111,7 @@ login (authentication) dialog.
 #include "md5.h"
 #include "mpaux.h"
 #include "userfile.h"
+#include "emulate.h"
 
 /* Session id for the current session. */
 unsigned char session_id[16];
@@ -151,6 +172,9 @@ int ssh_proxy_connect(const char *host, int port, uid_t original_real_uid,
   if ((pid = fork()) == 0)
     {
       char *argv[10];
+
+      /* Close all pipes to userfile. */
+      userfile_close_pipes();
 
       /* Child.  Permanently give up superuser privileges. */
       if (setuid(getuid()) < 0)
@@ -224,8 +248,13 @@ int ssh_create_socket(uid_t original_real_uid, int privileged)
 	  sin.sin_port = htons(p);
 
 	  /* Try to bind the socket to the privileged port. */
+#ifdef SOCKS
+	  if (Rbind(sock, (struct sockaddr *)&sin, sizeof(sin)) >= 0)
+	    break; /* Success. */
+#else /* SOCKS */
 	  if (bind(sock, (struct sockaddr *)&sin, sizeof(sin)) >= 0)
 	    break; /* Success. */
+#endif /* SOCKS */
 	  if (errno == EADDRINUSE)
 	    {
 	      close(sock);
@@ -315,11 +344,14 @@ int ssh_connect(const char *host, int port, int connection_attempts,
       
 	  /* Create a socket. */
 	  sock = ssh_create_socket(original_real_uid, 
-				   !anonymous && geteuid() == 0 && 
-				     port < 1024);
+				   !anonymous && geteuid() == 0);
       
 	  /* Connect to the host. */
+#ifdef SOCKS
+	  if (Rconnect(sock, (struct sockaddr *)&hostaddr, sizeof(hostaddr))
+#else /* SOCKS */
 	  if (connect(sock, (struct sockaddr *)&hostaddr, sizeof(hostaddr))
+#endif /* SOCKS */
 	      >= 0)
 	    {
 	      /* Successful connect. */
@@ -336,7 +368,30 @@ int ssh_connect(const char *host, int port, int connection_attempts,
 	  /* Not a valid numeric inet address. */
 	  /* Map host name to an address. */
 	  if (!hp)
-	    hp = gethostbyname(host);
+	    {
+	      struct hostent *hp_static;
+
+	      hp_static = gethostbyname(host);
+	      if (hp_static)
+		{
+		  hp = xmalloc(sizeof(struct hostent));
+		  memcpy(hp, hp_static, sizeof(struct hostent));
+
+		  /* Copy list of addresses, not just pointers.
+		     We don't use h_name & h_aliases so leave them as is */
+		  for (i = 0; hp_static->h_addr_list[i]; i++)
+		    ; /* count them */
+		  hp->h_addr_list = xmalloc((i + 1) *
+					    sizeof(hp_static->h_addr_list[0]));
+		  for (i = 0; hp_static->h_addr_list[i]; i++)
+		    {
+		      hp->h_addr_list[i] = xmalloc(hp->h_length);
+		      memcpy(hp->h_addr_list[i], hp_static->h_addr_list[i],
+			     hp->h_length);
+		    }
+		  hp->h_addr_list[i] = NULL; /* last one */
+		}
+	    }
 	  if (!hp)
 	    fatal("Bad host name: %.100s", host);
 	  if (!hp->h_addr_list[0])
@@ -360,8 +415,13 @@ int ssh_connect(const char *host, int port, int connection_attempts,
 				         port < 1024);
 
 	      /* Connect to the host. */
+#ifdef SOCKS
+	      if (Rconnect(sock, (struct sockaddr *)&hostaddr, 
+			   sizeof(hostaddr)) >= 0)
+#else /* SOCKS */
 	      if (connect(sock, (struct sockaddr *)&hostaddr, 
 			  sizeof(hostaddr)) >= 0)
+#endif /* SOCKS */
 		{
 		  /* Successful connection. */
 		  break;
@@ -381,6 +441,15 @@ int ssh_connect(const char *host, int port, int connection_attempts,
       /* Sleep a moment before retrying. */
       sleep(1);
     }
+
+  if (hp)
+    {
+      for (i = 0; hp->h_addr_list[i]; i++)
+	xfree(hp->h_addr_list[i]);
+      xfree(hp->h_addr_list);
+      xfree(hp);
+    }
+
   /* Return failure if we didn't get a successful connection. */
   if (attempt >= connection_attempts)
     return 0;
@@ -727,6 +796,7 @@ void ssh_exchange_identification()
 {
   char buf[256], remote_version[256]; /* must be same size! */
   int remote_major, remote_minor, i;
+  int my_major, my_minor;
   int connection_in = packet_get_connection_in();
   int connection_out = packet_get_connection_out();
 
@@ -756,21 +826,14 @@ void ssh_exchange_identification()
     fatal("Bad remote protocol version identification: '%.100s'", buf);
   debug("Remote protocol version %d.%d, remote software version %.100s",
 	remote_major, remote_minor, remote_version);
-#if 0
-  /* Removed for now, to permit compatibility with latter versions.  The server
-     will reject our version and disconnect if it doesn't support it. */
-  if (remote_major != PROTOCOL_MAJOR)
-    fatal("Protocol major versions differ: %d vs. %d",
-	  PROTOCOL_MAJOR, remote_major);
-#endif
 
-  /* Check if the remote protocol version is too old. */
-  if (remote_major == 1 && remote_minor == 0)
+  if (check_emulation(remote_major, remote_minor,
+		     &my_major, &my_minor) ==
+     EMULATE_VERSION_REALLY_TOO_OLD)
     fatal("Remote machine has too old SSH software version.");
-
-  /* Send our own protocol version identification. */
+  
   sprintf(buf, "SSH-%d.%d-%.100s\n", 
-	  PROTOCOL_MAJOR, PROTOCOL_MINOR, SSH_VERSION);
+	  my_major, my_minor, SSH_VERSION);
   if (write(connection_out, buf, strlen(buf)) != strlen(buf))
     fatal("write: %.100s", strerror(errno));
 }
@@ -969,7 +1032,7 @@ void ssh_login(RandomState *state, int host_key_valid,
   /* Generate an encryption key for the session.   The key is a 256 bit
      random number, interpreted as a 32-byte key, with the least significant
      8 bits being the first byte of the key. */
-  for (i = 0; i < 32; i++)
+  for (i = 0; i < SSH_SESSION_KEY_LENGTH; i++)
     session_key[i] = random_get_byte(state);
 
   /* Save the new random state. */

@@ -14,8 +14,11 @@ Adds an identity to the authentication server, or removes an identity.
 */
 
 /*
- * $Id: ssh-add.c,v 1.4 1997/04/05 21:54:21 kivinen Exp $
+ * $Id: ssh-add.c,v 1.5 1997/04/17 04:18:19 kivinen Exp $
  * $Log: ssh-add.c,v $
+ * Revision 1.5  1997/04/17 04:18:19  kivinen
+ * 	Added -p (pipe) option support.
+ *
  * Revision 1.4  1997/04/05 21:54:21  kivinen
  * 	Added check that userfile_get_des_1_magic_phrase succeeds.
  *
@@ -60,6 +63,8 @@ Adds an identity to the authentication server, or removes an identity.
 #define EXIT_STATUS_ERROR	5
 
 int exit_status = 0;
+
+int use_stdin = 0;
 
 uid_t original_real_uid;
 
@@ -169,7 +174,7 @@ void add_file(const char *filename)
       
       
       /* Ask for a passphrase. */
-      if (getenv("DISPLAY") && !isatty(fileno(stdin)))
+      if (!use_stdin && getenv("DISPLAY") && !isatty(fileno(stdin)))
 	{
 	  sprintf(buf, "ssh-askpass '%sEnter passphrase for %.100s'", 
 		  query_cnt <= 1 ? "" : "You entered wrong passphrase.  ", 
@@ -281,6 +286,11 @@ int main(int ac, char **av)
 
   for (i = 1; i < ac; i++)
     {
+      if (strcmp(av[i], "-p") == 0)
+	{
+	  use_stdin = 1;
+	  continue;
+	}
       if (strcmp(av[i], "-l") == 0)
 	{
 	  list_identities();

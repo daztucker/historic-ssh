@@ -16,8 +16,63 @@ arbitrary tcp/ip connections, and the authentication agent connection.
 */
 
 /*
- * $Id: newchannels.c,v 1.2 1996/05/06 09:53:24 huima Exp $
+ * $Id: newchannels.c,v 1.16 1996/09/28 16:26:09 ylo Exp $
  * $Log: newchannels.c,v $
+ * Revision 1.16  1996/09/28 16:26:09  ylo
+ * 	Added a workaround for channel deadlocks...  This may cause
+ * 	sshd to grow occasionally, and indefinitely in some situations.
+ *
+ * Revision 1.15  1996/09/27 17:21:39  ylo
+ * 	Merged ultrix, Next and Linux patches from Corey Satten. This
+ * 	effectively puts all file descriptors in non-blocking mode,
+ * 	because these systems appear to sometimes wake up from select
+ * 	and then block in write even when they are not supposed to.
+ *
+ * Revision 1.14  1996/09/27 14:00:11  ttsalo
+ * 	Replaced a chmod with umask setting, chmod was dangerous.
+ *
+ * Revision 1.13  1996/09/14 08:44:12  ylo
+ * 	Print X11 auth protocols if different.
+ *
+ * Revision 1.12  1996/09/14 08:42:14  ylo
+ * 	Fixed a (minor) bug in interactive output packet sizing.
+ * 	Reduced maximum non-interactive packet size to 8192.
+ *
+ * Revision 1.11  1996/09/12 18:31:11  ttsalo
+ * 	st->uid to st->st.uid
+ *
+ * Revision 1.10  1996/09/11 17:56:22  kivinen
+ * 	Fixed serious security bug in auth_input_request_forwarding,
+ * 	now we chown the directory only if we created it. Changed
+ * 	auth_input_request_forwarding to check the permissions of
+ * 	directory itself and not to call
+ * 	userfile_check_owner_permissions (it doesn't check for read
+ * 	and execute permissions).
+ *
+ * Revision 1.9  1996/09/08 17:21:06  ttsalo
+ * 	A lot of changes in agent-socket handling
+ *
+ * Revision 1.8  1996/09/04 12:41:49  ttsalo
+ * 	Minor fixes
+ *
+ * Revision 1.7  1996/08/29 14:51:25  ttsalo
+ * 	Agent-socket directory handling implemented
+ *
+ * Revision 1.6  1996/08/21 20:43:54  ttsalo
+ * 	Made ssh-agent use a different, more secure way of storing
+ * 	it's initial socket.
+ *
+ * Revision 1.5  1996/07/31 07:10:35  huima
+ * 	Fixed the connection closing bug.
+ *
+ * Revision 1.4  1996/07/15 00:28:57  ylo
+ * 	When an X11 connection is rejected, log where the rejected
+ * 	connection came from.
+ *
+ * Revision 1.3  1996/07/12 07:22:47  ttsalo
+ * 	Patch from <Rein.Tollevik@si.sintef.no> to handle HP-UX
+ * 	nonstandard X11 socket kludging.
+ *
  * Revision 1.2  1996/05/06 09:53:24  huima
  * Fixed a major in the channels allocation.
  *
@@ -25,7 +80,7 @@ arbitrary tcp/ip connections, and the authentication agent connection.
  * New channels code added to the repository.
  *
  * Revision 1.1.1.1  1996/02/18  21:38:12  ylo
- * 	Imported ssh-1.2.13.
+ * 	Imported ssh-1.2.13
  *
  * Revision 1.13  1995/10/02  01:20:08  ylo
  * 	Added a cast to avoid compiler warning.
@@ -109,16 +164,16 @@ arbitrary tcp/ip connections, and the authentication agent connection.
 
 /* Status flags */
 
-#define PHII_IN     0x0001
-#define PHII_OUT    0x0002
-#define EPSILON_S   0x0004
-#define EPSILON_R   0x0008
-#define KAPPA_S     0x0010
-#define KAPPA_R     0x0020
-#define BETA        0x0040
-#define GAMMA       0x0080
+#define STATUS_INPUT_SOCKET_CLOSED	0x0001
+#define STATUS_OUTPUT_SOCKET_CLOSED	0x0002
+#define STATUS_EOF_SENT			0x0004
+#define STATUS_EOF_RECEIVED		0x0008
+#define STATUS_CLOSE_SENT		0x0010
+#define STATUS_CLOSE_RECEIVED		0x0020
+#define STATUS_KLUDGE_A			0x0040
+#define STATUS_KLUDGE_B       		0x0080
 
-#define TAU         0x003f
+#define STATUS_TERMINATE		0x003f
 
 /* Data structure for channel data.  This is iniailized in channel_allocate
    and cleared in channel_free. */
@@ -138,6 +193,8 @@ typedef struct
   int host_port;  /* port to connect for forwards */
   int listening_port; /* port being listened for forwards */
   char *remote_name;
+
+  int is_x_connection;
 } Channel;
 
 /* Pointer to an array containing all allocated channels.  The array is
@@ -160,6 +217,9 @@ static int channel_max_fd_value = 0;
 /* These two variables are for authentication agent forwarding. */
 static int channel_forwarded_auth_fd = -1;
 static char *channel_forwarded_auth_socket_name = NULL;
+
+/* Agent forwarding socket directory name */
+static char *channel_forwarded_auth_socket_dir_name = NULL;
 
 /* Saved X11 authentication protocol name. */
 char *x11_saved_proto = NULL;
@@ -265,6 +325,7 @@ int channel_allocate(int type, int sock, char *remote_name)
 	  channels[i].remote_name = remote_name;
 	  channels[i].status_flags = 0;
 	  channels[i].local_id = i;
+	  channels[i].is_x_connection = 0;
 	  channels_used++;
 	  debug("Allocated channel %d.\n", i);
 	  return i;
@@ -299,13 +360,13 @@ void channel_free(int channel)
 
 void channel_check_termination(Channel *ch)
 {
-  if ((ch->status_flags & TAU) == TAU)
+  if ((ch->status_flags & STATUS_TERMINATE) == STATUS_TERMINATE)
     {
 #ifdef SUPPORT_OLD_CHANNELS
       if ((emulation_information & EMULATE_OLD_CHANNEL_CODE)
-	  && !(ch->status_flags & BETA))
+	  && !(ch->status_flags & STATUS_KLUDGE_A))
 	{
-	  ch->status_flags &= ~(KAPPA_R | EPSILON_R);
+	  ch->status_flags &= ~(STATUS_CLOSE_RECEIVED | STATUS_EOF_RECEIVED);
 	  debug("Discarding termination of channel %d.", ch->local_id);
 	  return;
 	}
@@ -313,7 +374,7 @@ void channel_check_termination(Channel *ch)
       debug("Channel %d terminates.", ch->local_id);
 #ifdef SUPPORT_OLD_CHANNELS
       if (emulation_information & EMULATE_OLD_CHANNEL_CODE)
-	if (ch->status_flags & GAMMA)
+	if (ch->status_flags & STATUS_KLUDGE_B)
 	  {
 	    packet_start(SSH_MSG_CHANNEL_CLOSE_CONFIRMATION);
 	    packet_put_int(ch->remote_id);
@@ -328,10 +389,10 @@ void channel_check_termination(Channel *ch)
 
 void channel_send_ieof(Channel *ch)
 {
-  if (!(ch->status_flags & EPSILON_S))
+  if (!(ch->status_flags & STATUS_EOF_SENT))
     {
       debug("Channel %d sends ieof.", ch->local_id);
-      ch->status_flags |= EPSILON_S;
+      ch->status_flags |= STATUS_EOF_SENT;
 
 #ifdef SUPPORT_OLD_CHANNELS
       /* This is SSH_MSG_CHANNEL_CLOSE in the old protocol */
@@ -343,7 +404,7 @@ void channel_send_ieof(Channel *ch)
 
 #ifdef SUPPORT_OLD_CHANNELS
       if (emulation_information & EMULATE_OLD_CHANNEL_CODE)
-	ch->status_flags |= KAPPA_S;
+	ch->status_flags |= STATUS_CLOSE_SENT;
 #endif
 
       channel_check_termination(ch);
@@ -358,10 +419,10 @@ void channel_send_ieof(Channel *ch)
 void channel_send_oclosed(Channel *ch)
 {
   
-  if (!(ch->status_flags & KAPPA_S))
+  if (!(ch->status_flags & STATUS_CLOSE_SENT))
     {
       debug("Channel %d sends oclosed.", ch->local_id);
-      ch->status_flags |= KAPPA_S;
+      ch->status_flags |= STATUS_CLOSE_SENT;
 
       packet_start(SSH_MSG_CHANNEL_OUTPUT_CLOSED);
       packet_put_int(ch->remote_id);
@@ -380,11 +441,15 @@ void channel_close_output(Channel *ch);
 
 void channel_close_input(Channel *ch)
 {
-  if (!(ch->status_flags & PHII_IN))
+  if (!(ch->status_flags & STATUS_INPUT_SOCKET_CLOSED))
     {
       debug("Channel %d closes incoming data stream.", ch->local_id);
-      ch->status_flags |= PHII_IN;
+      ch->status_flags |= STATUS_INPUT_SOCKET_CLOSED;
       shutdown(ch->sock, 0);
+      if (ch->type != SSH_CHANNEL_OPEN)
+	{
+	  channel_send_ieof(ch);
+	}
 #ifdef SUPPORT_OLD_CHANNELS
       if (emulation_information & EMULATE_OLD_CHANNEL_CODE)
 	{
@@ -400,10 +465,10 @@ void channel_close_input(Channel *ch)
 
 void channel_close_output(Channel *ch)
 {
-  if (!(ch->status_flags & PHII_OUT))
+  if (!(ch->status_flags & STATUS_OUTPUT_SOCKET_CLOSED))
     {
       debug("Channel %d closes outgoing data stream.", ch->local_id);
-      ch->status_flags |= PHII_OUT;
+      ch->status_flags |= STATUS_OUTPUT_SOCKET_CLOSED;
       shutdown(ch->sock, 1);
       if (buffer_len(&ch->output))
 	buffer_consume(&ch->output, buffer_len(&ch->output));
@@ -415,8 +480,7 @@ void channel_close_output(Channel *ch)
 	}
       else
 #endif
-	channel_send_oclosed(ch);
-      
+	channel_send_oclosed(ch);      
     }
 }
 
@@ -425,11 +489,18 @@ void channel_close_output(Channel *ch)
 
 void channel_receive_ieof(Channel *ch)
 {
-  if (ch->status_flags & EPSILON_R)
+  if (ch->status_flags & STATUS_EOF_RECEIVED)
     packet_disconnect("Received double input eof.");
 
   debug("Channel %d receives input eof.", ch->local_id);
-  ch->status_flags |= EPSILON_R;
+  ch->status_flags |= STATUS_EOF_RECEIVED;
+  if (ch->is_x_connection)
+    {
+      debug("X problem fix: close the other direction.");
+      channel_close_input(ch);
+    }
+  if (ch->type != SSH_CHANNEL_OPEN)
+    channel_close_output(ch);
   channel_check_termination(ch);
 }
 
@@ -438,11 +509,11 @@ void channel_receive_ieof(Channel *ch)
 
 void channel_receive_oclosed(Channel *ch)
 {
-  if (ch->status_flags & KAPPA_R)
+  if (ch->status_flags & STATUS_CLOSE_RECEIVED)
     packet_disconnect("Received double close.");
 
   debug("Channel %d receives output closed.", ch->local_id);
-  ch->status_flags |= KAPPA_R;
+  ch->status_flags |= STATUS_CLOSE_RECEIVED;
   channel_close_input(ch);
   channel_check_termination(ch);
 }
@@ -475,7 +546,7 @@ void channel_oclosed()
 }
 
 #ifdef SUPPORT_OLD_CHANNELS
-void channel_emulated_close(int set_beta)
+void channel_emulated_close(int set_a)
 {
   int channel;
   
@@ -486,10 +557,10 @@ void channel_emulated_close(int set_beta)
       channels[channel].type == SSH_CHANNEL_FREE)
     packet_disconnect("Received data for nonexistent channel %d.", channel);
 
-  if (set_beta)
-    channels[channel].status_flags |= BETA;
+  if (set_a)
+    channels[channel].status_flags |= STATUS_KLUDGE_A;
   else
-    channels[channel].status_flags |= GAMMA;
+    channels[channel].status_flags |= STATUS_KLUDGE_B;
 
   channel_receive_ieof(&channels[channel]);  
   channel_receive_oclosed(&channels[channel]);
@@ -523,18 +594,22 @@ void channel_prepare_select(fd_set *readset, fd_set *writeset)
 	case SSH_CHANNEL_OPEN:
 
 	  if ((buffer_len(&ch->input) < packet_max_size() / 2)
-	      && (!(ch->status_flags & PHII_IN)))
+	      && (!(ch->status_flags & STATUS_INPUT_SOCKET_CLOSED)))
 	    FD_SET(ch->sock, readset);
 
-          if (!(ch->status_flags & PHII_OUT))
+          if (!(ch->status_flags & STATUS_OUTPUT_SOCKET_CLOSED))
             {
-              if (buffer_len(&ch->output) > 0) {
-                FD_SET(ch->sock, writeset);
-              } else {
-                if(ch->status_flags & EPSILON_R) {
-                  channel_close_output(ch);
-                }
-              }
+              if (buffer_len(&ch->output) > 0)
+		{
+		  FD_SET(ch->sock, writeset);
+		}
+	      else
+		{
+		  if (ch->status_flags & STATUS_EOF_RECEIVED)
+		    {
+		      channel_close_output(ch);
+		    }
+		}
             }
 
 	  break;
@@ -581,7 +656,11 @@ void channel_prepare_select(fd_set *readset, fd_set *writeset)
 	  if (proto_len != strlen(x11_saved_proto) || 
 	      memcmp(ucp + 12, x11_saved_proto, proto_len) != 0)
 	    {
-	      debug("X11 connection uses different authentication protocol.");
+	      if (proto_len > 100)
+		proto_len = 100; /* Limit length of output. */
+	      debug("X11 connection uses different authentication protocol: '%.100s' vs. '%.*s'.",
+		    x11_saved_proto,
+		    proto_len, (const char *)(ucp + 12));
 	      ch->type = SSH_CHANNEL_OPEN;
 	      goto reject;
 	    }
@@ -610,6 +689,8 @@ void channel_prepare_select(fd_set *readset, fd_set *writeset)
 	  /* We have received an X11 connection that has bad authentication
 	     information. */
 	  log("X11 connection rejected because of wrong authentication.\r\n");
+	  if (ch->remote_name)
+	    log("Rejected connection: %.200s\r\n", ch->remote_name);
 	  buffer_clear(&ch->input);
 	  buffer_clear(&ch->output);
 	  channel_close_input(ch);
@@ -664,6 +745,7 @@ void channel_after_select(fd_set *readset, fd_set *writeset)
 	      xfree(remote_hostname);
 	      newch = channel_allocate(SSH_CHANNEL_OPENING, newsock, 
 				       xstrdup(buf));
+	      channels[newch].is_x_connection = 1;
 	      packet_start(SSH_SMSG_X11_OPEN);
 	      packet_put_int(newch);
 	      if (have_hostname_in_open)
@@ -808,13 +890,13 @@ void channel_output_poll()
 	  /* Send some data for the other side over the secure connection. */
 	  if (packet_is_interactive())
 	    {
-	      if (len > 1024)
+	      if (len > 512)
 		len = 512;
 	    }
 	  else
 	    {
-	      if (len > 16384)
-		len = 16384;  /* Keep the packets at reasonable size. */
+	      if (len > 8192)
+		len = 8192;  /* Keep the packets at reasonable size. */
 	      if (len > packet_max_size() / 2)
 		len = packet_max_size() / 2;
 	    }
@@ -829,7 +911,9 @@ void channel_output_poll()
 	{
 	  /* input buffer is empty, input socket closed,
 	     input eof not sent, send it now */
-	  if ((ch->status_flags & (PHII_IN | EPSILON_S)) == PHII_IN)
+	  if ((ch->status_flags & (STATUS_INPUT_SOCKET_CLOSED |
+				   STATUS_EOF_SENT)) ==
+	      STATUS_INPUT_SOCKET_CLOSED)
 	    {
 	      channel_send_ieof(ch);
 	    }
@@ -860,11 +944,11 @@ void channel_input_data()
   
   /* Get the data. */
   
-  if (channels[channel].status_flags & EPSILON_R)
+  if (channels[channel].status_flags & STATUS_EOF_RECEIVED)
     packet_disconnect("Other party sent data after eof for channel %d.",
 		      channel);
   
-  if (!(channels[channel].status_flags & PHII_OUT)) {
+  if (!(channels[channel].status_flags & STATUS_OUTPUT_SOCKET_CLOSED)) {
     data = packet_get_string(&data_len);
     buffer_append(&channels[channel].output, data, data_len);
     xfree(data);
@@ -876,6 +960,7 @@ void channel_input_data()
 
 int channel_not_very_much_buffered_data()
 {
+#if 0
   unsigned int i;
   Channel *ch;
   
@@ -902,6 +987,7 @@ int channel_not_very_much_buffered_data()
 	  continue;
 	}
     }
+#endif /* 0 */
   return 1;
 }
 
@@ -1090,6 +1176,12 @@ void channel_request_local_forwarding(int port, const char *host,
   if (sock < 0)
     packet_disconnect("socket: %.100s", strerror(errno));
 
+#if defined(O_NONBLOCK) && !defined(O_NONBLOCK_BROKEN)
+  (void)fcntl(sock, F_SETFL, O_NONBLOCK);
+#else /* O_NONBLOCK && !O_NONBLOCK_BROKEN */
+  (void)fcntl(sock, F_SETFL, O_NDELAY);
+#endif /* O_NONBLOCK && !O_NONBLOCK_BROKEN */
+
   /* Initialize socket address. */
   memset(&sin, 0, sizeof(sin));
   sin.sin_family = AF_INET;
@@ -1263,6 +1355,12 @@ void channel_input_port_open()
 
   /* Successful connection. */
 
+#if defined(O_NONBLOCK) && !defined(O_NONBLOCK_BROKEN)
+  (void)fcntl(sock, F_SETFL, O_NONBLOCK);
+#else /* O_NONBLOCK && !O_NONBLOCK_BROKEN */
+  (void)fcntl(sock, F_SETFL, O_NDELAY);
+#endif /* O_NONBLOCK && !O_NONBLOCK_BROKEN */
+
   /* Allocate a channel for this connection. */
   newch = channel_allocate(SSH_CHANNEL_OPEN, sock, originator_string);
   channels[newch].remote_id = remote_channel;
@@ -1317,6 +1415,12 @@ char *x11_create_display_inet(int screen_number)
 	  error("socket: %.100s", strerror(errno));
 	  return NULL;
 	}
+
+#if defined(O_NONBLOCK) && !defined(O_NONBLOCK_BROKEN)
+      (void)fcntl(sock, F_SETFL, O_NONBLOCK);
+#else /* O_NONBLOCK && !O_NONBLOCK_BROKEN */
+      (void)fcntl(sock, F_SETFL, O_NDELAY);
+#endif /* O_NONBLOCK && !O_NONBLOCK_BROKEN */
       
       if (bind(sock, (struct sockaddr *)&sin, sizeof(sin)) < 0)
 	{
@@ -1445,13 +1549,37 @@ void x11_input_open()
       ssun.sun_family = AF_UNIX;
 #ifdef HPSUX_NONSTANDARD_X11_KLUDGE
       {
-	struct utsname utsbuf;
-	/* HPSUX stores unix-domain sockets in /tmp/.X11-unix/`hostname`0 
-	   instead of the normal /tmp/.X11-unix/X0. */
-	if (uname(&utsbuf) < 0)
-	  fatal("uname: %.100s", strerror(errno));
-	sprintf(ssun.sun_path, "%.20s/%.64s%d",
-		X11_DIR, utsbuf.nodename, display_number);
+	/* HPSUX release 10.X uses /var/spool/sockets/X11/0 for the
+	   unix-domain sockets, while earlier releases stores the
+	   socket in /usr/spool/sockets/X11/0 with soft-link from
+	   /tmp/.X11-unix/`uname -n`0 */
+
+	struct stat st;
+
+	if (stat("/var/spool/sockets/X11", &st) == 0)
+	  {
+	    sprintf(ssun.sun_path, "%s/%d",
+		    "/var/spool/sockets/X11", display_number);
+	  }
+	else
+	  {
+	    if (stat("/usr/spool/sockets/X11", &st) == 0)
+	      {
+		sprintf(ssun.sun_path, "%s/%d",
+			"/usr/spool/sockets/X11", display_number);
+	      }
+	    else
+	      {
+		struct utsname utsbuf;
+		/* HPSUX stores unix-domain sockets in
+		   /tmp/.X11-unix/`hostname`0 
+		   instead of the normal /tmp/.X11-unix/X0. */
+		if (uname(&utsbuf) < 0)
+		  fatal("uname: %.100s", strerror(errno));
+		sprintf(ssun.sun_path, "%.20s/%.64s%d",
+			X11_DIR, utsbuf.nodename, display_number);
+	      }
+	  }
       }
 #else /* HPSUX_NONSTANDARD_X11_KLUDGE */
       sprintf(ssun.sun_path, "%.80s/X%d", X11_DIR, display_number);
@@ -1538,12 +1666,19 @@ void x11_input_open()
 
  success:
   /* We have successfully obtained a connection to the real X display. */
+
+#if defined(O_NONBLOCK) && !defined(O_NONBLOCK_BROKEN)
+      (void)fcntl(sock, F_SETFL, O_NONBLOCK);
+#else /* O_NONBLOCK && !O_NONBLOCK_BROKEN */
+      (void)fcntl(sock, F_SETFL, O_NDELAY);
+#endif /* O_NONBLOCK && !O_NONBLOCK_BROKEN */
   
   /* Allocate a channel for this connection. */
   if (x11_saved_proto == NULL)
     newch = channel_allocate(SSH_CHANNEL_OPEN, sock, remote_host);
   else
     newch = channel_allocate(SSH_CHANNEL_X11_OPEN, sock, remote_host);
+  channels[newch].is_x_connection = 1;
   channels[newch].remote_id = remote_channel;
   
   debug("Sending open confirmation to the remote host.");
@@ -1645,39 +1780,105 @@ char *auth_get_socket_name()
   return channel_forwarded_auth_socket_name;
 }
 
+/* Called on exit, tries to remove authentication socket and per-user
+   socket directory */
+
+void auth_delete_socket(void *context)
+{
+  if (channel_forwarded_auth_socket_name)
+    {
+      remove(channel_forwarded_auth_socket_name);
+      xfree(channel_forwarded_auth_socket_name);
+    }
+  if (channel_forwarded_auth_socket_dir_name)
+    {
+      rmdir(channel_forwarded_auth_socket_dir_name);
+      xfree(channel_forwarded_auth_socket_dir_name);
+    }
+}
+
 /* This if called to process SSH_CMSG_AGENT_REQUEST_FORWARDING on the server.
-   This starts forwarding authentication requests. */
+   This starts forwarding authentication requests.
+   Socket directory will be owned by the user, and will have 700-
+   permissions. Actual socket will have 222-permissions and can be
+   owned by anyone (sshd's socket will be owned by root and
+   ssh-agent's by user). */
 
 void auth_input_request_forwarding(struct passwd *pw)
 {
-  int pfd = get_permanent_fd(pw->pw_shell);
+  int ret, pfd = get_permanent_fd(pw->pw_shell);
   
   if (pfd < 0) 
     {
-      int sock, newch;
+      int sock, newch, directory_created;
       struct sockaddr_un sunaddr;
+      struct stat st;
+      mode_t old_umask;
       
       if (auth_get_socket_name() != NULL)
 	fatal("Protocol error: authentication forwarding requested twice.");
-    
-      /* Allocate a buffer for the socket name, and format the name. */
+
+      /* Allocate a buffer for the socket name, and format the name.
+         And directory name. */
       channel_forwarded_auth_socket_name = xmalloc(100);
-      sprintf(channel_forwarded_auth_socket_name, SSH_AGENT_SOCKET, 
-	      (int)getpid());
-    
+      channel_forwarded_auth_socket_dir_name = xmalloc(100);
+      sprintf(channel_forwarded_auth_socket_dir_name, 
+	      SSH_AGENT_SOCKET_DIR, pw->pw_name);
+      sprintf(channel_forwarded_auth_socket_name, 
+	      SSH_AGENT_SOCKET_DIR"/"SSH_AGENT_SOCKET,
+	      pw->pw_name, (int)getpid());
+
+      /* Register the cleanup function before making the directory */
+      fatal_add_cleanup(&auth_delete_socket, NULL);
+      
+      /* Check that the per-user socket directory either doesn't exist
+	 or has good modes */
+      
+      ret = stat(channel_forwarded_auth_socket_dir_name, &st);
+      directory_created = 0;
+      if (ret == -1 && errno != ENOENT)
+	packet_disconnect("stat: %.100s", strerror(errno));
+      else
+	{
+	  if (mkdir(channel_forwarded_auth_socket_dir_name, S_IRWXU) == 0)
+	    {
+	      directory_created = 1;
+	    }
+	}
+      if (ret == 0)
+	{
+	  if (st.st_uid != pw->pw_uid ||
+	      (st.st_mode & 077) != 0)
+	    {
+	      packet_disconnect("Bad modes for directory \'%s\'\n",
+				channel_forwarded_auth_socket_dir_name);
+	    }
+	}
+
       /* Create the socket. */
       sock = socket(AF_UNIX, SOCK_STREAM, 0);
       if (sock < 0)
 	packet_disconnect("socket: %.100s", strerror(errno));
 
       /* Bind it to the name. */
-      memset(&sunaddr, 0, sizeof(sunaddr));
+      memset(&sunaddr, 0, AF_UNIX_SIZE(sunaddr));
       sunaddr.sun_family = AF_UNIX;
       strncpy(sunaddr.sun_path, channel_forwarded_auth_socket_name, 
 	      sizeof(sunaddr.sun_path));
 
+      /* Use umask to get desired permissions, chmod is too dangerous
+         NOTE: If your system doesn't handle umask correctly when
+	 creating unix-domain sockets, you might not be able to use
+	 ssh-agent connections on your system */
+      old_umask = umask(S_IRUSR|S_IXUSR|S_IRGRP|S_IXGRP|S_IROTH|S_IXOTH);
+      
       if (bind(sock, (struct sockaddr *)&sunaddr, AF_UNIX_SIZE(sunaddr)) < 0)
 	packet_disconnect("bind: %.100s", strerror(errno));
+
+      umask(old_umask);
+      
+      if (directory_created)
+	chown(channel_forwarded_auth_socket_dir_name, pw->pw_uid, pw->pw_gid);
 
       /* Start listening on the socket. */
       if (listen(sock, 5) < 0)

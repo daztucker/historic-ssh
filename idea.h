@@ -14,8 +14,11 @@ The IDEA encryption algorithm.
 */
 
 /*
- * $Id: idea.h,v 1.2 1995/07/13 01:25:00 ylo Exp $
+ * $Id: idea.h,v 1.1.1.1 1996/02/18 21:38:11 ylo Exp $
  * $Log: idea.h,v $
+ * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.2  1995/07/13  01:25:00  ylo
  * 	Removed "Last modified" header.
  * 	Added cvs log.

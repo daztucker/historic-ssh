@@ -8,11 +8,20 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Thu Apr  6 00:52:24 1995 ylo
-Last modified: Wed Jul 12 01:50:45 1995 ylo
 
-Adds an identity to the authentication server.
+Adds an identity to the authentication server, or removes an identity.
 
 */
+
+/*
+ * $Id: ssh-add.c,v 1.2 1995/07/13 01:38:15 ylo Exp $
+ * $Log: ssh-add.c,v $
+ * Revision 1.2  1995/07/13  01:38:15  ylo
+ * 	Removed "Last modified" header.
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
 
 #include "includes.h"
 #include "randoms.h"

@@ -16,8 +16,14 @@ validity of the host key.
 */
 
 /*
- * $Id: auth-rsa.c,v 1.4 1995/07/26 23:30:49 ylo Exp $
+ * $Id: auth-rsa.c,v 1.6 1995/08/29 22:18:40 ylo Exp $
  * $Log: auth-rsa.c,v $
+ * Revision 1.6  1995/08/29  22:18:40  ylo
+ * 	Permit using ip addresses in RSA authentication "from" option.
+ *
+ * Revision 1.5  1995/08/22  14:05:28  ylo
+ * 	Added uid-swapping.
+ *
  * Revision 1.4  1995/07/26  23:30:49  ylo
  * 	Added code to support protocol version 1.1.  The md hash of
  * 	RSA response must now include the session id.  Compatibility
@@ -158,16 +164,30 @@ int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state)
   FILE *f;
   unsigned long linenum = 0;
   struct stat st;
+#ifdef HAVE_SETEUID
+  uid_t saveduid;
+#endif /* HAVE_SETEUID */
 
   /* Open the file containing the authorized keys. */
   sprintf(line, "%s/%s", pw->pw_dir, SSH_USER_PERMITTED_KEYS);
   
+#ifdef HAVE_SETEUID
+  saveduid = geteuid();
+  seteuid(pw->pw_uid);
+#endif /* HAVE_SETEUID */
   if (stat(line, &st) < 0)
-    return 0;
-
+    {
+#ifdef HAVE_SETEUID
+      seteuid(saveduid);
+#endif /* HAVE_SETEUID */
+      return 0;
+    }
   f = fopen(line, "r");
   if (!f)
     {
+#ifdef HAVE_SETEUID
+      seteuid(saveduid);
+#endif /* HAVE_SETEUID */
       packet_send_debug("Could not open %.900s for reading.", line);
       packet_send_debug("If your home is on an NFS volume, it may need to be world-readable.");
       return 0;
@@ -348,10 +368,13 @@ int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state)
 		  patterns[i] = 0;
 		  options++;
 		  if (!match_hostname(get_canonical_hostname(), patterns,
-				     strlen(patterns)))
+				     strlen(patterns)) &&
+		      !match_hostname(get_remote_ipaddr(), patterns,
+				      strlen(patterns)))
 		    {
-		      log("RSA authentication tried for %.100s with correct key but not from a permitted host (host=%.500s).",
-			  pw->pw_name, get_canonical_hostname());
+		      log("RSA authentication tried for %.100s with correct key but not from a permitted host (host=%.200s, ip=%.200s).",
+			  pw->pw_name, get_canonical_hostname(),
+			  get_remote_ipaddr());
 		      packet_send_debug("Your host '%.200s' is not permitted to use this key for login.",
 					get_canonical_hostname());
 		      xfree(patterns);
@@ -391,6 +414,10 @@ int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state)
       if (authenticated)
 	break;
     }
+
+#ifdef HAVE_SETEUID
+  seteuid(saveduid);
+#endif /* HAVE_SETEUID */
 
   /* Close the file. */
   fclose(f);

@@ -10,7 +10,13 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 /*
  * $Log: acconfig.h,v $
- * Revision 1.19  1998/04/17 00:36:31  kivinen
+ * Revision 1.21  1998/06/11 00:03:25  kivinen
+ * 	Added ENABLE_SO_LINGER and ENABLE_SCP_STATS.
+ *
+ * Revision 1.20  1998/05/23  20:18:21  kivinen
+ * 	Added X11_DIR.
+ *
+ * Revision 1.19  1998/04/17  00:36:31  kivinen
  * 	Added NOLOGIN_ALLOW.
  *
  * Revision 1.18  1998/03/27 17:30:10  kivinen
@@ -383,4 +389,13 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* File used to override /etc/nologin on a per-user basis.  The default is
    /etc/nologin.allow. */
 #undef NOLOGIN_ALLOW
+
+/* Where to find the X11 socket */
+#undef X11_DIR
+
+/* Define this if you want to enable SO_LINGER option */
+#undef ENABLE_SO_LINGER
+
+/* Define this if you want to enable scp statistics option */
+#undef ENABLE_SCP_STATS
 

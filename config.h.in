@@ -11,8 +11,14 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 /*
  * $Log: config.h.in,v $
- * Revision 1.18  1997/04/05 21:45:45  kivinen
+ * Revision 1.20  1997/04/23 00:00:11  kivinen
  * *** empty log message ***
+ *
+ * Revision 1.14  1997/04/21 01:01:14  kivinen
+ * 	Added HAVE_INCOMPATIBLE_SIGINFO.
+ *
+ * Revision 1.13  1997/04/05 21:44:26  kivinen
+ * 	Added KRB5.
  *
  * Revision 1.12  1997/03/27 03:08:36  kivinen
  * 	Added USELOGIN, PATH_LOGIN, HAVE_NO_TZ_IN_GETTIMEOFDAY,
@@ -260,6 +266,10 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 #undef LIBWRAP
 #undef HAVE_LIBWRAP
 
+/* This is defined to pw_encrypt on Linux when using John Faugh's shadow 
+   password implementation. */
+#undef crypt
+
 /* This is defined on 386BSD to preted we are on FreeBSD. */
 #undef __FreeBSD__
 
@@ -388,6 +398,15 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define this if you want to pass the Kerberos TGT. */
 #undef KERBEROS_TGT_PASSING
 
+/* Define this if you dont have SIGINFO as signal but some other macro */
+#undef HAVE_INCOMPATIBLE_SIGINFO
+
+/* Define this if your spwd struct defined shadow.h have sp_expire field */
+#undef HAVE_STRUCT_SPWD_EXPIRE
+
+/* Define this if your spwd struct defined shadow.h have sp_inact field */
+#undef HAVE_STRUCT_SPWD_INACT
+
 /* The number of bytes in a int.  */
 #undef SIZEOF_INT
 
@@ -421,6 +440,9 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 /* Define if you have the gethostname function.  */
 #undef HAVE_GETHOSTNAME
 
+/* Define if you have the getpseudotty function.  */
+#undef HAVE_GETPSEUDOTTY
+
 /* Define if you have the getrusage function.  */
 #undef HAVE_GETRUSAGE
 
@@ -447,6 +469,9 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 /* Define if you have the putenv function.  */
 #undef HAVE_PUTENV
+
+/* Define if you have the pw_encrypt function.  */
+#undef HAVE_PW_ENCRYPT
 
 /* Define if you have the random function.  */
 #undef HAVE_RANDOM
@@ -492,6 +517,9 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>
 
 /* Define if you have the vhangup function.  */
 #undef HAVE_VHANGUP
+
+/* Define if you have the waitpid function.  */
+#undef HAVE_WAITPID
 
 /* Define if you have the <dirent.h> header file.  */
 #undef HAVE_DIRENT_H

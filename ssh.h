@@ -14,8 +14,31 @@ Generic header file for ssh.
 */
 
 /*
- * $Id: ssh.h,v 1.2 1996/04/22 23:49:45 huima Exp $
+ * $Id: ssh.h,v 1.8 1996/09/24 20:17:54 ylo Exp $
  * $Log: ssh.h,v $
+ * Revision 1.8  1996/09/24 20:17:54  ylo
+ * 	Changed identity files to be always encrypted with 3DES (used
+ * 	to be IDEA, when it is compiled in).  This is to make identity
+ * 	files more compatible with versions that don't include IDEA
+ * 	for patent reasons.
+ *
+ * Revision 1.7  1996/09/08 17:21:09  ttsalo
+ * 	A lot of changes in agent-socket handling
+ *
+ * Revision 1.6  1996/09/04 12:42:31  ttsalo
+ * 	Added pid to agent-socket name
+ *
+ * Revision 1.5  1996/08/29 14:51:24  ttsalo
+ * 	Agent-socket directory handling implemented
+ *
+ * Revision 1.4  1996/08/21 20:43:56  ttsalo
+ * 	Made ssh-agent use a different, more secure way of storing
+ * 	it's initial socket.
+ *
+ * Revision 1.3  1996/08/13 09:04:21  ttsalo
+ * 	Home directory, .ssh and .ssh/authorized_keys are now
+ * 	checked for wrong owner and group & world writeability.
+ *
  * Revision 1.2  1996/04/22 23:49:45  huima
  * Changed protocol version to 1.4, added calls to emulate module.
  *
@@ -91,11 +114,7 @@ Generic header file for ssh.
 #define SSH_FALLBACK_CIPHER	SSH_CIPHER_3DES
 
 /* Cipher used for encrypting authentication files. */
-#ifdef WITHOUT_IDEA
 #define SSH_AUTHFILE_CIPHER	SSH_CIPHER_3DES
-#else
-#define SSH_AUTHFILE_CIPHER	SSH_CIPHER_IDEA
-#endif
 
 /* Default port number. */
 #define SSH_DEFAULT_PORT	22
@@ -187,15 +206,21 @@ only by root, whereas ssh_config should be world-readable. */
    to the authentication agent is passed in a file descriptor; however,
    on some systems, commonly used shells close all open file descriptors.
    To make the agent usable on those systems, configure checks whether
-   the shells close all descriptors, and if so, defines AGENT_USES_SOCKET.
-   That socket is an unix-domain socket and will be stored with this name
-   in the user\'s home directory.  The socket must not be accessible by
-   anyone but the user him/herself.  The number at the end of the name
-   is the pid of the agent or the forwarding daemon.  Note that this
-   socket is stored in /tmp, which is supposedly on the local machine.  If
-   this were in the user\'s home directory, the daemon (running as root)
-   might not be able to create and chown the file to the user\'s uid. */
-#define SSH_AGENT_SOCKET	"/tmp/ssh_agent.%d"
+   the shells close all descriptors, and if so, uses a socket instead.
+   That socket is an unix-domain socket and must not be accessible by
+   anyone but the user him/herself. A directory \'ssh-agent-<loginname>\'
+   is created under /tmp, which is supposedly on the local machine,
+   and socket is created under the directory. On some systems, sockets\'
+   protections are not adequately checked, so this mode 700 per-user
+   directory is needed. If socket were in the user\'s home directory,
+   the daemon (running as root) might not be able to create and listen
+   to the socket.
+   
+   SSH_AGENT_SOCKET_DIR can be changed to something else ("/tmp/.ssh/ssh-%s"
+   for example), but only the last directory in the path will be
+   dynamically created and deleted by sshd and ssh-agent. */
+#define SSH_AGENT_SOCKET_DIR    "/tmp/ssh-%.50s"
+#define SSH_AGENT_SOCKET	"agent-socket-%d"
 
 /* Name of the environment variable containing the authentication fd. */
 #define SSH_AUTHFD_ENV_NAME	"SSH_AUTHENTICATION_FD"
@@ -341,7 +366,8 @@ int auth_password(const char *server_user, const char *password);
 /* Performs the RSA authentication dialog with the client.  This returns
    0 if the client could not be authenticated, and 1 if authentication was
    successful.  This may exit if there is a serious protocol violation. */
-int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state);
+int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state,
+	     int strict_modes);
 
 /* Parses an RSA key (number of bits, e, n) from a string.  Moves the pointer
    over the key.  Skips any whitespace at the beginning and at end. */

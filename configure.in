@@ -8,8 +8,46 @@
 #
 # Created: Wed Mar 22 18:02:48 1995 ylo
 #
-# $Id: configure.in,v 1.8 1995/07/27 03:38:18 ylo Exp $
+# $Id: configure.in,v 1.16 1995/09/06 15:59:08 ylo Exp $
 # $Log: configure.in,v $
+# Revision 1.16  1995/09/06  15:59:08  ylo
+# 	Updated 64-bit irix stuff.
+# 	Added m88k-dg-dgux support.
+#
+# Revision 1.15  1995/08/31  09:20:42  ylo
+# 	Added check if compiler works.
+# 	Added support for irix6.
+# 	Don't use libsun on irix.
+# 	Define SSH_LASTLOG even if lastlog not found.
+#
+# Revision 1.14  1995/08/29  22:22:10  ylo
+# 	Reordered checks for wtmp, utmp, lastlog locations.
+# 	Check for missing crypt (replace if missing).
+#
+# Revision 1.13  1995/08/22  14:10:30  ylo
+# 	Fixed a typo.
+#
+# Revision 1.12  1995/08/22  14:08:37  ylo
+# 	Added warning if kerberos present.
+# 	Added check for seteuid (used to enable uid-swapping).
+#
+# Revision 1.11  1995/08/21  23:24:14  ylo
+# 	Fixed a typo.
+# 	Deleted --with-rhosts.
+#
+# Revision 1.10  1995/08/19  13:18:00  ylo
+# 	Changed to securid stuff.
+#
+# Revision 1.9  1995/08/18  22:53:46  ylo
+# 	Added determining the canonical host type.
+# 	Added host type specific configuration code for a number of
+# 	machines.  Eliminated kludges to do this from other parts of
+# 	configure.
+# 	Added checking for netinet/in_systm.h.
+# 	Fixed types in utmp/wtmp testing.
+# 	Added --without-idea.
+# 	Added --with-securid.
+#
 # Revision 1.8  1995/07/27  03:38:18  ylo
 # 	Fixed lastlog determination code when lastlog is directory.
 #
@@ -43,7 +81,91 @@ AC_INIT(sshd.c)
 AC_CONFIG_HEADER(config.h)
 AC_PREREQ(2.0)
 
+if test -f /etc/krb.conf; then
+  AC_MSG_WARN(Ssh does not yet support Kerberos!)
+fi
+
+AC_CANONICAL_HOST
+
 AC_PROG_CC
+AC_C_CROSS
+
+AC_MSG_CHECKING([that the compiler works])
+AC_TRY_RUN([ main() { return 0; } ],
+    AC_MSG_RESULT(yes),
+    AC_MSG_RESULT(no)
+    AC_MSG_ERROR(Could not compile and run even a trivial program - check CC.),
+    AC_MSG_ERROR(Could not compile and run even a trivial program - check CC.))
+
+case "$host" in
+  *-*-sunos*)
+    os_sunos=yes
+    ;;
+  *-sgi-irix5*)
+    # Irix stuff from snabb@niksula.hut.fi and tsurmacz@asic.ict.pwr.wroc.pl.
+    no_libsocket=yes
+    no_libsun=yes
+    ;;
+  *-sgi-irix6*)
+    # d-champion@uchicago.edu
+    no_libsocket=yes
+    no_libsun=yes
+    if test "`uname -s`" = "IRIX64"; then
+      CFLAGS="-32 $CFLAGS"
+      LDFLAGS="-32 $LDFLAGS"
+    fi
+    ;;
+  *-ibm-aix*)
+    os_aix=yes
+    AC_CHECK_LIB(s, getuserattr)
+    ;;
+  mips-dec-mach3*)
+    # Mach3 stuff from kivinen@hut.fi
+    no_vhangup=yes
+    ;;
+  *-dec-ultrix*)
+    # Ultrix instructions from dmckilli@qc.bell.ca.
+    # I am told Ultrix still has problemms setting controlling tty.
+    # Please let me know how to do it if you know.
+    AC_DEFINE(O_NONBLOCK_BROKEN)
+    no_setsid=yes
+    ;;
+  *-*-hpux*)
+    # HPUX flags from jgotts@engin.umich.edu
+    if test -z "$GCC"; then
+      CFLAGS="$CFLAGS -Aa -D_HPUX_SOURCE"
+    fi
+    AC_DEFINE(HPSUX_BROKEN_PTYS)
+    ;;
+  alpha-dec-osf*)
+    AC_DEFINE(TTY_GROUP, "terminal")
+    ;;
+  *-*-nextstep*)
+    # Nextstep support contributed by a person who wants to remain anonymous
+    no_termios=yes
+    ;;
+  *-*-linux*)
+    # Linux shadow password support (Andrew.Macpherson.1248566@bnr.co.uk)
+    if test -f /etc/shadow && test -f /etc/login.defs; then
+      AC_MSG_RESULT(Using linux John Haugh shadow passwords and pw_encrypt for password encryption)
+      AC_DEFINE(crypt,pw_encrypt)
+      LIBS="$LIBS -lshadow"
+    fi
+    ;;
+  i386-unknown-bsd*)
+    # Assume 386BSD.  pgut01@cs.auckland.ac.nz reported this makes it compile.
+    AC_DEFINE(__FreeBSD__)
+    ;;
+  m68k-sony-newsos*)
+    # From snabb@niksula.hut.fi
+    no_vhangup=yes
+    ;;
+  m88k-dg-dgux*)
+    AC_DEFINE(BROKEN_INET_ADDR)
+    ;;
+  *)
+    ;;
+esac
 
 if test -n "$GCC"; then
   AC_MSG_CHECKING([if the compiler understands -pipe])
@@ -62,10 +184,17 @@ AC_ARG_ENABLE(warnings,
     CFLAGS="$CFLAGS -Wall"
   fi])
 
+if test -z "$no_vhangup"; then
+  AC_CHECK_FUNCS(vhangup)
+fi
+
+if test -z "$no_setsid"; then
+  AC_CHECK_FUNCS(setsid)
+fi
+
 AC_CHECK_FUNCS(waitpid wait4 gettimeofday times getrusage popen)
-AC_CHECK_FUNCS(strchr memcpy setlogin openpty _getpty clock setsid)
-AC_CHECK_FUNCS(gethostname vhangup)
-AC_REPLACE_FUNCS(strerror memmove remove random putenv)
+AC_CHECK_FUNCS(strchr memcpy setlogin openpty _getpty clock)
+AC_CHECK_FUNCS(gethostname seteuid getdtablesize)
 AC_FUNC_WAIT3
 
 AC_TYPE_SIGNAL
@@ -80,11 +209,15 @@ AC_C_CONST
 AC_C_INLINE
 AC_CHECK_SIZEOF(long)
 
+if test -z "$no_termios"; then
+  AC_CHECK_HEADERS(termios.h)
+fi
+
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
 AC_CHECK_HEADERS(unistd.h rusage.h sys/time.h lastlog.h utmp.h utmpx.h)
-AC_CHECK_HEADERS(termios.h sgtty.h sys/select.h sys/ioctl.h)
-AC_CHECK_HEADERS(paths.h usersec.h utime.h)
+AC_CHECK_HEADERS(sgtty.h sys/select.h sys/ioctl.h)
+AC_CHECK_HEADERS(paths.h usersec.h utime.h netinet/in_systm.h)
 AC_HEADER_TIME
 AC_HEADER_DIRENT
 AC_HEADER_STAT
@@ -94,10 +227,15 @@ AC_EGREP_HEADER(ut_id, utmp.h, AC_DEFINE(HAVE_ID_IN_UTMP))
 AC_EGREP_HEADER(ut_host, utmp.h, AC_DEFINE(HAVE_HOST_IN_UTMP))
 
 AC_CHECK_LIB(c, crypt, [true], AC_CHECK_LIB(crypt, crypt))
-AC_CHECK_LIB(socket, socket)
-AC_CHECK_LIB(nsl, gethostbyaddr)
-AC_CHECK_LIB(sun, getpwnam)
-AC_CHECK_LIB(s, getuserattr)
+AC_CHECK_LIB(nsl, main)
+if test -z "$no_libsocket"; then
+  AC_CHECK_LIB(socket, socket)
+fi
+if test -z "$no_libsun"; then
+  AC_CHECK_LIB(sun, getpwnam)
+fi
+
+AC_REPLACE_FUNCS(strerror memmove remove random putenv crypt)
 
 AC_PROG_LN_S
 AC_PROG_INSTALL
@@ -129,10 +267,10 @@ if test -f /etc/master.passwd; then
 elif test -f /etc/shadow; then
   AC_DEFINE(HAVE_ETC_SHADOW)
   AC_MSG_RESULT(/etc/shadow)
-elif test -x /bin/uname && test "`uname 2>/dev/null`" = "AIX"; then
+elif test -n "$os_aix"; then
   AC_DEFINE(HAVE_ETC_SECURITY_PASSWD)
   AC_MSG_RESULT(/etc/security/passwd)
-elif test -x /bin/uname && test "`uname 2>/dev/null`" = "SunOS" && test -d /etc/security; then
+elif test -n "$os_sunos"; then
   AC_DEFINE(HAVE_ETC_SECURITY_PASSWD_ADJUNCT)
   AC_MSG_RESULT(/etc/security/passwd.adjunct)
 else
@@ -140,58 +278,62 @@ else
 fi
 
 AC_MSG_CHECKING(location of utmp)
-if test -f /etc/utmp; then
-  AC_DEFINE(SSH_UTMP, "/etc/utmp")
-  AC_MSG_RESULT(/etc/utmp)
-elif test -f /usr/adm/utmp; then
-  AC_DEFINE(SSH_UTMP, "/usr/adm/utmp")
-  AC_MSG_RESULT(/usr/adm/utmp)
+if test -f /var/run/utmp; then
+  AC_DEFINE(SSH_UTMP, "/var/run/utmp")
+  AC_MSG_RESULT(/var/run/utmp)
+elif test -f /var/log/utmp; then
+  AC_DEFINE(SSH_UTMP, "/var/log/utmp")
+  AC_MSG_RESULT(/var/log/utmp)
 elif test -f /var/adm/utmp; then
   AC_DEFINE(SSH_UTMP, "/var/adm/utmp")
   AC_MSG_RESULT(/var/adm/utmp)
-elif text -f /var/log/utmp; then
-  AC_DEFINE(SSH_UTMP, "/var/log/utmp")
-  AC_MSG_RESULT(/var/log/utmp)
+elif test -f /usr/adm/utmp; then
+  AC_DEFINE(SSH_UTMP, "/usr/adm/utmp")
+  AC_MSG_RESULT(/usr/adm/utmp)
+elif test -f /etc/utmp; then
+  AC_DEFINE(SSH_UTMP, "/etc/utmp")
+  AC_MSG_RESULT(/etc/utmp)
 else
   AC_MSG_RESULT(not found)
 fi
 
 AC_MSG_CHECKING(location of wtmp)
-if test -f /etc/wtmp; then
-  AC_DEFINE(SSH_WTMP, "/etc/wtmp")
-  AC_MSG_RESULT(/etc/wtmp)
-elif test -f /usr/adm/wtmp; then
-  AC_DEFINE(SSH_WTMP, "/usr/adm/wtmp")
-  AC_MSG_RESULT(/usr/adm/wtmp)
+if test -f /var/log/wtmp; then
+  AC_DEFINE(SSH_WTMP, "/var/log/wtmp")
+  AC_MSG_RESULT(/var/log/wtmp)
 elif test -f /var/adm/wtmp; then
   AC_DEFINE(SSH_WTMP, "/var/adm/wtmp")
   AC_MSG_RESULT(/var/adm/wtmp)
-elif text -f /var/log/wtmp; then
-  AC_DEFINE(SSH_WTMP, "/var/log/wtmp")
-  AC_MSG_RESULT(/var/log/wtmp)
+elif test -f /usr/adm/wtmp; then
+  AC_DEFINE(SSH_WTMP, "/usr/adm/wtmp")
+  AC_MSG_RESULT(/usr/adm/wtmp)
+elif test -f /etc/wtmp; then
+  AC_DEFINE(SSH_WTMP, "/etc/wtmp")
+  AC_MSG_RESULT(/etc/wtmp)
 else
   AC_MSG_RESULT(not found)
 fi
 
 AC_MSG_CHECKING(location of lastlog)
-if test -f /etc/lastlog || test -d /etc/lastlog; then
-  AC_DEFINE(SSH_LASTLOG, "/etc/lastlog")
-  LASTLOG=/etc/lastlog
-  AC_MSG_RESULT(/etc/lastlog)
-elif test -f /usr/adm/lastlog || test -d /usr/adm/lastlog; then
-  AC_DEFINE(SSH_LASTLOG, "/usr/adm/lastlog")
-  LASTLOG=/usr/adm/lastlog
-  AC_MSG_RESULT(/usr/adm/lastlog)
+if test -f /var/log/lastlog || test -d /var/log/lastlog; then
+  AC_DEFINE(SSH_LASTLOG, "/var/log/lastlog")
+  LASTLOG=/var/log/lastlog
+  AC_MSG_RESULT(/var/log/lastlog)
 elif test -f /var/adm/lastlog || test -d /var/adm/lastlog; then
   AC_DEFINE(SSH_LASTLOG, "/var/adm/lastlog")
   LASTLOG=/var/adm/lastlog
   AC_MSG_RESULT(/var/adm/lastlog)
-elif test -f /var/log/lastlog || test -d /var/log/lastlog; then
-  AC_DEFINE(SSH_LASTLOG, "/var/log/lastlog")
-  LASTLOG=/var/log/lastlog
-  AC_MSG_RESULT(/var/log/lastlog)
+elif test -f /usr/adm/lastlog || test -d /usr/adm/lastlog; then
+  AC_DEFINE(SSH_LASTLOG, "/usr/adm/lastlog")
+  LASTLOG=/usr/adm/lastlog
+  AC_MSG_RESULT(/usr/adm/lastlog)
+elif test -f /etc/lastlog || test -d /etc/lastlog; then
+  AC_DEFINE(SSH_LASTLOG, "/etc/lastlog")
+  LASTLOG=/etc/lastlog
+  AC_MSG_RESULT(/etc/lastlog)
 else
   AC_MSG_RESULT(not found)
+  AC_DEFINE(SSH_LASTLOG, "/var/log/lastlog")
   LASTLOG=/var/log/lastlog
 fi
 
@@ -203,6 +345,24 @@ then
 else
   AC_MSG_RESULT(no)
 fi
+
+AC_MSG_CHECKING(whether to include the IDEA encryption algorithm)
+AC_ARG_WITH(idea,
+[  --with-idea             Use IDEA (default).
+  --without-idea          Don't use IDEA: avoids patent problems in commercial use],
+[ case "$withval" in
+  no)
+    AC_MSG_RESULT(no)
+    AC_DEFINE(WITHOUT_IDEA)
+    ;;
+  *)
+    AC_MSG_RESULT(yes)
+    CONFOBJS="$CONFOBJS idea.o"
+    ;;
+  esac ],
+  AC_MSG_RESULT(yes)
+  CONFOBJS="$CONFOBJS idea.o"
+)
 
 AC_MSG_CHECKING(whether to use rsaref)
 AC_ARG_WITH(rsaref,
@@ -233,7 +393,7 @@ AC_ARG_WITH(rsh,
 	;;
     yes) 
 	 AC_MSG_RESULT(yes)
-	 AC_PATH_PROGS(RSH_PATH, rsh remsh)
+	 AC_PATH_PROGS(RSH_PATH, remsh rsh)
          AC_DEFINE_UNQUOTED(RSH_PATH, "$RSH_PATH")
 	;;
     *) 
@@ -242,10 +402,11 @@ AC_ARG_WITH(rsh,
        ;;
   esac ],
   [ AC_MSG_RESULT(yes)
-    AC_PATH_PROGS(RSH_PATH, rsh remsh)
+    AC_PATH_PROGS(RSH_PATH, remsh rsh)
     AC_DEFINE_UNQUOTED(RSH_PATH, "$RSH_PATH") ]
 )
 
+# Code to permit setting default path for users (alden@math.ohio-state.edu)
 AC_MSG_CHECKING(default path)
 AC_ARG_WITH(path,
 [  --with-path=PATH        Default path passed to user shell by sshd.],
@@ -261,48 +422,37 @@ AC_ARG_WITH(path,
   AC_MSG_RESULT(use system default)
 )
 
-AC_MSG_CHECKING(whether to permit rhosts authentication in server)
-AC_ARG_WITH(rhosts,
-[  --with-rhosts           Enable plain .rhosts and hosts.equiv authentication.],
+AC_ARG_WITH(securid,
+[  --with-securid[=PATH]   Enable support for Security Dynamics SecurID card.],
 [ case "$withval" in
+  no)
+    ;;
   yes)
-    AC_MSG_RESULT(yes)
+    AC_MSG_RESULT(Enabling support for Security Dynamics SecurID card.)
+    if test '!' -f /usr/ace/sdiclient.a; then
+      AC_ERROR(SecurID sdiclient.a not found in /usr/ace: you must supply the path.)
+    fi
+    AC_MSG_RESULT(Assuming SecurID headers and libraries are in /usr/ace.)
+    AC_DEFINE(HAVE_SECURID)
+    CFLAGS="$CFLAGS -I/usr/ace"
+    LIBS="$LIBS /usr/ace/sdiclient.a"
     ;;
   *)
-    AC_MSG_RESULT(no)
-    AC_DEFINE(NO_RHOSTS_AUTHENTICATION)
+    AC_MSG_RESULT(Enabling support for Security Dynamics SecurID card.)
+    if test '!' -f $withval/sdiclient.a; then
+      AC_ERROR(SecurID sdiclient.a not found in $withval: please supply the correct path.)
+    fi
+    AC_MSG_RESULT(Assuming SecurID headers and libraries are in $withval.)
+    AC_DEFINE(HAVE_SECURID)
+    CFLAGS="$CFLAGS -I$withval"
+    LIBS="$LIBS $withval/sdiclient.a"
     ;;
-  esac ],
-  AC_MSG_RESULT(no)
-  AC_DEFINE(NO_RHOSTS_AUTHENTICATION)
+  esac ]
 )
-
-AC_CHECK_PROG(HAVE_TCSH, tcsh, yes, no)
-AC_CHECK_PROG(HAVE_ZSH, zsh, yes, no)
-AC_CHECK_PROG(HAVE_KSH, ksh, yes, no)
-AC_CHECK_PROG(HAVE_BASH, bash, yes, no)
-$CC $CFLAGS -o fd-check-1 $srcdir/fd-check-1.c >/dev/null 2>/dev/null
-$CC $CFLAGS -o fd-check-2 $srcdir/fd-check-2.c >/dev/null 2>/dev/null
-AC_MSG_CHECKING(if shells close all file descriptors)
-ok=`./fd-check-1 sh -c 'csh -c ./fd-check-2'`
-if test "$ok" = "yes" && test "$HAVE_TCSH" = "yes"; then
-  ok=`./fd-check-1 tcsh -c ./fd-check-2`; fi
-if test "$ok" = "yes" && test "$HAVE_ZSH" = "yes"; then
-  ok=`./fd-check-1 zsh -c ./fd-check-2`; fi
-if test "$ok" = "yes" && test "$HAVE_KSH" = "yes"; then
-  ok=`./fd-check-1 ksh -c ./fd-check-2`; fi
-if test "$ok" = "yes" && test "$HAVE_BASH" = "yes"; then
-  ok=`./fd-check-1 bash -c ./fd-check-2`; fi
-if test "$ok" = "yes"
-then
-  AC_MSG_RESULT(no - agent uses them)
-else
-  AC_MSG_RESULT(yes - agent uses sockets)
-  AC_DEFINE(AGENT_USES_SOCKET)
-fi
 
 AC_ARG_PROGRAM
 
 AC_SUBST(RSAREFDEP)
+AC_SUBST(CONFOBJS)
 
 AC_OUTPUT(Makefile)

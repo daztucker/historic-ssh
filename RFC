@@ -1475,7 +1475,8 @@ RFC nnnn        SSH (Secure Shell) Remote Login Protocol    25 July 1995
         authentication protocols, e.g., "MIT-MAGIC-COOKIE-1".  Authenti-
         cation data must be a lowercase hex string with even length.
         Its interpretation is protocol dependent.  The data is in a for-
-        mat that can be used with e.g. the xauth program.
+        mat that can be used with e.g. the xauth program.  Supporting
+        this message is optional.
 
         The client is permitted (and recommended) to generate fake
         authentication information and send fake information to the
@@ -1507,7 +1508,6 @@ RFC nnnn        SSH (Secure Shell) Remote Login Protocol    25 July 1995
         (a privileged port), and immediately reject authentication if it
         is not.  The server responds with SSH_SMSG_FAILURE or
         SSH_SMSG_AUTH_RSA_CHALLENGE.  The client must respond to the
-        challenge with the proper SSH_CMSG_AUTH_RSA_RESPONSE.  The
 
 
 
@@ -1516,6 +1516,7 @@ Ylonen                                                         [Page 27]
 RFC nnnn        SSH (Secure Shell) Remote Login Protocol    25 July 1995
 
 
+        challenge with the proper SSH_CMSG_AUTH_RSA_RESPONSE.  The
         server then responds with success if access was granted, or
         failure if the client gave a wrong response.  Supporting this
         authentication method is optional but recommended in most
@@ -1563,7 +1564,6 @@ Encoding of Terminal Modes
    mode (the server leaves all unspecified mode bits in their default
    values, and only some combinations make sense).
 
-   The following opcodes have been defined.  The naming of opcodes
 
 
 
@@ -1572,6 +1572,7 @@ Ylonen                                                         [Page 28]
 RFC nnnn        SSH (Secure Shell) Remote Login Protocol    25 July 1995
 
 
+   The following opcodes have been defined.  The naming of opcodes
    mostly follows the POSIX terminal mode flags.
 
    0 TTY_OP_END
@@ -1619,7 +1620,6 @@ RFC nnnn        SSH (Secure Shell) Remote Login Protocol    25 July 1995
    13 VWERASE
         Erases a word left of cursor.
 
-   14 VLNEXT
 
 
 
@@ -1628,6 +1628,7 @@ Ylonen                                                         [Page 29]
 RFC nnnn        SSH (Secure Shell) Remote Login Protocol    25 July 1995
 
 
+   14 VLNEXT
         More special input characters; these are probably not supported
         on most systems.
 
@@ -1675,7 +1676,6 @@ RFC nnnn        SSH (Secure Shell) Remote Login Protocol    25 July 1995
 
    52 XCASE
 
-   53 ECHO
 
 
 
@@ -1683,6 +1683,8 @@ Ylonen                                                         [Page 30]
 
 RFC nnnn        SSH (Secure Shell) Remote Login Protocol    25 July 1995
 
+
+   53 ECHO
 
    54 ECHOE
 
@@ -1730,8 +1732,6 @@ RFC nnnn        SSH (Secure Shell) Remote Login Protocol    25 July 1995
 
    193 TTY_OP_OSPEED
         Specifies the output baud rate in bits per second.
-
-
 
 
 

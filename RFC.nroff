@@ -1,7 +1,10 @@
 .\" -*- nroff -*-
 .\"
-.\" $Id: RFC.nroff,v 1.5 1995/07/27 02:15:33 ylo Exp $
+.\" $Id: RFC.nroff,v 1.6 1995/09/06 19:52:11 ylo Exp $
 .\" $Log: RFC.nroff,v $
+.\" Revision 1.6  1995/09/06  19:52:11  ylo
+.\" 	Added a note that X11 forwarding with spoofing is optional.
+.\"
 .\" Revision 1.5  1995/07/27  02:15:33  ylo
 .\" 	Changes to RC4 keying.
 .\"
@@ -1263,6 +1266,7 @@ must be one of the supported X11 authentication protocols, e.g.,
 "MIT-MAGIC-COOKIE-1".  Authentication data must be a lowercase hex
 string with even length.  Its interpretation is protocol dependent.
 The data is in a format that can be used with e.g. the xauth program.
+Supporting this message is optional.
 
 The client is permitted (and recommended) to generate fake
 authentication information and send fake information to the server.

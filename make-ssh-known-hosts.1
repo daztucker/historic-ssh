@@ -26,14 +26,20 @@
 .\"
 .\"	  Creation          : 03:51 Jun 28 1995 kivinen
 .\"	  Last Modification : 03:44 Jun 28 1995 kivinen
-.\"	  Last check in     : $Date: 1995/07/15 13:26:11 $
-.\"	  Revision number   : $Revision: 1.2 $
+.\"	  Last check in     : $Date: 1995/08/31 09:21:35 $
+.\"	  Revision number   : $Revision: 1.4 $
 .\"	  State             : $State: Exp $
 .\"	  Version	    : 1.1
 .\"
 .\"	  Description       : Manual page for make-ssh-known-hosts.pl
 .\"
 .\"	  $Log: make-ssh-known-hosts.1,v $
+.\" Revision 1.4  1995/08/31  09:21:35  ylo
+.\" 	Minor cleanup.
+.\"
+.\" Revision 1.3  1995/08/29  22:37:10  ylo
+.\" 	Minor cleanup.
+.\"
 .\" Revision 1.2  1995/07/15  13:26:11  ylo
 .\" 	Changes from kivinen.
 .\"
@@ -48,7 +54,7 @@
 .\"
 .TH MAKE-SSH-KNOWN-HOSTS 1 "June 28, 1995" "ssh tools" "ssh tools"
 .SH NAME
-make-ssh-known-hosts.pl \- make ssh_known_hosts file from dns data
+.BR make-ssh-known-hosts.pl "\- make ssh_known_hosts file from dns data
 .SH SYNOPSIS
 .na
 .TP
@@ -62,7 +68,7 @@ make-ssh-known-hosts.pl \- make ssh_known_hosts file from dns data
 \|]
 .br
 .RB "[\|" "\-\-subdomains "\c
-.I comma_separated_list_if_subdomains\c
+.I comma_separated_list_of_subdomains\c
 \|]
 .br
 .RB "[\|" "\-\-debug "\c
@@ -116,14 +122,17 @@ version 5 script that creates the
 file that contains the public keys of known hosts. 
 That file is used by
 .B sshd\c
-\|, and if the client's hostname is not found from
+\| to authenticate the client machine, and if the client's hostname is
+not found from
 .B /etc/ssh_known_hosts
 .B sshd
 disables
 .B .rhosts
 authentication. The
 .B /etc/ssh_known_hosts
-is also used to check that the public key returned by the remote host
+is also used by
+.B ssh
+to check that the public key returned by the remote host
 matches the one stored in the local
 .B /etc/ssh_known_hosts
 file (to prevent man-in-the-middle attacs).
@@ -151,16 +160,17 @@ in the remote machine with
 .B ssh\c
 \|. If the command succeeds, it knows the remote machine has
 .B ssh
-installed properly and prints the 
+installed properly, and it then extracts the public key from the
+output, and prints the
 .B /etc/ssh_known_hosts
 entry to the
 .B STDOUT\c
 \|.
 
 .LP
-If the command fails it checks if the
+If the command fails for some reason, it checks if the
 .B ssh
-client got the public key from the remote host in the initial dialog,
+client still got the public key from the remote host in the initial dialog,
 and if so, it will print a proper entry, but comment it out (unless the
 .B \-\-trustdaemon
 option is given).
@@ -235,7 +245,7 @@ commands. Default is 60 seconds.
 .TP
 .BI "\-pa " "timeout_when_asking_password"\c
 \&Timeout when asking password for ssh command. Default is that no
-passwords are queried. Use value 0 to have no timeout password queries.
+passwords are queried. Use value 0 to have no timeout for password queries.
 
 .TP
 .BI "\-\-trustdaemon"\c
@@ -243,9 +253,8 @@ passwords are queried. Use value 0 to have no timeout password queries.
 .BI "\-tr"\c
 \&If the
 .B ssh
-command fails, use the public key stored in the
-.B $HOME/.ssh/known_hosts
-file and trust it is the correct key for the host. If this option is not
+command fails, use the public key stored in the local known hosts file
+and trust it is the correct key for the host. If this option is not
 given such entries are commented out in the generated
 .B /etc/ssh_known_hosts
 file.
@@ -310,7 +319,7 @@ program after hostname.
 .BI "\-ss " "path_to_ssh_program"\c
 \&Path to the
 .B ssh
-program.
+program, including all options.
 
 .SH EXAMPLES
 .LP
@@ -355,8 +364,6 @@ and that are not Mac or PC.
 .SH FILES
 .ta 3i
 /etc/ssh_known_hosts	Global host public key list
-.br
-~/.ssh/known_hosts	Private host public key list
 
 .SH "SEE ALSO"
 .BR ssh (1),

@@ -1,0 +1,19 @@
+# This is ssh server systemwide configuration file.
+
+Port 22
+ListenAddress 0.0.0.0
+HostKey _ETCDIR_/ssh_host_key
+ServerKeyBits 768
+LoginGraceTime 600
+KeyRegenerationInterval 3600
+PermitRootLogin yes
+QuietMode no
+FascistLogging no
+PrintMotd yes
+SyslogFacility DAEMON
+RhostsAuthentication no
+RhostsRSAAuthentication yes
+RSAAuthentication yes
+PasswordAuthentication yes
+# AllowHosts *.our.com friend.other.com
+# DenyHosts lowsecurity.theirs.com *.evil.org evil.org

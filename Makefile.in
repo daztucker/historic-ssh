@@ -8,8 +8,35 @@
 #
 # Created: Wed Mar 22 17:37:49 1995 ylo
 #
-# $Id: Makefile.in,v 1.5 1995/07/26 17:09:21 ylo Exp $
+# $Id: Makefile.in,v 1.12 1995/09/06 15:56:25 ylo Exp $
 # $Log: Makefile.in,v $
+# Revision 1.12  1995/09/06  15:56:25  ylo
+# 	Replace ETCDIR in server_config.sample.
+#
+# Revision 1.11  1995/08/31  09:42:47  ylo
+# 	Added $(exec_prefix) and $(etcdir) to the list of directories
+# 	to create.
+#
+# Revision 1.10  1995/08/31  09:18:05  ylo
+# 	Added $(etcdir).
+#
+# Revision 1.9  1995/08/29  22:17:26  ylo
+# 	Moved sshd to $prefix/sbin.
+# 	Added improved file descriptor code from David Mazieres.
+# 	Changed ssh-keygen to use file name option.
+# 	Added missing files to clean.
+#
+# Revision 1.8  1995/08/22  14:04:56  ylo
+# 	Removed references to obsolete DESDEP.
+#
+# Revision 1.7  1995/08/21  23:19:06  ylo
+# 	Added server config stuff.
+#
+# Revision 1.6  1995/08/18  22:40:28  ylo
+# 	Added install_prefix.
+# 	Added CONFOBJS, and moved idea.o to CONFOBJS.
+# 	Added config.guess and config.sub to DISTFILES.
+#
 # Revision 1.5  1995/07/26  17:09:21  ylo
 # 	Added mpaux.o.
 #
@@ -25,12 +52,15 @@ srcdir 		= @srcdir@
 
 VPATH 		= $(srcdir)
 
+install_prefix	=
 prefix		= @prefix@
 exec_prefix	= @exec_prefix@
-bindir		= $(prefix)/bin
+bindir		= $(exec_prefix)/bin
+sbindir		= $(exec_prefix)/sbin
 mandir		= $(prefix)/man
 man1dir		= $(mandir)/man1
 man8dir		= $(mandir)/man8
+etcdir		= /etc
 
 CC 		= @CC@
 CFLAGS 		= @CFLAGS@
@@ -38,6 +68,7 @@ LDFLAGS		= @LDFLAGS@
 DEFS 		= @DEFS@
 LIBS		= @LIBS@
 LIBOBJS		= @LIBOBJS@
+CONFOBJS	= @CONFOBJS@
 
 MAKEDEP		= @MAKEDEP@
 LN_S		= @LN_S@
@@ -51,8 +82,9 @@ RSAREFDEP	= @RSAREFDEP@
 
 transform	= @program_transform_name@
 
-HOST_KEY_FILE 	= /etc/ssh_host_key
-HOST_CONFIG_FILE = /etc/ssh_config
+HOST_KEY_FILE 	= $(etcdir)/ssh_host_key
+HOST_CONFIG_FILE = $(etcdir)/ssh_config
+SERVER_CONFIG_FILE = $(etcdir)/sshd_config
 
 SHELL = /bin/sh
 
@@ -64,36 +96,42 @@ RSAREFDIR	= rsaref2
 RSAREFSRCDIR 	= $(RSAREFDIR)/source
 
 SSHD_OBJS = sshd.o auth-rhosts.o auth-passwd.o auth-rsa.o auth-rh-rsa.o pty.o \
-	log-server.o login.o hostfile.o canohost.o
+	log-server.o login.o hostfile.o canohost.o servconf.o tildexpand.o
 SSH_OBJS = ssh.o sshconnect.o log-client.o readconf.o hostfile.o readpass.o \
 	tildexpand.o
 KEYGEN_OBJS = ssh-keygen.o log-client.o readpass.o
-COMMON_OBJS = $(LIBOBJS) rsa.o randoms.o md5.o idea.o buffer.o packet.o \
+COMMON_OBJS = $(LIBOBJS) $(CONFOBJS) \
+	rsa.o randoms.o md5.o buffer.o packet.o \
 	xmalloc.o ttymodes.o channels.o bufaux.o authfd.o authfile.o crc32.o \
-	rsaglue.o tss.o cipher.o des.o match.o rc4.o mpaux.o
+	rsaglue.o tss.o cipher.o des.o match.o rc4.o mpaux.o minfd.o
 AGENT_OBJS = ssh-agent.o log-client.o
 ADD_OBJS = ssh-add.o log-client.o readpass.o
 SCP_OBJS = scp.o xmalloc.o
+GEN_MINFD_OBJS = gen_minfd.o
+
+USER_SHELLS = sh jsh ksh csh tcsh bash zsh ash
 
 SRCS = $(SSHD_OBJS:.o=.c) $(SSH_OBJS:.o=.c) $(KEYGEN_OBJS:.o=.c) \
 	$(AGENT_OBJS:.o=.c) $(ADD_OBJS:.o=.c) \
-	$(COMMON_OBJS:.o=.c) $(SCP_OBJS:.o=.c)
-EXTRA_SRCS = memmove.c strerror.c remove.c random.c putenv.c
+	$(COMMON_OBJS:.o=.c) $(SCP_OBJS:.o=.c) \
+	$(GEN_MINFD_OBJS:.o=.c)
+EXTRA_SRCS = memmove.c strerror.c remove.c random.c putenv.c crypt.c
 MAN1PAGES = ssh.1 ssh-keygen.1 ssh-agent.1 ssh-add.1 scp.1
 MAN8PAGES = sshd.8
 
-DISTFILES = COPYING README INSTALL TODO libdes-README \
+DISTFILES = COPYING README README.SECURID INSTALL TODO libdes-README \
 	libdes-COPYING libdes-ARTISTIC gnu-COPYING-GPL \
-	configure configure.in Makefile.in ssh-askpass.wish \
-	check-fds.c host_config.sample config.sample \
-	fd-check-1.c fd-check-2.c acconfig.h config.h.in \
+	configure configure.in config.guess config.sub Makefile.in \
+	ssh-askpass.wish check-fds.c host_config.sample config.sample \
+	acconfig.h config.h.in server_config.sample \
 	$(MAN1PAGES) $(MAN8PAGES) $(SRCS) $(EXTRA_SRCS) *.h install-sh \
 	make-ssh-known-hosts.pl make-ssh-known-hosts.1 RFC.nroff RFC rfc-pg.c
 
 DISTNAME = ssh-`sed 's/.*"\(.*\)".*/\1/' version.h`
 
-NORMAL_PROGRAMS = sshd ssh-keygen ssh-askpass ssh-agent ssh-add scp
-PROGRAMS = ssh $(NORMAL_PROGRAMS)
+NORMAL_PROGRAMS = ssh-keygen ssh-askpass ssh-agent ssh-add scp
+SBIN_PROGRAMS = sshd
+PROGRAMS = ssh $(SBIN_PROGRAMS) $(NORMAL_PROGRAMS)
 SSH_PROGRAM = $(bindir)/ssh
 
 all: $(PROGRAMS)
@@ -105,25 +143,25 @@ rfc-pg: rfc-pg.c
 	$(CC) -o rfc-pg rfc-pg.c
 
 .c.o:
-	$(CC) -c -I. -I$(srcdir)/$(GMPDIR) $(DEFS) -DHOST_KEY_FILE=\"$(HOST_KEY_FILE)\" -DHOST_CONFIG_FILE=\"$(HOST_CONFIG_FILE)\" -DSSH_PROGRAM=\"$(SSH_PROGRAM)\" $(CFLAGS) $<
+	$(CC) -c -I. -I$(srcdir)/$(GMPDIR) $(DEFS) -DHOST_KEY_FILE=\"$(HOST_KEY_FILE)\" -DHOST_CONFIG_FILE=\"$(HOST_CONFIG_FILE)\" -DSERVER_CONFIG_FILE=\"$(SERVER_CONFIG_FILE)\" -DSSH_PROGRAM=\"$(SSH_PROGRAM)\" -DETCDIR=\"$(etcdir)\" $(CFLAGS) $<
 
-sshd: $(SSHD_OBJS) $(COMMON_OBJS) $(GMPDEP) $(RSAREFDEP) $(DESDEP)
+sshd: $(SSHD_OBJS) $(COMMON_OBJS) $(GMPDEP) $(RSAREFDEP)
 	-rm -f sshd
 	$(CC) $(LDFLAGS) -o sshd $(SSHD_OBJS) $(COMMON_OBJS) $(GMPLIBS) $(DESLIBS) $(LIBS)
 
-ssh: $(SSH_OBJS) $(COMMON_OBJS) $(GMPDEP) $(RSAREFDEP) $(DESDEP)
+ssh: $(SSH_OBJS) $(COMMON_OBJS) $(GMPDEP) $(RSAREFDEP)
 	-rm -f ssh
 	$(CC) $(LDFLAGS) -o ssh $(SSH_OBJS) $(COMMON_OBJS) $(GMPLIBS) $(DESLIBS) $(LIBS)
 
-ssh-keygen: $(KEYGEN_OBJS) $(COMMON_OBJS) $(GMPDEP) $(RSAREFDEP) $(DESDEP)
+ssh-keygen: $(KEYGEN_OBJS) $(COMMON_OBJS) $(GMPDEP) $(RSAREFDEP)
 	-rm -f ssh-keygen
 	$(CC) $(LDFLAGS) -o ssh-keygen $(KEYGEN_OBJS) $(COMMON_OBJS) $(GMPLIBS) $(DESLIBS) $(LIBS)
 
-ssh-agent: $(AGENT_OBJS) $(COMMON_OBJS) $(GMPDEP) $(RSAREFDEP) $(DESDEP)
+ssh-agent: $(AGENT_OBJS) $(COMMON_OBJS) $(GMPDEP) $(RSAREFDEP)
 	-rm -f ssh-agent
 	$(CC) $(LDFLAGS) -o ssh-agent $(AGENT_OBJS) $(COMMON_OBJS) $(GMPLIBS) $(DESLIBS) $(LIBS)
 
-ssh-add: $(ADD_OBJS) $(COMMON_OBJS) $(GMPDEP) $(RSAREFDEP) $(DESDEP)
+ssh-add: $(ADD_OBJS) $(COMMON_OBJS) $(GMPDEP) $(RSAREFDEP)
 	-rm -f ssh-add
 	$(CC) $(LDFLAGS) -o ssh-add $(ADD_OBJS) $(COMMON_OBJS) $(GMPLIBS) $(DESLIBS) $(LIBS)
 
@@ -136,6 +174,15 @@ ssh-askpass: ssh-askpass.wish
 	echo "#! $(WISH) -f" >ssh-askpass
 	cat $(srcdir)/ssh-askpass.wish >>ssh-askpass
 	chmod +x ssh-askpass
+
+gen_minfd: $(GEN_MINFD_OBJS)
+	$(CC) $(LDFLAGS) -o gen_minfd $(GEN_MINFD_OBJS) $(LIBS)
+
+minfd.o: minfd.h
+minfd.h: gen_minfd
+	rm -f minfd.h minfd.h~
+	./gen_minfd $(USER_SHELLS) > minfd.h~
+	mv -f minfd.h~ minfd.h
 
 GMP_COPY_SOURCES = mpz_gcd.c mpz_powm.c mpz_pow_ui.c mpz_add.c mpz_sub.c \
 		mpz_mul.c mpz_cmp.c mpz_sqrtrem.c
@@ -166,13 +213,33 @@ librsaref.a:
 	$(AR) rc librsaref.a $(RSAREFSRCS:.c=.o)
 	$(RANLIB) librsaref.a
 
+# Creates /etc/ssh_host_key
 generate-host-key:
-	-@if test -f $(HOST_KEY_FILE); \
-          then echo "You already have a host key in $(HOST_KEY_FILE)."; \
+	-@if test -f $(install_prefix)$(HOST_KEY_FILE); \
+          then echo "You already have a host key in $(install_prefix)$(HOST_KEY_FILE)."; \
 	  else \
 	    echo "Generating 1024 bit host key."; \
-	    (echo "$(HOST_KEY_FILE)"; echo ""; echo "")| ./ssh-keygen -b 1024;\
+	    ./ssh-keygen -b 1024 -f $(install_prefix)$(HOST_KEY_FILE) -N ''; \
 	  fi
+
+# Creates install directories
+make-dirs:
+	-if test '!' -d $(install_prefix)$(prefix); then \
+	  mkdir $(install_prefix)$(prefix); fi
+	-if test '!' -d $(install_prefix)$(exec_prefix); then \
+	  mkdir $(install_prefix)$(exec_prefix); fi
+	-if test '!' -d $(install_prefix)$(etcdir); then \
+	  mkdir $(install_prefix)$(etcdir); fi
+	-if test '!' -d $(install_prefix)$(bindir); then \
+	  mkdir $(install_prefix)$(bindir); fi
+	-if test '!' -d $(install_prefix)$(sbindir); then \
+	  mkdir $(install_prefix)$(sbindir); fi
+	-if test '!' -d $(install_prefix)$(mandir); then \
+	  mkdir $(install_prefix)$(mandir); fi
+	-if test '!' -d $(install_prefix)$(man1dir); then \
+	  mkdir $(install_prefix)$(man1dir); fi
+	-if test '!' -d $(install_prefix)$(man8dir); then \
+	  mkdir $(install_prefix)$(man8dir); fi
 
 # Ssh is preferably installed suid root.  It can also be used non-root,
 # but then it cannot connect from a privileged socket, and rhosts
@@ -182,62 +249,82 @@ generate-host-key:
 # (otherwise it can only log in as the user it runs as, and must be
 # bound to a non-privileged port).  Also, password authentication may
 # not be available if non-root and using shadow passwords.
-install: $(PROGRAMS) generate-host-key
-	-if test '!' -d $(prefix); then mkdir $(prefix); fi
-	-if test '!' -d $(bindir); then mkdir $(bindir); fi
-	-if test '!' -d $(mandir); then mkdir $(mandir); fi
-	-if test '!' -d $(man1dir); then mkdir $(man1dir); fi
-	-if test '!' -d $(man8dir); then mkdir $(man8dir); fi
-	$(INSTALL_PROGRAM) -o root -m 4755 ssh $(bindir)/ssh
+install: $(PROGRAMS) make-dirs generate-host-key
+	$(INSTALL_PROGRAM) -o root -m 4755 ssh $(install_prefix)$(bindir)/ssh
 	-if test "`echo ssh | sed '$(transform)'`" '!=' ssh; then \
-	  rm -f $(bindir)/`echo ssh | sed '$(transform)'`; \
-	  $(LN_S) ssh $(bindir)/`echo ssh | sed '$(transform)'`; fi
-	rm -f $(bindir)/slogin
-	$(LN_S) ssh $(bindir)/slogin
+	  rm -f $(install_prefix)$(bindir)/`echo ssh | sed '$(transform)'`; \
+	  $(LN_S) ssh \
+	    $(install_prefix)$(bindir)/`echo ssh | sed '$(transform)'`; fi
+	rm -f $(install_prefix)$(bindir)/slogin
+	$(LN_S) ssh $(install_prefix)$(bindir)/slogin
 	-if test "`echo slogin | sed '$(transform)'`" '!=' slogin; then \
-	  rm -f $(bindir)/`echo slogin | sed '$(transform)'`; \
-	  $(LN_S) ssh $(bindir)/`echo slogin | sed '$(transform)'`; fi
+	  rm -f $(install_prefix)$(bindir)/`echo slogin | sed '$(transform)'`;\
+	  $(LN_S) ssh \
+	    $(install_prefix)$(bindir)/`echo slogin | sed '$(transform)'`; fi
 	-for p in $(NORMAL_PROGRAMS); do \
-	  $(INSTALL_PROGRAM) $$p $(bindir)/$$p; \
+	  $(INSTALL_PROGRAM) $$p $(install_prefix)$(bindir)/$$p; \
 	  if test "`echo $$p | sed '$(transform)'`" '!=' $$p; then \
-	    rm -f $(bindir)/`echo $$p | sed '$(transform)'`; \
-	    $(LN_S) $$p $(bindir)/`echo $$p | sed '$(transform)'`; fi; \
+	    rm -f $(install_prefix)$(bindir)/`echo $$p | sed '$(transform)'`; \
+	    $(LN_S) $$p \
+	      $(install_prefix)$(bindir)/`echo $$p | sed '$(transform)'`; fi; \
+	done
+# Remove $(bindir)/sshd to avoid confusion since it is now in $(sbindir)
+	-rm -f $(install_prefix)$(bindir)/sshd
+	-rm -f $(install_prefix)$(bindir)/`echo sshd | sed '$(transform)'`
+	-for p in $(SBIN_PROGRAMS); do \
+	  $(INSTALL_PROGRAM) $$p $(install_prefix)$(sbindir)/$$p; \
+	  if test "`echo $$p | sed '$(transform)'`" '!=' $$p; then \
+	    rm -f $(install_prefix)$(sbindir)/`echo $$p | sed '$(transform)'`;\
+	    $(LN_S) $$p \
+	      $(install_prefix)$(sbindir)/`echo $$p | sed '$(transform)'`; fi;\
 	done
 	-for p in $(MAN1PAGES); do \
-	  $(INSTALL_DATA) $(srcdir)/$$p $(man1dir)/`echo $$p \
-	      | sed '$(transform)'`; \
+	  $(INSTALL_DATA) $(srcdir)/$$p $(install_prefix)$(man1dir)/$$p ; \
 	  if test "`echo $$p | sed '$(transform)'`" '!=' $$p; then \
-	    rm -f $(bindir)/`echo $$p | sed '$(transform)'`; \
-	    $(LN_S) $$p $(man1dir)/`echo $$p | sed '$(transform)'`; \
+	    rm -f $(install_prefix)$(man1dir)/`echo $$p | sed '$(transform)'`;\
+	    $(LN_S) $$p \
+	      $(install_prefix)$(man1dir)/`echo $$p | sed '$(transform)'`; \
 	  fi; \
 	done
 	-for p in $(MAN8PAGES); do \
-	  $(INSTALL_DATA) $(srcdir)/$$p $(man8dir)/$$p; \
+	  $(INSTALL_DATA) $(srcdir)/$$p $(install_prefix)$(man8dir)/$$p; \
 	  if test "`echo $$p | sed '$(transform)'`" '!=' $$p; then \
-	    rm -f $(bindir)/`echo $$p | sed '$(transform)'`; \
-	    $(LN_S) $$p $(man8dir)/`echo $$p | sed '$(transform)'`; fi; \
+	    rm -f $(install_prefix)$(man8dir)/`echo $$p | sed '$(transform)'`;\
+	    $(LN_S) $$p \
+	      $(install_prefix)$(man8dir)/`echo $$p | sed '$(transform)'`; fi;\
 	done
 	-if test '!' -f $(HOST_CONFIG_FILE); then \
-	  $(INSTALL_DATA) $(srcdir)/host_config.sample $(HOST_CONFIG_FILE); fi
+	  $(INSTALL_DATA) $(srcdir)/host_config.sample \
+	    $(install_prefix)$(HOST_CONFIG_FILE); fi
+	-if test '!' -f $(SERVER_CONFIG_FILE); then \
+	  cat $(srcdir)/server_config.sample | \
+	  sed "s#_ETCDIR_#$(etcdir)#g" >/tmp/ssh_inst.$$; \
+	  $(INSTALL_DATA) /tmp/ssh_inst.$$ \
+	    $(install_prefix)$(SERVER_CONFIG_FILE); \
+	  rm -f /tmp/ssh_inst.$$; fi
 
 uninstall:
-	for p in $(PROGRAMS); do \
-	  rm -f $(bindir)/$$p; \
-	  rm -f $(bindir)/`echo $$p | sed '$(transform)'`; \
+	for p in ssh $(NORMAL_PROGRAMS); do \
+	  rm -f $(install_prefix)$(bindir)/$$p; \
+	  rm -f $(install_prefix)$(bindir)/`echo $$p | sed '$(transform)'`; \
 	done
-	rm -f $(bindir)/slogin
-	rm -f $(bindir)/`echo slogin | sed '$(transform)'`
+	for p in $(SBIN_PROGRAMS); do \
+	  rm -f $(install_prefix)$(sbindir)/$$p; \
+	  rm -f $(install_prefix)$(sbindir)/`echo $$p | sed '$(transform)'`; \
+	done
+	rm -f $(install_prefix)$(bindir)/slogin
+	rm -f $(install_prefix)$(bindir)/`echo slogin | sed '$(transform)'`
 	for p in $(MAN1PAGES); do \
-	  rm -f $(man1dir)/$$p; \
-	  rm -f $(man1dir)/`echo $$p | sed '$(transform)'`; \
+	  rm -f $(install_prefix)$(man1dir)/$$p; \
+	  rm -f $(install_prefix)$(man1dir)/`echo $$p | sed '$(transform)'`; \
 	done
 	for p in $(MAN8PAGES); do \
-	  rm -f $(man8dir)/$$p; \
-	  rm -f $(man8dir)/`echo $$p | sed '$(transform)'`; \
+	  rm -f $(install_prefix)$(man8dir)/$$p; \
+	  rm -f $(install_prefix)$(man8dir)/`echo $$p | sed '$(transform)'`; \
 	done
 
 clean:
-	-rm -f *.o gmon.out core $(PROGRAMS) fd-check-1 fd-check-2
+	-rm -f *.o minfd.h gmon.out core $(PROGRAMS) gen_minfd rfc-pg
 	cd $(GMPDIR); $(MAKE) clean
 #	cd $(RSAREFSRCDIR); rm -f *.o *.a
 

@@ -31,8 +31,9 @@ script accepts several options
  Specific options:
   --with-rsh=PATH	Use rsh specified by PATH when needed
   --with-path=PATH	Default path to pass to user shell.
-  --with-rhosts		Enable .rhosts and hosts.equiv authentication in server
   --with-rsaref		Usa rsaref2 from rsaref2 subdirectory
+  --without-idea	Don't include IDEA.
+  --with-securid[=PATH] Include support for General Dynamics SecurID card.
   --enable-warnings	Adds -Wall to CFLAGS if using gcc.
 
 You may also want to configure the following variables:
@@ -45,6 +46,19 @@ Alternate values can be given to configure in the environment, e.g.:
 (Note that if you have already configured, and later decide to give
 some values on the command line, you may need to say "make distclean"
 before reconfiguring.)
+
+
+CONFIGURATION FILES
+
+The server has a configuration file /etc/sshd_config, which specifies the
+permitted authentication methods, hosts, port number, etc.  The defaults are
+acceptable for most sites, but you may want to check this file.  Its format
+is documented on the sshd manual page.
+
+The client reads a configuration file /etc/ssh_config, which gives
+site-wide defaults for various options.  Options in this file can be
+overridden by per-user configuration files.  The file is documented on
+the ssh manual page.
 
 
 MAKEFILE
@@ -62,42 +76,51 @@ PORTABILITY
 
 This software has been used at least in the following environments.
 
+	386BSD 0.1; i386
 	AIX 3.2.5, 4.1; RS6000, PowerPC
 	BSD/OS 1.1; i486
+	BSD/386 1.1; i386
+	ConvexOS 10.1; Convex
+	DGUX 5.4R2.10; DGUX
 	FreeBSD 1.x, 2.0; Pentium
-	HPUX 9.x, PA
-	IRIX 5.x, SGI Indy
-	Linux 1.2.8 Slackware 2.1.0, i486
-	Mach3, Mips
-	Mach3/Lites, i386
-	NetBSD 1.0A, Pentium
+	HPUX 9.0x; HPPA
+	IRIX 5.2, 5.3; SGI Indy
+	IRIX 6.0.1; Mips-R8000
+	Linux 1.2.8 Slackware 2.1.0; i486
+	Mach3; Mips
+	Mach3/Lites; i386
+	NetBSD 1.0A; Pentium
 	OSF/1 3.0, 3.2, 3.2a; Alpha
 	Solaris 2.3, 2.4; Sparc
-	Sony NEWS-OS 3.3 (BSD 4.3), m68k
+	Sony NEWS-OS 3.3 (BSD 4.3); m68k
 	SunOS 4.1.2, 4.1.3, 4.1.4; Sparc
 	Ultrix x.x; Mips
 
 Please report back any other environments where you have used this,
 and send back any patches you had to do so that they can be integrated
 to the distribution.  The proper address is ssh-bugs@cs.hut.fi.
+Always remember to mention the ssh version number and machine type in
+your bug reports.  Please include also the output of the -v option
+from the client side, and the output of the -d option from the server,
+if applicable.
 
 Not all compilers work in all environments.  If you have problems, try
-compiling with gcc-2.7.  *** SPARC NOTE: I have had problems with
-gcc-2.7.0 on sparc (Solaris 2.3).  Try gcc-2.6.3. ***
+compiling with gcc-2.7.  *** SPARC NOTE: gcc-2.7.0 appears to generate
+bad code on Sparc (Solaris 2.3) when compiling without -O.  Try
+gcc-2.6.3 or compile with -O. ***
 
 
 COMPILING WITH RSAREF2
 
-If you are using ssh in a country where RSA is patented, you may want
-to use the RSAREF2 library from RSADSI.  This may make it legal to use
-ssh without a separate license for non-commercial purposes in those
-countries.  RSAREF2 is not included in the distribution; however, it
-is available on any major ftp site around the world (e.g.,
-ftp://ftp.dsi.unimi.it/pub/security/crypt/math/rsaref2.tar.gz).  The
-rsaref2 distribution should be unpacked into rsaref2 subdirectory in
-the ssh distribution directory (a symbolic link to rsaref is not
-sufficient).  Configure should be given the --with-rsaref
-option.  
+If you are using ssh in the United States, you may want to use the
+RSAREF2 library from RSADSI.  This may make it legal to use ssh
+without a separate license for non-commercial purposes.  RSAREF2 is
+not included in the distribution; however, it is available on any
+major ftp site around the world (e.g.,
+ftp://ftp.funet.fi/pub/crypt/cryptography/asymmetric/rsa/rsaref2.tar.gz).
+The RSAREF2 distribution should be unpacked into "rsaref2" subdirectory
+in the ssh distribution directory (a symbolic link to rsaref2 is not
+sufficient).  Configure should be given the --with-rsaref option.
 
 Using RSAREF outside the United States is not recommended and only
 causes legal complications.

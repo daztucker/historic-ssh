@@ -1,19 +1,17 @@
-Secure Shell is a program to log into another computer over a network,
-to execute commands in a remote machine, and to move files from one
-machine to another.  It provides strong authentication and secure
-communications over insecure channels.  It is inteded as a replacement
-for rlogin, rsh, and rcp.
+Ssh (Secure Shell) is a program to log into another computer over a
+network, to execute commands in a remote machine, and to move files
+from one machine to another.  It provides strong authentication and
+secure communications over insecure channels.  It is inteded as a
+replacement for rlogin, rsh, and rcp.
 
 See the file INSTALL for installation instructions.  See COPYING for
-copying restrictions and legal issues.  See RFC for a description
-of the protocol.  There is a WWW page for ssh; see http://www.cs.hut.fi/ssh.
+license terms and other legal issues.  See RFC for a description of
+the protocol.  There is a WWW page for ssh; see http://www.cs.hut.fi/ssh.
 
-This file has been updated to match ssh-1.0.
+This file has been updated to match ssh-1.2.
 
 
 FEATURES
-
- o  Complete replacement for rlogin, rsh, and rcp.
 
  o  Strong authentication.  Closes several security holes (e.g., IP,
     routing, and DNS spoofing).  New authentication methods: .rhosts
@@ -100,6 +98,8 @@ FEATURES
  o  Automatically executes conventional rsh (after displaying a
     warning) if the server machine is not running sshd.
 
+ o  Complete replacement for rlogin, rsh, and rcp.
+
 
 WHY TO USE SECURE SHELL
 
@@ -148,6 +148,13 @@ diaries, love letters, health care documents, information about their
 personal interests and habits, professional data, job applications,
 tax reports, political documents, unpublished manuscripts, etc.
 
+One should also be aware that economical intelligence and industrial
+espionage has recently become a major priority of the intelligence
+agencies of major government.  President Clinton recently assigned
+economical espionage as the primary task of the CIA, and the French
+have repeatedly been publicly boasting about their achievements on
+this field.
+
 
 There is also another frightening aspect about the poor security of
 communications.  Computer storage and analysis capability has
@@ -169,18 +176,19 @@ not like someone knowing every small thing you have bought in the last
 ten years.
 
 If the government some day starts to move into a more totalitarian
-direction, there is considerable danger of an ultimate totalitarian
-state.  With enough information (the automatically collected records
-of an individual can be manually analyzed when the person becomes
-interesting), one can form a very detailed picture of the individual's
-interests, opinions, beliefs, habits, friends, lovers, weaknesses,
-etc.  This information can be used to 1) locate any persons who might
-oppose the new system 2) use deception to disturb any organizations
-which might rise against the government 3) eliminate difficult
-individuals without anyone understanding what happened.  Additionally,
-if the government can monitor communications too effectively, it
-becomes too easy to locate and eliminate any persons distributing
-information contrary to the official truth.
+direction (one should remember that Nazi Germany was created by
+democratic elections), there is considerable danger of an ultimate
+totalitarian state.  With enough information (the automatically
+collected records of an individual can be manually analyzed when the
+person becomes interesting), one can form a very detailed picture of
+the individual's interests, opinions, beliefs, habits, friends,
+lovers, weaknesses, etc.  This information can be used to 1) locate
+any persons who might oppose the new system 2) use deception to
+disturb any organizations which might rise against the government 3)
+eliminate difficult individuals without anyone understanding what
+happened.  Additionally, if the government can monitor communications
+too effectively, it becomes too easy to locate and eliminate any
+persons distributing information contrary to the official truth.
 
 Fighting crime and terrorism are often used as grounds for domestic
 surveillance and restricting encryption.  These are good goals, but
@@ -213,11 +221,13 @@ available in every country on the Internet.
 Some people would like to make it illegal to use encryption, or to
 force people to use encryption that governments can break.  This
 approach offers no protection if the government turns bad.  Also, the
-"bad guys" will be using true strong encryption anyway.  Thus, any
-"key escrow encryption" or whatever it might be called only serves to
-help monitor the ordinary people and petty criminals; it does not help
-against powerful criminals, terrorists, or espionage, because they
-will know how to use strong encryption anyway.
+"bad guys" will be using true strong encryption anyway.  Good
+encryption techniques are too widely known to make them disappear.
+Thus, any "key escrow encryption" or other restrictions will only help
+monitor ordinary people and petty criminals.  It does not help against
+powerful criminals, terrorists, or espionage, because they will know
+how to use strong encryption anyway.  (One source for internationally
+available encryption software is http://www.cs.hut.fi/crypto.)
 
 
 OVERVIEW OF SECURE SHELL
@@ -242,6 +252,10 @@ The software consists of a number of programs.
    		keys for authentication.
 
    ssh-add	Used to register new keys with the agent.
+
+   make-ssh-known-hosts
+   		Used to create the /etc/ssh_known_hosts file.
+
 
 Ssh is the program users normally use.  It is started as
 
@@ -293,8 +307,8 @@ If there is an authentication agent on the client side, connection to
 it will be automatically forwarded to the server side.
 
 For more infomation, see the manual pages ssh(1), sshd(8), scp(1),
-ssh-keygen(1), ssh-agent(1), and ssh-add(1) included in this
-distribution.
+ssh-keygen(1), ssh-agent(1), ssh-add(1), and make-ssh-known-hosts(1)
+included in this distribution.
 
 
 X11 CONNECTION FORWARDING
@@ -340,6 +354,12 @@ and the recommended way to execute an X11 application in a remote
 machine is
 
   ssh -n host emacs &
+
+If you need to type a password/passphrase for the remote machine,
+
+  ssh -f host emacs
+
+may be useful.
 
 
 
@@ -454,7 +474,7 @@ your house.
 
 Beware that unwanted visitors might come to your home or office and
 use your machine while you are away.  They might also make
-modifications or install bugs to your hardware or software.
+modifications or install bugs in your hardware or software.
 
 Beware that the most effective way for someone to decrypt your data
 may be with a rubber hose.
@@ -471,18 +491,8 @@ permit, and the rumor has it that you cannot get a permit for any
 strong encryption.
 
 This software may be freely imported into the United States; however,
-once it is imported to the United States, it must not be re-exported.
-I have no objections to re-exporting it, but the US government may
-have.  I have been told that you become an international arms dealer
-the moment you transfer cryptographic software out of the United
-States, and "the federal mandatory sentencing guidelines for this
-offence are 41 to 51 months in federal prison".  The rumor has it that
-putting the software available on an ftp site in the US might be
-considered the same as exporting it.  Some say that it is legal to put
-it for ftp as long as you only allow US hosts to retrieve it.  Contact
-the Office of Defence Trade Controls if you need more information.
-Also, please write to your congress and senate representatives to get
-these silly and unconstitutional restrictions dropped.
+the United States Government may consider re-exporting it a criminal
+offence.
 
 Note that any information and cryptographic algorithms used in this
 software are publicly available on the Internet and at any major
@@ -497,7 +507,8 @@ ABOUT THE AUTHOR
 This software was written by Tatu Ylonen <ylo@cs.hut.fi>.  I work as a
 researcher at Helsinki University of Technology, Finland.  For more
 information, see http://www.cs.hut.fi/~ylo/.  My PGP public key is
-available via finger from ylo@cs.hut.fi.  I prefer PGP encrypted mail.
+available via finger from ylo@cs.hut.fi and from the key servers.  I
+prefer PGP encrypted mail.
 
 The author can be contacted via ordinary mail at
   Tatu Ylonen
@@ -514,6 +525,7 @@ ACKNOWLEDGEMENTS
 I thank Tero Kivinen, Timo Rinne, Janne Snabb, and Heikki Suonsivu for
 their help in the design, implementation and porting the this
 software.  Eric Young has kindly provided his DES library for public use.
+Many other people have provided bug reports, patches, code, or other help.
 
 Thanks also go to Philip Zimmermann, whose PGP software and the
 associated legal battle provided inspiration, motivation, and many

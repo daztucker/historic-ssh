@@ -1,7 +1,7 @@
 #ifndef MD5_H
 #define MD5_H
 
-#ifdef __alpha
+#if SIZEOF_LONG == 8
 typedef unsigned int uint32;
 #else
 typedef unsigned long uint32;

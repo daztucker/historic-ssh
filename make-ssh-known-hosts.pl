@@ -28,8 +28,8 @@
 #
 #	  Creation          : 19:52 Jun 27 1995 kivinen
 #	  Last Modification : 10:51 Jul 14 1995 kivinen
-#	  Last check in     : $Date: 1995/07/15 13:26:37 $
-#	  Revision number   : $Revision: 1.2 $
+#	  Last check in     : $Date: 1995/08/29 22:37:39 $
+#	  Revision number   : $Revision: 1.3 $
 #	  State             : $State: Exp $
 #	  Version	    : 1.214
 #	  Edit time	    : 63 min
@@ -37,6 +37,9 @@
 #	  Description       : Make ssh-known-host file from dns data.
 #
 #	  $Log: make-ssh-known-hosts.pl,v $
+# Revision 1.3  1995/08/29  22:37:39  ylo
+# 	Now uses GlobalKnownHostsFile and UserKnownHostsFile.
+#
 # Revision 1.2  1995/07/15  13:26:37  ylo
 # 	Changes from kivinen.
 #
@@ -67,7 +70,7 @@ $nslookup = "nslookup";
 $ping="ping";
 $pingpreoptions=undef;
 $pingpostoptions=undef;
-$ssh="ssh -x -a -o 'FallBackToRsh no'";
+$ssh="ssh -x -a -o 'FallBackToRsh no' -o 'GlobalKnownHostsFile /dev/null' -o 'UserKnownHostsFile /tmp/ssh_known_hosts'";
 $sshdisablepasswordoption="-o 'PasswordAuthentication no'";
 $defserver = '';
 $bell='\a';
@@ -77,7 +80,8 @@ if (!defined($ENV{'HOME'})) {
 	getpwuid($<);
     $ENV{'HOME'} = $dir;
 }
-$private_ssh_known_hosts = "$ENV{'HOME'}/.ssh/known_hosts";
+$private_ssh_known_hosts = "/tmp/ssh_known_hosts";
+unlink($private_ssh_known_hosts);
 $timeout = 60;
 $passwordtimeout = undef;
 $trustdaemon = 0;
@@ -322,7 +326,7 @@ foreach $i (sort (keys %host)) {
 		if ($trusted) {
 		    debug(2, "Ssh to $i succeded");
 		} else {
-		    debug(2, "Ssh to $i failed, using .ssh/known_hosts entry");
+		    debug(2, "Ssh to $i failed, using local known_hosts entry");
 		}
 		@hostnames = ();
 		if (defined($cname{$i})) {
@@ -355,6 +359,7 @@ foreach $i (sort (keys %host)) {
     }
 }
 
+unlink($private_ssh_known_hosts);
 exit (0);
 
 ######################################################################

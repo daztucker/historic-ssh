@@ -16,8 +16,20 @@ validity of the host key.
 */
 
 /*
- * $Id: auth-rsa.c,v 1.7 1997/03/26 05:31:01 kivinen Exp $
+ * $Id: auth-rsa.c,v 1.10 1998/01/15 13:08:30 kivinen Exp $
  * $Log: auth-rsa.c,v $
+ * Revision 1.10  1998/01/15 13:08:30  kivinen
+ * 	Fixed no-X11-forwarding to no-x11-forwarding.
+ *
+ * Revision 1.9  1998/01/03 06:39:47  kivinen
+ * 	Fixed bug in option_compare. Added code that will insert also
+ * 	the last allow/deny forwarding port/to to the table. Fixed
+ * 	count incrementation.
+ *
+ * Revision 1.8  1998/01/02 06:15:25  kivinen
+ * 	Changed option names to be case insensitive. Added
+ * 	{allow,deny}forwarding{port,to} options (commercial version only).
+ *
  * Revision 1.7  1997/03/26 05:31:01  kivinen
  * 	Added support for idle-timeout.
  * 	Added better error message if .ssh directory is missing.
@@ -74,6 +86,7 @@ validity of the host key.
 #include "md5.h"
 #include "mpaux.h"
 #include "userfile.h"
+#include "servconf.h"
 
 /* Flags that may be set in authorized_keys options. */
 extern int no_port_forwarding_flag;
@@ -83,6 +96,7 @@ extern int no_pty_flag;
 extern time_t idle_timeout;
 extern char *forced_command;
 extern struct envstring *custom_environment;
+extern ServerOptions options;
 
 /* Session identifier that is used to bind key exchange and authentication
    responses to a particular session. */
@@ -159,6 +173,29 @@ int auth_rsa_challenge_dialog(RandomState *state, unsigned int bits,
 
   /* Correct answer. */
   return 1;
+}
+
+/* Compare option line to option name. Match only as many characters as there
+   are in the option name, and make the match case insensitive. Return true if
+   the names match, and false otherwise. */
+int option_compare(const char *options_line, const char *option_name)
+{
+  char *tmp;
+  int i, len, ret;
+  
+  len = strlen(option_name);
+  
+  if (strlen(options_line) < len)
+    return 0;
+  
+  tmp = xmalloc(len + 1);
+  for(i = 0; i < len; i++)
+    tmp[i] = tolower(options_line[i]);
+  tmp[i] = '\0';
+
+  ret = strcmp(tmp, option_name);
+  xfree(tmp);
+  return (ret == 0);
 }
 
 /* Performs the RSA authentication dialog with the client.  This returns
@@ -242,7 +279,10 @@ int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state,
   while (userfile_gets(line, sizeof(line), uf))
     {
       char *cp;
-      char *options;
+      char *opts;
+#ifdef F_SECURE_COMMERCIAL
+
+#endif /* F_SECURE_COMMERCIAL */
 
       linenum++;
 
@@ -260,7 +300,7 @@ int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state,
       if (*cp < '0' || *cp > '9')
 	{
 	  int quoted = 0;
-	  options = cp;
+	  opts = cp;
 	  for (; *cp && (quoted || (*cp != ' ' && *cp != '\t')); cp++)
 	    {
 	      if (*cp == '\\' && cp[1] == '"')
@@ -271,7 +311,7 @@ int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state,
 	    }
 	}
       else
-	options = NULL;
+	opts = NULL;
       
       /* Parse the key from the line. */
       if (!auth_rsa_read_key(&cp, &bits, &e, &n))
@@ -306,104 +346,235 @@ int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state,
       authenticated = 1;
 
       /* RSA part of authentication was accepted.  Now process the options. */
-      if (options)
+      if (opts)
 	{
-	  while (*options && *options != ' ' && *options != '\t')
+	  while (*opts && *opts != ' ' && *opts != '\t')
 	    {
 	      cp = "no-port-forwarding";
-	      if (strncmp(options, cp, strlen(cp)) == 0)
+	      if (option_compare(opts, cp))
 		{
 		  packet_send_debug("Port forwarding disabled.");
 		  no_port_forwarding_flag = 1;
-		  options += strlen(cp);
+		  opts += strlen(cp);
 		  goto next_option;
 		}
 	      cp = "no-agent-forwarding";
-	      if (strncmp(options, cp, strlen(cp)) == 0)
+	      if (option_compare(opts, cp))
 		{
 		  packet_send_debug("Agent forwarding disabled.");
 		  no_agent_forwarding_flag = 1;
-		  options += strlen(cp);
+		  opts += strlen(cp);
 		  goto next_option;
 		}
-	      cp = "no-X11-forwarding";
-	      if (strncmp(options, cp, strlen(cp)) == 0)
+	      cp = "no-x11-forwarding";
+	      if (option_compare(opts, cp))
 		{
 		  packet_send_debug("X11 forwarding disabled.");
 		  no_x11_forwarding_flag = 1;
-		  options += strlen(cp);
+		  opts += strlen(cp);
 		  goto next_option;
 		}
 	      cp = "no-pty";
-	      if (strncmp(options, cp, strlen(cp)) == 0)
+	      if (option_compare(opts, cp))
 		{
 		  packet_send_debug("Pty allocation disabled.");
 		  no_pty_flag = 1;
-		  options += strlen(cp);
+		  opts += strlen(cp);
 		  goto next_option;
 		}
 	      cp = "idle-timeout=";
-	      if (strncmp(options, cp, strlen(cp)) == 0)
+	      if (option_compare(opts, cp))
 		{
 		  int value;
-		  options += strlen(cp);
+		  opts += strlen(cp);
 		  value = 0;
-		  while(isdigit(*options))
+		  while(isdigit(*opts))
 		    {
 		      value *= 10;
-		      value += *options - '0';
-		      options++;
+		      value += *opts - '0';
+		      opts++;
 		    }
-		  *options = tolower(*options);
-		  if (*options == 'w') /* Weeks */
+		  *opts = tolower(*opts);
+		  if (*opts == 'w') /* Weeks */
 		    {
 		      value *= 7 * 24 * 60 * 60;
-		      options++;
+		      opts++;
 		    }
-		  else if (*options == 'd') /* Days */
+		  else if (*opts == 'd') /* Days */
 		    {
 		      value *= 24 * 60 * 60;
-		      options++;
+		      opts++;
 		    }
-		  else if (*options == 'h') /* Hours */
+		  else if (*opts == 'h') /* Hours */
 		    {
 		      value *= 60 * 60;
-		      options++;
+		      opts++;
 		    }
-		  else if (*options == 'm') /* Minutes */
+		  else if (*opts == 'm') /* Minutes */
 		    {
 		      value *= 60;
-		      options++;
+		      opts++;
 		    }
-		  else if (*options == 's')
+		  else if (*opts == 's')
 		    {
-		      options++;
+		      opts++;
 		    }
 		  packet_send_debug("Idle timeout set to %d seconds.",
 				    value);
 		  idle_timeout = value;
 		  goto next_option;
 		}
+#ifdef F_SECURE_COMMERCIAL
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#endif /* F_SECURE_COMMERCIAL */
 	      cp = "command=\"";
-	      if (strncmp(options, cp, strlen(cp)) == 0)
+	      if (option_compare(opts, cp))
 		{
 		  int i;
-		  options += strlen(cp);
-		  forced_command = xmalloc(strlen(options) + 1);
+		  opts += strlen(cp);
+		  forced_command = xmalloc(strlen(opts) + 1);
 		  i = 0;
-		  while (*options)
+		  while (*opts)
 		    {
-		      if (*options == '"')
+		      if (*opts == '"')
 			break;
-		      if (*options == '\\' && options[1] == '"')
+		      if (*opts == '\\' && opts[1] == '"')
 			{
-			  options += 2;
+			  opts += 2;
 			  forced_command[i++] = '"';
 			  continue;
 			}
-		      forced_command[i++] = *options++;
+		      forced_command[i++] = *opts++;
 		    }
-		  if (!*options)
+		  if (!*opts)
 		    {
 		      debug("%.100s, line %lu: missing end quote",
 			    SSH_USER_PERMITTED_KEYS, linenum);
@@ -413,31 +584,31 @@ int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state,
 		    }
 		  forced_command[i] = 0;
 		  packet_send_debug("Forced command: %.900s", forced_command);
-		  options++;
+		  opts++;
 		  goto next_option;
 		}
 	      cp = "environment=\"";
-	      if (strncmp(options, cp, strlen(cp)) == 0)
+	      if (option_compare(opts, cp))
 		{
 		  int i;
 		  char *s;
 		  struct envstring *new_envstring;
-		  options += strlen(cp);
-		  s = xmalloc(strlen(options) + 1);
+		  opts += strlen(cp);
+		  s = xmalloc(strlen(opts) + 1);
 		  i = 0;
-		  while (*options)
+		  while (*opts)
 		    {
-		      if (*options == '"')
+		      if (*opts == '"')
 			break;
-		      if (*options == '\\' && options[1] == '"')
+		      if (*opts == '\\' && opts[1] == '"')
 			{
-			  options += 2;
+			  opts += 2;
 			  s[i++] = '"';
 			  continue;
 			}
-		      s[i++] = *options++;
+		      s[i++] = *opts++;
 		    }
-		  if (!*options)
+		  if (!*opts)
 		    {
 		      debug("%.100s, line %lu: missing end quote",
 			    SSH_USER_PERMITTED_KEYS, linenum);
@@ -448,7 +619,7 @@ int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state,
 		  s[i] = 0;
 		  packet_send_debug("Adding to environment: %.900s", s);
 		  debug("Adding to environment: %.900s", s);
-		  options++;
+		  opts++;
 		  new_envstring = xmalloc(sizeof(struct envstring));
 		  new_envstring->s = s;
 		  new_envstring->next = custom_environment;
@@ -456,25 +627,25 @@ int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state,
 		  goto next_option;
 		}
 	      cp = "from=\"";
-	      if (strncmp(options, cp, strlen(cp)) == 0)
+	      if (option_compare(opts, cp))
 		{
-		  char *patterns = xmalloc(strlen(options) + 1);
+		  char *patterns = xmalloc(strlen(opts) + 1);
 		  int i;
-		  options += strlen(cp);
+		  opts += strlen(cp);
 		  i = 0;
-		  while (*options)
+		  while (*opts)
 		    {
-		      if (*options == '"')
+		      if (*opts == '"')
 			break;
-		      if (*options == '\\' && options[1] == '"')
+		      if (*opts == '\\' && opts[1] == '"')
 			{
-			  options += 2;
+			  opts += 2;
 			  patterns[i++] = '"';
 			  continue;
 			}
-		      patterns[i++] = *options++;
+		      patterns[i++] = *opts++;
 		    }
-		  if (!*options)
+		  if (!*opts)
 		    {
 		      debug("%.100s, line %lu: missing end quote",
 			    SSH_USER_PERMITTED_KEYS, linenum);
@@ -483,7 +654,7 @@ int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state,
 		      continue;
 		    }
 		  patterns[i] = 0;
-		  options++;
+		  opts++;
 		  if (!match_hostname(get_canonical_hostname(), patterns,
 				     strlen(patterns)) &&
 		      !match_hostname(get_remote_ipaddr(), patterns,
@@ -505,22 +676,22 @@ int auth_rsa(struct passwd *pw, MP_INT *client_n, RandomState *state,
 	    bad_option:
 	      /* Unknown option. */
 	      log_msg("Bad options in %.100s file, line %lu: %.50s",
-		  SSH_USER_PERMITTED_KEYS, linenum, options);
+		  SSH_USER_PERMITTED_KEYS, linenum, opts);
 	      packet_send_debug("Bad options in %.100s file, line %lu: %.50s",
-				SSH_USER_PERMITTED_KEYS, linenum, options);
+				SSH_USER_PERMITTED_KEYS, linenum, opts);
 	      authenticated = 0;
 	      break;
 
 	    next_option:
 	      /* Skip the comma, and move to the next option (or break out
 		 if there are no more). */
-	      if (!*options)
+	      if (!*opts)
 		fatal("Bugs in auth-rsa.c option processing.");
-	      if (*options == ' ' || *options == '\t')
+	      if (*opts == ' ' || *opts == '\t')
 		break; /* End of options. */
-	      if (*options != ',')
+	      if (*opts != ',')
 		goto bad_option;
-	      options++;
+	      opts++;
 	      /* Process the next option. */
 	      continue;
 	    }

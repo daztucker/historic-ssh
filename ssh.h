@@ -14,8 +14,28 @@ Generic header file for ssh.
 */
 
 /*
- * $Id: ssh.h,v 1.10 1996/10/29 22:46:55 kivinen Exp $
+ * $Id: ssh.h,v 1.16 1997/03/27 03:11:13 kivinen Exp $
  * $Log: ssh.h,v $
+ * Revision 1.16  1997/03/27 03:11:13  kivinen
+ * 	Added kerberos patches from Glenn Machin.
+ *
+ * Revision 1.15  1997/03/26 07:12:09  kivinen
+ * 	Fixed prototypes.
+ * 	Added UID_ROOT define.
+ *
+ * Revision 1.14  1997/03/19 17:44:13  kivinen
+ * 	Added TISAuthentication stuff from Andre April
+ * 	<Andre.April@cediti.be>.
+ *
+ * Revision 1.13  1996/12/04 18:14:30  ttsalo
+ *     Added new option, LOCAL_HOSTNAME_IN_DEBUG
+ *
+ * Revision 1.12  1996/11/24 08:27:48  kivinen
+ * 	Fixed auth_input_request_forwarding prototype.
+ *
+ * Revision 1.11  1996/11/05 16:03:00  ttsalo
+ *       Removed the get_permanent_fd prototype
+ *
  * Revision 1.10  1996/10/29 22:46:55  kivinen
  * 	Changed PROTOCOL_MINOR from 4 to 5.
  * 	log -> log_msg.
@@ -244,12 +264,35 @@ only by root, whereas ssh_config should be world-readable. */
    protocol.)  */
 #define SSH_SESSION_KEY_LENGTH		32
 
+#ifdef KERBEROS
+#ifdef KRB5
+#include <krb5.h>
+#define KRB_SERVICE_NAME                "host"
+#endif /* KRB5 */
+#endif /* KERBEROS */
+
 /* Authentication methods.  New types can be added, but old types should not
    be removed for compatibility.  The maximum allowed value is 31. */
 #define SSH_AUTH_RHOSTS		1
 #define SSH_AUTH_RSA		2
 #define SSH_AUTH_PASSWORD	3
 #define SSH_AUTH_RHOSTS_RSA	4
+#define SSH_AUTH_TIS		5
+#define SSH_AUTH_KREBEROS	6
+#define SSH_PASS_KERBEROS_TGT	7
+
+/* These are reserved for official patches, do not use them */
+#define SSH_AUTH_RESERVED_1	8
+#define SSH_AUTH_RESERVED_2	9
+#define SSH_AUTH_RESERVED_3	10
+#define SSH_AUTH_RESERVED_4	11
+#define SSH_AUTH_RESERVED_5	12
+#define SSH_AUTH_RESERVED_6	13
+#define SSH_AUTH_RESERVED_7	14
+#define SSH_AUTH_RESERVED_8	15
+
+/* If you add new methods add them after this using random number between 16-31
+   so if someone else adds also new methods you dont use same number. */
 
 /* Protocol flags.  These are bit masks. */
 #define SSH_PROTOFLAG_SCREEN_NUMBER	1 /* X11 forwarding includes screen */
@@ -304,6 +347,30 @@ only by root, whereas ssh_config should be world-readable. */
 #define SSH_MSG_DEBUG				36	/* string */
 #define SSH_CMSG_REQUEST_COMPRESSION		37	/* level 1-9 (int) */
 #define SSH_CMSG_MAX_PACKET_SIZE		38	/* max_size (int) */
+
+/* Support for TIS authentication server
+   Contributed by Andre April <Andre.April@cediti.be>. */
+#define SSH_CMSG_AUTH_TIS			39	/* */
+#define SSH_SMSG_AUTH_TIS_CHALLENGE		40	/* string */
+#define SSH_CMSG_AUTH_TIS_RESPONSE		41	/* pass (string) */
+
+/* Support for kerberos authentication by Glenn Machin and Dug Song
+   <dugsong@umich.edu> */
+#define SSH_CMSG_AUTH_KERBEROS                  42      /* string (KTEXT) */
+#define SSH_SMSG_AUTH_KERBEROS_RESPONSE         43      /* string (KTEXT) */
+#define SSH_CMSG_HAVE_KERBEROS_TGT              44      /* string (credentials) */
+
+/* Reserved for official extensions, do not use these */
+#define SSH_CMSG_RESERVED_START			45
+#define SSH_CMSG_RESERVED_END			63
+
+/* If ou add new messages add them starting from something after 64, better to
+   use some random number between 64-127 so if someone else adds something else
+   you dont use same numbers */
+
+
+/* define this and debug() will print local hostname */
+#define LOCAL_HOSTNAME_IN_DEBUG 1
 
 /* Includes that need definitions above. */
 
@@ -368,7 +435,12 @@ int auth_rhosts_rsa(RandomState *state,
 
 /* Tries to authenticate the user using password.  Returns true if
    authentication succeeds. */
+#if defined(KERBEROS) && defined(KRB5)
+int auth_password(const char *server_user, const char *password,
+		  krb5_principal client);
+#else /* defined(KERBEROS) && defined(KRB5) */
 int auth_password(const char *server_user, const char *password);
+#endif /* defined(KERBEROS) && defined(KRB5) */
 
 /* Performs the RSA authentication dialog with the client.  This returns
    0 if the client could not be authenticated, and 1 if authentication was
@@ -668,8 +740,10 @@ char *auth_get_socket_name(void);
 void auth_delete_socket(void *context);
 
 /* This if called to process SSH_CMSG_AGENT_REQUEST_FORWARDING on the server.
-   This starts forwarding authentication requests. */
-void auth_input_request_forwarding(struct passwd *pw);
+   This starts forwarding authentication requests. This returns true if
+   everything succeeds, otherwise it will return false (agent forwarding
+   disabled). */
+int auth_input_request_forwarding(struct passwd *pw);
 
 /* This is called to process an SSH_SMSG_AGENT_OPEN message. */
 void auth_input_open_request(void);
@@ -681,11 +755,6 @@ int match_pattern(const char *s, const char *pattern);
 /* Expands tildes in the file name.  Returns data allocated by xmalloc.
    Warning: this calls getpw*. */
 char *tilde_expand_filename(const char *filename, uid_t my_uid);
-
-/* Gets a file descriptor that won't get closed by shell pathname.
-   If pathname is NULL, the path is inferred from the SHELL environment
-   variable or the user id. */
-int get_permanent_fd(const char *pathname);
 
 /* Performs the interactive session.  This handles data transmission between
    the client and the program.  Note that the notion of stdin, stdout, and
@@ -709,14 +778,20 @@ struct envstring {
 /* Sets signal handlers so that core dumps are prevented.  This also
    sets the maximum core dump size to zero as an extra precaution (where
    supported).  The old core dump size limit is saved. */
-void signals_prevent_core();
+void signals_prevent_core(void);
 
 /* Sets all signals to their default state.  Restores RLIMIT_CORE previously
    saved by prevent_core(). */
-void signals_reset();
+void signals_reset(void);
 
-/* Global variable */
+/* Global variables */
 
 extern uid_t original_real_uid;
+
+#ifdef AMIGA
+#define UID_ROOT 65535
+#else
+#define UID_ROOT 0
+#endif
 
 #endif /* SSH_H */

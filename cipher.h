@@ -8,9 +8,18 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Wed Apr 19 16:50:42 1995 ylo
-Last modified: Wed Jul 12 00:14:13 1995 ylo
 
 */
+
+/*
+ * $Id: cipher.h,v 1.2 1995/07/13 01:19:52 ylo Exp $
+ * $Log: cipher.h,v $
+ * Revision 1.2  1995/07/13  01:19:52  ylo
+ * 	Removed "Last modified" header.
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
 
 #ifndef CIPHER_H
 #define CIPHER_H

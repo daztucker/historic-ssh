@@ -8,8 +8,25 @@
 #
 # Created: Wed Mar 22 18:02:48 1995 ylo
 #
-# $Id: configure.in,v 1.43 1997/04/05 21:46:36 kivinen Exp $
+# $Id: configure.in,v 1.46 1997/04/22 23:59:59 kivinen Exp $
 # $Log: configure.in,v $
+# Revision 1.46  1997/04/22 23:59:59  kivinen
+# 	Fixed SIGINFO check.
+# 	Added check that getpseudotty function exists before using.
+# 	Added check that spwd struct have sp_expire and sp_inact
+# 	fields.
+# 	Added WARPLIBS stuff.
+#
+# Revision 1.45  1997/04/21 01:03:05  kivinen
+# 	Fixed linux shadow password pw_encrypt function detection. It
+# 	seems to be in libshadow, not in the same library as getspnam.
+# 	Added AC_MSG_CHECKING/AC_MSG_RESULT to AC_EGREP_HEADER stuff.
+# 	Added AC_CHECK_FUNCS(waitpid).
+#
+# Revision 1.44  1997/04/17 03:58:29  kivinen
+# 	Added --enable-deprecated-linux-pw-encrypt support.
+# 	Fixed $HOME/MailBox to $HOME/Mailbox.
+#
 # Revision 1.43  1997/04/05 21:46:36  kivinen
 # 	Added check for $HOME/MailBox.
 # 	Added KRB5 define, added -lcom_err to KERBEROS_LIBS. Added
@@ -491,6 +508,26 @@ Fix the /usr/include/prot.h to include correct file. You can also copy
       AC_DEFINE(HAVE_ETC_SHADOW)
     fi
     no_shadows_password_checking=yes
+    AC_CHECK_FUNCS(pw_encrypt, pwencrypt=yes)
+    if test $ac_cv_func_pw_encrypt = no; then
+      AC_CHECK_LIB(shadow, pw_encrypt, [
+	pwencrypt=yes
+	pwencryptlib="-lshadow" ])
+    fi
+    AC_MSG_CHECKING([whether to enable pw_encrypt])
+    AC_ARG_ENABLE(deprecated-linux-pw-encrypt,
+[  --enable-deprecated-linux-pw-encrypt
+                          Enable using of deprecated linx pw_encrypt function.],
+[     if test -z "$pwencrypt"; then
+	AC_MSG_RESULT(no)
+      else
+	AC_DEFINE(crypt,pw_encrypt)
+	AC_MSG_RESULT(no)
+	if test -n "$pwencryptlib"; then
+	  LIBS="$LIBS $pwencryptlib"
+	fi
+      fi ],
+      AC_MSG_RESULT(no) )
     ;;
   i*86-*-bsdi2.1*)
     no_pipe=yes
@@ -516,7 +553,7 @@ Fix the /usr/include/prot.h to include correct file. You can also copy
   m68k-apple-aux*)
     # Macintosh A/UX tweaks - prune LIB = -L/usr/local/lib, exceeds ld capacity
     #   add -lposix to it, needed for termio stuff
-    LIBS="-lposix"
+    LIBS="$LIBS -lposix"
     AC_DEFINE(_POSIX_SOURCE)
     ;;
   m88k-dg-dgux*)
@@ -602,12 +639,13 @@ if test -n "$GCC"; then
 fi
 fi
 
+AC_MSG_CHECKING([whether to enable -Wall])
 AC_ARG_ENABLE(warnings,
 [  --enable-warnings       Enable -Wall if using gcc.],
 [ if test -n "$GCC"; then 
-    AC_MSG_RESULT(Adding -Wall to CFLAGS.)
+    AC_MSG_RESULT(adding -Wall to CFLAGS.)
     CFLAGS="$CFLAGS -Wall"
-  fi])
+  fi],AC_MSG_RESULT(no))
 
 AC_TYPE_SIGNAL
 AC_TYPE_SIZE_T
@@ -639,11 +677,26 @@ AC_CHECK_HEADERS(paths.h usersec.h utime.h netinet/in_systm.h netinet/in_system.
 AC_HEADER_TIME
 AC_HEADER_DIRENT
 AC_HEADER_STAT
-AC_EGREP_HEADER(ut_pid, utmp.h, AC_DEFINE(HAVE_PID_IN_UTMP))
-AC_EGREP_HEADER(ut_name, utmp.h, AC_DEFINE(HAVE_NAME_IN_UTMP))
-AC_EGREP_HEADER(ut_id, utmp.h, AC_DEFINE(HAVE_ID_IN_UTMP))
-AC_EGREP_HEADER(ut_host, utmp.h, AC_DEFINE(HAVE_HOST_IN_UTMP))
-AC_EGREP_HEADER(ut_addr, utmp.h, AC_DEFINE(HAVE_ADDR_IN_UTMP))
+AC_MSG_CHECKING([whether utmp have ut_pid field])
+AC_EGREP_HEADER(ut_pid, utmp.h, [ AC_DEFINE(HAVE_PID_IN_UTMP)
+  AC_MSG_RESULT(yes)], AC_MSG_RESULT(no))
+AC_MSG_CHECKING([whether utmp have ut_name field])
+AC_EGREP_HEADER(ut_name, utmp.h, [ AC_DEFINE(HAVE_NAME_IN_UTMP)
+  AC_MSG_RESULT(yes)], AC_MSG_RESULT(no))
+AC_MSG_CHECKING([whether utmp have ut_id field])
+AC_EGREP_HEADER(ut_id, utmp.h, [ AC_DEFINE(HAVE_ID_IN_UTMP)
+  AC_MSG_RESULT(yes)], AC_MSG_RESULT(no))
+AC_MSG_CHECKING([whether utmp have ut_host field])
+AC_EGREP_HEADER(ut_host, utmp.h, [ AC_DEFINE(HAVE_HOST_IN_UTMP)
+  AC_MSG_RESULT(yes)], AC_MSG_RESULT(no))
+AC_MSG_CHECKING([whether utmp have ut_addr field])
+AC_EGREP_HEADER(ut_addr, utmp.h, [ AC_DEFINE(HAVE_ADDR_IN_UTMP)
+  AC_MSG_RESULT(yes)], AC_MSG_RESULT(no))
+AC_MSG_CHECKING([whether you have incompatible SIGINFO macro])
+AC_EGREP_CPP([p_siginfo], [#include <sys/siginfo.h>
+SIGINFO(p,1)], 
+[ AC_DEFINE(HAVE_INCOMPATIBLE_SIGINFO)
+  AC_MSG_RESULT(yes)] , AC_MSG_RESULT(no))
 
 AC_CHECK_LIB(c, crypt, [true], AC_CHECK_LIB(crypt, crypt))
 AC_CHECK_LIB(sec, getspnam)
@@ -678,7 +731,7 @@ fi
 AC_CHECK_FUNCS(gettimeofday times getrusage ftruncate revoke makeutx)
 AC_CHECK_FUNCS(strchr memcpy setlogin openpty _getpty clock fchmod ulimit)
 AC_CHECK_FUNCS(gethostname getdtablesize umask innetgr initgroups setpgrp)
-AC_CHECK_FUNCS(setpgid daemon)
+AC_CHECK_FUNCS(setpgid daemon waitpid)
 
 AC_REPLACE_FUNCS(strerror memmove remove random putenv crypt socketpair)
 
@@ -716,8 +769,9 @@ if test "x$PERL" = "xnot found" || $PERL -e 'exit ($] >= 5)'; then
   AC_MSG_WARN(perl version 5 not found - make-ssh-known-hosts will not work)
 fi
 
+AC_CHECK_FUNCS(getpseudotty)
 AC_MSG_CHECKING(for pseudo ttys)
-if test -c /dev/getpty
+if test -c /dev/getpty && test $ac_cv_func_getpseudotty = yes
 then
   AC_DEFINE(HAVE_GETPSEUDOTTY)
   AC_MSG_RESULT(getpseudotty)
@@ -763,6 +817,12 @@ if test -z "$no_shadows_password_checking"; then
       # have getspent in a system library.  However, a libshadow.a library
       # contaning these is publicly available.
       AC_CHECK_LIB(shadow, getspent)
+      AC_MSG_CHECKING([whether spwd have sp_expire field])
+      AC_EGREP_HEADER(sp_expire, shadow.h, [ AC_DEFINE(HAVE_STRUCT_SPWD_EXPIRE)
+      	AC_MSG_RESULT(yes)], AC_MSG_RESULT(no))
+      AC_MSG_CHECKING([whether spwd have sp_inact field])
+      AC_EGREP_HEADER(sp_inact, shadow.h, [ AC_DEFINE(HAVE_STRUCT_SPWD_INACT)
+      	AC_MSG_RESULT(yes)], AC_MSG_RESULT(no))
     else
       AC_MSG_RESULT(no)
     fi
@@ -786,10 +846,10 @@ do
       AC_DEFINE_UNQUOTED(MAIL_SPOOL_FILE, ".MailBox")
       AC_MSG_RESULT(\$HOME/.MailBox)
     else
-      if test -f $HOME/MailBox; then
-          AC_MSG_WARN(mail spool directory was not found: assuming you use \$HOME/MailBox)
-          AC_DEFINE_UNQUOTED(MAIL_SPOOL_FILE, "MailBox")
-          AC_MSG_RESULT(\$HOME/MailBox)
+      if test -f $HOME/Mailbox; then
+          AC_MSG_WARN(mail spool directory was not found: assuming you use \$HOME/Mailbox)
+          AC_DEFINE_UNQUOTED(MAIL_SPOOL_FILE, "Mailbox")
+          AC_MSG_RESULT(\$HOME/Mailbox)
       else
           AC_MSG_WARN(mail spool directory was not found: assuming you use \$HOME/newmail)
           AC_DEFINE_UNQUOTED(MAIL_SPOOL_FILE, "newmail")
@@ -1181,25 +1241,30 @@ AC_ARG_WITH(libwrap,
     AC_MSG_RESULT(yes)
     AC_CHECK_LIB(wrap, request_init, [
 	AC_DEFINE(LIBWRAP)
-        LIBS="-lwrap $LIBS"
+        WRAPLIBS="-lwrap"
         AC_DEFINE(HAVE_LIBWRAP) ])
     ;;
   *)
     AC_MSG_RESULT(yes)
     AC_DEFINE(LIBWRAP)
     if test -d "$withval"; then
-    	LIBS="-L$withval -lwrap $LIBS"
+    	WRAPLIBS="-L$withval -lwrap"
     else
-	LIBS="$withval $LIBS"
+	WRAPLIBS="$withval"
     fi
+    OLDLIBS="$LIBS"
+    LIBS="$WRAPLIBS $LIBS"
     AC_TRY_LINK([ int allow_severity; int deny_severity; ],
                 [ hosts_access(); ],
 		[],
 		[ AC_MSG_ERROR(Could not find the $withval library.  You must first install tcp_wrappers.) ])
+    LIBS="$OLDLIBS"
     ;;
   esac ],
   AC_MSG_RESULT(no)
 )
+
+AC_SUBST(WRAPLIBS)
 
 AC_MSG_CHECKING(whether to support SOCKS)
 AC_ARG_WITH(socks,

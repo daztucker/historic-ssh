@@ -8,8 +8,14 @@
 #
 # Created: Wed Mar 22 17:37:49 1995 ylo
 #
-# $Id: Makefile.in,v 1.31 1997/04/05 21:43:50 kivinen Exp $
+# $Id: Makefile.in,v 1.33 1997/04/22 23:56:10 kivinen Exp $
 # $Log: Makefile.in,v $
+# Revision 1.33  1997/04/22 23:56:10  kivinen
+# 	Added WARPLIBS.
+#
+# Revision 1.32  1997/04/17 03:53:52  kivinen
+# 	Fixed typo in SBIN_PROGRAMS backup copy mv.
+#
 # Revision 1.31  1997/04/05 21:43:50  kivinen
 # 	Changed make install so it will rename old ssh to ssh.old and
 # 	then install new version.
@@ -217,6 +223,8 @@ KERBEROS_OBJS   = @KERBEROS_OBJS@
 
 RSAREFDEP	= @RSAREFDEP@
 
+WRAPLIBS	= @WRAPLIBS@
+
 SSH_INSTALL_MODE= @SSHINSTALLMODE@
 
 transform	= @program_transform_name@
@@ -333,12 +341,12 @@ rfc-pg: rfc-pg.o
 sshd: $(SSHD_OBJS) $(GMPDEP) $(RSAREFDEP) $(ZLIBDEP)
 	-rm -f sshd
 	$(CC) $(LDFLAGS) -o sshd $(SSHD_OBJS) \
-		$(KERBEROS_LIBS) $(GMPLIBS) $(ZLIBLIBS) $(LIBS)
+		$(KERBEROS_LIBS) $(GMPLIBS) $(ZLIBLIBS) $(WRAPLIBS) $(LIBS)
 
 ssh: $(SSH_OBJS) $(GMPDEP) $(RSAREFDEP) $(ZLIBDEP)
 	-rm -f ssh
 	$(CC) $(LDFLAGS) -o ssh $(SSH_OBJS) \
-		$(KERBEROS_LIBS) $(GMPLIBS) $(ZLIBLIBS) $(LIBS)
+		$(KERBEROS_LIBS) $(GMPLIBS) $(ZLIBLIBS) $(WRAPLIBS) $(LIBS)
 
 ssh-keygen: $(KEYGEN_OBJS) $(GMPDEP) $(RSAREFDEP)
 	-rm -f ssh-keygen
@@ -470,7 +478,7 @@ install: $(PROGRAMS) make-dirs generate-host-key install-configs
 	done
 	-for p in $(SBIN_PROGRAMS); do \
 	  rm -f $(install_prefix)$(sbindir)/$$p.old ; \
-	  mv $(install_prefix)$(bindir)/$$p $(install_prefix)$(sbindir)/$$p.old; \
+	  mv $(install_prefix)$(sbindir)/$$p $(install_prefix)$(sbindir)/$$p.old; \
 	  $(INSTALL_PROGRAM) -m 0755 $$p $(install_prefix)$(sbindir)/$$p; \
 	  if test "`echo $$p | sed '$(transform)'`" '!=' $$p; then \
 	    rm -f $(install_prefix)$(sbindir)/`echo $$p | sed '$(transform)'`;\

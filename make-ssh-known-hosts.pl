@@ -27,16 +27,19 @@
 #	  (C) Tero Kivinen 1995 <Tero.Kivinen@hut.fi>
 #
 #	  Creation          : 19:52 Jun 27 1995 kivinen
-#	  Last Modification : 06:15 Mar 26 1997 kivinen
-#	  Last check in     : $Date: 1997/03/26 07:14:01 $
-#	  Revision number   : $Revision: 1.2 $
+#	  Last Modification : 03:14 Apr 17 1997 kivinen
+#	  Last check in     : $Date: 1997/04/17 04:21:27 $
+#	  Revision number   : $Revision: 1.3 $
 #	  State             : $State: Exp $
-#	  Version	    : 1.332
-#	  Edit time	    : 235 min
+#	  Version	    : 1.334
+#	  Edit time	    : 236 min
 #
 #	  Description       : Make ssh-known-host file from dns data.
 #
 #	  $Log: make-ssh-known-hosts.pl,v $
+#	  Revision 1.3  1997/04/17 04:21:27  kivinen
+#	  	Changed to use 3des by default.
+#
 #	  Revision 1.2  1997/03/26 07:14:01  kivinen
 #	  	Added EWOULDBLOCK.
 #
@@ -70,7 +73,7 @@ use POSIX;
 use Socket;
 use Fcntl;
 
-$version = ' $Id: make-ssh-known-hosts.pl,v 1.2 1997/03/26 07:14:01 kivinen Exp $ ';
+$version = ' $Id: make-ssh-known-hosts.pl,v 1.3 1997/04/17 04:21:27 kivinen Exp $ ';
 
 $command_line = "$0 ";
 foreach $a (@ARGV) {
@@ -98,7 +101,7 @@ $recursive = 1;
 
 $nslookup = "nslookup";
 
-$ssh="ssh -a -c rc4 -x -o 'ConnectionAttempts 1' -o 'FallBackToRsh no' -o 'GlobalKnownHostsFile /dev/null' -o 'KeepAlive yes' -o 'StrictHostKeyChecking no' -o 'UserKnownHostsFile $private_ssh_known_hosts'";
+$ssh="ssh -a -c 3des -x -o 'ConnectionAttempts 1' -o 'FallBackToRsh no' -o 'GlobalKnownHostsFile /dev/null' -o 'KeepAlive yes' -o 'StrictHostKeyChecking no' -o 'UserKnownHostsFile $private_ssh_known_hosts'";
 $sshdisablepasswordoption="-o 'BatchMode yes' -o 'PasswordAuthentication no'";
 
 ######################################################################

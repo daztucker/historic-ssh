@@ -9,8 +9,11 @@
 .\"
 .\" Created: Sun May  7 00:14:37 1995 ylo
 .\"
-.\" $Id: scp.1,v 1.2 1997/03/25 05:41:20 kivinen Exp $
+.\" $Id: scp.1,v 1.3 1997/04/23 00:03:28 kivinen Exp $
 .\" $Log: scp.1,v $
+.\" Revision 1.3  1997/04/23 00:03:28  kivinen
+.\" 	Documented -S flag and -o flags.
+.\"
 .\" Revision 1.2  1997/03/25 05:41:20  kivinen
 .\" 	Fixed typo. Changed ylo's email to @ssh.fi.
 .\"
@@ -38,7 +41,13 @@ scp \- secure copy (remote file copy program)
 .LP
 .B scp
 [\c
-.B \-prvC\c
+.B \-prvBC\c
+]
+[\c
+.BI \-S "\ path-to-ssh\c
+]
+[\c
+.BI \-o "\ ssh-options\c
 ]
 [\c
 .BI \-P "\ port\c
@@ -95,6 +104,9 @@ Selects the file from which the identity (private key) for RSA
 authentication is read.  This option is directly passed to
 .B ssh.
 .TP
+.BI \-o "\ ssh-options
+Ssh options passed to ssh.
+.TP
 .B \-p
 Preserves modification times, access times, and modes from the
 original file.
@@ -122,6 +134,9 @@ to enable compression.
 Specifies the port to connect to on the remote host.  Note that this
 option is written with a capital P, because \-p is already reserved for
 preserving the times and modes of the file in rcp.
+.TP
+.BI \-S "\ path-to-ssh
+Specifies the path to ssh program.
 
 .SH AUTHORS
 .LP

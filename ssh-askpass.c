@@ -534,17 +534,12 @@ void backward_leds()
 /* Handle key press. */
 void key_press(XKeyEvent *event)
 {
-  int i = 0;
-  int k;
-
   char buf[100];
   char *ptr = buf;
   int in_buf;
 
-  KeySym sym, upper, lower;
-  int index = 0;
-  int num_lock = 0, caps_lock = 0;
-  
+  KeySym sym;
+
   in_buf = XLookupString(event, buf, 100, &sym, NULL);
 
   if ((sym != NoSymbol) && (sym & (0xff)) == sym)

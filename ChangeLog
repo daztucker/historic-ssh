@@ -1,3 +1,70 @@
+Wed Apr 23 02:56:20 1997  Tero Kivinen  <kivinen@ssh.fi>
+
+	* scp: added -S flag. It can be used to specify path to ssh
+	program.
+
+	* scp: Added -oClearAllForwardings yes to ssh command line, so if
+	you have forwardings in config file you can still use scp without
+	errors because ssh cannot bind those same sockets. 
+	
+	* Added ClearAllForwardings and NumberOfPasswordPrompts options.
+	
+	* Fixed SIGINFO check.
+
+	* Added check that getpseudotty function exists before using, we
+	cannot assume it exists if /dev/getpty exists, because some dynix
+	systems have /dev/getpty but no getpseudotty function.
+	
+	* Added check that spwd struct have sp_expire and sp_inact fields.
+		
+	* Added WRAPLIBS to Makefile.in and configure.in so libwrap is
+	linked to only ssh and sshd.
+
+Mon Apr 21 05:47:46 1997  Tero Kivinen  <kivinen@ssh.fi>
+
+	* Added -S option to scp (specifies path to ssh program).
+	
+	* Added waitpid loop to main_sigchld_handler if we have it.
+	
+	* Changed server_loop to call pty_cleanup_proc instead of
+        pty_release, added check to pty_cleanup_proc so it will not
+	cleanup pty twice.
+	
+	* Fixed allow_tcp_forwarding option so it defaults to yes now. 
+	
+	* Added AC_MSG_CHECKING/AC_MSG_RESULT to AC_EGREP_HEADER stuff.
+	
+	* Added --enable-deprecated-linux-pw-encrypt option to configure. 
+	
+	* Added compat code for Dynix. It have incompatible SIGINFO
+	defination in sys/siginfo.h.
+
+Thu Apr 17 02:06:16 1997  Tero Kivinen  <kivinen@ssh.fi>
+
+	* scp now understands -o options, and passes them to ssh.
+	
+	* Some kerberos DCE fixes from Doug Engert <DEEngert@anl.gov>. 
+	
+	* Added read_confirmation function to readpass.c that will ask
+	confirmation from user using either stdin or /dev/tty. This is
+	used when using StrictHostKeyChecking is set to ask. 
+	
+	* Changed StrictHostKeyChecking to have three states: yes/no/ask.
+	Idea from Markus Linnala <maage@ee.tut.fi>.
+
+	* Fixed make-ssh-known-hosts.pl to use 3des instead of rc4.
+	
+	* Added -p option to ssh-add (read passphrase from pipe). Idea
+	from Charles Karney <karney@pppl.gov>. 
+		
+	* Added signal(SIGCHLD, SIG_DFL) on child before using libwrap
+	stuff in sshd.c.
+	
+	* Fixed mv sshd sshd.old to use correct directory (sbindir).
+	(reported by several people).
+	
+	* Fixed putenvs in the xstrdup (reported by several people).
+
 Sun Apr  6 00:41:55 1997  Tero Kivinen  <kivinen@ssh.fi>
 
 	* gmp: Added -Wa,+DA1.1 to SFLAGS on hppa1.1 machines.
@@ -147,7 +214,8 @@ Wed Mar 19 17:49:36 1997  Tero Kivinen  <kivinen@ssh.fi>
 	* If configured ssh program isn't found in scp, try to find ssh
 	from the same directory scp program is run. 
 	
-	* Fixed /bin/sh command syntax printed by ssh-agent.
+	* Fixed /bin/sh command syntax printed by ssh-agent (from Hannu
+	Napari <napo@tcm.hut.fi>).
 	
 	* Added -c and -s options to ssh-agent (tell shell style). 	
 	

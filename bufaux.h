@@ -12,8 +12,11 @@ Created: Wed Mar 29 02:18:23 1995 ylo
 */
 
 /*
- * $Id: bufaux.h,v 1.2 1995/07/13 01:18:07 ylo Exp $
+ * $Id: bufaux.h,v 1.1.1.1 1996/02/18 21:38:11 ylo Exp $
  * $Log: bufaux.h,v $
+ * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.2  1995/07/13  01:18:07  ylo
  * 	Removed "Last modified" header.
  * 	Added cvs log.

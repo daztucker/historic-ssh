@@ -4,6 +4,15 @@ Alleged RC4 (based on the Usenet posting in Spring-95)
 
 */
 
+/*
+ * $Id: rc4.c,v 1.2 1995/07/13 01:29:59 ylo Exp $
+ * $Log: rc4.c,v $
+ * Revision 1.2  1995/07/13  01:29:59  ylo
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
+
 #include "includes.h"
 #include "rc4.h"
 

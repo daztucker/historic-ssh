@@ -16,13 +16,22 @@ cryptography and data security, including the following:
 
   Bruce Schneier: Applied Cryptography.  John Wiley & Sons, 1994.
 
-  Jennifer Seberry and Josed Pieprzyk: Cryptography: An Introduction to Computer
-    Security.  Prentice-Hall, 1989.
+  Jennifer Seberry and Josed Pieprzyk: Cryptography: An Introduction to 
+    Computer Security.  Prentice-Hall, 1989.
 
   Man Young Rhee: Cryptography and Secure Data Communications.  McGraw-Hill, 
     1994.
 
 */
+
+/*
+ * $Id: des.c,v 1.2 1995/07/13 01:22:25 ylo Exp $
+ * $Log: des.c,v $
+ * Revision 1.2  1995/07/13  01:22:25  ylo
+ * 	Added cvs log.
+ *
+ * $Endlog$
+ */
 
 #include "includes.h"
 #include "getput.h"

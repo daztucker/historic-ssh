@@ -8,11 +8,20 @@ Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
                    All rights reserved
 
 Created: Sun May  7 03:08:06 1995 ylo
-Last modified: Sun Jul  2 19:57:23 1995 ylo
 
-Rhosts or /etc/hosts.equiv authentication combined with RSA host authentication.
+Rhosts or /etc/hosts.equiv authentication combined with RSA host
+authentication.
 
 */
+
+/*
+ * $Id: auth-rh-rsa.c,v 1.3 1995/07/13 01:12:51 ylo Exp $
+ * $Log: auth-rh-rsa.c,v $
+ * Revision 1.3  1995/07/13  01:12:51  ylo
+ * 	Removed the "Last modified" header.
+ *
+ * $Endlog$
+ */
 
 #include "includes.h"
 #include "packet.h"

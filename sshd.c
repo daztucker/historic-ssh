@@ -18,8 +18,42 @@ agent connections.
 */
 
 /*
- * $Id: sshd.c,v 1.31 1995/10/02 01:28:59 ylo Exp $
+ * $Id: sshd.c,v 1.9 1996/06/05 17:57:34 ylo Exp $
  * $Log: sshd.c,v $
+ * Revision 1.9  1996/06/05 17:57:34  ylo
+ * 	If /etc/nologin exists, print that fact in plain text before
+ * 	printing the actual contents.  I am getting too many
+ * 	complaints about it.
+ *
+ * Revision 1.8  1996/06/03 19:25:49  ylo
+ * 	Fixed a typo.
+ *
+ * Revision 1.7  1996/05/29 07:41:46  ylo
+ * 	Added arguments to userfile_init.
+ *
+ * Revision 1.6  1996/05/29 07:16:38  ylo
+ * 	Disallow any user names that start with a '-' or '+' (or '@',
+ * 	just to be sure).  There is some indication that getpw* might
+ * 	returns such names on some systems with NIS.  Ouuuch!
+ *
+ * Revision 1.5  1996/05/28 16:41:14  ylo
+ * 	Merged Cray patches from Wayne Schroeder.
+ * 	Use setsid instead of setpgrp on ultrix.
+ *
+ * Revision 1.4  1996/04/26 00:22:51  ylo
+ * 	Improved error messages related to reading host key.
+ * 	Fixed ip addr in "Closing connection" message.
+ *
+ * Revision 1.3  1996/04/22 23:49:47  huima
+ * Changed protocol version to 1.4, added calls to emulate module.
+ *
+ * Revision 1.2  1996/02/18  21:49:51  ylo
+ * 	Moved userfile_uninit to proper place.
+ * 	Use setluid if it exists (at least OSF/1).
+ *
+ * Revision 1.1.1.1  1996/02/18 21:38:13  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.31  1995/10/02  01:28:59  ylo
  * 	Include sys/syslog.h if NEED_SYS_SYSLOG_H.
  * 	Print proper ETCDIR in usage().
@@ -179,6 +213,7 @@ agent connections.
 #include "mpaux.h"
 #include "servconf.h"
 #include "userfile.h"
+#include "emulate.h"
 #ifdef HAVE_USERSEC_H
 #include <usersec.h>
 #endif /* HAVE_USERSEC_H */
@@ -195,6 +230,13 @@ agent connections.
 int allow_severity = LOG_INFO;
 int deny_severity = LOG_WARNING;
 #endif /* LIBWRAP */
+
+#ifdef CRAY
+#include <udb.h>
+#include <unistd.h>
+#include <sys/category.h>
+extern char *setlimits();
+#endif
 
 #ifdef _PATH_BSHELL
 #define DEFAULT_SHELL		_PATH_BSHELL
@@ -501,14 +543,17 @@ int main(int ac, char **av)
 			&sensitive_data.host_key, &comment))
     {
       if (debug_flag)
-	fprintf(stderr, "Could not load host key: %s: %s\n",
-		options.host_key_file, strerror(errno));
+	{
+	  fprintf(stderr, "Could not load host key: %.200s\n",
+		  options.host_key_file);
+	  fprintf(stderr, "Please check that you have sufficient permissions and the file exists.\n");
+	}
       else
 	{
 	  int err = errno;
 	  log_init(av0, !inetd_flag, 1, 0, options.log_facility);
-	  error("Could not load host key: %.200s: %.100s", 
-		options.host_key_file, strerror(err));
+	  error("Could not load host key: %.200s.  Check path and permissions.", 
+		options.host_key_file);
 	}
       exit(1);
     }
@@ -549,12 +594,8 @@ int main(int ac, char **av)
 	}
 #endif /* TIOCNOTTY */
 #ifdef HAVE_SETSID
-#ifdef ultrix
-      setpgrp(0, 0);
-#else /* ultrix */
       if (setsid() < 0)
 	error("setsid: %.100s", strerror(errno));
-#endif /* ultrix */
 #endif /* HAVE_SETSID */
     }
 
@@ -874,20 +915,34 @@ int main(int ac, char **av)
     }
   debug("Client protocol version %d.%d; client software version %.100s",
 	remote_major, remote_minor, remote_version);
-  if (remote_major != PROTOCOL_MAJOR)
-    {
-      const char *s = "Protocol major versions differ.\n";
-      (void) write(sock_out, s, strlen(s));
-      close(sock_in);
-      close(sock_out);
-      fatal_severity(SYSLOG_SEVERITY_INFO,
-		     "Protocol major versions differ: %d vs. %d", 
-		     PROTOCOL_MAJOR, remote_major);
-    }
 
-  /* Check that the client has sufficiently high software version. */
-  if (remote_major == 1 && remote_minor == 0)
-    packet_disconnect("Your ssh version is too old and is no longer supported.  Please install a newer version.");
+  switch (check_emulation(remote_major, remote_minor,
+			  NULL, NULL))
+    {
+    case EMULATE_MAJOR_VERSION_MISMATCH:
+      {
+	const char *s = "Protocol major versions differ.\n";
+	(void) write(sock_out, s, strlen(s));
+	close(sock_in);
+	close(sock_out);
+	fatal_severity(SYSLOG_SEVERITY_INFO,
+		       "Protocol major versions differ: %d vs. %d", 
+		       PROTOCOL_MAJOR, remote_major);
+      }
+      break;
+    case EMULATE_VERSION_REALLY_TOO_OLD:
+    case EMULATE_VERSION_TOO_OLD:
+      packet_disconnect("Your ssh version is too old and is no "
+			"longer supported.  Please install a newer version.");
+      break;
+    case EMULATE_VERSION_TOO_NEW:
+      packet_disconnect("This server does not support your "
+			"new ssh version.");
+      break;      
+    default:
+      /* just continue... */
+      break;
+    }
 
   /* Check whether logins are permitted from this host. */
   if (options.num_allow_hosts > 0)
@@ -914,7 +969,7 @@ int main(int ac, char **av)
   do_connection(get_remote_port() < 1024);
 
   /* The connection has been terminated. */
-  log("Closing connection to %.100s", inet_ntoa(sin.sin_addr));
+  log("Closing connection to %.100s", get_remote_ipaddr());
   packet_close();
   exit(0);
 }
@@ -1193,9 +1248,11 @@ void do_authentication(char *user, int privileged_port)
   unsigned int client_host_key_bits;
   MP_INT client_host_key_e, client_host_key_n;
 			 
-  /* Verify that the user is a valid user. */
+  /* Verify that the user is a valid user.  We disallow usernames starting
+     with any characters that are commonly used to start NIS entries. */
   pw = getpwnam(user);
-  if (!pw || !login_permitted(user))
+  if (!pw || user[0] == '-' || user[0] == '+' || user[0] == '@' ||
+      !login_permitted(user))
     {
       /* The user does not exist. */
       packet_start(SSH_SMSG_FAILURE);
@@ -1233,7 +1290,8 @@ void do_authentication(char *user, int privileged_port)
      read files in the user's directory.  Note that the private host
      key has already been cleared when this is called.  We still want to
      clean up at least the encryption keys. */
-  userfile_init(pw->pw_uid, sshd_userfile_cleanup, NULL);
+  userfile_init(pw->pw_name, pw->pw_uid, pw->pw_gid,
+		sshd_userfile_cleanup, NULL);
 
   /* If we are not running as root, the user must have the same uid as the
      server. */
@@ -1735,12 +1793,8 @@ void do_exec_no_pty(const char *command, struct passwd *pw,
 	       options.quiet_mode, options.log_facility);
 
 #ifdef HAVE_SETSID
-#ifdef ultrix
-      setpgrp(0, 0);
-#else /* ultrix */
       if (setsid() < 0)
 	error("setsid: %.100s", strerror(errno));
-#endif /* ultrix */
 #endif /* HAVE_SETSID */
 
 #ifdef USE_PIPES
@@ -1795,9 +1849,6 @@ void do_exec_no_pty(const char *command, struct passwd *pw,
   /* We are the parent.  Close the child sides of the socket pairs. */
   close(inout[0]);
   close(err[0]);
-
-  /* We no longer need the child running on user's privileges. */
-  userfile_uninit();
   
   /* Enter the interactive session.  Note: server_loop must be able to handle
      the case that fdin and fdout are the same. */
@@ -1870,12 +1921,8 @@ void do_exec_pty(const char *command, int ptyfd, int ttyfd,
 	       options.log_facility);
 
 #ifdef HAVE_SETSID
-#ifdef ultrix
-      setpgrp(0, 0);
-#else /* ultrix */
       if (setsid() < 0)
 	error("setsid: %.100s", strerror(errno));
-#endif /* ultrix */
 #endif /* HAVE_SETSID */
 
       /* Close the master side of the pseudo tty. */
@@ -2207,6 +2254,9 @@ void do_child(const char *command, struct passwd *pw, const char *term,
   f = fopen("/etc/nologin", "r");
   if (f)
     { /* /etc/nologin exists.  Print its contents and exit. */
+      /* Print a message about /etc/nologin existing; I am getting
+	 questions because of this every week. */
+      fprintf(stderr, "Logins are currently denied by /etc/nologin:\n");
       while (fgets(buf, sizeof(buf), f))
 	fputs(buf, stderr);
       fclose(f);
@@ -2288,6 +2338,11 @@ void do_child(const char *command, struct passwd *pw, const char *term,
      information, as changing uid below will permit the user to attach with
      a debugger on some machines. */
 
+#ifdef CRAY   /* set up accounting account number, job, limits, permissions  */
+  if (cray_setup(user_uid, user_name) < 0)
+    fatal("Failure performing Cray job setup for user %d.",(int)user_uid);
+#endif
+
   /* Set uid, gid, and groups. */
   if (getuid() == 0 || geteuid() == 0)
     { 
@@ -2305,6 +2360,12 @@ void do_child(const char *command, struct passwd *pw, const char *term,
 	}
 #endif /* HAVE_INITGROUPS */
       endgrent();
+
+#ifdef HAVE_SETLUID
+      /* Set login uid, if we have setluid(). */
+      if (setluid(user_uid) < 0)
+	fatal("setluid %d: %s", (int)user_uid, strerror(errno));
+#endif /* HAVE_SETLUID */
 
       /* Permanently switch to the desired uid. */
       if (setuid(user_uid) < 0)
@@ -2530,3 +2591,102 @@ void do_child(const char *command, struct passwd *pw, const char *term,
   perror(shell);
   exit(1);
 }
+
+#ifdef CRAY
+/*
+ On a Cray, set the account number for the current process to the user's 
+ default account.  If this is not done, the process will have an account 
+ of zero and accounting (Cray System Accounting and/or SDSC Resource
+ Management (realtime)) will not operate correctly.
+
+ This routine also calls setjob to set up an Cray Job (also known 
+ as a Session).  This is needed for CRI's Cray System Accounting 
+ and SDSC's Resource Management accounting/management system.
+
+ It also calls setlimit, to set up limits and permissions.
+ 
+ Wayne Schroeder
+ San Diego Supercomputer Center
+ schroeder@sdsc.edu
+ 
+*/
+int cray_setup(uid, username)
+uid_t uid;
+char *username;
+{
+  register struct udb *p;
+  extern struct udb *getudb();
+  int i, j;
+  int accts[MAXVIDS];
+  int naccts;
+  int err, jid;
+  char *sr;
+  int pid;
+
+  /* Find all of the accounts for a particular user */
+  err = setudb();    /* open and rewind the Cray User DataBase */
+  if(err != 0)
+    {
+      debug("UDB open failure");
+      return(-1);
+    }
+  naccts = 0;
+  while ((p = getudb()) != UDB_NULL) 
+    {
+      if (p->ue_uid == -1) break;
+      if(uid == p->ue_uid) 
+	{
+	  for(j = 0; p->ue_acids[j] != -1 && j < MAXVIDS; j++) 
+	    {
+	      accts[naccts] = p->ue_acids[j];
+	      naccts++;
+	    }
+	}
+    }
+  endudb();        /* close the udb */
+  if (naccts == 0 || accts[0] == 0)
+    {
+      debug("No Cray accounts found");
+      return(-1);
+    }
+ 
+  /* Perhaps someday we'll prompt users who have multiple accounts
+     to let them pick one (like CRI's login does), but for now just set 
+     the account to the first entry. */
+  if (acctid(0, accts[0]) < 0) 
+    {
+      debug("System call acctid failed, accts[0]=%d",accts[0]);
+      return(-1);
+    } 
+ 
+  /* Now call setjob to create a new job(/session).  This assigns a new Session
+     ID and session table entry to the calling process.  This process will be
+     the first process in the job/session. */
+  jid = setjob(uid, 0);
+  if (jid < 0) 
+    {
+      debug("System call setjob failure");
+      return(-1);
+    }
+
+  /* Now set limits, including CPU time for the (interactive) job and process,
+     and set up permissions (for chown etc), etc.  This is via an internal CRI
+     routine, setlimits, used by CRI's login. */
+
+  pid = getpid();
+  sr = setlimits(username, C_PROC, pid, UDBRC_INTER);
+  if (sr != NULL) 
+    {
+      debug(sr);
+      return(-1);
+    }
+  sr = setlimits(username, C_JOB, jid, UDBRC_INTER);
+  if (sr != NULL) 
+    {
+      debug(sr);
+      return(-1);
+    }
+
+  return(0);
+}
+#endif /* CRAY */

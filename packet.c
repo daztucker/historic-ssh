@@ -15,65 +15,70 @@ with the other side.  This same code is used both on client and server side.
 */
 
 /*
- * $Id: packet.c,v 1.11 1998/06/11 00:08:44 kivinen Exp $
+ * $Id: packet.c,v 1.12 1999/02/21 19:52:30 ylo Exp $
  * $Log: packet.c,v $
+ * Revision 1.12  1999/02/21 19:52:30  ylo
+ * 	Intermediate commit of ssh1.2.27 stuff.
+ * 	Main change is sprintf -> snprintf; however, there are also
+ * 	many other changes.
+ *
  * Revision 1.11  1998/06/11 00:08:44  kivinen
- * 	Crc fixing detection code.
+ *      Crc fixing detection code.
  *
  * Revision 1.10  1998/05/23  20:22:50  kivinen
- * 	Changed () -> (void).
+ *      Changed () -> (void).
  *
  * Revision 1.9  1998/04/30  01:54:30  kivinen
- * 	Fixed SSH_MSG_IGNORE handling. Now it will skip the string
- * 	argument also.
+ *      Fixed SSH_MSG_IGNORE handling. Now it will skip the string
+ *      argument also.
  *
  * Revision 1.8  1998/03/27 16:59:02  kivinen
- * 	Added ENABLE_TCP_NODELAY support.
+ *      Added ENABLE_TCP_NODELAY support.
  *
  * Revision 1.7  1997/04/05 17:29:21  ylo
- * 	Added packet_get_len (returns the remaining length of incoming
- * 	packet).
+ *      Added packet_get_len (returns the remaining length of incoming
+ *      packet).
  *
  * Revision 1.6  1997/03/19 19:26:58  kivinen
- * 	Added packet_get_all function. Added checks to
- * 	packet_read_poll that previous packet buffer must be empty
- * 	before starting to put new packet in.
+ *      Added packet_get_all function. Added checks to
+ *      packet_read_poll that previous packet buffer must be empty
+ *      before starting to put new packet in.
  *
  * Revision 1.5  1996/11/24 08:23:46  kivinen
- * 	Changed all code that checked EAGAIN to check EWOULDBLOCK too.
- * 	Added support for debug messages that are printed always (if
- * 	the first character of debug message is * it is printed with
- * 	error function instead of debug).
+ *      Changed all code that checked EAGAIN to check EWOULDBLOCK too.
+ *      Added support for debug messages that are printed always (if
+ *      the first character of debug message is * it is printed with
+ *      error function instead of debug).
  *
  * Revision 1.4  1996/10/07 11:53:24  ttsalo
- * 	From "Charles M. Hannum" <mycroft@gnu.ai.mit.edu>:
- * 	Made the use of TCP_NODELAY conditional.
+ *      From "Charles M. Hannum" <mycroft@gnu.ai.mit.edu>:
+ *      Made the use of TCP_NODELAY conditional.
  *
  * Revision 1.3  1996/09/22 21:58:38  ylo
- * 	Added code to clear keepalives properly when requested.
+ *      Added code to clear keepalives properly when requested.
  *
  * Revision 1.2  1996/05/28 16:42:13  ylo
- * 	Workaround for Solaris select() bug while reading version id.
+ *      Workaround for Solaris select() bug while reading version id.
  *
  * Revision 1.1.1.1  1996/02/18 21:38:12  ylo
- * 	Imported ssh-1.2.13.
+ *      Imported ssh-1.2.13.
  *
  * Revision 1.6  1995/09/24  23:59:12  ylo
- * 	Added packet_get_protocol_flags.
+ *      Added packet_get_protocol_flags.
  *
  * Revision 1.5  1995/09/09  21:26:43  ylo
  * /m/shadows/u2/users/ylo/ssh/README
  *
  * Revision 1.4  1995/07/27  03:59:37  ylo
- * 	Fixed a bug in new arcfour keying.
+ *      Fixed a bug in new arcfour keying.
  *
  * Revision 1.3  1995/07/27  02:17:11  ylo
- * 	Changed keying for arcfour to avoid using the same key for both
- * 	directions.
+ *      Changed keying for arcfour to avoid using the same key for both
+ *      directions.
  *
  * Revision 1.2  1995/07/13  01:27:33  ylo
- * 	Removed "Last modified" header.
- * 	Added cvs log.
+ *      Removed "Last modified" header.
+ *      Added cvs log.
  *
  * $Endlog$
  */
@@ -186,10 +191,10 @@ void packet_set_nonblocking(void)
     {
 #if defined(O_NONBLOCK) && !defined(O_NONBLOCK_BROKEN)
       if (fcntl(connection_out, F_SETFL, O_NONBLOCK) < 0)
-	error("fcntl O_NONBLOCK: %.100s", strerror(errno));
+        error("fcntl O_NONBLOCK: %.100s", strerror(errno));
 #else /* O_NONBLOCK && !O_NONBLOCK_BROKEN */  
       if (fcntl(connection_out, F_SETFL, O_NDELAY) < 0)
-	error("fcntl O_NDELAY: %.100s", strerror(errno));
+        error("fcntl O_NDELAY: %.100s", strerror(errno));
 #endif /* O_NONBLOCK && !O_NONBLOCK_BROKEN */
     }
 }
@@ -267,7 +272,7 @@ void packet_start_compression(int level)
    bytes is known to be a multiple of 8. */
 
 void packet_encrypt(CipherContext *cc, void *dest, void *src, 
-		    unsigned int bytes)
+                    unsigned int bytes)
 {
   assert((bytes % 8) == 0);
   cipher_encrypt(cc, dest, src, bytes);
@@ -277,13 +282,13 @@ void packet_encrypt(CipherContext *cc, void *dest, void *src,
    bytes is known to be a multiple of 8. */
 
 void packet_decrypt(CipherContext *cc, void *dest, void *src, 
-		    unsigned int bytes)
+                    unsigned int bytes)
 {
   int i;
   
   assert((bytes % 8) == 0);
   
-  /* $Id: packet.c,v 1.11 1998/06/11 00:08:44 kivinen Exp $
+  /* $Id: packet.c,v 1.12 1999/02/21 19:52:30 ylo Exp $
    * Cryptographic attack detector for ssh - Modifications for packet.c 
    * (C)1998 CORE-SDI, Buenos Aires Argentina
    * Ariel Futoransky(futo@core-sdi.com)
@@ -315,23 +320,23 @@ void packet_decrypt(CipherContext *cc, void *dest, void *src,
    are encrypted independently of each other. */
 
 void packet_set_encryption_key(const unsigned char *key, unsigned int keylen,
-			       int cipher, int is_client)
+                               int cipher, int is_client)
 {
   cipher_type = cipher;
   if (cipher == SSH_CIPHER_ARCFOUR)
     {
       if (is_client)
-	{ /* In client: use first half for receiving, second for sending. */
-	  cipher_set_key(&receive_context, cipher, key, keylen / 2, 0);
-	  cipher_set_key(&send_context, cipher, key + keylen / 2, 
-			 keylen / 2, 1);
-	}
+        { /* In client: use first half for receiving, second for sending. */
+          cipher_set_key(&receive_context, cipher, key, keylen / 2, 0);
+          cipher_set_key(&send_context, cipher, key + keylen / 2, 
+                         keylen / 2, 1);
+        }
       else
-	{ /* In server: use first half for sending, second for receiving. */
-	  cipher_set_key(&receive_context, cipher, key + keylen / 2, 
-			 keylen / 2, 0);
-	  cipher_set_key(&send_context, cipher, key, keylen / 2, 1);
-	}
+        { /* In server: use first half for sending, second for receiving. */
+          cipher_set_key(&receive_context, cipher, key + keylen / 2, 
+                         keylen / 2, 0);
+          cipher_set_key(&send_context, cipher, key, keylen / 2, 1);
+        }
     }
   else
     {
@@ -393,7 +398,7 @@ void packet_send(void)
 
   if (buffer_len(&outgoing_packet) >= max_packet_size - 30)
     fatal("packet_send: sending too big a packet: size %u, limit %u.",
-	  buffer_len(&outgoing_packet), max_packet_size);
+          buffer_len(&outgoing_packet), max_packet_size);
 
   /* If using packet compression, compress the payload of the outgoing
      packet. */
@@ -405,7 +410,7 @@ void packet_send(void)
       buffer_compress(&outgoing_packet, &compression_buffer);
       buffer_clear(&outgoing_packet);
       buffer_append(&outgoing_packet, buffer_ptr(&compression_buffer),
-		    buffer_len(&compression_buffer));
+                    buffer_len(&compression_buffer));
     }
 
   /* Compute packet length without padding (add checksum, remove padding). */
@@ -417,13 +422,13 @@ void packet_send(void)
     {
       cp = buffer_ptr(&outgoing_packet);
       for (i = 0; i < padding; i++)
-	cp[7 - i] = random_get_byte(random_state);
+        cp[7 - i] = random_get_byte(random_state);
     }
   buffer_consume(&outgoing_packet, 8 - padding);
   
   /* Add check bytes. */
   checksum = crc32((unsigned char *)buffer_ptr(&outgoing_packet),
-		   buffer_len(&outgoing_packet));
+                   buffer_len(&outgoing_packet));
   PUT_32BIT(buf, checksum);
   buffer_append(&outgoing_packet, buf, 4);
 
@@ -437,7 +442,7 @@ void packet_send(void)
   buffer_append(&output, buf, 4);
   buffer_append_space(&output, &cp, buffer_len(&outgoing_packet));
   packet_encrypt(&send_context, cp, buffer_ptr(&outgoing_packet),
-		 buffer_len(&outgoing_packet));
+                 buffer_len(&outgoing_packet));
   
 #ifdef PACKET_DEBUG
   fprintf(stderr, "encrypted: "); buffer_dump(&output);
@@ -469,9 +474,9 @@ int packet_read(void)
       type = packet_read_poll();
       /* If we got a packet, return it. */
       if (type != SSH_MSG_NONE)
-	return type;
+        return type;
       /* Otherwise, wait for some data to arrive, add it to the buffer,
-	 and try again. */
+         and try again. */
       FD_ZERO(&set);
       FD_SET(connection_in, &set);
       /* Wait for some data to arrive. */
@@ -479,15 +484,15 @@ int packet_read(void)
       /* Read data from the socket. */
       len = read(connection_in, buf, sizeof(buf));
       if (len == 0)
-	fatal_severity(SYSLOG_SEVERITY_INFO,
-		       "Connection closed by remote host.");
+        fatal_severity(SYSLOG_SEVERITY_INFO,
+                       "Connection closed by remote host.");
       if (len < 0)
-	{
-	  if (errno == EAGAIN || errno == EWOULDBLOCK)
-	    continue;
-	  fatal_severity(SYSLOG_SEVERITY_INFO,
-			 "Read from socket failed: %.100s", strerror(errno));
-	}
+        {
+          if (errno == EAGAIN || errno == EWOULDBLOCK)
+            continue;
+          fatal_severity(SYSLOG_SEVERITY_INFO,
+                         "Read from socket failed: %.100s", strerror(errno));
+        }
       /* Append it to the buffer. */
       packet_process_incoming(buf, len);
     }
@@ -504,7 +509,7 @@ void packet_read_expect(int expected_type)
   type = packet_read();
   if (type != expected_type)
     packet_disconnect("Protocol error: expected packet type %d, got %d",
-		      expected_type, type);
+                      expected_type, type);
 }
 
 /* Checks if a full packet is available in the data received so far via
@@ -560,7 +565,7 @@ int packet_read_poll(void)
   
   /* Compute packet checksum. */
   checksum = crc32((unsigned char *)buffer_ptr(&incoming_packet),
-		   buffer_len(&incoming_packet) - 4);
+                   buffer_len(&incoming_packet) - 4);
 
   /* Skip padding. */
   buffer_consume(&incoming_packet, 8 - len % 8);
@@ -580,7 +585,7 @@ int packet_read_poll(void)
       buffer_uncompress(&incoming_packet, &compression_buffer);
       buffer_clear(&incoming_packet);
       buffer_append(&incoming_packet, buffer_ptr(&compression_buffer),
-		    buffer_len(&compression_buffer));
+                    buffer_len(&compression_buffer));
     }
 
   /* Get packet type. */
@@ -605,16 +610,16 @@ int packet_read_poll(void)
       char *str;
 
       str = packet_get_string(NULL);
-      if (*str == '*')		/* Magical kludge to force displaying
-				   debug messages with '*' anyway, even
-				   if not in verbose mode. */
-	{
-	  error("Remote: %.900s", str);
-	}
+      if (*str == '*')          /* Magical kludge to force displaying
+                                   debug messages with '*' anyway, even
+                                   if not in verbose mode. */
+        {
+          error("Remote: %.900s", str);
+        }
       else
-	{
-	  debug("Remote: %.900s", str);
-	}
+        {
+          debug("Remote: %.900s", str);
+        }
       xfree(str);
       goto restart;
     }
@@ -693,7 +698,7 @@ void packet_send_debug(const char *fmt, ...)
   va_list args;
   
   va_start(args, fmt);
-  vsprintf(buf, fmt, args);
+  vsnprintf(buf, sizeof(buf), fmt, args);
   va_end(args);
   
   packet_start(SSH_MSG_DEBUG);
@@ -719,7 +724,7 @@ void packet_disconnect(const char *fmt, ...)
   /* Format the message.  Note that the caller must make sure the message
      is of limited size. */
   va_start(args, fmt);
-  vsprintf(buf, fmt, args);
+  vsnprintf(buf, sizeof(buf), fmt, args);
   va_end(args);
 
   /* Send the disconnect message to the other side, and wait for it to get 
@@ -749,11 +754,11 @@ void packet_write_poll(void)
     {
       len = write(connection_out, buffer_ptr(&output), len);
       if (len <= 0)
-	if (errno == EAGAIN || errno == EWOULDBLOCK)
-	  return;
+        if (len != 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
+          return;
         else
-	  fatal_severity(SYSLOG_SEVERITY_INFO,
-			 "Write failed: %.100s", strerror(errno));
+          fatal_severity(SYSLOG_SEVERITY_INFO,
+                         "Write failed: %.100s", strerror(errno));
       buffer_consume(&output, len);
     }
 }
@@ -809,47 +814,47 @@ void packet_set_interactive(int interactive, int keepalives)
     {
       /* Set keepalives if requested. */
       if (setsockopt(connection_in, SOL_SOCKET, SO_KEEPALIVE, (void *)&on, 
-		     sizeof(on)) < 0)
-	error("setsockopt SO_KEEPALIVE: %.100s", strerror(errno));
+                     sizeof(on)) < 0)
+        error("setsockopt SO_KEEPALIVE: %.100s", strerror(errno));
     }
   else
     {
       /* Clear keepalives if we don't want them. */
       if (setsockopt(connection_in, SOL_SOCKET, SO_KEEPALIVE, (void *)&off, 
-		     sizeof(off)) < 0)
-	error("setsockopt SO_KEEPALIVE off: %.100s", strerror(errno));
+                     sizeof(off)) < 0)
+        error("setsockopt SO_KEEPALIVE off: %.100s", strerror(errno));
     }
   
   if (interactive)
     {
       /* Set IP options for an interactive connection.  Use IPTOS_LOWDELAY
-	 and TCP_NODELAY. */
+         and TCP_NODELAY. */
 #ifdef IPTOS_LOWDELAY
       int lowdelay = IPTOS_LOWDELAY;
       if (setsockopt(connection_in, IPPROTO_IP, IP_TOS, (void *)&lowdelay, 
-		     sizeof(lowdelay)) < 0)
-	error("setsockopt IPTOS_LOWDELAY: %.100s", strerror(errno));
+                     sizeof(lowdelay)) < 0)
+        error("setsockopt IPTOS_LOWDELAY: %.100s", strerror(errno));
 #endif /* IPTOS_LOWDELAY */
 #if defined(TCP_NODELAY) && defined(ENABLE_TCP_NODELAY)
       if (setsockopt(connection_in, IPPROTO_TCP, TCP_NODELAY, (void *)&on, 
-		     sizeof(on)) < 0)
-	error("setsockopt TCP_NODELAY: %.100s", strerror(errno));
+                     sizeof(on)) < 0)
+        error("setsockopt TCP_NODELAY: %.100s", strerror(errno));
 #endif /* TCP_NODELAY */
     }
   else
     {
       /* Set IP options for a non-interactive connection.  Use 
-	 IPTOS_THROUGHPUT. */
+         IPTOS_THROUGHPUT. */
 #ifdef IPTOS_THROUGHPUT
       int throughput = IPTOS_THROUGHPUT;
       if (setsockopt(connection_in, IPPROTO_IP, IP_TOS, (void *)&throughput, 
-		     sizeof(throughput)) < 0)
-	error("setsockopt IPTOS_THROUGHPUT: %.100s", strerror(errno));
+                     sizeof(throughput)) < 0)
+        error("setsockopt IPTOS_THROUGHPUT: %.100s", strerror(errno));
 #endif /* IPTOS_THROUGHPUT */
 #if defined(TCP_NODELAY) && defined(ENABLE_TCP_NODELAY)
       if (setsockopt(connection_in, IPPROTO_TCP, TCP_NODELAY, (void *)&off, 
-		     sizeof(off)) < 0)
-	error("setsockopt TCP_NODELAY: %.100s", strerror(errno));
+                     sizeof(off)) < 0)
+        error("setsockopt TCP_NODELAY: %.100s", strerror(errno));
 #endif /* TCP_NODELAY */
     }
 }

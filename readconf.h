@@ -14,8 +14,15 @@ Functions for reading the configuration file.
 */
 
 /*
- * $Id: readconf.h,v 1.7 1998/01/02 06:20:12 kivinen Exp $
+ * $Id: readconf.h,v 1.9 1998/04/30 01:55:19 kivinen Exp $
  * $Log: readconf.h,v $
+ * Revision 1.9  1998/04/30 01:55:19  kivinen
+ * 	Added PasswordPromptLogin and PasswordPromptHost options, so
+ * 	now the password prompt is configurable.
+ *
+ * Revision 1.8  1998/03/27 16:59:43  kivinen
+ * 	Added GatewayPorts option.
+ *
  * Revision 1.7  1998/01/02 06:20:12  kivinen
  * 	Added xauthlocation option.
  *
@@ -90,6 +97,8 @@ typedef struct
   int port;			/* Port to connect. */
   int connection_attempts;	/* Max attempts (seconds) before giving up */
   int number_of_password_prompts; /* Max number of password prompts */
+  int password_prompt_login;	/* Show remote login at password prompt */
+  int password_prompt_host;	/* Show remote host at password prompt */
   int cipher;			/* Cipher to use. */
   char *hostname;		/* Real host to connect. */
   char *proxy_command;		/* Proxy command for connecting the host. */
@@ -113,6 +122,7 @@ typedef struct
   int num_remote_forwards;
   Forward remote_forwards[SSH_MAX_FORWARDS_PER_DIRECTION];
   char *xauth_path;
+  int gateway_ports;
 } Options;
 
 

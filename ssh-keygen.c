@@ -14,8 +14,17 @@ Identity and host key generation and maintenance.
 */
 
 /*
- * $Id: ssh-keygen.c,v 1.2 1996/05/30 16:39:07 ylo Exp $
+ * $Id: ssh-keygen.c,v 1.5 1996/10/03 16:59:41 ttsalo Exp $
  * $Log: ssh-keygen.c,v $
+ * Revision 1.5  1996/10/03 16:59:41  ttsalo
+ * 	Small fix in option-parsing
+ *
+ * Revision 1.4  1996/10/03 16:54:58  ttsalo
+ * 	New feature: updating the keyfiles' cipher type.
+ *
+ * Revision 1.3  1996/08/06 07:55:15  ylo
+ * 	Don't advertise the possibility of using an empty passphrase.
+ *
  * Revision 1.2  1996/05/30 16:39:07  ylo
  * 	Don't loop forever if -f given, and saving fails.
  *
@@ -67,6 +76,9 @@ int change_passphrase = 0;
 /* Flag indicating that we just want to change the comment.  This can be set
    on the command line. */
 int change_comment = 0;
+
+/* Flag indicating that we want to change cipher type to default in ssh.h */
+int update_cipher = 0;
 
 /* This is set to the identity file name if given on the command line. */
 char *identity_file = NULL;
@@ -160,9 +172,9 @@ void do_change_passphrase(struct passwd *pw)
     {
       passphrase1 = 
 	read_passphrase(geteuid(),
-			"Enter new passphrase (empty for no passphrase): ", 1);
+			"Enter new passphrase: ", 1);
       passphrase2 = read_passphrase(geteuid(), 
-				    "Enter same passphrase again: ", 1);
+				    "Enter the same passphrase again: ", 1);
 
       /* Verify that they are the same. */
       if (strcmp(passphrase1, passphrase2) != 0)
@@ -171,7 +183,7 @@ void do_change_passphrase(struct passwd *pw)
 	  memset(passphrase2, 0, strlen(passphrase2));
 	  xfree(passphrase1);
 	  xfree(passphrase2);
-	  printf("Pass phrases do not match.  Try again.\n");
+	  printf("Passphrases do not match.  Try again.\n");
 	  exit(1);
 	}
       /* Destroy the other copy. */
@@ -331,6 +343,88 @@ void do_change_comment(struct passwd *pw)
   exit(0);
 }
 
+int do_update_cipher(struct passwd *pw)
+{
+  char buf[1024], *comment;
+  RSAPrivateKey private_key;
+  char *passphrase;
+  struct stat st;
+  FILE *f;
+
+  /* Read key file name. */
+  if (identity_file)
+    {
+      strncpy(buf, identity_file, sizeof(buf));
+      buf[sizeof(buf) - 1] = '\0';
+    }
+  else
+    {
+      printf("Enter file in which the key is ($HOME/%s): ", 
+	     SSH_CLIENT_IDENTITY);
+      fflush(stdout);
+      if (fgets(buf, sizeof(buf), stdin) == NULL)
+	exit(1);
+      if (strchr(buf, '\n'))
+	*strchr(buf, '\n') = 0;
+      if (strcmp(buf, "") == 0)
+	sprintf(buf, "%s/%s", pw->pw_dir, SSH_CLIENT_IDENTITY);
+    }
+
+  /* Check if the file exists. */
+  if (stat(buf, &st) < 0)
+    {
+      perror(buf);
+      exit(1);
+    }
+  
+  /* Try to load the file with empty passphrase. */
+  if (load_private_key(geteuid(), buf, "", &private_key, &comment))
+    passphrase = xstrdup("");
+  else
+    {
+      /* Read passphrase from the user. */
+      if (identity_passphrase)
+	passphrase = xstrdup(identity_passphrase);
+      else
+	if (identity_new_passphrase)
+	  passphrase = xstrdup(identity_new_passphrase);
+	else
+	  passphrase = read_passphrase(geteuid(), "Enter passphrase: ", 1);
+      /* Try to load using the passphrase. */
+      if (!load_private_key(geteuid(), buf, passphrase, &private_key, 
+			    &comment))
+	{
+	  memset(passphrase, 0, strlen(passphrase));
+	  xfree(passphrase);
+	  printf("Bad passphrase.\n");
+	  exit(1);
+	}
+    }
+
+  /* Save the file, using SSH_AUTHFILE_CIPHER (defined in ssh.h) */
+  if (!save_private_key(geteuid(), buf, passphrase, &private_key, comment, 
+			&state))
+    {
+      printf("Saving the key failed: %s: %s.\n",
+	     buf, strerror(errno));
+      memset(passphrase, 0, strlen(passphrase));
+      xfree(passphrase);
+      rsa_clear_private_key(&private_key);
+      xfree(comment);
+      exit(1);
+    }
+
+  /* Destroy the passphrase and the private key in memory. */
+  memset(passphrase, 0, strlen(passphrase));
+  xfree(passphrase);
+  rsa_clear_private_key(&private_key);
+
+  xfree(comment);
+
+  printf("Key's cipher has been updated.\n");
+  exit(0);
+}
+  
 /* Main program for key management. */
 
 int main(int ac, char **av)
@@ -363,7 +457,7 @@ int main(int ac, char **av)
       error("Could not create directory '%s'.", buf);
 
   /* Parse command line arguments. */
-  while ((opt = getopt(ac, av, "pcb:f:P:N:C:")) != EOF)
+  while ((opt = getopt(ac, av, "pcub:f:P:N:C:")) != EOF)
     {
       switch (opt)
 	{
@@ -382,6 +476,10 @@ int main(int ac, char **av)
 
 	case 'c':
 	  change_comment = 1;
+	  break;
+
+	case 'u':
+	  update_cipher = 1;
 	  break;
 
 	case 'f':
@@ -403,7 +501,8 @@ int main(int ac, char **av)
 	case '?':
 	default:
 	  printf("ssh-keygen version %s\n", SSH_VERSION);
-	  printf("Usage: %s [-b bits] [-p] [-c] [-f file] [-P pass] [-N new-pass] [-C comment]\n", av[0]);
+	  printf("Usage: %s [-b bits] [-p] [-c] [-u] [-f file] [-P pass]\n"
+		 "          [-N new-pass] [-C comment]\n", av[0]);
 	  exit(1);
 	}
     }
@@ -412,9 +511,9 @@ int main(int ac, char **av)
       printf("Too many arguments.\n");
       exit(1);
     }
-  if (change_passphrase && change_comment)
+  if (change_passphrase + change_comment + update_cipher > 1)
     {
-      printf("Can only have one of -p and -c.\n");
+      printf("Can only have one of -p, -u and -c.\n");
       exit(1);
     }
 
@@ -428,6 +527,11 @@ int main(int ac, char **av)
   if (change_comment)
     do_change_comment(pw);
 
+  /* If the user requested to update the cipher, do it now.  This function
+     never returns. */
+  if (update_cipher)
+    do_update_cipher(pw);
+  
   /* Initialize random number generator.  This may take a while if the
      user has no seed file, so display a message to the user. */
   printf("Initializing random number generator...\n");
@@ -490,9 +594,9 @@ int main(int ac, char **av)
       passphrase_again:
 	passphrase1 = 
 	  read_passphrase(geteuid(), 
-			  "Enter passphrase (empty for no passphrase): ", 1);
+			  "Enter passphrase: ", 1);
 	passphrase2 = read_passphrase(geteuid(),
-				      "Enter same passphrase again: ", 1);
+				      "Enter the same passphrase again: ", 1);
 	if (strcmp(passphrase1, passphrase2) != 0)
 	  {
 	    /* The passphrases do not match.  Clear them and retry. */

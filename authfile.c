@@ -15,8 +15,11 @@ for reading the passphrase from the user.
 */
 
 /*
- * $Id: authfile.c,v 1.6 1995/10/02 01:19:48 ylo Exp $
+ * $Id: authfile.c,v 1.1.1.1 1996/02/18 21:38:11 ylo Exp $
  * $Log: authfile.c,v $
+ * Revision 1.1.1.1  1996/02/18 21:38:11  ylo
+ * 	Imported ssh-1.2.13.
+ *
  * Revision 1.6  1995/10/02  01:19:48  ylo
  * 	Added some casts to avoid compiler warnings.
  *

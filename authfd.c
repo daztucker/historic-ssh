@@ -14,8 +14,11 @@ Functions for connecting the local authentication agent.
 */
 
 /*
- * $Id: authfd.c,v 1.13 1997/04/17 04:00:46 kivinen Exp $
+ * $Id: authfd.c,v 1.14 1998/01/02 06:15:49 kivinen Exp $
  * $Log: authfd.c,v $
+ * Revision 1.14  1998/01/02 06:15:49  kivinen
+ * 	Fixed agent socket opening routine.
+ *
  * Revision 1.13  1997/04/17 04:00:46  kivinen
  * 	Removed extra namelen variable.
  *
@@ -98,17 +101,21 @@ Functions for connecting the local authentication agent.
 
 int ssh_get_authentication_fd()
 {
-  char *authsocket, *authsocketdir;
+  char *authsocket, *authsocketdir, *newauthsockdir, *last_dir;
+  char *origauthsocket;
   int sock;
   struct sockaddr_un sunaddr;
-  struct stat st;
+  struct stat socket_st, dir_st, dot_st, dotdot_st, parent_st, link_st;
   struct passwd *pw;
-  
-  authsocketdir = getenv(SSH_AUTHSOCKET_ENV_NAME);
-  if (!authsocketdir)
+  int i;
+
+  newauthsockdir = NULL;
+
+  origauthsocket = getenv(SSH_AUTHSOCKET_ENV_NAME);
+  if (!origauthsocket)
     return -1;
   else
-    authsocketdir = xstrdup(authsocketdir);
+    authsocketdir = xstrdup(origauthsocket);
 
   /* Point to the end of the name */
   authsocket = authsocketdir + strlen(authsocketdir);
@@ -121,30 +128,208 @@ int ssh_get_authentication_fd()
   *authsocket = '\0';
   authsocket++;
 
+  /* Find parent directory */
+  last_dir = strrchr(authsocketdir, '/');
+  if (last_dir == NULL || last_dir == authsocketdir)
+    {
+      error("Invalid %s `%.100s', it should contain at least one /.",
+	    SSH_AUTHSOCKET_ENV_NAME, authsocketdir);
+      xfree(authsocketdir);
+      return -1;
+    }
+
+  /* Stat parent directory */
+  *last_dir = '\0';
+  if (stat(authsocketdir, &parent_st) != 0)
+    {
+      error("Parent directory stat failed `%.100s'", authsocketdir);
+      xfree(authsocketdir);
+      return -1;
+    }
+  *last_dir = '/';
+
   pw = getpwuid(original_real_uid);
   
   /* Change to the socket directory so it's privileges can be
      reliably checked */
+
+  /* Stat it */
+  if (lstat(authsocketdir, &dir_st) != 0)
+    {
+      error("Cannot stat authentication socket directory %.100s",
+	    authsocketdir);
+      xfree(authsocketdir);
+      return -1;
+    }
+  
   chdir(authsocketdir);
 
-  if (stat(".", &st) == -1)
+  if (stat(".", &dot_st) != 0)
     {
-      perror("stat:");
+      perror("stat . failed");
+      xfree(authsocketdir);
       return -1;
     }
 
-  if (original_real_uid != UID_ROOT && st.st_uid != pw->pw_uid)
+  /* Check that stat of real directory name and . matches. */
+  if (dot_st.st_dev != dir_st.st_dev || dot_st.st_ino != dir_st.st_ino)
     {
-      error("Invalid owner of authentication socket directory %s\n",
+      error("Wrong directory after chdir");
+      return -1;
+    }
+  
+  if (original_real_uid != UID_ROOT && dot_st.st_uid != pw->pw_uid)
+    {
+      error("Invalid owner of authentication socket directory %.100s",
 	    authsocketdir);
+      xfree(authsocketdir);
       return -1;
     }
 
-  if ((st.st_mode & 077) != 0)
+  if ((dot_st.st_mode & 077) != 0)
     {
-      error("Invalid modes for authentication socket directory %s\n",
+      error("Invalid modes for authentication socket directory %.100s",
 	    authsocketdir);
+      xfree(authsocketdir);
       return -1;
+    }
+
+  if (lstat(authsocket, &socket_st) != 0)
+    {
+      error("Cannot find authentication socket %.100s/%.100s",
+	    authsocketdir, authsocket);
+      xfree(authsocketdir);
+      return -1;
+    }
+  if (S_ISLNK(socket_st.st_mode))
+    {
+      error("Authentication socket `%.100s' is symlink", origauthsocket);
+      xfree(authsocketdir);
+      return -1;
+    }
+
+  /* Check if we are suid process */
+  if (original_real_uid != geteuid())
+    {
+      /* Something wierd code here again. We need to make sure the socket is
+	 not symlink to somebody elses socket. We cannot use stat/lstat because
+	 user might change the inode after we have stat/lstat'ed it. We cannot
+	 use fstat, because it doesn't work for sockets, so we need some magic
+	 spell here.
+
+	 Create temporary directory at same position where the real agent
+	 directory is, allow only owner to modify it (==root). Change current
+	 working directory to there and make sure we ended where we wanted
+	 (stat "." and real path and check that they match, and check that
+	 parent is what it is supposed to be (stat of .. and real parent
+	 matches)). Then check that the parent directory ("..") is sticky so
+	 nobody can mess with this directory. Now we are at safe place where
+	 nobody else have any permissions. Now make hard link from the real
+	 authentication socket to this directory. Hard link to symlink will
+	 point to destination of that symlink, so if the agent socket was
+	 symlink to somebody elses socket then the stat of our hardlink and
+	 agent socket given by user differs and we give an error. Otherwise we
+	 know that the hard link points to real socket that (at least used to
+	 be) at the directory that was owned by user, so we can safely open the
+	 hardlink socket (not the original it might be changed after we have
+	 checked the permissions). */
+
+      newauthsockdir = xmalloc(strlen(authsocketdir) + 20);
+      sprintf(newauthsockdir, "%s-%d", authsocketdir, getpid());
+
+      /* Create directory */
+      if (mkdir(newauthsockdir, S_IRWXU) != 0)
+	{
+	  error("Cannot make temporary authentication socket directory %.100s",
+		newauthsockdir);
+	  xfree(authsocketdir);
+	  xfree(newauthsockdir);
+	  return -1;
+	}
+
+      /* Stat it */
+      if (lstat(newauthsockdir, &dir_st) != 0)
+	{
+	  error("Cannot stat newly created temporary authentication socket directory %.100s",
+		newauthsockdir);
+	  xfree(authsocketdir);
+	  xfree(newauthsockdir);
+	  return -1;
+	}
+
+      /* Move to there */
+      chdir(newauthsockdir);
+
+      /* Stat . */
+      if (stat(".", &dot_st) != 0)
+	{
+	  error("Cannot stat . in newly created temporary authentication socket directory %.100s",
+		newauthsockdir);
+	  xfree(authsocketdir);
+	  xfree(newauthsockdir);
+	  return -1;
+	}
+
+      /* Check that stat of real directory name and . matches. */
+      if (dot_st.st_dev != dir_st.st_dev || dot_st.st_ino != dir_st.st_ino)
+	{
+	  error("Wrong directory after chdir");
+	  return -1;
+	}
+
+      /* Stat .. (it should match the parent directory and it must be sticky)*/
+      if (stat("..", &dotdot_st) != 0)
+	{
+	  error("Cannot stat .. in newly created temporary authentication socket directory %.100s",
+		newauthsockdir);
+	  xfree(authsocketdir);
+	  xfree(newauthsockdir);
+	  return -1;
+	}
+      if ((dotdot_st.st_mode & 01000) == 0)
+	{
+	  error("Agent parent directory is not sticky, mode is %o it should be 041777",
+		dotdot_st.st_mode);
+	  xfree(authsocketdir);
+	  xfree(newauthsockdir);
+	  return -1;  
+	}
+      if (dotdot_st.st_dev != parent_st.st_dev ||
+	  dotdot_st.st_ino != parent_st.st_ino)
+	{
+	  error("Wrong parent directory after chdir to temp directory");
+	  xfree(authsocketdir);
+	  xfree(newauthsockdir);
+	  return -1;  
+	}
+
+      /* Now we are at safe place, make hardlink to agent socket */
+      if (link(origauthsocket, authsocket) != 0)
+	{
+	  error("Hard link to auth socket failed");
+	  xfree(authsocketdir);
+	  xfree(newauthsockdir);
+	  return -1;
+	}
+      
+      /* Check that it match the original socket */
+      if (stat(authsocket, &link_st) != 0)
+	{
+	  error("Stat to hard link of authentication socket failed");
+	  xfree(authsocketdir);
+	  xfree(newauthsockdir);
+	  return -1;
+	}
+      if (link_st.st_dev != socket_st.st_dev ||
+	  link_st.st_ino != socket_st.st_ino)
+	{
+	  error("Hard link and orignal socket are not same");
+	  xfree(authsocketdir);
+	  xfree(newauthsockdir);
+	  return -1;
+	}
+      /* Note! here we are still at the newly created directory, so the connect
+	 will use the hard link of socket instead of real socket */
     }
 
   sunaddr.sun_family = AF_UNIX;
@@ -154,19 +339,40 @@ int ssh_get_authentication_fd()
   
   sock = socket(AF_UNIX, SOCK_STREAM, 0);
   if (sock < 0)
-    return -1;
+    {
+      error("Socket failed");
+      if (newauthsockdir != NULL)
+	{
+	  unlink(authsocket);
+	  chdir("/");
+	  rmdir(newauthsockdir);
+	  xfree(newauthsockdir);
+	}
+      return -1;
+    }
 
   if (connect(sock, (struct sockaddr *)&sunaddr,
 	      AF_UNIX_SIZE(sunaddr)) < 0)
     {
       close(sock);
+      if (newauthsockdir != NULL)
+	{
+	  unlink(authsocket);
+	  chdir("/");
+	  rmdir(newauthsockdir);
+	  xfree(newauthsockdir);
+	}
       return -1;
     }
-  else
+  if (newauthsockdir != NULL)
     {
-      fcntl(sock, F_SETFL, 0);  /* Set the socket to blocking mode */
-      return sock;
+      unlink(authsocket);
+      chdir("/");
+      rmdir(newauthsockdir);
+      xfree(newauthsockdir);
     }
+  fcntl(sock, F_SETFL, 0);  /* Set the socket to blocking mode */
+  return sock;
 }
 
 /* Opens a socket to the authentication server.  Returns the number of

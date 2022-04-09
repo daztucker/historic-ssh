@@ -6,7 +6,7 @@ onto which the current OpenSSH Portable's git repository has been
 grafted and rebased.  This allows attribution of code present in modern
 OpenSSH back to its origin in those two products.
 
-There are 4 branches:
+There are 5 branches:
 
  - ssh - Tatu's original ssh.  Included dependencies (eg GMP, zlib) are ignored.
  - ossh - Björn's OSSH which is branched off ssh-1.2.12.
